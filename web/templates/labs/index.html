@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("labs.page_title") }}{% endblock %}
+
+{% block content %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showUpload: {% if latest %}false{% else %}true{% endif %}, showOnlyProblematic: false }">
+
+    <!-- Header -->
+    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+        <div class="flex items-start gap-3.5">
+            <span class="v-bar mt-1"></span>
+            <div class="space-y-2">
+                <span class="v-tag muted">🧪 {{ t("labs.tag") }}</span>
+                <h1 class="v-text-heading">{{ t("labs.heading") }}</h1>
+                <p class="v-text-body max-w-2xl">
+                    {{ t("labs.description") }}
+                </p>
+            </div>
+        </div>
+        <!-- Secondary action: ghost button — data consumption takes visual priority -->
+        <button @click="showUpload = !showUpload" class="v-btn-ghost w-full md:w-auto shrink-0">
+            <svg style="width:1.1rem;height:1.1rem" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            <span x-text="showUpload ? '{{ t("labs.toggle_results") }}' : '{{ t("labs.toggle_upload") }}'"></span>
+        </button>
+    </div>
+
+    <!-- Metrics -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("labs.metric_markers") }}</span>
+            <span class="v-metric-value">{{ markers | length }}</span>
+        </div>
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("labs.metric_oor") }}</span>
+            <!-- If any markers are out of range, highlight value in warning red -->
+            <span class="v-metric-value {% if out_of_range > 0 %}bad{% endif %}">{{ out_of_range }}</span>
+        </div>
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("labs.metric_selected") }}</span>
+            <span class="v-metric-value-text truncate">{{ selected or '—' }}</span>
+        </div>
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("labs.metric_recognition") }}</span>
+            <span class="v-metric-value-text {% if llm_configured %}good{% endif %}">
+                {% if llm_configured %}{{ t("labs.llm_connected") }}{% else %}{{ t("labs.llm_not_configured") }}{% endif %}
+            </span>
+        </div>
+    </div>
+
+    {% if upload == 'ok' %}
+    <div class="v-alert info" x-init="showUpload = false">{{ t("labs.upload_ok", count=added) }}</div>
+    {% elif upload == 'not_configured' %}
+    <div class="v-alert warn" x-init="showUpload = true">{{ t("labs.upload_not_configured") }}</div>
+    {% elif upload == 'error' %}
+    <div class="v-alert warn" x-init="showUpload = true">{{ t("labs.upload_error") }}</div>
+    {% endif %}
+
+    <!-- Forms Section (Toggled) -->
+    <div x-show="showUpload" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start" x-cloak>
+        <!-- Left: Upload dropzone -->
+        <div class="lg:col-span-6 v-card p-6 space-y-3">
+            <div class="flex items-center gap-2">
+                <span class="v-bar v-bar-sm"></span>
+                <span class="v-text-card">{{ t("labs.recognize_title") }}</span>
+            </div>
+            <p class="v-text-body">
+                {{ t("labs.recognize_description") }}
+            </p>
+            <form action="/labs/upload" method="POST" enctype="multipart/form-data" class="space-y-3">
+                <label class="v-file-drop cursor-pointer" x-data="{ hint: '{{ t("labs.drop_hint") }}' }">
+                    <input type="file" name="files" accept="image/*,application/pdf,.pdf" required multiple
+                           class="sr-only"
+                           @change="hint = $el.files.length > 1 ? $el.files.length + ' {{ t("labs.files_selected") }}' : ($el.files[0] ? $el.files[0].name : '{{ t("labs.drop_hint") }}')">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span class="v-file-drop__text">{{ t("labs.drop_text") }}</span>
+                    <span class="v-file-drop__hint" x-text="hint"></span>
+                </label>
+                <button type="submit" class="v-btn w-full text-xs" {% if not llm_configured %}disabled style="opacity:.5;cursor:not-allowed"{% endif %}>
+                    {% if llm_configured %}{{ t("labs.recognize_submit") }}{% else %}{{ t("labs.llm_not_configured") }}{% endif %}
+                </button>
+            </form>
+        </div>
+
+        <!-- Right: Manual entry -->
+        <div class="lg:col-span-6 v-card p-6 space-y-3">
+            <div class="flex items-center gap-2">
+                <span class="v-bar v-bar-sm"></span>
+                <span class="v-text-card">{{ t("labs.manual_title") }}</span>
+            </div>
+            <form action="/labs/result" method="POST" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="v-label">{{ t("common.date") }}</label>
+                        <input type="date" name="date" value="{{ today }}" required class="v-input">
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("labs.marker") }}</label>
+                        <input type="text" name="marker" list="marker-presets" required placeholder="Ferritin" class="v-input">
+                        <datalist id="marker-presets">
+                            {% for m in markers %}<option value="{{ m.name }}"></option>{% endfor %}
+                        </datalist>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="v-label">{{ t("labs.value") }}</label>
+                        <input type="number" name="value" step="any" required placeholder="95" class="v-input">
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("labs.unit") }}</label>
+                        <input type="text" name="unit" placeholder="ng/mL" class="v-input">
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("labs.lab_name") }}</label>
+                        <input type="text" name="lab_name" placeholder="Synevo" class="v-input">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="v-label">{{ t("labs.ref_low") }}</label>
+                        <input type="number" name="ref_low" step="any" placeholder="30" class="v-input">
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("labs.ref_high") }}</label>
+                        <input type="number" name="ref_high" step="any" placeholder="400" class="v-input">
+                    </div>
+                </div>
+                <button type="submit" class="v-btn-ghost w-full">{{ t("labs.add_result") }}</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Section (Table + Catalog + Chart) -->
+    <div x-show="!showUpload" class="space-y-6">
+        <!-- Tables Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <!-- Left: latest per marker table -->
+            <div class="lg:col-span-8 v-card p-6 space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="v-bar v-bar-sm"></span>
+                        <span class="v-text-card">{{ t("labs.latest_values") }}</span>
+                    </div>
+                    <label class="flex items-center gap-2 v-text-label cursor-pointer select-none">
+                        <input type="checkbox" x-model="showOnlyProblematic" class="rounded bg-surface-2 border-line text-accent focus:ring-accent">
+                        <span>{{ t("labs.only_abnormal") }}</span>
+                    </label>
+                </div>
+                <div class="max-h-[24rem] overflow-y-auto v-card-inset">
+                    <div class="v-table-wrap">
+                        <table class="v-table">
+                        <thead>
+                            <tr><th>{{ t("labs.marker") }}</th><th>{{ t("labs.value") }}</th><th>{{ t("labs.norm") }}</th><th>{{ t("labs.status") }}</th><th>{{ t("common.date") }}</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for r in latest %}
+                            {% set f = r.flag or 'normal' %}
+                            {% set is_bad = f in ['low', 'high', 'critical_low', 'critical_high'] %}
+                            <tr class="cursor-pointer" style="{% if r.marker == selected %}background: var(--surface-2){% endif %}"
+                                onclick="window.location.href='/labs?marker={{ r.marker | urlencode }}'"
+                                x-show="!showOnlyProblematic || {{ 'true' if is_bad else 'false' }}">
+                                <td class="max-w-[150px] truncate" style="color: {% if r.marker == selected %}var(--fg){% else %}var(--fg-2){% endif %}" title="{{ r.marker }}">{{ r.marker }}</td>
+                                <td class="v-num font-semibold" style="color: var(--fg)">{{ r.value | format_number }}{% if r.unit %}<span class="v-unit">{{ r.unit | replace('10^9', '10<sup>9</sup>') | safe }}</span>{% endif %}</td>
+                                <td class="v-num v-text-micro">{% if r.ref_low is not none or r.ref_high is not none %}{{ r.ref_low if r.ref_low is not none else '' }}–{{ r.ref_high if r.ref_high is not none else '' }}{% else %}—{% endif %}</td>
+                                <td>
+                                    <span class="v-text-label font-semibold"
+                                          style="color: {% if 'critical' in f %}var(--bad-strong){% elif f in ['low','high'] %}var(--warn){% else %}var(--good){% endif %}">
+                                        {{ t("enum.flag." + f) }}
+                                    </span>
+                                </td>
+                                <td class="v-num v-text-micro">{{ r.date | format_date }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-center" style="color: var(--faint)">{{ t("labs.no_data") }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+            <!-- Right: catalog -->
+            <div class="lg:col-span-4 v-card p-6 space-y-3">
+                <div class="flex items-center gap-2">
+                    <span class="v-bar v-bar-sm"></span>
+                    <span class="v-text-card">{{ t("labs.catalog_title") }}</span>
+                </div>
+                <ul class="space-y-2.5 max-h-[24rem] overflow-y-auto pr-1">
+                    {% for m in markers %}
+                    <li class="pb-2 flex justify-between items-center gap-2" style="border-bottom: 1px solid var(--line)">
+                        <span class="v-text-body">{{ m.name }}
+                            {% if m.tier == 1 %}<span class="v-text-micro font-bold ml-1" style="color: var(--bad)">T1</span>{% endif %}
+                        </span>
+                        <span class="v-num v-text-micro">
+                            {% if m.retest_interval_days %}{{ t("labs.retest_interval", days=m.retest_interval_days) }}{% if m.defer_until %} · {{ t("labs.deferred_until", date=m.defer_until) }}{% endif %}{% else %}—{% endif %}
+                        </span>
+                    </li>
+                    {% else %}
+                    <li class="text-center pt-2" style="color: var(--faint)">{{ t("labs.catalog_empty") }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Chart (bottom) -->
+        <div class="v-card p-6 space-y-3">
+            <div class="flex items-center gap-2">
+                <span class="v-bar"></span>
+                <span class="v-text-heading">{{ t("labs.chart_title") }} {{ selected or '—' }}</span>
+            </div>
+            <div class="h-[280px] w-full relative">
+                <canvas id="labChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.labChartData = {{ series | tojson | safe }};
+</script>
+<script src="{{ static_version('/static/labs.js') }}"></script>
+{% endblock %}

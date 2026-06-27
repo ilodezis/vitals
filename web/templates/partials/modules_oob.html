@@ -1,0 +1,6 @@
+{# Response body for POST /settings/modules. The toggle uses hx-swap="none", so
+   nothing is swapped into the trigger; this fragment carries only out-of-band
+   updates. Re-renders the desktop header nav so enabling/disabling a module is
+   reflected live without a page reload. (Mobile nav reflects on next navigation —
+   it carries Alpine directives we don't want to re-init via OOB.) #}
+{% with oob=true %}{% include "partials/nav_primary.html" %}{% endwith %}

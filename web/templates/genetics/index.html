@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("genetics.page_title") }}{% endblock %}
+
+{% block content %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showAdminPanels: {% if variants %}false{% else %}true{% endif %}, activeTab: 'all' }">
+
+    <!-- Header -->
+    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+        <div class="flex items-start gap-3.5">
+            <span class="v-bar mt-1"></span>
+            <div class="space-y-2">
+                <span class="v-tag muted">🧬 {{ t("genetics.tag") }}</span>
+                <h1 class="v-text-heading">{{ t("genetics.heading") }}</h1>
+                <p class="v-text-body max-w-2xl">
+                    {{ t("genetics.description") }}
+                </p>
+            </div>
+        </div>
+        <button @click="showAdminPanels = !showAdminPanels" class="v-btn-ghost w-full md:w-auto shrink-0">
+            <svg style="width:1.1rem;height:1.1rem" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span x-text="showAdminPanels ? '{{ t("genetics.toggle_profile") }}' : '{{ t("genetics.toggle_admin") }}'"></span>
+        </button>
+    </div>
+
+    {% if imported is not none %}
+    <div x-init="showAdminPanels = false" class="v-alert info flex items-center gap-2">
+        <span class="font-bold v-text-micro">{{ t("common.import_btn") }}</span>
+        <span>{{ t("genetics.import_ok") }} <span class="font-semibold v-num">{{ imported }}</span>{% if imported_markers and imported_markers != '0' %}, {{ t("genetics.import_markers") }} <span class="font-semibold v-num">{{ imported_markers }}</span>{% endif %}.</span>
+    </div>
+    {% endif %}
+
+    <!-- Tabs -->
+    <div x-show="!showAdminPanels" class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-1">
+        <div class="flex flex-wrap gap-2">
+            {% for key, tkey in [('all','genetics.tab_all'),('supplements','genetics.tab_supplements'),('workouts','genetics.tab_workouts'),('health','genetics.tab_health')] %}
+            <button @click="activeTab = '{{ key }}'" :class="activeTab === '{{ key }}' ? 'v-pill-on' : ''" class="v-pill">{{ t(tkey) }}</button>
+            {% endfor %}
+        </div>
+        <div class="v-text-label">
+            {{ t("genetics.interpreted") }} <span class="v-num" style="color: var(--fg-2)">{{ variants | length }}</span>
+        </div>
+    </div>
+
+    <!-- Profile cards -->
+    <div x-show="!showAdminPanels" class="space-y-4">
+        {% set ns = namespace(count=0) %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {% for v in variants %}
+            {% set is_risk = v.marker is not none and v.marker != '' %}
+            {% set ns.count = ns.count + 1 %}
+            <div x-show="activeTab === 'all' ||
+                        (activeTab === 'supplements' && '{{ v.impact_domain }}' === 'supplements') ||
+                        (activeTab === 'workouts' && ['workouts', 'weight', 'glp1'].includes('{{ v.impact_domain }}')) ||
+                        (activeTab === 'health' && ['system', 'labs', 'skincare'].includes('{{ v.impact_domain }}'))"
+                 class="v-card-tile p-6 flex flex-col justify-between gap-5 relative overflow-hidden"
+                 style="{% if is_risk %}border-color: rgba(240,178,74,.28){% endif %}">
+                <div class="absolute top-0 left-0 right-0" style="height:2px; background: {% if is_risk %}var(--warn){% else %}var(--line-2){% endif %}"></div>
+
+                <div class="space-y-4">
+                    <div class="flex justify-between items-start gap-4">
+                        <div class="space-y-2">
+                            <div class="flex items-center gap-2.5">
+                                <span class="v-text-heading">{{ v.gene }}</span>
+                                {% if v.rsid %}<span class="v-chip">{{ v.rsid }}</span>{% endif %}
+                            </div>
+                            {% if is_risk %}
+                            <span class="v-tag" style="color: var(--warn); background: var(--warn-soft); border-color: rgba(240,178,74,.3)">⚠️ {{ t("genetics.conflict_marker") }}</span>
+                            {% else %}
+                            <span class="v-tag muted">ℹ️ {{ t("genetics.info_tag") }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="flex flex-col items-end shrink-0 gap-1.5">
+                            <span class="v-text-micro">{{ t("genetics.genotype") }}</span>
+                            <span class="v-text-card font-extrabold px-3.5 py-1.5 rounded-xl v-num" style="{% if is_risk %}color: var(--warn); background: var(--warn-soft); border: 1px solid rgba(240,178,74,.35){% else %}color: var(--fg); background: var(--surface-3); border: 1px solid var(--line){% endif %}">{{ v.genotype or '—' }}</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 space-y-4" style="border-top: 1px solid var(--line)">
+                        <div>
+                            <span class="v-text-micro">{{ t("genetics.impact") }}</span>
+                            <div class="v-text-card mt-1.5 leading-normal" style="font-weight: 600">{{ v.impact or '—' }}</div>
+                        </div>
+                        {% if v.interpretation %}
+                        <div>
+                            <span class="v-text-micro">{{ t("genetics.interpretation") }}</span>
+                            <div class="v-text-body leading-relaxed mt-1.5">{{ v.interpretation }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if v.action_notes %}
+                <div class="pt-4" style="border-top: 1px solid var(--line)">
+                    <div class="v-text-body px-4 py-3.5 rounded-xl flex items-start gap-3 leading-relaxed" style="{% if is_risk %}color: var(--warn); background: var(--warn-soft); border: 1px solid rgba(240,178,74,.28){% else %}color: var(--good); background: var(--good-soft); border: 1px solid rgba(111,197,142,.28){% endif %}">
+                        <span class="shrink-0 mt-0.5">{% if is_risk %}⚠️{% else %}💡{% endif %}</span>
+                        <div>
+                            <div class="font-semibold v-text-micro mb-1">{{ t("genetics.recommendation") }}</div>
+                            <span class="font-medium" style="color: var(--fg-2)">{{ v.action_notes }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if ns.count == 0 %}
+        <div class="v-card-inset p-8 text-center max-w-md mx-auto space-y-4 my-8">
+            <div class="text-4xl">🧬</div>
+            <div class="v-text-card">{{ t("genetics.no_data_title") }}</div>
+            <p class="text-xs leading-relaxed" style="color: var(--muted)">{{ t("genetics.no_data_description") }}</p>
+            <button @click="showAdminPanels = true" class="v-btn">{{ t("genetics.import_vcf_btn") }}</button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Admin: VCF + catalog -->
+    <div x-show="showAdminPanels" class="space-y-6" x-cloak>
+        <!-- VCF upload -->
+        <div class="v-card p-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="v-bar v-bar-sm"></span>
+                    <span class="v-text-card">{{ t("genetics.vcf_title") }}</span>
+                </div>
+                <span class="v-text-micro">{{ t("genetics.vcf_source") }}</span>
+            </div>
+            <p class="v-text-body">{{ t("genetics.vcf_description") }}</p>
+            <form action="/genetics/import" method="POST" enctype="multipart/form-data" class="flex flex-col sm:flex-row sm:items-end gap-3">
+                <div class="flex-1">
+                    <label class="v-label">{{ t("genetics.vcf_file") }}</label>
+                    <label class="v-file-drop cursor-pointer">
+                        <input type="file" name="file" accept=".vcf,text/plain" required class="sr-only" onchange="this.parentElement.querySelector('.v-file-drop__hint').textContent = this.files[0] ? this.files[0].name : '{{ t("genetics.vcf_drop_hint") }}'">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span class="v-file-drop__text">{{ t("genetics.vcf_drop_text") }}</span>
+                        <span class="v-file-drop__hint">{{ t("genetics.vcf_drop_hint") }}</span>
+                    </label>
+                </div>
+                <label class="flex items-center gap-2 pb-2.5 cursor-pointer whitespace-nowrap">
+                    <input type="checkbox" name="only_interpreted" value="true" class="w-4 h-4 accent-[var(--accent)]">
+                    <span class="text-xs font-medium" style="color: var(--fg-2)">{{ t("genetics.only_significant") }}</span>
+                </label>
+                <button type="submit" class="v-btn whitespace-nowrap">{{ t("common.import_btn") }}</button>
+            </form>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <!-- Add variant -->
+            <div class="lg:col-span-5 v-card p-6 space-y-4">
+                <div class="flex items-center gap-2">
+                    <span class="v-bar v-bar-sm"></span>
+                    <span class="v-text-card">{{ t("genetics.add_variant") }}</span>
+                </div>
+                <p class="v-text-micro">{{ t("genetics.marker_hint") }}</p>
+
+                <form action="/genetics/save" method="POST" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div><label class="v-label">{{ t("genetics.gene") }}</label><input type="text" name="gene" required placeholder="HFE" class="v-input"></div>
+                        <div><label class="v-label">rsID</label><input type="text" name="rsid" placeholder="rs1800562" class="v-input"></div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div><label class="v-label">{{ t("genetics.genotype") }}</label><input type="text" name="genotype" placeholder="A/G" class="v-input"></div>
+                        <div><label class="v-label">Marker</label><input type="text" name="marker" placeholder="hemochromatosis_carrier" class="v-input"></div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div><label class="v-label">{{ t("genetics.impact") }}</label><input type="text" name="impact" placeholder="accumulation of iron" class="v-input"></div>
+                        <div><label class="v-label">{{ t("genetics.domain") }}</label><input type="text" name="impact_domain" placeholder="supplements" class="v-input"></div>
+                    </div>
+                    <div><label class="v-label">{{ t("genetics.interpretation") }}</label><textarea name="interpretation" rows="2" class="v-textarea"></textarea></div>
+                    <div><label class="v-label">{{ t("genetics.recommendation") }}</label><textarea name="action_notes" rows="2" class="v-textarea"></textarea></div>
+                    <button type="submit" class="v-btn-ghost w-full">{{ t("genetics.add_variant_btn") }}</button>
+                </form>
+            </div>
+
+            <!-- Catalog -->
+            <div class="lg:col-span-7 v-card p-6 space-y-3">
+                <div class="flex items-center gap-2">
+                    <span class="v-bar v-bar-sm"></span>
+                    <span class="v-text-card">{{ t("genetics.catalog_title") }}</span>
+                </div>
+                <div class="max-h-[28rem] overflow-y-auto v-card-inset">
+                    <div class="v-table-wrap">
+                        <table class="v-table">
+                        <thead>
+                            <tr><th>{{ t("genetics.gene") }}</th><th>{{ t("genetics.genotype") }}</th><th>Marker</th><th>{{ t("genetics.interpretation") }}</th><th class="text-right"></th></tr>
+                        </thead>
+                        <tbody>
+                            {% for v in variants %}
+                            <tr>
+                                <td>
+                                    <div class="font-semibold" style="color: var(--fg)">{{ v.gene }}</div>
+                                    {% if v.rsid %}<div class="v-text-micro v-num">{{ v.rsid }}</div>{% endif %}
+                                </td>
+                                <td class="v-num">{{ v.genotype or '—' }}</td>
+                                <td><span class="v-text-micro">{{ v.marker or '—' }}</span></td>
+                                <td class="space-y-1">
+                                    <div class="font-medium mt-1 leading-normal" style="color: var(--fg-2)">{{ v.impact or '—' }}</div>
+                                    {% if v.interpretation %}<div class="v-text-micro leading-normal max-w-[180px] break-words">{{ v.interpretation }}</div>{% endif %}
+                                    {% if v.action_notes %}
+                                    <div class="v-text-micro px-2 py-1 rounded-lg mt-1 inline-block font-medium max-w-[180px] break-words" style="color: var(--good); background: var(--good-soft); border: 1px solid rgba(111,197,142,.2)">💡 {{ v.action_notes }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="text-right">
+                                    <form action="/genetics/{{ v.id }}/delete" method="POST" class="inline" onsubmit="return confirm('{{ t("genetics.confirm_delete") }}')">
+                                        <button type="submit" class="v-icon-btn danger" title="{{ t("common.delete") }}">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-center" style="color: var(--faint)">{{ t("genetics.no_variants") }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

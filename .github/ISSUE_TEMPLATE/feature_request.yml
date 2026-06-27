@@ -1,0 +1,55 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests are welcome! Keep in mind Vitals is a **single-user, self-hosted** tool — features that add complexity for multi-user scenarios are unlikely to be accepted.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the use case or gap you're experiencing.
+      placeholder: "e.g. I track both morning and evening weight but can't distinguish them on the chart"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the feature you'd like to see. UI sketch or pseudocode welcome.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Health domain (if applicable)
+      options:
+        - Weight & Body Composition
+        - GLP-1 Protocol
+        - Garmin Connect
+        - Hevy Workouts
+        - Nutrition
+        - Supplements
+        - Skincare
+        - Lab Results
+        - Genetics
+        - Milestones
+        - AI Digests
+        - MCP Integration
+        - Infrastructure / DevOps
+        - Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds you've tried?
+    validations:
+      required: false

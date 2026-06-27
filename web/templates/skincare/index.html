@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("skincare.page_title") }}{% endblock %}
+
+{% block content %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="protocolForm()">
+
+    <!-- Header -->
+    <div class="v-card p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div class="flex items-start gap-3.5">
+            <span class="v-bar mt-1"></span>
+            <div>
+                <h1 class="v-text-heading">{{ t("skincare.heading") }}</h1>
+                <p class="v-text-body mt-1">{{ t("skincare.subheading") }}</p>
+            </div>
+        </div>
+        <button @click="cancelEdit('form-skincare-product', '{{ t("common.save") }}'); showFormModal = true" class="v-btn-ghost">
+            <svg style="width:1.1rem;height:1.1rem" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
+            <span>{{ t("skincare.add_product") }}</span>
+        </button>
+    </div>
+
+    <!-- Weekly Schedule -->
+    <div class="v-card p-6 space-y-4">
+        <div class="flex items-center gap-2.5">
+            <span class="v-bar"></span>
+            <div>
+                <h2 class="v-text-heading">{{ t("skincare.schedule_title") }}</h2>
+                <p class="v-text-micro mt-0.5">{{ t("skincare.schedule_hint") }}</p>
+            </div>
+        </div>
+
+        <div class="space-y-3" x-data="{ todayDow: new Date().getDay() }">
+            {% set days = [
+                (1, 'monday', 'mon'), (2, 'tuesday', 'tue'), (3, 'wednesday', 'wed'),
+                (4, 'thursday', 'thu'), (5, 'friday', 'fri'), (6, 'saturday', 'sat'), (0, 'sunday', 'sun')
+            ] %}
+
+            {% for day_index, day_name, day_abbr in days %}
+            <div class="v-card-tile p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition hover:border-[var(--line-2)]"
+                 :class="todayDow === {{ day_index }} ? 'ring-1 ring-[var(--line-2)] border-[var(--line-2)]' : ''">
+
+                <!-- Left: Day of the week info -->
+                <div class="flex items-center gap-3 md:w-48 shrink-0">
+                    <div class="h-10 w-10 rounded-xl bg-[var(--surface-3)] flex items-center justify-center flex-col shrink-0"
+                         :style="todayDow === {{ day_index }} ? 'background: var(--surface-2); border: 1px solid var(--line-2)' : 'border: 1px solid var(--line)'">
+                        <span class="v-text-label font-extrabold" :style="todayDow === {{ day_index }} ? 'color: var(--fg)' : 'color: var(--muted)'">{{ t("skincare.day." + day_abbr) }}</span>
+                    </div>
+                    <div class="flex flex-col gap-0.5">
+                        <span class="v-text-card">{{ t("skincare.day." + day_name) }}</span>
+                        <template x-if="todayDow === {{ day_index }}">
+                            <span class="v-text-micro font-extrabold" style="color: var(--fg-2)">{{ t("skincare.today") }}</span>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Right: Routines -->
+                <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Morning -->
+                    <div class="space-y-1.5 p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)]">
+                        <span class="v-text-micro flex items-center gap-1">☀️ {{ t("skincare.morning") }}</span>
+                        <div class="flex flex-wrap gap-1.5">
+                            {% set has_morning = namespace(value=false) %}
+                            {% for p in products if p.active and day_index in (p.schedule_days or []) and p.default_time in ['morning', 'both'] %}
+                                <span class="v-chip">{{ p.name }}</span>
+                                {% set has_morning.value = true %}
+                            {% endfor %}
+                            {% if not has_morning.value %}<span class="v-text-body" style="color: var(--faint)">—</span>{% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Evening -->
+                    <div class="space-y-1.5 p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)]">
+                        <span class="v-text-micro flex items-center gap-1">🌙 {{ t("skincare.evening") }}</span>
+                        <div class="flex flex-wrap gap-1.5">
+                            {% set has_evening = namespace(value=false) %}
+                            {% for p in products if p.active and day_index in (p.schedule_days or []) and p.default_time in ['evening', 'both'] %}
+                                <span class="v-chip">{{ p.name }}</span>
+                                {% set has_evening.value = true %}
+                            {% endfor %}
+                            {% if not has_evening.value %}<span class="v-text-body" style="color: var(--faint)">—</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Actives + Safety -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+        <!-- Actives Guide -->
+        <div class="lg:col-span-7 v-card p-6 space-y-4">
+            <div class="flex items-center gap-2.5">
+                <span class="v-bar"></span>
+                <div>
+                    <h2 class="v-text-heading">{{ t("skincare.actives_title") }}</h2>
+                    <p class="v-text-micro mt-0.5">{{ t("skincare.actives_hint") }}</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for p in products %}
+                <div class="v-card-tile p-6 space-y-4 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-start justify-between gap-3 pb-3" style="border-bottom: 1px solid var(--line)">
+                            <div class="space-y-1 min-w-0">
+                                <span class="block v-text-card">{{ p.name }}</span>
+                                {% if p.active_ingredient %}
+                                <p class="v-text-micro"><span style="color: var(--faint)">{{ t("skincare.active_ingredient") }}</span> {{ p.active_ingredient }}</p>
+                                {% endif %}
+                            </div>
+                            <span class="v-icon-actions shrink-0">
+                                <button @click="showFormModal = true; editRow('form-skincare-product', {id: {{ p.id }}, name: {{ p.name | tojson | forceescape }}, type: {{ p.type | tojson | forceescape }}, active_ingredient: {{ p.active_ingredient | tojson | forceescape }}, description: {{ p.description | tojson | forceescape }}, usage_instructions: {{ p.usage_instructions | tojson | forceescape }}, default_time: {{ p.default_time | tojson | forceescape }}, active: {{ p.active | tojson }}, schedule_days: {{ p.schedule_days | tojson | forceescape }}}, '{{ t("common.save") }}')" class="v-icon-btn" title="{{ t("common.edit") }}">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                </button>
+                                <form action="/skincare/product/{{ p.id }}/delete" method="POST" class="inline" onsubmit="return confirm('{{ t("skincare.confirm_delete") }}')">
+                                    <button type="submit" class="v-icon-btn danger" title="{{ t("common.delete") }}">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                </form>
+                            </span>
+                        </div>
+                        <div class="space-y-3 v-text-body">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="v-chip">{{ p.type }}</span>
+                                <span class="inline-flex items-center gap-1.5 v-text-label">
+                                    <span class="v-dot {% if p.default_time == 'morning' %}amber{% elif p.default_time == 'evening' %}violet{% else %}cool{% endif %}"></span>
+                                    {% if p.default_time == 'morning' %}{{ t("skincare.morning") }}{% elif p.default_time == 'evening' %}{{ t("skincare.evening") }}{% else %}{{ t("skincare.morning_evening") }}{% endif %}
+                                </span>
+                                <span class="v-chip">{{ t("skincare.days_label") }} {% set comma = joiner(", ") %}{% for d in p.schedule_days %}{{ comma() }}{% if d == 1 %}{{ t("skincare.day.mon") }}{% elif d == 2 %}{{ t("skincare.day.tue") }}{% elif d == 3 %}{{ t("skincare.day.wed") }}{% elif d == 4 %}{{ t("skincare.day.thu") }}{% elif d == 5 %}{{ t("skincare.day.fri") }}{% elif d == 6 %}{{ t("skincare.day.sat") }}{% elif d == 0 %}{{ t("skincare.day.sun") }}{% endif %}{% else %}{{ t("skincare.day.none") }}{% endfor %}</span>
+                            </div>
+                            {% if p.description %}
+                            <p class="font-medium" style="color: var(--fg-2)">{{ p.description }}</p>
+                            {% endif %}
+                            {% if p.usage_instructions %}
+                            <div class="v-text-micro italic pt-3 flex items-start gap-2 leading-normal" style="border-top: 1px solid var(--line)">
+                                <svg class="h-4 w-4 shrink-0 mt-0.5" style="color: var(--faint)" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                                <span>{{ p.usage_instructions }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="md:col-span-2 rounded-xl p-8 text-center v-text-label" style="border: 1px dashed var(--line); color: var(--faint)">
+                    {{ t("skincare.no_products") }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Safety Rules -->
+        <div class="lg:col-span-5 v-card p-6 space-y-4">
+            <div class="flex items-center gap-2.5">
+                <span class="v-bar" style="background: var(--bad)"></span>
+                <div>
+                    <h2 class="v-text-heading">{{ t("skincare.safety_title") }}</h2>
+                    <p class="v-text-micro mt-0.5">{{ t("skincare.safety_hint") }}</p>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                {% for r in conflict_rules %}
+                <div class="rounded-xl p-4 space-y-1.5" style="{% if r.severity == 'block' %}background: var(--bad-soft); border: 1px solid rgba(232,112,86,.35){% else %}background: var(--warn-soft); border: 1px solid rgba(240,178,74,.35){% endif %}">
+                    <div class="flex items-center gap-2 font-semibold v-text-label" style="color: {% if r.severity == 'block' %}var(--bad){% else %}var(--warn){% endif %}">
+                        <span>{% if r.rule_type == 'hard_block' %}🚫{% else %}⚠️{% endif %}</span>
+                        <span>{% if r.domain_a == 'skincare' and r.domain_b == 'skincare' %}{{ t("skincare.rule_compatibility") }}{% elif r.domain_a == 'supplements' or r.domain_b == 'supplements' %}{{ t("skincare.rule_supplements") }}{% else %}{{ t("skincare.rule_safety") }}{% endif %}</span>
+                    </div>
+                    <p class="v-text-body leading-relaxed font-medium" style="color: var(--fg-2)">{{ r.message }}</p>
+                </div>
+                {% else %}
+                <div class="rounded-xl p-6 text-center v-text-label" style="border: 1px solid var(--line); color: var(--faint)">
+                    {{ t("skincare.no_rules") }}
+                </div>
+                {% endfor %}
+
+                <div class="rounded-xl p-4 space-y-1.5" style="background: var(--surface-3); border: 1px solid var(--line)">
+                    <div class="flex items-center gap-2 font-semibold v-text-label" style="color: var(--fg-2)">
+                        <span>💧</span><span>{{ t("skincare.moisture_title") }}</span>
+                    </div>
+                    <p class="v-text-body leading-relaxed font-medium" style="color: var(--fg-2)">
+                        {{ t("skincare.moisture_text") }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div x-show="showFormModal" class="v-backdrop" x-cloak>
+        <div class="v-modal p-6 space-y-5" @click.away="showFormModal = false">
+            <button @click="showFormModal = false" class="v-icon-btn absolute top-3.5 right-3.5">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+
+            <div class="flex items-center gap-2 pb-3" style="border-bottom: 1px solid var(--line)">
+                <span class="v-bar v-bar-sm"></span>
+                <span class="v-text-heading" x-text="isEditing ? '{{ t("skincare.modal_edit") }}' : '{{ t("skincare.modal_new") }}'"></span>
+            </div>
+
+            <form @submit.prevent="submitForm($event)" action="/skincare/product/save" method="POST" id="form-skincare-product" class="space-y-4">
+                <input type="hidden" name="override" x-model="overrideFlag">
+                <div>
+                    <label class="v-label">{{ t("supplements.name") }}</label>
+                    <input type="text" name="name" required placeholder="{{ t("skincare.name_placeholder") }}" class="v-input">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="v-label">{{ t("skincare.type_label") }}</label>
+                        <input type="text" name="type" required placeholder="{{ t("skincare.type_placeholder") }}" class="v-input">
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("skincare.ingredient_label") }}</label>
+                        <input type="text" name="active_ingredient" placeholder="{{ t("skincare.ingredient_placeholder") }}" class="v-input">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                    <div>
+                        <label class="v-label">{{ t("skincare.time_label") }}</label>
+                        <select name="default_time" class="v-select">
+                            <option value="morning">{{ t("skincare.time_morning") }}</option>
+                            <option value="evening" selected>{{ t("skincare.time_evening") }}</option>
+                            <option value="both">{{ t("skincare.time_both") }}</option>
+                        </select>
+                    </div>
+                    <label class="flex items-center justify-between v-card-inset px-4 cursor-pointer" style="height:42px">
+                        <span class="text-sm" style="color: var(--fg-2)">{{ t("supplements.active_checkbox") }}</span>
+                        <input type="checkbox" name="active" value="true" checked class="w-4 h-4 accent-[var(--accent)]">
+                    </label>
+                </div>
+                <div>
+                    <label class="v-label">{{ t("skincare.schedule_days_label") }}</label>
+                    <div class="grid grid-cols-4 gap-2 v-card-inset p-3">
+                        {% for val, tkey in [('1','skincare.day.mon'),('2','skincare.day.tue'),('3','skincare.day.wed'),('4','skincare.day.thu'),('5','skincare.day.fri'),('6','skincare.day.sat'),('0','skincare.day.sun')] %}
+                        <label class="flex items-center gap-1.5 text-sm cursor-pointer" style="color: var(--fg-2)">
+                            <input type="checkbox" name="schedule_days" value="{{ val }}" class="w-4 h-4 accent-[var(--accent)]">
+                            <span>{{ t(tkey) }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div>
+                    <label class="v-label">{{ t("skincare.description_label") }}</label>
+                    <textarea name="description" rows="2" placeholder="…" class="v-textarea"></textarea>
+                </div>
+                <div>
+                    <label class="v-label">{{ t("skincare.usage_label") }}</label>
+                    <textarea name="usage_instructions" rows="2" placeholder="…" class="v-textarea"></textarea>
+                </div>
+                <div class="flex gap-3 pt-1">
+                    <button type="submit" class="v-btn flex-1">{{ t("common.save") }}</button>
+                    <button type="button" @click="cancelEdit('form-skincare-product', '{{ t("common.save") }}'); showFormModal = false" class="v-btn-ghost">{{ t("common.cancel") }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% include "partials/conflict_modal.html" %}
+</div>
+
+<script src="{{ static_version('/static/protocol.js') }}"></script>
+{% endblock %}

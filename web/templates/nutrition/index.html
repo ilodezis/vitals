@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("nutrition.page_title") }}{% endblock %}
+
+{% block content %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8"
+     x-data="nutritionDashboard()">
+
+    <!-- Header -->
+    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+        <div class="flex items-start gap-3.5">
+            <span class="v-bar mt-1"></span>
+            <div class="space-y-2">
+                <span class="v-tag green">{{ t("nutrition.tag") }}</span>
+                <h1 class="v-text-heading">{{ t("nutrition.heading") }}</h1>
+                <p class="v-text-body max-w-2xl">
+                    {{ t("nutrition.description") }}
+                </p>
+            </div>
+        </div>
+        <button @click="showForm = !showForm" class="v-btn-ghost w-full md:w-auto shrink-0">
+            <svg style="width:1.1rem;height:1.1rem" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+            </svg>
+            <span x-text="showForm ? '{{ t("nutrition.toggle_history") }}' : '{{ t("nutrition.toggle_form") }}'"></span>
+        </button>
+    </div>
+
+    <!-- Daily summary metrics -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="v-metric flex flex-col justify-between">
+            <div class="space-y-1">
+                <span class="v-metric-label">{{ t("nutrition.calories") }}</span>
+                <div class="flex items-baseline gap-1.5">
+                    <span class="v-metric-value" style="color: {% if summary.on_track.calories %}var(--good){% elif summary.totals.calories > goals.calories_max %}var(--bad){% else %}var(--warn){% endif %}">{{ summary.totals.calories | format_number }}</span>
+                    <span class="v-metric-unit">/ {{ goals.calories_min }}–{{ goals.calories_max }}</span>
+                </div>
+            </div>
+            <div class="w-full bg-[rgba(255,255,255,0.06)] rounded-full h-1.5 mt-2.5 overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-500" 
+                     style="width: {{ (summary.totals.calories / (goals.calories_max or 1) * 100) | round }}%; max-width: 100%; background-color: {% if summary.on_track.calories %}var(--good){% elif summary.totals.calories > goals.calories_max %}var(--bad){% else %}var(--warn){% endif %}"></div>
+            </div>
+        </div>
+        <div class="v-metric flex flex-col justify-between">
+            <div class="space-y-1">
+                <span class="v-metric-label">{{ t("nutrition.protein") }}</span>
+                <div class="flex items-baseline gap-1.5">
+                    <span class="v-metric-value" style="color: {% if summary.on_track.protein %}var(--good){% else %}var(--warn){% endif %}">{{ summary.totals.protein_g | format_number }}</span>
+                    <span class="v-metric-unit">/ {{ goals.protein_target_g | format_number }} {{ t("common.g") }}</span>
+                </div>
+            </div>
+            <div class="w-full bg-[rgba(255,255,255,0.06)] rounded-full h-1.5 mt-2.5 overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-500" 
+                     style="width: {{ (summary.totals.protein_g / (goals.protein_target_g or 1) * 100) | round }}%; max-width: 100%; background-color: {% if summary.on_track.protein %}var(--good){% else %}var(--warn){% endif %}"></div>
+            </div>
+        </div>
+        <div class="v-metric flex flex-col justify-between">
+            <div class="space-y-1">
+                <span class="v-metric-label">{{ t("nutrition.fat") }}</span>
+                <div class="flex items-baseline gap-1.5">
+                    <span class="v-metric-value">{{ summary.totals.fat_g | format_number }}</span>
+                    <span class="v-metric-unit">{{ t("common.g") }}</span>
+                </div>
+            </div>
+            <div class="w-full bg-transparent h-1.5 mt-2.5"></div>
+        </div>
+        <div class="v-metric flex flex-col justify-between">
+            <div class="space-y-1">
+                <span class="v-metric-label">{{ t("nutrition.carbs") }}</span>
+                <div class="flex items-baseline gap-1.5">
+                    <span class="v-metric-value">{{ summary.totals.carbs_g | format_number }}</span>
+                    <span class="v-metric-unit">{{ t("common.g") }}</span>
+                </div>
+            </div>
+            <div class="w-full bg-transparent h-1.5 mt-2.5"></div>
+        </div>
+    </div>
+
+    <!-- Workspace -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+        <!-- Form Panel -->
+        <div x-show="showForm" class="lg:col-span-12 v-card p-6 space-y-4" x-cloak>
+            <form @submit.prevent="submitForm($event)" action="/nutrition/meal" id="form-meal" class="space-y-4">
+                <input type="hidden" name="override" x-model="overrideFlag">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="v-label">{{ t("common.date") }}</label>
+                        <input type="date" name="date" value="{{ today }}" required class="v-input">
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("nutrition.meal_time") }}</label>
+                        <input type="time" name="eaten_at" class="v-input">
+                    </div>
+                </div>
+                <div>
+                    <label class="v-label">{{ t("nutrition.meal_name") }}</label>
+                    <input type="text" name="name" required placeholder="{{ t("nutrition.meal_placeholder") }}" class="v-input">
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div>
+                        <label class="v-label">{{ t("nutrition.calories_label") }}</label>
+                        <input type="number" name="calories" step="1" min="0" placeholder="0" class="v-input">
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("nutrition.protein_g") }}</label>
+                        <input type="number" name="protein_g" step="0.1" min="0" placeholder="0" class="v-input">
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("nutrition.fat_g") }}</label>
+                        <input type="number" name="fat_g" step="0.1" min="0" placeholder="0" class="v-input">
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("nutrition.carbs_g") }}</label>
+                        <input type="number" name="carbs_g" step="0.1" min="0" placeholder="0" class="v-input">
+                    </div>
+                </div>
+                <div>
+                    <label class="v-label">{{ t("common.note_optional") }}</label>
+                    <textarea name="note" rows="2" placeholder="{{ t("nutrition.details_placeholder") }}" class="v-textarea"></textarea>
+                </div>
+                <div class="flex gap-2.5">
+                    <button type="submit" class="v-btn flex-1">{{ t("nutrition.save_meal") }}</button>
+                    <button type="button" x-show="isEditing" @click="cancelEdit()" class="v-btn-ghost">{{ t("common.cancel") }}</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- History (when form hidden) -->
+        <div x-show="!showForm" class="lg:col-span-12 space-y-6">
+
+            <!-- Today's meals -->
+            <div class="v-card p-6 space-y-3">
+                <div class="flex items-center gap-2">
+                    <span class="v-bar v-bar-sm"></span>
+                    <span class="v-text-card">{{ t("nutrition.today_title") }}</span>
+                    <span class="v-text-micro ml-auto">{{ summary.meal_count }} {{ summary.meal_count | meal_word }}</span>
+                </div>
+                <div class="max-h-[28rem] overflow-y-auto v-card-inset">
+                    <div class="v-table-wrap">
+                        <table class="v-table" style="width: 100%; table-layout: fixed">
+                        <colgroup>
+                            <col style="width: 70px">
+                            <col>
+                            <col style="width: 80px">
+                            <col style="width: 70px">
+                            <col style="width: 70px">
+                            <col style="width: 70px">
+                            <col style="width: 100px">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>{{ t("nutrition.time_header") }}</th>
+                                <th>{{ t("nutrition.dish_header") }}</th>
+                                <th class="text-right">{{ t("common.kcal") }}</th>
+                                <th class="text-right">{{ t("nutrition.p_header") }}</th>
+                                <th class="text-right">{{ t("nutrition.f_header") }}</th>
+                                <th class="text-right">{{ t("nutrition.c_header") }}</th>
+                                <th class="text-right">{{ t("common.actions") }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in meals_today %}
+                            <tr>
+                                <td class="v-num" style="color: var(--fg)">{{ m.eaten_at.strftime('%H:%M') if m.eaten_at else '—' }}</td>
+                                <td class="truncate">{{ m.name }}</td>
+                                <td class="v-num text-right font-semibold" style="color: var(--fg)">{{ m.calories | format_number if m.calories else '—' }}</td>
+                                <td class="v-num text-right">{{ m.protein_g | format_number if m.protein_g else '—' }}</td>
+                                <td class="v-num text-right">{{ m.fat_g | format_number if m.fat_g else '—' }}</td>
+                                <td class="v-num text-right">{{ m.carbs_g | format_number if m.carbs_g else '—' }}</td>
+                                <td class="text-right whitespace-nowrap">
+                                    <span class="v-icon-actions">
+                                    <button @click="editMeal({id: {{ m.id }}, date: '{{ m.date }}', eaten_at: '{{ m.eaten_at.strftime('%H:%M') if m.eaten_at else '' }}', name: {{ m.name | tojson | forceescape }}, calories: {{ m.calories if m.calories else 'null' }}, protein_g: {{ m.protein_g if m.protein_g else 'null' }}, fat_g: {{ m.fat_g if m.fat_g else 'null' }}, carbs_g: {{ m.carbs_g if m.carbs_g else 'null' }}, note: {{ (m.note or '') | tojson | forceescape }}})" class="v-icon-btn" title="{{ t("common.edit") }}">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                    </button>
+                                    <form action="/nutrition/meal/{{ m.id }}/delete" method="POST" class="inline" onsubmit="return confirm('{{ t("nutrition.confirm_delete") }}')">
+                                        <button type="submit" class="v-icon-btn danger" title="{{ t("common.delete") }}">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </form>
+                                    </span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="7" class="text-center" style="color: var(--faint)">{{ t("nutrition.no_meals_today") }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+            <!-- Full history -->
+            {% if history %}
+            <div class="v-card p-6 space-y-3">
+                <div class="flex items-center gap-2">
+                    <span class="v-bar v-bar-sm"></span>
+                    <span class="v-text-card">{{ t("nutrition.history_title") }}</span>
+                </div>
+                <div class="max-h-[38rem] overflow-y-auto v-card-inset">
+                    <div class="v-table-wrap">
+                        <table class="v-table" style="width: 100%; table-layout: fixed">
+                        <colgroup>
+                            <col style="width: 100px">
+                            <col style="width: 60px">
+                            <col>
+                            <col style="width: 70px">
+                            <col style="width: 60px">
+                            <col style="width: 60px">
+                            <col style="width: 60px">
+                            <col style="width: 100px">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>{{ t("common.date") }}</th>
+                                <th>{{ t("nutrition.time_header") }}</th>
+                                <th>{{ t("nutrition.dish_header") }}</th>
+                                <th class="text-right">{{ t("common.kcal") }}</th>
+                                <th class="text-right">{{ t("nutrition.p_header") }}</th>
+                                <th class="text-right">{{ t("nutrition.f_header") }}</th>
+                                <th class="text-right">{{ t("nutrition.c_header") }}</th>
+                                <th class="text-right">{{ t("common.actions") }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in history %}
+                            <tr>
+                                <td class="v-num" style="color: var(--fg)">{{ m.date | format_date }}</td>
+                                <td class="v-num">{{ m.eaten_at.strftime('%H:%M') if m.eaten_at else '—' }}</td>
+                                <td class="truncate">{{ m.name }}</td>
+                                <td class="v-num text-right font-semibold" style="color: var(--fg)">{{ m.calories | format_number if m.calories else '—' }}</td>
+                                <td class="v-num text-right">{{ m.protein_g | format_number if m.protein_g else '—' }}</td>
+                                <td class="v-num text-right">{{ m.fat_g | format_number if m.fat_g else '—' }}</td>
+                                <td class="v-num text-right">{{ m.carbs_g | format_number if m.carbs_g else '—' }}</td>
+                                <td class="text-right whitespace-nowrap">
+                                    <span class="v-icon-actions">
+                                    <button @click="editMeal({id: {{ m.id }}, date: '{{ m.date }}', eaten_at: '{{ m.eaten_at.strftime('%H:%M') if m.eaten_at else '' }}', name: {{ m.name | tojson | forceescape }}, calories: {{ m.calories if m.calories else 'null' }}, protein_g: {{ m.protein_g if m.protein_g else 'null' }}, fat_g: {{ m.fat_g if m.fat_g else 'null' }}, carbs_g: {{ m.carbs_g if m.carbs_g else 'null' }}, note: {{ (m.note or '') | tojson | forceescape }}})" class="v-icon-btn" title="{{ t("common.edit") }}">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                    </button>
+                                    <form action="/nutrition/meal/{{ m.id }}/delete" method="POST" class="inline" onsubmit="return confirm('{{ t("nutrition.confirm_delete") }}')">
+                                        <button type="submit" class="v-icon-btn danger" title="{{ t("common.delete") }}">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </form>
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% include "partials/conflict_modal.html" %}
+</div>
+
+<script src="{{ static_version('/static/nutrition.js') }}"></script>
+{% endblock %}

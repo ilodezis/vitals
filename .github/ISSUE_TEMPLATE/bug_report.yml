@@ -1,0 +1,56 @@
+name: Bug Report
+description: Something isn't working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before filing:** search existing issues to avoid duplicates.
+        **Never include real health data, API keys, or passwords.**
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: "e.g. The weight chart shows incorrect dates after midnight"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to Weight dashboard
+        2. Log a weight entry after 23:00
+        3. See wrong date on chart
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: "The entry should appear under today's date, not tomorrow"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: |
+        - OS: Ubuntu 22.04 / macOS 15 / Windows 11
+        - Docker: 27.x
+        - Python: 3.11.x (if running locally)
+        - Browser: Chrome 130
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste any relevant error output (sanitize credentials).
+      render: text

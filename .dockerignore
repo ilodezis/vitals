@@ -1,0 +1,27 @@
+# Python envs / caches — never bake the host venv (Windows binaries) into a Linux image
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node (tailwind.css is committed; node_modules is build-only)
+node_modules/
+web/node_modules/
+
+# Secrets + local artifacts (env is injected at runtime via compose env_file)
+.env
+.env.local
+*.db
+backups/
+.coverage
+htmlcov/
+
+# Repo / scratch
+.git/
+.gitignore
+test_*.txt
+_boot_check.py

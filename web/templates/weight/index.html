@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("weight.page_title") }}{% endblock %}
+
+{% block content %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="weightOSDashboard()">
+
+    <!-- Top Row: Metrics Grid -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+
+        <!-- Latest Weight -->
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("weight.latest") }}</span>
+            <div class="flex items-baseline">
+                <span class="v-metric-value">{% if weights %}{{ weights[0].weight_kg | format_number }}{% else %}—{% endif %}</span>
+                <span class="v-metric-unit">{{ t("common.kg") }}</span>
+            </div>
+        </div>
+
+        <!-- 7-Day MA -->
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("weight.ma7") }}</span>
+            <div class="flex items-baseline">
+                <span class="v-metric-value">{% if series.trend_ma %}{{ series.trend_ma[-1].weight_kg | round(2) | format_number }}{% else %}—{% endif %}</span>
+                <span class="v-metric-unit">{{ t("common.kg") }}</span>
+            </div>
+        </div>
+
+        <!-- Latest Body Fat % (most recent measurement that actually has one) -->
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("weight.body_fat") }}</span>
+            <div class="flex items-baseline">
+                <span class="v-metric-value">{% if latest_bf is not none %}{{ latest_bf | round(1) | format_number }}{% else %}—{% endif %}</span>
+                <span class="v-metric-unit">%</span>
+            </div>
+        </div>
+
+        <!-- Weekly Trend Slope — rounded to 1 decimal so -1.151 → -1.2 -->
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("weight.weekly_change") }}</span>
+            <div class="flex items-baseline">
+                <span class="v-metric-value {% if series.trend and series.trend.slope_per_week < 0 %}good{% elif series.trend %}bad{% endif %}">
+                    {% if series.trend %}{% if series.trend.slope_per_week > 0 %}+{% endif %}{{ series.trend.slope_per_week | round(1) | format_number }}{% else %}—{% endif %}
+                </span>
+                <span class="v-metric-unit">{{ t("common.kg") }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Block -->
+    <div class="v-card p-6 space-y-3">
+        <div class="flex justify-between items-center gap-3 flex-wrap">
+            <div class="flex items-center gap-2">
+                <span class="v-bar"></span>
+                <span class="v-text-heading">{{ t("weight.chart_title") }}</span>
+            </div>
+            {% if series.projection %}
+            <div class="v-text-micro">
+                {{ t("weight.goal_label") }} <span class="font-semibold" style="color: var(--fg)">{{ series.projection.target_kg }} {{ t("common.kg") }}</span> ·
+                {{ t("weight.goal_expected") }} <span class="font-semibold" style="color: var(--fg)">{{ series.projection.date | format_date }}</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="h-[320px] w-full relative">
+            <canvas id="weightChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Workspace -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+        <!-- Left: Input Controls (4 of 12 cols) -->
+        <div class="lg:col-span-4 v-card p-6 space-y-4">
+
+            <!-- Tabs -->
+            <div class="v-seg">
+                <button @click="activeTab = 'log'"     :class="activeTab === 'log'     ? 'is-active' : ''" class="v-seg-btn">{{ t("weight.tab_weight") }}</button>
+                <button @click="activeTab = 'measure'" :class="activeTab === 'measure' ? 'is-active' : ''" class="v-seg-btn">{{ t("weight.tab_measures") }}</button>
+                <button @click="activeTab = 'noise'"   :class="activeTab === 'noise'   ? 'is-active' : ''" class="v-seg-btn">{{ t("weight.tab_noise") }}</button>
+                <button @click="activeTab = 'photo'"   :class="activeTab === 'photo'   ? 'is-active' : ''" class="v-seg-btn">{{ t("weight.tab_photo") }}</button>
+            </div>
+
+            <!-- TAB 1: Weight Log -->
+            <div x-show="activeTab === 'log'" class="space-y-4">
+                <form @submit.prevent="submitForm($event)" action="/weight/log" id="form-log" class="space-y-4">
+                    <input type="hidden" name="override" x-model="overrideFlag">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="v-label">{{ t("common.date") }}</label>
+                            <input type="date" name="date" value="{{ today }}" required class="v-input">
+                        </div>
+                        <div>
+                            <label class="v-label">{{ t("weight.weight_kg") }}</label>
+                            <input type="number" name="weight_kg" step="0.01" required
+                                   placeholder="{% if weights %}{{ weights[0].weight_kg | round(1) }}{% else %}0.0{% endif %}"
+                                   class="v-input">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("common.note_optional") }}</label>
+                        <textarea name="note" rows="2" placeholder="{{ t("weight.note_placeholder") }}" class="v-textarea"></textarea>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="submit" class="v-btn flex-1">{{ t("weight.save_weight") }}</button>
+                        <button type="button" x-show="isEditingLog" @click="cancelEdit('log')" class="v-btn-ghost">{{ t("common.cancel") }}</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- TAB 2: Measurements -->
+            <div x-show="activeTab === 'measure'" class="space-y-4">
+                <form @submit.prevent="submitForm($event)" action="/weight/measurement" id="form-measure" class="space-y-4">
+                    <input type="hidden" name="override" x-model="overrideFlag">
+                    <div>
+                        <label class="v-label">{{ t("common.date") }}</label>
+                        <input type="date" name="date" value="{{ today }}" required class="v-input">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-{{ '3' if sex == 'female' else '2' }} gap-3">
+                        <div>
+                            <label class="v-label">{{ t("weight.neck") }}</label>
+                            <input type="number" name="neck_cm" step="0.1" placeholder="38.0" class="v-input">
+                        </div>
+                        <div>
+                            <label class="v-label">{{ t("weight.waist") }}</label>
+                            <input type="number" name="waist_cm" step="0.1" placeholder="85.0" class="v-input">
+                        </div>
+                        {% if sex == 'female' %}
+                        <div>
+                            <label class="v-label">{{ t("weight.hips") }}</label>
+                            <input type="number" name="hips_cm" step="0.1" placeholder="95.0" class="v-input">
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("common.note_optional") }}</label>
+                        <textarea name="note" rows="2" placeholder="{{ t("weight.details_placeholder") }}" class="v-textarea"></textarea>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="submit" class="v-btn flex-1">{{ t("weight.save_measures") }}</button>
+                        <button type="button" x-show="isEditingMeasure" @click="cancelEdit('measure')" class="v-btn-ghost">{{ t("common.cancel") }}</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- TAB 3: Noise -->
+            <div x-show="activeTab === 'noise'" class="space-y-4">
+                <form action="/weight/noise" method="POST" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="v-label">{{ t("weight.noise_start") }}</label>
+                            <input type="date" name="start_date" value="{{ today }}" required class="v-input">
+                        </div>
+                        <div>
+                            <label class="v-label">{{ t("weight.noise_end") }}</label>
+                            <input type="date" name="end_date" class="v-input">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("weight.noise_reason") }}</label>
+                        <input type="text" name="reason" required placeholder="{{ t("weight.noise_placeholder") }}" class="v-input">
+                    </div>
+                    <button type="submit" class="v-btn w-full">{{ t("weight.exclude_period") }}</button>
+                </form>
+            </div>
+
+            <!-- TAB 4: Photo -->
+            <div x-show="activeTab === 'photo'" class="space-y-4">
+                <form action="/weight/photo" method="POST" enctype="multipart/form-data" class="space-y-4">
+                    <div>
+                        <label class="v-label">{{ t("common.date") }}</label>
+                        <input type="date" name="date" value="{{ today }}" required class="v-input">
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("weight.photo_files") }}</label>
+                        <label class="v-file-drop cursor-pointer">
+                            <input type="file" name="files" accept="image/*" multiple required class="sr-only"
+                                   onchange="
+                                       const hint = this.parentElement.querySelector('.v-file-drop__hint');
+                                       if (this.files.length > 5) {
+                                           alert(window.t('photo_max_alert'));
+                                           this.value = '';
+                                           hint.textContent = '{{ t("weight.photo_drop_hint") }}';
+                                       } else {
+                                           hint.textContent = this.files.length > 0 ? Array.from(this.files).map(f => f.name).join(', ') : '{{ t("weight.photo_drop_hint") }}';
+                                       }
+                                   ">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span class="v-file-drop__text">{{ t("weight.photo_drop_text") }}</span>
+                            <span class="v-file-drop__hint">{{ t("weight.photo_drop_hint") }}</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("common.note_optional") }}</label>
+                        <input type="text" name="note" placeholder="{{ t("weight.progress_notes_placeholder") }}" class="v-input">
+                    </div>
+                    <button type="submit" class="v-btn w-full">{{ t("weight.upload_photos") }}</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right: Logs & Tables (8 of 12 cols) -->
+        <div class="lg:col-span-8 space-y-6">
+
+            <!-- Weight Log Table -->
+            <div class="v-card p-6 space-y-3">
+                <div class="flex items-center gap-2">
+                    <span class="v-bar v-bar-sm"></span>
+                    <span class="v-text-card">{{ t("weight.history_title") }}</span>
+                </div>
+                <div class="max-h-60 overflow-y-auto v-card-inset">
+                    <div class="v-table-wrap">
+                        <table class="v-table">
+                        <thead>
+                            <tr>
+                                <th class="v-col-date whitespace-nowrap">{{ t("common.date") }}</th><th>{{ t("nav.weight") }}</th><th>{{ t("weight.source") }}</th><th>{{ t("common.note") }}</th><th class="text-right v-col-actions whitespace-nowrap pr-1">{{ t("common.actions") }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for w in weights %}
+                            <tr class="{% if w.superseded %}opacity-40 line-through{% endif %}">
+                                <td class="v-num v-col-date" style="color: var(--fg)">{{ w.date | format_date }}</td>
+                                <td class="v-num font-semibold" style="color: var(--fg)">{{ w.weight_kg }}<span class="v-unit">{{ t("common.kg") }}</span></td>
+                                <td><span class="v-text-micro">{% if w.source == 'manual' %}{{ t("weight.source_manual") }}{% else %}{{ w.source }}{% endif %}</span></td>
+                                <td class="max-w-[150px] min-w-0 truncate" title="{{ w.note or '' }}">{{ w.note or '—' }}</td>
+                                <td class="text-right whitespace-nowrap v-col-actions pr-1">
+                                    <span class="v-icon-actions">
+                                    {% if w.source == 'manual' %}
+                                    <button @click="editWeight({id: {{ w.id }}, date: '{{ w.date }}', weight_kg: {{ w.weight_kg }}, note: {{ (w.note or '') | tojson | forceescape }}})" class="v-icon-btn" title="{{ t("common.edit") }}">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                    </button>
+                                    {% endif %}
+                                    <form action="/weight/log/{{ w.id }}/delete" method="POST" class="inline" onsubmit="return confirm('{{ t("weight.confirm_delete") }}')">
+                                        <button type="submit" class="v-icon-btn danger" title="{{ t("common.delete") }}">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </form>
+                                    </span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-center" style="color: var(--faint)">{{ t("common.no_records") }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+            <!-- Measurements Table -->
+            <div class="v-card p-6 space-y-3">
+                <div class="flex items-center gap-2">
+                    <span class="v-bar v-bar-sm"></span>
+                    <span class="v-text-card">{{ t("weight.measures_title") }}</span>
+                </div>
+                <div class="max-h-60 overflow-y-auto v-card-inset">
+                    <div class="v-table-wrap">
+                        <table class="v-table">
+                        <thead>
+                            <tr>
+                                <th class="v-col-date whitespace-nowrap">{{ t("common.date") }}</th><th>{{ t("weight.neck") }}</th><th>{{ t("weight.waist") }}</th><th>{{ t("weight.fat_pct") }}</th><th>{{ t("weight.lean_mass") }}</th><th class="text-right v-col-actions whitespace-nowrap pr-1">{{ t("common.actions") }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in measurements %}
+                            <tr>
+                                <td class="v-num v-col-date" style="color: var(--fg)">{{ m.date | format_date }}</td>
+                                <td class="v-num">{{ m.neck_cm or '—' }}</td>
+                                <td class="v-num">{{ m.waist_cm or '—' }}</td>
+                                <td class="v-num font-semibold" style="color: var(--fg)">{% if m.body_fat_pct %}{{ m.body_fat_pct | round(1) }}<span class="v-unit">%</span>{% else %}—{% endif %}</td>
+                                <td class="v-num" style="color: var(--fg)">{% if m.lbm_kg %}{{ m.lbm_kg | round(1) }}<span class="v-unit">{{ t("common.kg") }}</span>{% else %}—{% endif %}</td>
+                                <td class="text-right whitespace-nowrap v-col-actions pr-1">
+                                    <span class="v-icon-actions">
+                                    <button @click="editMeasurement({id: {{ m.id }}, date: '{{ m.date }}', neck_cm: {{ m.neck_cm or 'null' }}, waist_cm: {{ m.waist_cm or 'null' }}, hips_cm: {{ m.hips_cm or 'null' }}, note: {{ (m.note or '') | tojson | forceescape }}})" class="v-icon-btn" title="{{ t("common.edit") }}">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                    </button>
+                                    <form action="/weight/measurement/{{ m.id }}/delete" method="POST" class="inline" onsubmit="return confirm('{{ t("weight.confirm_delete_measure") }}')">
+                                        <button type="submit" class="v-icon-btn danger" title="{{ t("common.delete") }}">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </form>
+                                    </span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="6" class="text-center" style="color: var(--faint)">{{ t("common.no_data") }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+            <!-- Photos & Noise -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="v-card p-6 space-y-3">
+                    <span class="v-text-card" style="color: var(--bad)">{{ t("weight.excluded_periods") }}</span>
+                    <ul class="text-xs space-y-2.5 max-h-40 overflow-y-auto pr-1">
+                        {% for n in noise_markers %}
+                        <li class="pb-2" style="border-bottom: 1px solid var(--line)">
+                            <div class="flex justify-between items-center v-text-micro v-num">
+                                <span>{{ n.start_date | format_date }} {% if n.end_date %}— {{ n.end_date | format_date }}{% else %}{{ t("weight.active_marker") }}{% endif %}</span>
+                                <form action="/weight/noise/{{ n.id }}/delete" method="POST" class="inline" onsubmit="return confirm('{{ t("weight.confirm_delete_noise") }}')">
+                                    <button type="submit" class="v-icon-btn danger" style="width:1.5rem;height:1.5rem" title="{{ t("common.delete") }}">
+                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                </form>
+                            </div>
+                            <span style="color: var(--fg-2)">{{ n.reason }}</span>
+                        </li>
+                        {% else %}
+                        <li class="text-center pt-2" style="color: var(--faint)">{{ t("weight.no_exclusions") }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <div class="v-card p-6 space-y-3">
+                    <span class="v-text-card">{{ t("weight.gallery_title") }}</span>
+                    <div class="flex gap-2 overflow-x-auto pb-1 max-h-40">
+                        {% for p in photos %}
+                        <div class="flex-none w-20 text-center space-y-1">
+                            <div class="w-20 h-20 v-card-inset overflow-hidden cursor-pointer" @click="showPhotoModal({{ p.id }}, '/static/{{ p.file_key }}', '{{ p.date | format_date }}')">
+                                <img src="/static/{{ p.file_key }}" alt="{{ t("weight.photo_alt") }}" class="w-full h-full object-cover">
+                            </div>
+                            <div class="v-text-micro v-num">{{ p.date | format_date }}</div>
+                        </div>
+                        {% else %}
+                        <div class="text-xs text-center w-full pt-4" style="color: var(--faint)">{{ t("weight.no_photos") }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Override Confirm -->
+    {% include "partials/conflict_modal.html" %}
+
+    <!-- MODAL: Photo Large View -->
+    <div x-show="showLargePhoto" class="v-backdrop" @click="showLargePhoto = false" x-cloak>
+        <div class="max-w-3xl w-full flex flex-col items-center gap-4" @click.stop>
+            <div class="v-card-inset p-1.5 overflow-hidden flex items-center justify-center max-h-[80vh]">
+                <img :src="largePhotoSrc" class="max-w-full max-h-[70vh] object-contain rounded-xl">
+            </div>
+            <div class="flex items-center justify-between w-full max-w-full px-2">
+                <div class="v-text-label" x-text="'{{ t("weight.photo_label") }} ' + largePhotoDate"></div>
+                <form action="/weight/photo/delete" method="POST" onsubmit="return confirm('{{ t("weight.confirm_delete_photo") }}')">
+                    <input type="hidden" name="id" :value="largePhotoId">
+                    <button type="submit" class="v-btn-danger py-2 px-4 text-xs font-bold flex items-center gap-1.5">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        {{ t("common.delete") }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.vitalsChartData = {{ series | tojson | safe }};
+</script>
+<script src="{{ static_version('/static/app.js') }}"></script>
+{% endblock %}
