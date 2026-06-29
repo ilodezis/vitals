@@ -1,0 +1,48 @@
+{# Dashboard modules card on /settings. Core modules render as locked switches
+   (checked + disabled); Optional ones POST to /settings/modules on change and
+   live-update the header nav via an OOB swap. No Alpine — native checkbox + HTMX. #}
+<div class="v-card p-6 space-y-5">
+    <div class="flex items-center gap-2 pb-2" style="border-bottom: 1px solid var(--line)">
+        <span class="v-bar v-bar-sm"></span>
+        <span class="v-text-card">🧩 {{ t("modules.title") }}</span>
+    </div>
+    <p class="v-text-body" style="color: var(--muted)">
+        {{ t("modules.description") }}
+    </p>
+
+    <!-- Core — locked -->
+    <div class="space-y-2.5">
+        <span class="v-label">{{ t("modules.core_label") }}</span>
+        {% for spec in module_registry.values() if spec.category == 'core' %}
+        <div class="v-module-row">
+            <div class="flex items-center gap-2">
+                <span class="v-text-body" style="color: var(--fg-2)">{{ t("nav." + spec.key) }}</span>
+                <span class="v-chip" style="font-size:10px; padding:2px 6px;">{{ t("modules.core_chip") }}</span>
+            </div>
+            <label class="v-switch" title="{{ t('modules.core_tooltip') }}">
+                <input type="checkbox" checked disabled>
+                <span class="v-switch-track"><span class="v-switch-thumb"></span></span>
+            </label>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Optional — toggleable -->
+    <div class="space-y-2.5">
+        <span class="v-label">{{ t("modules.optional_label") }}</span>
+        {% for spec in module_registry.values() if spec.category == 'optional' %}
+        <div class="v-module-row">
+            <span class="v-text-body" style="color: var(--fg-2)">{{ t("nav." + spec.key) }}</span>
+            <label class="v-switch">
+                <input type="checkbox" role="switch"
+                       {% if enabled_modules.get(spec.key) %}checked{% endif %}
+                       hx-post="/settings/modules"
+                       hx-vals='js:{module:"{{ spec.key }}", enabled: event.target.checked}'
+                       hx-trigger="change"
+                       hx-swap="none">
+                <span class="v-switch-track"><span class="v-switch-thumb"></span></span>
+            </label>
+        </div>
+        {% endfor %}
+    </div>
+</div>

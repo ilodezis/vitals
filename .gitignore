@@ -1,0 +1,77 @@
+# ==============================================================================
+# Vitals — .gitignore
+# Strictly curated for Python, FastAPI, SQLite, Docker, and frontend assets.
+# ==============================================================================
+
+# ── Secrets and Local Configuration ──────────────────────────────────────────
+.env
+.env.*
+!.env.example
+config.local.*
+*.pem
+*.key
+*.crt
+*.cert
+private_key.txt
+origin*.txt
+cert*.txt
+
+# ── Python Specifics ──────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+ENV/
+
+# ── Databases and Local Storage ─────────────────────────────────────────────
+local_vitals.db
+*.db-journal
+*.db
+*.sqlite
+*.sqlite3
+backups/
+web/static/uploads/*
+!web/static/uploads/.gitkeep
+!web/static/uploads/labs/
+web/static/uploads/labs/*
+!web/static/uploads/labs/.gitkeep
+
+# ── Session Cache & Integration Tokens ────────────────────────────────────────
+# Garmin Connect (garth) OAuth session cache stored locally during dev
+garmin_session/
+.garmin_session/
+*garmin*session*
+oauth_tokens*.json
+
+# ── Promo drafts & local plans ───────────────────────────────────────────────
+docs/promo-drafts.md
+
+# ── Tooling, IDEs & AI Assistants ────────────────────────────────────────────
+CLAUDE.md
+claude-color.svg
+.claude/
+.clinerules
+.cursorrules
+.cursor/
+.windsurf/
+.aider*
+.copilot/
+.github/copilot*
+web_test_out*.txt
+*.log
+
+# ── Node.js and Frontend Dev Assets ──────────────────────────────────────────
+node_modules/
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache

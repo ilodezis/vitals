@@ -1,0 +1,431 @@
+"""Garmin activity & recovery service (module 6).
+
+Owns the garmin domain:
+
+  * **Daily sync** — pull the day's sub-metrics, keep the full payload in
+    ``raw_payloads``, and normalise the wide ``garmin_daily`` row (sleep, HRV,
+    RHR, stress, Body Battery, steps, calories, HR, intensity minutes, training
+    readiness, …). Upsert by date, so re-syncing a day refreshes it.
+  * **Weight bridge** — a Garmin weigh-in for a date is pushed into the weight
+    domain as a ``garmin_api`` row, where the weight service's manual-over-Garmin
+    priority already lets a manual entry supersede it.
+  * **Activities** — recorded sport sessions, upserted by Garmin activity id.
+  * **Recovery advice** — a passive read (Sleep Score < 60 or Body Battery < 40)
+    surfaced in the training block; never a popup.
+  * **Auth/MFA alert** — a login/MFA failure raises a critical ``warn`` system
+    alert (the user re-seeds the token store out-of-band).
+  * **Health Auto Export** — a REST backup channel: parse the uploaded JSON into
+    ``garmin_daily`` rows (``source='health_auto_export'``).
+
+Normalisation (``_normalize_daily``) is pure and unit-tested; the service is
+handed a client (tests pass a fake), never touching the network itself.
+"""
+from __future__ import annotations
+
+import logging
+from datetime import date as date_type, datetime, timedelta
+from typing import Any, Optional, Sequence
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from vitals.enums import Severity, Source
+from vitals.i18n import t
+from vitals.integrations.garmin_client import GarminAuthError, GarminMFARequired
+from vitals.models.garmin import DOMAIN, GarminActivity, GarminDaily
+from vitals.services import alerts_service, raw_payload_service, weight_service
+from vitals.utils.timeutils import now_local, to_local_naive
+
+logger = logging.getLogger(__name__)
+
+AUTH_ALERT_KEY = "garmin.auth"
+
+SLEEP_SCORE_FLOOR = 60
+BODY_BATTERY_FLOOR = 40
+
+
+# ── Pure extraction helpers ───────────────────────────────────────────────────
+def _dig(payload: Any, *path: str) -> Any:
+    """Walk nested dict keys, tolerating missing keys / non-dicts → None."""
+    cur = payload
+    for key in path:
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(key)
+    return cur
+
+
+def _num(value: Any) -> Optional[float]:
+    try:
+        return float(value) if value is not None else None
+    except (ValueError, TypeError):
+        return None
+
+
+def _intish(value: Any) -> Optional[int]:
+    n = _num(value)
+    return int(round(n)) if n is not None else None
+
+
+def _first(*values: Any) -> Any:
+    """First non-None value (key-fallback chains across Garmin shape variants)."""
+    for v in values:
+        if v is not None:
+            return v
+    return None
+
+
+def _normalize_daily(raw: dict) -> dict:
+    """Reduce the raw per-day sub-payload bundle to ``garmin_daily`` column values.
+    Pure (no DB); every field defaults to None so a sparse day is fine."""
+    summary = raw.get("summary") or {}
+    sleep_dto = _dig(raw, "sleep", "dailySleepDTO") or {}
+    hrv = _dig(raw, "hrv", "hrvSummary") or {}
+    tr = raw.get("training_readiness")
+    tr0 = tr[0] if isinstance(tr, list) and tr else (tr if isinstance(tr, dict) else {})
+    mm = raw.get("max_metrics")
+    mm0 = mm[0] if isinstance(mm, list) and mm else (mm if isinstance(mm, dict) else {})
+
+    return {
+        # Sleep
+        "sleep_seconds": _intish(sleep_dto.get("sleepTimeSeconds")),
+        "sleep_score": _intish(_dig(sleep_dto, "sleepScores", "overall", "value")),
+        "deep_sleep_seconds": _intish(sleep_dto.get("deepSleepSeconds")),
+        "light_sleep_seconds": _intish(sleep_dto.get("lightSleepSeconds")),
+        "rem_sleep_seconds": _intish(sleep_dto.get("remSleepSeconds")),
+        "awake_seconds": _intish(sleep_dto.get("awakeSleepSeconds")),
+        # Heart / HRV / respiration
+        "resting_hr": _intish(_first(summary.get("restingHeartRate"), _dig(raw, "rhr", "restingHeartRate"))),
+        "avg_hr": _intish(summary.get("averageHeartRate")),
+        "max_hr": _intish(summary.get("maxHeartRate")),
+        "min_hr": _intish(summary.get("minHeartRate")),
+        "hrv_avg": _num(_first(hrv.get("lastNightAvg"), hrv.get("weeklyAvg"))),
+        "hrv_status": hrv.get("status"),
+        "avg_respiration": _num(summary.get("avgWakingRespirationValue")),
+        "spo2_avg": _num(_first(summary.get("averageSpo2"), summary.get("averageSpo2Value"))),
+        # Stress / Body Battery
+        "avg_stress": _intish(summary.get("averageStressLevel")),
+        "max_stress": _intish(summary.get("maxStressLevel")),
+        "body_battery_high": _intish(summary.get("bodyBatteryHighestValue")),
+        "body_battery_low": _intish(summary.get("bodyBatteryLowestValue")),
+        # Activity / energy
+        "steps": _intish(summary.get("totalSteps")),
+        "floors_climbed": _intish(summary.get("floorsAscended")),
+        "active_calories": _intish(summary.get("activeKilocalories")),
+        "bmr_calories": _intish(summary.get("bmrKilocalories")),
+        "total_calories": _intish(summary.get("totalKilocalories")),
+        "intensity_minutes_moderate": _intish(summary.get("moderateIntensityMinutes")),
+        "intensity_minutes_vigorous": _intish(summary.get("vigorousIntensityMinutes")),
+        # Training
+        "training_readiness": _intish(tr0.get("score") if isinstance(tr0, dict) else None),
+        "vo2max": _num(_dig(mm0, "generic", "vo2MaxValue") if isinstance(mm0, dict) else None),
+    }
+
+
+def _extract_weight_kg(raw: dict) -> Optional[float]:
+    """Garmin weigh-in (grams) → kg, if the day had one."""
+    grams = _first(
+        _dig(raw, "body_composition", "totalAverage", "weight"),
+        _dig(raw, "summary", "weight"),
+    )
+    kg = _num(grams)
+    if kg is None:
+        return None
+    # Garmin reports weight in grams; guard the odd payload already in kg.
+    return round(kg / 1000.0, 2) if kg > 1000 else round(kg, 2)
+
+
+# ── Daily upsert ──────────────────────────────────────────────────────────────
+async def get_daily(session: AsyncSession, on_date: date_type) -> Optional[GarminDaily]:
+    result = await session.execute(select(GarminDaily).where(GarminDaily.date == on_date))
+    return result.scalars().first()
+
+
+async def ingest_daily(
+    session: AsyncSession,
+    on_date: date_type,
+    raw: dict,
+    *,
+    source: str = Source.GARMIN_API.value,
+) -> GarminDaily:
+    """Store the raw bundle, upsert the normalized daily row, and bridge any
+    weigh-in into the weight domain. Does not commit."""
+    raw_row = await raw_payload_service.upsert_raw_payload(
+        session,
+        domain=DOMAIN,
+        source=source,
+        external_id=f"daily:{on_date.isoformat()}",
+        payload=raw,
+    )
+    fields = _normalize_daily(raw)
+
+    row = await get_daily(session, on_date)
+    if row is None:
+        row = GarminDaily(date=on_date, domain=DOMAIN)
+        session.add(row)
+    row.source = source
+    row.raw_payload_id = raw_row.id
+    for key, value in fields.items():
+        setattr(row, key, value)
+    await session.flush()
+    raw_row.processed_at = now_local()
+
+    weight_kg = _extract_weight_kg(raw)
+    if weight_kg is not None:
+        # The weight service enforces manual-over-Garmin priority for the date.
+        await weight_service.log_weight(
+            session, on_date=on_date, weight_kg=weight_kg, source=Source.GARMIN_API.value
+        )
+    return row
+
+
+# ── Activities ────────────────────────────────────────────────────────────────
+async def ingest_activities(session: AsyncSession, activities: Sequence[dict]) -> int:
+    """Upsert recorded activities by Garmin activity id. Returns rows written."""
+    written = 0
+    for raw in activities:
+        external_id = str(raw.get("activityId") or raw.get("activityid") or "").strip()
+        if not external_id:
+            continue
+        raw_row = await raw_payload_service.upsert_raw_payload(
+            session,
+            domain=DOMAIN,
+            source=Source.GARMIN_API.value,
+            external_id=f"activity:{external_id}",
+            payload=raw,
+        )
+        start = _parse_activity_start(raw)
+        result = await session.execute(
+            select(GarminActivity).where(GarminActivity.external_id == external_id)
+        )
+        row = result.scalars().first()
+        if row is None:
+            row = GarminActivity(external_id=external_id, domain=DOMAIN)
+            session.add(row)
+        row.source = Source.GARMIN_API.value
+        row.raw_payload_id = raw_row.id
+        row.date = (start or now_local()).date()
+        row.activity_type = _dig(raw, "activityType", "typeKey") or raw.get("activityType")
+        row.name = raw.get("activityName")
+        row.start_time = start
+        row.duration_seconds = _intish(raw.get("duration"))
+        row.distance_m = _num(raw.get("distance"))
+        row.calories = _intish(raw.get("calories"))
+        row.avg_hr = _intish(raw.get("averageHR"))
+        row.max_hr = _intish(raw.get("maxHR"))
+        await session.flush()
+        raw_row.processed_at = now_local()
+        written += 1
+    return written
+
+
+def _parse_activity_start(raw: dict) -> Optional[datetime]:
+    for key in ("startTimeGMT", "startTimeLocal"):
+        value = raw.get(key)
+        if value:
+            try:
+                text = str(value).replace("Z", "+00:00")
+                return to_local_naive(datetime.fromisoformat(text))
+            except (ValueError, TypeError):
+                continue
+    return None
+
+
+# ── Sync orchestration ────────────────────────────────────────────────────────
+async def sync(
+    session: AsyncSession,
+    client: Any,
+    *,
+    days: int = 2,
+    on_date: Optional[date_type] = None,
+) -> dict:
+    """Sync the last ``days`` days of daily metrics + that window's activities.
+    Default is 2 (yesterday + today) for routine polling; pass a larger value
+    for backfill. Catches auth/MFA failures and raises a critical ``warn`` alert
+    instead of bubbling them. Does not commit."""
+    today = on_date or now_local().date()
+    start = today - timedelta(days=days - 1)
+    summary = {"days": 0, "activities": 0, "error": None}
+
+    try:
+        for offset in range(days):
+            day = start + timedelta(days=offset)
+            raw = await client.fetch_daily(day)
+            await ingest_daily(session, day, raw)
+            summary["days"] += 1
+
+        activities = await client.fetch_activities(start, today)
+        summary["activities"] = await ingest_activities(session, activities)
+
+        await alerts_service.resolve_by_key(session, alert_key=AUTH_ALERT_KEY)
+    except (GarminAuthError, GarminMFARequired) as e:
+        is_mfa = isinstance(e, GarminMFARequired)
+        message = (
+            t("alert.garmin_mfa")
+            if is_mfa
+            else t("alert.garmin_auth_fail", error=str(e))
+        )
+        await alerts_service.raise_alert(
+            session,
+            domain=DOMAIN,
+            severity=Severity.WARN.value,
+            message=message,
+            alert_key=AUTH_ALERT_KEY,
+        )
+        summary["error"] = "mfa" if is_mfa else "auth"
+    return summary
+
+
+# ── Health Auto Export (backup channel) ───────────────────────────────────────
+# Map Health Auto Export metric names → the daily column they populate, with the
+# unit conversion needed (HAE reports minutes for sleep, count for steps, etc.).
+_HAE_METRIC_MAP = {
+    "step_count": ("steps", lambda q: _intish(q)),
+    "active_energy": ("active_calories", lambda q: _intish(q)),
+    "basal_energy_burned": ("bmr_calories", lambda q: _intish(q)),
+    "resting_heart_rate": ("resting_hr", lambda q: _intish(q)),
+    "heart_rate_variability": ("hrv_avg", lambda q: _num(q)),
+    "respiratory_rate": ("avg_respiration", lambda q: _num(q)),
+    "blood_oxygen_saturation": ("spo2_avg", lambda q: _num(q)),
+    "sleep_analysis": ("sleep_seconds", lambda q: _intish((q or 0) * 3600)),  # hours → s
+}
+
+
+async def ingest_health_auto_export(session: AsyncSession, payload: dict) -> dict:
+    """Ingest a Health Auto Export JSON dump into ``garmin_daily`` rows
+    (``source='health_auto_export'``). The full payload is kept raw. Tolerant of
+    the documented shape ``{"data": {"metrics": [{name, data: [{date, qty}]}]}}``."""
+    metrics = _dig(payload, "data", "metrics") or payload.get("metrics") or []
+    # Accumulate per-date field values from the flat metric list.
+    by_date: dict[date_type, dict] = {}
+    for metric in metrics:
+        name = (metric or {}).get("name")
+        mapping = _HAE_METRIC_MAP.get(name)
+        if not mapping:
+            continue
+        column, convert = mapping
+        for point in metric.get("data") or []:
+            day = _parse_hae_date(point.get("date"))
+            if day is None:
+                continue
+            value = convert(point.get("qty"))
+            if value is not None:
+                by_date.setdefault(day, {})[column] = value
+
+    written = 0
+    for day, fields in sorted(by_date.items()):
+        raw_row = await raw_payload_service.upsert_raw_payload(
+            session,
+            domain=DOMAIN,
+            source=Source.HEALTH_AUTO_EXPORT.value,
+            external_id=f"hae:{day.isoformat()}",
+            payload={"metrics": fields, "source_payload": True},
+        )
+        row = await get_daily(session, day)
+        if row is None:
+            row = GarminDaily(date=day, domain=DOMAIN)
+            session.add(row)
+        # Only fill columns HAE provides; don't clobber existing Garmin-API values
+        # with nulls (HAE is a supplementary backup, not the source of truth).
+        row.source = Source.HEALTH_AUTO_EXPORT.value
+        if row.raw_payload_id is None:
+            row.raw_payload_id = raw_row.id
+        for key, value in fields.items():
+            setattr(row, key, value)
+        await session.flush()
+        raw_row.processed_at = now_local()
+        written += 1
+
+    return {"dates": written}
+
+
+def _parse_hae_date(value: Any) -> Optional[date_type]:
+    if not value:
+        return None
+    text = str(value)
+    # HAE dates look like "2026-06-10 00:00:00 +0000" — take the date prefix.
+    try:
+        return date_type.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
+# ── Reads / advice ────────────────────────────────────────────────────────────
+def recovery_advice(daily: Optional[GarminDaily]) -> Optional[str]:
+    """Passive recovery hint for the training block, or None when recovery is fine."""
+    if daily is None:
+        return None
+    notes: list[str] = []
+    if daily.sleep_score is not None and daily.sleep_score < SLEEP_SCORE_FLOOR:
+        notes.append(t("alert.recovery_sleep", score=daily.sleep_score))
+    if daily.body_battery_high is not None and daily.body_battery_high < BODY_BATTERY_FLOOR:
+        notes.append(t("alert.recovery_battery", value=daily.body_battery_high))
+    if not notes:
+        return None
+    return t("alert.recovery_prefix") + ", ".join(notes) + t("alert.recovery_suffix")
+
+
+async def list_daily(
+    session: AsyncSession, *, limit: int = 30
+) -> Sequence[GarminDaily]:
+    result = await session.execute(
+        select(GarminDaily).order_by(GarminDaily.date.desc()).limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def list_activities(
+    session: AsyncSession, *, limit: int = 20
+) -> Sequence[GarminActivity]:
+    result = await session.execute(
+        select(GarminActivity).order_by(GarminActivity.date.desc(), GarminActivity.start_time.desc()).limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def latest_daily(
+    session: AsyncSession, *, before_or_on: Optional[date_type] = None
+) -> Optional[GarminDaily]:
+    stmt = select(GarminDaily)
+    if before_or_on is not None:
+        stmt = stmt.where(GarminDaily.date <= before_or_on)
+    stmt = stmt.order_by(GarminDaily.date.desc()).limit(1)
+    result = await session.execute(stmt)
+    return result.scalars().first()
+
+
+async def daily_count(session: AsyncSession) -> int:
+    """Count days with at least one real metric (excludes ghost rows from initial sync)."""
+    from sqlalchemy import or_
+    result = await session.execute(
+        select(func.count()).select_from(GarminDaily).where(
+            or_(
+                GarminDaily.sleep_score.is_not(None),
+                GarminDaily.resting_hr.is_not(None),
+                GarminDaily.hrv_avg.is_not(None),
+            )
+        )
+    )
+    return int(result.scalar() or 0)
+
+
+# ── Scheduler job ─────────────────────────────────────────────────────────────
+async def sync_job(session_factory, redis=None) -> None:
+    """Garmin poll (registered in vitals/scheduler/jobs.py). No-ops cleanly when
+    Garmin isn't configured."""
+    from vitals.integrations.garmin_client import GarminClient
+
+    client = GarminClient.from_config(redis=redis)
+    if not client.is_configured:
+        return
+    async with session_factory() as session:
+        from vitals.services.language_service import get_language
+        from vitals.i18n import current_lang
+        lang = await get_language(session, redis)
+        current_lang.set(lang)
+
+        summary = await sync(session, client)
+        await session.commit()
+        if redis is not None and summary.get("error") is None:
+            import time
+            await redis.set("sync:last_success:garmin", str(int(time.time())))

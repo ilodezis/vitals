@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("supplements.page_title") }}{% endblock %}
+
+{% block content %}
+
+{# ── Supplement card macro (defined in-block so it's reliably in scope) ──── #}
+{% macro supplement_card(s, show_timing=False, archived=False) %}
+<div class="v-card-tile p-6 flex flex-col justify-between gap-4 h-full {% if archived %}opacity-70 hover:opacity-100{% endif %}">
+    <div class="flex justify-between items-start gap-3">
+        <div class="space-y-2 min-w-0">
+            <span class="block v-text-card leading-snug break-words">{{ s.name }}</span>
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="v-chip">{{ s.dose or '—' }}</span>
+                {% if show_timing and s.timing %}<span class="v-chip">{{ s.timing }}</span>{% endif %}
+                {% if s.evidence %}
+                <span class="v-chip {% if s.evidence == 'A' %}good{% endif %}">Tier {{ s.evidence }}</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="v-icon-actions shrink-0">
+            <button @click="showFormModal = true; editRow('form-supplement', {id: {{ s.id }}, name: {{ s.name | tojson | forceescape }}, dose: {{ s.dose | tojson | forceescape }}, timing: {{ s.timing | tojson | forceescape }}, evidence: {{ s.evidence | tojson | forceescape }}, active: {{ s.active | tojson }}, contraindications: {{ s.contraindications | tojson | forceescape }}, note: {{ s.note | tojson | forceescape }}}, '{{ t("common.save") }}')" class="v-icon-btn" title="{{ t("common.edit") }}">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+            </button>
+            <form @submit.prevent="submitForm($event)" action="/supplements/{{ s.id }}/toggle" class="inline">
+                <input type="hidden" name="active" value="{{ 'true' if archived else 'false' }}">
+                <input type="hidden" name="override" x-model="overrideFlag">
+                <button type="submit" class="v-icon-btn" title="{{ t('supplements.restore') if archived else t('supplements.to_archive') }}">
+                    {% if archived %}
+                    <svg style="width: 1rem; height: 1rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                    {% else %}
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                    {% endif %}
+                </button>
+            </form>
+            <form action="/supplements/{{ s.id }}/delete" method="POST" class="inline" onsubmit="return confirm('{{ t("supplements.confirm_delete") }}')">
+                <button type="submit" class="v-icon-btn danger" title="{{ t("common.delete") }}">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% if not archived and (s.contraindications or s.note) %}
+    <div class="space-y-2.5 pt-3.5" style="border-top: 1px solid var(--line)">
+        {% if s.contraindications %}
+        <div class="v-text-body flex items-start gap-2.5 px-3 py-2.5 rounded-xl leading-relaxed" style="color: var(--bad); background: var(--bad-soft); border: 1px solid rgba(232,112,86,.22)">
+            <svg class="h-4 w-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <span>{{ s.contraindications }}</span>
+        </div>
+        {% endif %}
+        {% if s.note %}
+        <div class="v-text-body flex items-start gap-2.5 px-1 leading-relaxed" style="color: var(--muted)">
+            <svg class="h-4 w-4 shrink-0 mt-0.5" style="color: var(--faint)" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            <span>{{ s.note }}</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="protocolForm()">
+
+    <!-- Header -->
+    <div class="v-card p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div class="flex items-start gap-3.5">
+            <span class="v-bar mt-1"></span>
+            <div>
+                <h1 class="v-text-heading">{{ t("supplements.heading") }}</h1>
+                <p class="v-text-body mt-1">{{ t("supplements.subheading") }}</p>
+            </div>
+        </div>
+        <!-- Secondary action: ghost style so data content takes visual priority -->
+        <button @click="cancelEdit('form-supplement', '{{ t("common.save") }}'); showFormModal = true" class="v-btn-ghost">
+            <svg class="h-5 w-5" style="width:1.1rem;height:1.1rem" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
+            <span>{{ t("supplements.new_btn") }}</span>
+        </button>
+    </div>
+
+    <!-- Active Protocol -->
+    <div class="v-card p-6 space-y-8">
+        {% set timing_blocks = [
+            ('утро', t("supplements.timing.morning"), t("supplements.timing.morning_sub"), 'amber'),
+            ('день', t("supplements.timing.day"), t("supplements.timing.day_sub"), 'cool'),
+            ('вечер', t("supplements.timing.evening"), '', 'violet'),
+            ('ночь', t("supplements.timing.night"), t("supplements.timing.night_sub"), 'violet')
+        ] %}
+
+        {% for key, label, sub, tone in timing_blocks %}
+        <div class="space-y-3">
+            <div class="flex items-center gap-2.5 pb-2.5" style="border-bottom: 1px solid var(--line)">
+                <span class="v-dot {{ tone }}"></span>
+                <span class="v-text-card">{{ label }}</span>
+                {% if sub %}<span class="v-text-micro">{{ sub }}</span>{% endif %}
+            </div>
+
+            <!-- Auto-fill grid: avoids orphan single-card rows -->
+            <div class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))">
+                {% set count = namespace(value=0) %}
+                {% for s in supplements if s.active and (s.timing or '')|lower|trim == key %}
+                    {% set count.value = count.value + 1 %}
+                    {{ supplement_card(s) }}
+                {% endfor %}
+                {% if count.value == 0 %}
+                    <div class="md:col-span-2 lg:col-span-3 rounded-xl py-5 text-center v-text-label" style="border: 1px dashed var(--line); color: var(--faint)">
+                        {{ t("supplements.no_active") }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+
+        <!-- Non-standard timings -->
+        {% set count_other = namespace(value=0) %}
+        {% for s in supplements if s.active and (s.timing or '')|lower|trim not in ['утро', 'день', 'вечер', 'ночь'] %}
+            {% set count_other.value = count_other.value + 1 %}
+        {% endfor %}
+
+        {% if count_other.value > 0 %}
+        <div class="space-y-3 pt-2">
+            <div class="flex items-center gap-2.5 pb-2.5" style="border-bottom: 1px solid var(--line)">
+                <span class="v-dot"></span>
+                <span class="v-text-card">{{ t("supplements.timing.other") }}</span>
+            </div>
+            <!-- Auto-fill grid: avoids orphan single-card rows -->
+            <div class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))">
+                {% for s in supplements if s.active and (s.timing or '')|lower|trim not in ['утро', 'день', 'вечер', 'ночь'] %}
+                    {{ supplement_card(s, show_timing=True) }}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Archive -->
+    {% set count_archived = namespace(value=0) %}
+    {% for s in supplements if not s.active %}
+        {% set count_archived.value = count_archived.value + 1 %}
+    {% endfor %}
+
+    {% if count_archived.value > 0 %}
+    <div x-data="{ open: false }" class="v-card p-6 space-y-4">
+        <button @click="open = !open" class="w-full flex items-center justify-between transition" style="color: var(--muted)">
+            <div class="flex items-center gap-2.5">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                <span class="v-text-card">{{ t("supplements.archive_title") }} ({{ count_archived.value }})</span>
+            </div>
+            <svg class="h-4 w-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+        </button>
+        <div x-show="open" class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))" x-cloak>
+            {% for s in supplements if not s.active %}
+                {{ supplement_card(s, archived=True) }}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Add/Edit Modal -->
+    <div x-show="showFormModal" class="v-backdrop" x-cloak>
+        <div class="v-modal p-6 space-y-5" @click.away="showFormModal = false">
+            <button @click="showFormModal = false" class="v-icon-btn absolute top-3.5 right-3.5">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+
+            <div class="flex items-center gap-2 pb-3" style="border-bottom: 1px solid var(--line)">
+                <span class="v-bar v-bar-sm"></span>
+                <span class="v-text-heading" x-text="isEditing ? '{{ t("supplements.modal_edit") }}' : '{{ t("supplements.modal_new") }}'"></span>
+            </div>
+
+            <form @submit.prevent="submitForm($event)" action="/supplements/save" id="form-supplement" class="space-y-4">
+                <input type="hidden" name="override" x-model="overrideFlag">
+                <div>
+                    <label class="v-label">{{ t("supplements.name") }}</label>
+                    <input type="text" name="name" required placeholder="{{ t("supplements.name_placeholder") }}" class="v-input">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="v-label">{{ t("supplements.dose") }}</label>
+                        <input type="text" name="dose" placeholder="{{ t("supplements.dose_placeholder") }}" class="v-input">
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("supplements.timing_label") }}</label>
+                        <input type="text" name="timing" placeholder="{{ t("supplements.timing_placeholder") }}" class="v-input">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                    <div>
+                        <label class="v-label">{{ t("supplements.evidence") }}</label>
+                        <select name="evidence" class="v-select">
+                            <option value="">—</option>
+                            {% for e in evidence_tiers %}<option value="{{ e }}">Tier {{ e }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <label class="flex items-center justify-between v-card-inset px-4 cursor-pointer" style="height:42px">
+                        <span class="text-sm" style="color: var(--fg-2)">{{ t("supplements.active_checkbox") }}</span>
+                        <input type="checkbox" name="active" value="true" checked class="w-4 h-4 accent-[var(--accent)]">
+                    </label>
+                </div>
+                <div>
+                    <label class="v-label">{{ t("supplements.contraindications") }}</label>
+                    <textarea name="contraindications" rows="2" placeholder="{{ t("supplements.contra_placeholder") }}" class="v-textarea"></textarea>
+                </div>
+                <div>
+                    <label class="v-label">{{ t("supplements.note") }}</label>
+                    <input type="text" name="note" placeholder="…" class="v-input">
+                </div>
+                <div class="flex gap-3 pt-1">
+                    <button type="submit" class="v-btn flex-1">{{ t("common.save") }}</button>
+                    <button type="button" @click="cancelEdit('form-supplement', '{{ t("common.save") }}'); showFormModal = false" class="v-btn-ghost">{{ t("common.cancel") }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% include "partials/conflict_modal.html" %}
+</div>
+
+<script src="{{ static_version('/static/protocol.js') }}"></script>
+{% endblock %}

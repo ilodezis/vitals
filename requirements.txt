@@ -1,0 +1,36 @@
+# ── Core (vitals/) ───────────────────────────────────────────────────────────
+SQLAlchemy==2.0.30
+asyncpg==0.29.0
+alembic==1.13.1
+python-dotenv==1.0.1
+APScheduler==3.10.4
+redis>=5.0,<6.0
+greenlet==3.0.3
+tzdata==2025.2
+numpy>=1.26,<3.0
+
+# ── Web delivery (FastAPI + Jinja PWA) ───────────────────────────────────────
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30,<1.0
+Jinja2>=3.1,<4.0
+python-multipart>=0.0.9
+bcrypt>=4.1,<6.0
+itsdangerous>=2.1,<3.0
+httpx>=0.27,<1.0
+
+# ── LLM gateway (OpenRouter via the OpenAI-compatible SDK) ───────────────────
+openai>=1.40,<2.0
+
+# ── Integrations ─────────────────────────────────────────────────────────────
+# Hevy uses httpx (above). Garmin has no official API — garminconnect drives a
+# web session via garth; it's lazy-imported so the test suite doesn't need it.
+garminconnect>=0.2.19,<1.0
+
+# Labs: render a PDF page to an image for the vision LLM (no system deps,
+# lazy-imported in labs_service).
+PyMuPDF>=1.24,<2.0
+
+# ── Model Context Protocol (MCP) ─────────────────────────────────────────────
+fastmcp==2.2.0
+
+

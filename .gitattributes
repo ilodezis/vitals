@@ -1,0 +1,21 @@
+# Normalize line endings. Critical: shell scripts MUST be LF or the Linux
+# server fails with "bad interpreter: /bin/sh^M". Source files are LF in the repo.
+* text=auto eol=lf
+
+*.sh        text eol=lf
+*.py        text eol=lf
+*.html      text eol=lf
+*.css       text eol=lf
+*.js        text eol=lf
+*.json      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.ini       text eol=lf
+*.mako      text eol=lf
+Dockerfile  text eol=lf
+
+# Binaries — never touch
+*.png       binary
+*.jpg       binary
+*.gz        binary
+*.webmanifest text eol=lf

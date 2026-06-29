@@ -1,0 +1,76 @@
+services:
+  vitals_db:
+    image: postgres:15-alpine
+    container_name: vitals_db
+    environment:
+      POSTGRES_USER: ${VITALS_DB_USER:-vitals}
+      POSTGRES_PASSWORD: ${VITALS_DB_PASSWORD:?VITALS_DB_PASSWORD must be set}
+      POSTGRES_DB: ${VITALS_DB_NAME:-vitals_db}
+    volumes:
+      - vitals_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-vitals} -d $${POSTGRES_DB:-vitals_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  vitals_redis:
+    image: redis:7-alpine
+    container_name: vitals_redis
+    restart: unless-stopped
+    volumes:
+      - vitals_redis_data:/data
+
+  vitals_app:
+    build: .
+    container_name: vitals_app
+    depends_on:
+      vitals_db:
+        condition: service_healthy
+      vitals_redis:
+        condition: service_started
+    environment:
+      TZ: Europe/Chisinau
+    env_file:
+      - .env
+    volumes:
+      - .env:/app/.env
+      # Persist the Garmin (garth) OAuth token session across rebuilds/restarts so
+      # we don't re-login every deploy — frequent logins risk a captcha/MFA prompt
+      # and a temporary block. Matches VITALS_GARMIN_TOKEN_DIR (default below).
+      - vitals_garmin_session:/data/garmin_session
+      # Persist progress photos and lab document uploads across rebuilds/restarts
+      - ./web/static/uploads:/app/web/static/uploads
+
+    ports:
+      # Loopback-only: health/genetic data must not sit open on the public
+      # internet. Reach it via SSH tunnel (ssh -L 8000:localhost:8000 vitals)
+      # or put a TLS reverse proxy / VPN (Tailscale) in front. The plan requires
+      # this app to live behind a VPN/firewall.
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+
+  vitals_backup:
+    image: postgres:15-alpine
+    container_name: vitals_backup
+    depends_on:
+      vitals_db:
+        condition: service_healthy
+    environment:
+      TZ: Europe/Chisinau
+      PGHOST: vitals_db
+      PGUSER: ${VITALS_DB_USER:-vitals}
+      PGPASSWORD: ${VITALS_DB_PASSWORD:?VITALS_DB_PASSWORD must be set}
+      PGDATABASE: ${VITALS_DB_NAME:-vitals_db}
+      VITALS_BACKUP_RETENTION_DAYS: ${VITALS_BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - ./scripts/backup.sh:/usr/local/bin/backup.sh:ro
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "/usr/local/bin/backup.sh"]
+    restart: unless-stopped
+
+volumes:
+  vitals_pgdata:
+  vitals_redis_data:
+  vitals_garmin_session:

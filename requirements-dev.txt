@@ -1,0 +1,8 @@
+-r requirements.txt
+pytest>=7.4.0
+pytest-asyncio>=0.23.0
+pytest-cov>=5.0
+coverage>=7.0
+aiosqlite>=0.20.0
+fakeredis>=2.26
+freezegun>=1.5

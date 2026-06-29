@@ -1,0 +1,26 @@
+<!-- Override warning modal — expects an x-data scope with showConfirm/violations
+     and overrideSave()/cancelOverride() (see static/protocol.js & app.js). -->
+<div x-show="showConfirm" class="v-backdrop" x-cloak>
+    <div class="v-modal p-6 space-y-5">
+        <div class="flex items-center gap-2.5">
+            <svg class="h-5 w-5" style="color: var(--bad)" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <span class="v-text-heading">{{ t("conflict.title") }}</span>
+        </div>
+        <div class="space-y-3">
+            <p class="v-text-body" style="color: var(--muted)">{{ t("conflict.description") }}</p>
+            <ul class="space-y-2 max-h-40 overflow-y-auto">
+                <template x-for="v in violations">
+                    <li class="pl-3 py-1.5 rounded-r-lg" style="border-left: 2px solid var(--bad); background: var(--bad-soft)">
+                        <p class="v-text-body" style="color: var(--bad)" x-text="v.message"></p>
+                        <span class="v-text-micro font-semibold" style="color: var(--faint)" x-text="'{{ t("conflict.domains_prefix") }}' + v.domain_a + ' ↔ ' + v.domain_b"></span>
+                    </li>
+                </template>
+            </ul>
+            <p class="v-text-body pt-1" style="color: var(--muted)">{{ t("conflict.confirm_question") }}</p>
+        </div>
+        <div class="flex gap-3">
+            <button @click="overrideSave()" class="v-btn-danger flex-1 text-xs py-2.5">{{ t("conflict.override_btn") }}</button>
+            <button @click="cancelOverride()" class="v-btn-ghost flex-1 text-xs py-2.5">{{ t("common.cancel") }}</button>
+        </div>
+    </div>
+</div>
