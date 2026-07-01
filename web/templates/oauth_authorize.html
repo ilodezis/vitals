@@ -21,7 +21,7 @@
         }
 
         html, body {
-            height: 100%;
+            min-height: 100%;
             background: var(--bg);
             color: var(--fg);
             font-family: 'Inter', sans-serif;
@@ -35,7 +35,6 @@
             min-height: 100vh;
             padding: 24px;
             position: relative;
-            overflow: hidden;
         }
 
         .bg-glow {
@@ -142,6 +141,13 @@
         }
 
         .subtitle strong { color: rgba(232,228,240,0.85); font-weight: 600; }
+
+        .redirect-target {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+        .redirect-target strong { color: rgba(232,228,240,0.85); font-weight: 600; }
 
         /* ── Permissions ── */
         .perms-box {
@@ -285,6 +291,9 @@
             <p class="subtitle">
                 {{ t("oauth.subtitle") | safe }}
             </p>
+            {% if redirect_domain %}
+            <p class="redirect-target">{{ t("oauth.redirect_target", domain=redirect_domain) | safe }}</p>
+            {% endif %}
         </div>
 
         <!-- Permissions -->

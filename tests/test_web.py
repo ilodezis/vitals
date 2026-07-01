@@ -1,6 +1,8 @@
 """Integration tests for the Vitals FastAPI web panel and router endpoints."""
 from __future__ import annotations
 
+from urllib.parse import parse_qs, urlsplit
+
 import pytest
 from sqlalchemy import select
 
@@ -31,7 +33,9 @@ async def test_unauthorized_redirects(client):
     # Navigation GET request should redirect to /login
     response = await client.get("/weight", headers={"Accept": "text/html"})
     assert response.status_code == 302
-    assert response.headers["location"].startswith("/login?next=/weight")
+    parsed = urlsplit(response.headers["location"])
+    assert parsed.path == "/login"
+    assert parse_qs(parsed.query)["next"][0] == "/weight"
 
     # API POST request should return 401 Unauthorized
     response = await client.post("/weight/log", data={"weight_kg": 80.0, "date": "2026-06-22"})
@@ -534,6 +538,37 @@ async def test_labs_manual_add_and_flag(auth_client, db_session):
     row = (await db_session.execute(select(LabResult))).scalar_one_or_none()
     assert row is not None
     assert row.marker == "TSH" and row.flag == "high"
+
+
+async def test_labs_unit_html_is_escaped_in_render(auth_client):
+    """S3: a unit value containing HTML must render escaped, never as live markup —
+    labs.unit can come from a mis-parsed photo import, so it isn't trusted input."""
+    r = await auth_client.post(
+        "/labs/result",
+        data={"date": "2026-06-10", "marker": "WBC", "value": 5.5,
+              "unit": "<img src=x onerror=alert(1)>", "ref_low": 4.0, "ref_high": 10.0},
+    )
+    assert r.status_code == 303
+
+    response = await auth_client.get("/labs", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "<img src=x onerror=alert(1)>" not in response.text
+    assert "&lt;img src=x onerror=alert(1)&gt;" in response.text
+
+
+async def test_labs_unit_superscript_still_renders(auth_client):
+    """Regression guard: the 10^9 -> <sup>9</sup> substitution must survive the
+    S3 escaping fix (applied to the already-escaped string, not via | safe)."""
+    r = await auth_client.post(
+        "/labs/result",
+        data={"date": "2026-06-10", "marker": "Neutrophils", "value": 4.2,
+              "unit": "10^9/L", "ref_low": 1.8, "ref_high": 7.5},
+    )
+    assert r.status_code == 303
+
+    response = await auth_client.get("/labs", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "10<sup>9</sup>/L" in response.text
 
 
 async def test_labs_upload_without_llm_redirects(auth_client):

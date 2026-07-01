@@ -17,6 +17,9 @@ from vitals.models.weight import (
     NoiseMarker,
 )
 
+# Body composition — InBody / МедАсс (BIA) scans.
+from vitals.models.body_scan import BodyScan, BodyScanMetric
+
 # Phase 2 — GLP-1 Protocol.
 from vitals.models.glp1 import (
     Injection,
@@ -57,6 +60,8 @@ __all__ = [
     "BodyMeasurement",
     "ProgressPhoto",
     "NoiseMarker",
+    "BodyScan",
+    "BodyScanMetric",
     "Injection",
     "DosePhase",
     "SideEffect",

@@ -353,6 +353,7 @@
                 {{ t("settings.import_warning") }}
             </div>
             <form hx-post="/settings/import" hx-encoding="multipart/form-data"
+                  hx-confirm="{{ t('settings.import_confirm') }}"
                   hx-target="#import-result" hx-swap="innerHTML" class="space-y-3">
                 <label class="v-file-drop cursor-pointer" x-data='{ hint: "{{ t("settings.import_drop_hint") }}" }'>
                     <input type="file" name="backup_file" accept=".json,application/json" required

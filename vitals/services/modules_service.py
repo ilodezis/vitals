@@ -60,6 +60,9 @@ MODULE_REGISTRY: dict[str, ModuleSpec] = {
         ModuleSpec("genetics", "Генетика", "optional", "/genetics"),
         ModuleSpec("skincare", "Кожа", "optional", "/skincare"),
         ModuleSpec("nutrition", "Питание", "optional", "/nutrition"),
+        # Body composition (InBody / МедАсс) — a tab inside /weight, not its own
+        # nav item; the toggle just shows/hides that tab and its routes.
+        ModuleSpec("body_comp", "Состав тела", "optional", "/weight"),
     )
 }
 

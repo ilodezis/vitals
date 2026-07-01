@@ -68,7 +68,7 @@
             <p class="v-text-body">
                 {{ t("labs.recognize_description") }}
             </p>
-            <form action="/labs/upload" method="POST" enctype="multipart/form-data" class="space-y-3">
+            <form action="/labs/upload" method="POST" enctype="multipart/form-data" class="space-y-3" onsubmit="this.querySelector('button[type=submit]').disabled = true">
                 <label class="v-file-drop cursor-pointer" x-data="{ hint: '{{ t("labs.drop_hint") }}' }">
                     <input type="file" name="files" accept="image/*,application/pdf,.pdf" required multiple
                            class="sr-only"
@@ -91,7 +91,7 @@
                 <span class="v-bar v-bar-sm"></span>
                 <span class="v-text-card">{{ t("labs.manual_title") }}</span>
             </div>
-            <form action="/labs/result" method="POST" class="space-y-4">
+            <form action="/labs/result" method="POST" class="space-y-4" onsubmit="this.querySelector('button[type=submit]').disabled = true">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="v-label">{{ t("common.date") }}</label>
@@ -164,7 +164,7 @@
                                 onclick="window.location.href='/labs?marker={{ r.marker | urlencode }}'"
                                 x-show="!showOnlyProblematic || {{ 'true' if is_bad else 'false' }}">
                                 <td class="max-w-[150px] truncate" style="color: {% if r.marker == selected %}var(--fg){% else %}var(--fg-2){% endif %}" title="{{ r.marker }}">{{ r.marker }}</td>
-                                <td class="v-num font-semibold" style="color: var(--fg)">{{ r.value | format_number }}{% if r.unit %}<span class="v-unit">{{ r.unit | replace('10^9', '10<sup>9</sup>') | safe }}</span>{% endif %}</td>
+                                <td class="v-num font-semibold" style="color: var(--fg)">{{ r.value | format_number }}{% if r.unit %}<span class="v-unit">{{ r.unit | format_unit }}</span>{% endif %}</td>
                                 <td class="v-num v-text-micro">{% if r.ref_low is not none or r.ref_high is not none %}{{ r.ref_low if r.ref_low is not none else '' }}–{{ r.ref_high if r.ref_high is not none else '' }}{% else %}—{% endif %}</td>
                                 <td>
                                     <span class="v-text-label font-semibold"

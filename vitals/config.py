@@ -46,6 +46,12 @@ class Config:
     height_cm: float = 190.0
     sex: str = "male"
 
+    # Which body-fat / LBM source is the "primary" one for projections & summaries
+    # when both a Navy (tape) estimate and a BIA scan (InBody/МедАсс) exist for a
+    # date. ``latest`` = whichever was recorded most recently; ``navy`` / ``bia``
+    # pin a method. Both series are always shown on the chart regardless.
+    body_fat_source: str = "latest"
+
     # User Profile settings (single user default based on Timur)
     user_age: int = 18
     user_program: str = "рекомпозиция тела (снижение жира, сохраняя мышцы) на протоколе GLP-1, с силовыми тренировками и отслеживанием восстановления"
@@ -103,6 +109,10 @@ def load_config() -> Config:
     if sex not in ("male", "female"):
         sex = "male"
 
+    body_fat_source = (os.getenv("VITALS_BODY_FAT_SOURCE") or "latest").strip().lower()
+    if body_fat_source not in ("latest", "navy", "bia"):
+        body_fat_source = "latest"
+
     age_raw = (os.getenv("VITALS_USER_AGE") or "").strip()
     try:
         user_age = int(age_raw) if age_raw else 18
@@ -141,6 +151,7 @@ def load_config() -> Config:
         timezone=os.getenv("VITALS_TIMEZONE", DEFAULT_TIMEZONE) or DEFAULT_TIMEZONE,
         height_cm=height_cm,
         sex=sex,
+        body_fat_source=body_fat_source,
         user_age=user_age,
         user_program=user_program,
         user_goals=user_goals,

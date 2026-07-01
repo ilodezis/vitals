@@ -59,6 +59,24 @@ def test_env_writer_write_appends_new_key(tmp_path, monkeypatch):
     assert "VITALS_HEIGHT_CM=190" in content
 
 
+def test_env_writer_write_rejects_newline_in_value(tmp_path, monkeypatch):
+    """write_keys refuses a value containing \\n or \\r — unescaped, it would
+    break out of its KEY=value line and inject/overwrite another env var."""
+    env_file = tmp_path / "test.env"
+    env_file.write_text("VITALS_A=old_a\n", encoding="utf-8")
+    monkeypatch.setenv("VITALS_ENV_FILE", str(env_file))
+    from web.services.env_writer import write_keys
+
+    with pytest.raises(ValueError):
+        write_keys({"VITALS_A": "evil\nVITALS_SESSION_SECRET=hijacked"})
+    with pytest.raises(ValueError):
+        write_keys({"VITALS_A": "evil\rcarriage"})
+
+    # Rejected write must not have touched the file.
+    content = env_file.read_text(encoding="utf-8")
+    assert content == "VITALS_A=old_a\n"
+
+
 def test_env_writer_write_multiple_keys(tmp_path, monkeypatch):
     """write_keys handles multiple updates in a single call."""
     env_file = tmp_path / "test.env"

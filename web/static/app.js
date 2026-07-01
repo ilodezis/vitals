@@ -140,8 +140,15 @@ document.addEventListener('alpine:init', () => {
         },
 
         overrideSave() {
-            this.overrideFlag = true;
             this.showConfirm = false;
+            // Body-composition save uses its own JSON endpoint, not a form submit.
+            if (this.bsAwaitingOverride) {
+                this.bsAwaitingOverride = false;
+                this.bsOverride = true;
+                this.bsSave();
+                return;
+            }
+            this.overrideFlag = true;
             if (this.lastFormEvent) {
                 this.submitForm(this.lastFormEvent);
             }
@@ -150,6 +157,7 @@ document.addEventListener('alpine:init', () => {
         cancelOverride() {
             this.showConfirm = false;
             this.overrideFlag = false;
+            this.bsAwaitingOverride = false;
             this.violations = [];
             this.lastFormEvent = null;
         },
@@ -159,7 +167,100 @@ document.addEventListener('alpine:init', () => {
             this.largePhotoSrc = src;
             this.largePhotoDate = date;
             this.showLargePhoto = true;
-        }
+        },
+
+        // ── Body composition (InBody / МедАсс) — upload → preview → save ──────
+        bsUploading: false,
+        bsPreviewOpen: false,
+        bsError: '',
+        bsScan: { date: '', device: '', file_key: null, raw_payload_id: null },
+        bsRows: [],
+        bsOverride: false,
+        bsAwaitingOverride: false,
+        bsExpanded: {},
+
+        async bsUpload(e) {
+            const form = e.target;
+            const fileInput = form.querySelector('input[type="file"]');
+            if (!fileInput || !fileInput.files.length) {
+                this.bsError = window.t('body.error.no_file');
+                return;
+            }
+            this.bsError = '';
+            this.bsUploading = true;
+            if (window.vitalsLoader) {
+                window.vitalsLoader.show(window.t('loader.body_upload_title'), window.t('loader.body_upload_text'));
+            }
+            try {
+                const resp = await fetch('/weight/body-scan/upload', {
+                    method: 'POST', body: new FormData(form), headers: { 'hx-request': 'true' }
+                });
+                const data = await resp.json();
+                if (!resp.ok || !data.ok) {
+                    this.bsError = (data && data.message) || window.t('body.upload.error');
+                } else {
+                    this.bsScan = {
+                        date: data.scan.date,
+                        device: data.scan.device || '',
+                        file_key: data.scan.file_key,
+                        raw_payload_id: data.scan.raw_payload_id
+                    };
+                    this.bsRows = (data.scan.metrics || []).map(r => ({ ...r }));
+                    this.bsOverride = false;
+                    this.bsPreviewOpen = true;
+                }
+            } catch (err) {
+                this.bsError = window.t('network_error');
+            } finally {
+                this.bsUploading = false;
+                if (window.vitalsLoader) window.vitalsLoader.hide();
+                form.reset();
+                const hint = form.querySelector('.v-file-drop__hint');
+                if (hint && hint.dataset.default) hint.textContent = hint.dataset.default;
+            }
+        },
+
+        bsAddRow() {
+            this.bsRows.push({ metric_key: '', label: '', value: null, unit: '', ref_low: null, ref_high: null, segment: null, category: 'other' });
+        },
+        bsRemoveRow(i) { this.bsRows.splice(i, 1); },
+        bsCancelPreview() { this.bsPreviewOpen = false; this.bsRows = []; this.bsError = ''; },
+
+        async bsSave() {
+            const rows = this.bsRows.filter(r => r.value !== null && r.value !== '' && (r.label || r.metric_key));
+            const payload = {
+                date: this.bsScan.date,
+                device: this.bsScan.device || null,
+                file_key: this.bsScan.file_key,
+                raw_payload_id: this.bsScan.raw_payload_id,
+                note: null,
+                override: this.bsOverride,
+                metrics: rows
+            };
+            try {
+                const resp = await fetch('/weight/body-scan/confirm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'hx-request': 'true' },
+                    body: JSON.stringify(payload)
+                });
+                if (resp.status === 409) {
+                    const d = await resp.json();
+                    this.violations = d.violations;
+                    this.bsAwaitingOverride = true;
+                    this.showConfirm = true;
+                    return;
+                }
+                if (resp.ok) {
+                    window.location.href = '/weight';
+                } else if (window.vitalsToast) {
+                    window.vitalsToast(window.t('save_error'));
+                }
+            } catch (err) {
+                if (window.vitalsToast) window.vitalsToast(window.t('network_error'));
+            }
+        },
+
+        bsToggleDetail(id) { this.bsExpanded[id] = !this.bsExpanded[id]; }
     }));
 });
 
@@ -178,24 +279,30 @@ function initWeightChart() {
     const canvas = document.getElementById('weightChart');
     if (!canvas) return;
 
-    const data = window.vitalsChartData || { raw: [], trend_ma: [], lbm: [], noise: [], phases: [] };
+    const data = window.vitalsChartData || { raw: [], trend_ma: [], lbm: [], noise: [], phases: [], bia: null };
+
+    // BIA (InBody/МедАсс) overlay — a second LBM source shown alongside Navy.
+    const biaLbm = (data.bia && data.bia.lbm) ? data.bia.lbm : [];
 
     // Extract all unique dates to form the x-axis timeline
     const allDatesSet = new Set();
     data.raw.forEach(p => allDatesSet.add(p.date));
     data.trend_ma.forEach(p => allDatesSet.add(p.date));
     data.lbm.forEach(p => allDatesSet.add(p.date));
-    
+    biaLbm.forEach(p => allDatesSet.add(p.date));
+
     const sortedLabels = Array.from(allDatesSet).sort();
 
     // Map data to timeline
     const rawMap = new Map(data.raw.map(p => [p.date, p.weight_kg]));
     const trendMap = new Map(data.trend_ma.map(p => [p.date, p.weight_kg]));
     const lbmMap = new Map(data.lbm.map(p => [p.date, p.lbm_kg]));
+    const biaLbmMap = new Map(biaLbm.map(p => [p.date, p.value]));
 
     const rawData = sortedLabels.map(d => rawMap.has(d) ? rawMap.get(d) : null);
     const trendData = sortedLabels.map(d => trendMap.has(d) ? trendMap.get(d) : null);
     const lbmData = sortedLabels.map(d => lbmMap.has(d) ? lbmMap.get(d) : null);
+    const biaLbmData = sortedLabels.map(d => biaLbmMap.has(d) ? biaLbmMap.get(d) : null);
 
     // Annotations for noise markers
     const annotations = {};
@@ -270,10 +377,10 @@ function initWeightChart() {
         // 3. Draw the boxes for the blocks, making them touch at the boundaries
         blocks.forEach((block, idx) => {
             const phase = data.phases[block.phaseIdx];
-            
+
             // Left boundary: if first block, extend to -0.4, else touch the previous block at middle point
             const xMin = idx === 0 ? -0.4 : (blocks[idx - 1].endIdx + block.startIdx) / 2;
-            
+
             // Right boundary: if last block, extend to lastIdx + 0.4, else touch the next block at middle point
             const xMax = idx === blocks.length - 1 ? lastLabelIdx + 0.4 : (block.endIdx + blocks[idx + 1].startIdx) / 2;
 
@@ -347,11 +454,28 @@ function initWeightChart() {
                     pointRadius: 0,
                     tension: 0.1,
                     spanGaps: true
+                },
+                // BIA lean mass (InBody/МедАсс) — distinct teal, points + light line,
+                // so a measured scan reads clearly next to the Navy estimate.
+                {
+                    label: window.t('chart.bia_lbm'),
+                    data: biaLbmData,
+                    borderColor: '#5BC8B8',
+                    backgroundColor: '#5BC8B8',
+                    borderWidth: 1.5,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    tension: 0.1,
+                    spanGaps: true,
+                    hidden: biaLbm.length === 0
                 }
             ]
         },
         options: {
-            responsive: true,
+            // responsive:false + manual resize-on-window-resize eliminates the
+            // ResizeObserver → chart.resize() → layout-change → ResizeObserver loop
+            // that fires every scroll frame when the <main> scrollbar appears.
+            responsive: false,
             maintainAspectRatio: false,
             devicePixelRatio: window.devicePixelRatio || 2,
             layout: {
@@ -433,6 +557,32 @@ function initWeightChart() {
             }
         }
     });
+
+    // Manually size the canvas to fill its fixed-height wrapper.
+    // This runs once on init and again on window resize (debounced) —
+    // NOT during scroll, which eliminates the ResizeObserver loop entirely.
+    function sizeChart() {
+        const wrapper = canvas.parentElement;
+        if (!wrapper || !window.vitalsChartInstance) return;
+        const w = wrapper.clientWidth;
+        const h = wrapper.clientHeight;
+        if (w > 0 && h > 0) {
+            canvas.style.width  = w + 'px';
+            canvas.style.height = h + 'px';
+            window.vitalsChartInstance.resize(w, h);
+        }
+    }
+    sizeChart();
+
+    // Debounced window resize handler — fires at most once per 200ms after
+    // the user stops resizing the window (NOT during scroll).
+    let _chartResizeTimer = null;
+    window.removeEventListener('resize', window._vitalsChartResizeHandler);
+    window._vitalsChartResizeHandler = function () {
+        clearTimeout(_chartResizeTimer);
+        _chartResizeTimer = setTimeout(sizeChart, 200);
+    };
+    window.addEventListener('resize', window._vitalsChartResizeHandler);
 }
 if (document.readyState !== 'loading') {
     initWeightChart();

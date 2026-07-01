@@ -143,7 +143,10 @@ async def save_profile(
     if timezone.strip():
         updates["VITALS_TIMEZONE"] = timezone.strip()
     if user_program.strip():
-        updates["VITALS_USER_PROGRAM"] = user_program.strip()
+        # Collapse newlines: this textarea is free text, but env_writer rejects
+        # \n/\r in values (an unescaped newline would break out of its KEY=value
+        # line in the .env file).
+        updates["VITALS_USER_PROGRAM"] = " ".join(user_program.split())
     if user_goals.strip():
         updates["VITALS_USER_GOALS"] = user_goals.strip()
     if nutrition_protein_target_g.strip():

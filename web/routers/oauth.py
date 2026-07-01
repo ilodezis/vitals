@@ -10,11 +10,12 @@ import json
 import logging
 import secrets
 from typing import Optional
+from urllib.parse import urlencode, urlsplit
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
-from web.auth import read_session, _get_serializer
+from web.auth import read_session, _get_mcp_serializer
 from web.config import SESSION_COOKIE, get_web_config
 from web.deps import get_redis, SESSION_COOKIE
 
@@ -83,6 +84,13 @@ async def oauth_authorize(
             {"error": t("oauth.error.unsupported_response"), "client_id": client_id, "redirect_uri": redirect_uri},
         )
 
+    if redirect_uri not in cfg.mcp_redirect_uris:
+        return templates.TemplateResponse(
+            request,
+            "oauth_authorize.html",
+            {"error": t("oauth.error.invalid_redirect"), "client_id": client_id, "redirect_uri": redirect_uri},
+        )
+
     # Check if the user is already authenticated in Vitals
     token = request.cookies.get(SESSION_COOKIE)
     username = read_session(token)
@@ -91,7 +99,12 @@ async def oauth_authorize(
         next_path = str(request.url.path)
         if request.url.query:
             next_path += f"?{request.url.query}"
-        login_url = f"/login?next={next_path}"
+        # next_path itself contains '&'/'?' (redirect_uri, code_challenge, state…);
+        # it must be percent-encoded as a single query value or those characters
+        # get parsed as separate top-level params on /login, truncating `next`
+        # down to just "/oauth/authorize?response_type=code" and losing
+        # client_id/redirect_uri — which then 422s after a successful login.
+        login_url = f"/login?{urlencode({'next': next_path})}"
         return RedirectResponse(url=login_url, status_code=status.HTTP_302_FOUND)
 
     # Render consent form
@@ -101,6 +114,7 @@ async def oauth_authorize(
         {
             "client_id": client_id,
             "redirect_uri": redirect_uri,
+            "redirect_domain": urlsplit(redirect_uri).netloc,
             "state": state,
             "code_challenge": code_challenge,
             "code_challenge_method": code_challenge_method,
@@ -127,6 +141,9 @@ async def oauth_approve(
     cfg = get_web_config()
     if client_id != cfg.mcp_client_id:
         raise HTTPException(status_code=400, detail="Invalid client_id")
+
+    if redirect_uri not in cfg.mcp_redirect_uris:
+        raise HTTPException(status_code=400, detail="redirect_uri not allowed")
 
     # Issue a secure authorization code
     code = f"code_{secrets.token_urlsafe(32)}"
@@ -194,7 +211,14 @@ async def oauth_token(
             content={"error": "invalid_client", "error_description": "Client ID mismatch"},
         )
 
-    if cfg.mcp_client_secret and client_secret != cfg.mcp_client_secret:
+    # Fail-closed: an unconfigured secret must never act as a wildcard credential.
+    if not cfg.mcp_client_secret:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "invalid_client", "error_description": "Client secret not configured"},
+        )
+
+    if client_secret != cfg.mcp_client_secret:
         return JSONResponse(
             status_code=400,
             content={"error": "invalid_client", "error_description": "Client secret mismatch"},
@@ -226,7 +250,7 @@ async def oauth_token(
 
     code_data = json.loads(code_raw)
 
-    if redirect_uri != code_data["redirect_uri"]:
+    if redirect_uri not in cfg.mcp_redirect_uris or redirect_uri != code_data["redirect_uri"]:
         return JSONResponse(
             status_code=400,
             content={"error": "invalid_grant", "error_description": "Redirect URI mismatch"},
@@ -247,8 +271,10 @@ async def oauth_token(
                 content={"error": "invalid_grant", "error_description": "PKCE verification failed"},
             )
 
-    # Sign the access token payload (30-day expiration or long-lived)
-    serializer = _get_serializer()
+    # Sign the access token payload (30-day expiration or long-lived).
+    # Uses a dedicated salt — see web.auth._get_mcp_serializer — so this token
+    # can never be replayed as a session cookie or vice versa.
+    serializer = _get_mcp_serializer()
     token_payload = {
         "username": code_data["username"],
         "client_id": client_id,

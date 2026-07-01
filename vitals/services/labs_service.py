@@ -403,21 +403,8 @@ _EXTRACT_SYSTEM = (
 )
 
 
-def _pdf_pages_png(file_bytes: bytes, max_pages: int = 10) -> list[bytes]:
-    """Render PDF pages to PNG bytes (lazy PyMuPDF; no system deps)."""
-    import fitz  # PyMuPDF, lazy
-
-    doc = fitz.open(stream=file_bytes, filetype="pdf")
-    pages_png = []
-    try:
-        limit = min(len(doc), max_pages)
-        for i in range(limit):
-            page = doc.load_page(i)
-            pix = page.get_pixmap(dpi=150)
-            pages_png.append(pix.tobytes("png"))
-        return pages_png
-    finally:
-        doc.close()
+# Shared PDF→PNG rasteriser (kept under this name for the call below).
+from vitals.integrations.vision import pdf_pages_png as _pdf_pages_png
 
 
 async def extract_from_file(

@@ -9,74 +9,99 @@
 
 :root {
     /* Surfaces — warm plum-charcoal, layered from page → card → raised */
-    --bg:           #1D1A21;   /* page background — deepened so cards lift off it */
-    --bg-inset:     #151318;   /* recessed wells (inputs, table bodies) */
-    --surface:      #332F3C;   /* cards — a clear step above the page */
-    --surface-2:    #3D3848;   /* raised / hover / segmented-active */
-    --surface-3:    #46404F;   /* chips on cards */
+    --bg: #1D1A21;
+    /* page background — deepened so cards lift off it */
+    --bg-inset: #151318;
+    /* recessed wells (inputs, table bodies) */
+    --surface: #332F3C;
+    /* cards — a clear step above the page */
+    --surface-2: #3D3848;
+    /* raised / hover / segmented-active */
+    --surface-3: #46404F;
+    /* chips on cards */
 
-    --line:         #443E4F;   /* hairline borders */
-    --line-2:       #564E63;   /* stronger borders */
+    --line: #443E4F;
+    /* hairline borders */
+    --line-2: #564E63;
+    /* stronger borders */
 
     /* Text */
-    --fg:           #F3F0F6;   /* primary */
-    --fg-2:         #CFC8D8;   /* secondary */
-    --muted:        #A39AB0;   /* labels / muted */
-    --faint:        #8C829C;   /* placeholders / faint */
+    --fg: #F3F0F6;
+    /* primary */
+    --fg-2: #CFC8D8;
+    /* secondary */
+    --muted: #A39AB0;
+    /* labels / muted */
+    --faint: #8C829C;
+    /* placeholders / faint */
 
     /* Accent — warm honey-amber */
-    --accent:       #F5A623;
-    --accent-2:     #FFC25A;   /* hover / icons */
-    --accent-ink:   #2A1B03;   /* text on accent */
-    --accent-soft:  rgba(245, 166, 35, 0.13);
-    --accent-line:  rgba(245, 166, 35, 0.34);
+    --accent: #F5A623;
+    --accent-2: #FFC25A;
+    /* hover / icons */
+    --accent-ink: #2A1B03;
+    /* text on accent */
+    --accent-soft: rgba(245, 166, 35, 0.13);
+    --accent-line: rgba(245, 166, 35, 0.34);
 
     /* Semantic */
-    --good:         #6FC58E;
-    --good-soft:    rgba(111, 197, 142, 0.13);
-    --bad:          #E87056;
-    --bad-soft:     rgba(232, 112, 86, 0.13);
-    --bad-strong:   #FF8469;   /* critical / out-of-range emphasis */
-    --warn:         #F0B24A;
-    --warn-soft:    rgba(240, 178, 74, 0.13);
-    --cool:         #6FB6C9;   /* day / info */
-    --cool-soft:    rgba(111, 182, 201, 0.13);
-    --violet:       #B093D6;   /* evening / night */
-    --violet-soft:  rgba(176, 147, 214, 0.13);
+    --good: #6FC58E;
+    --good-soft: rgba(111, 197, 142, 0.13);
+    --bad: #E87056;
+    --bad-soft: rgba(232, 112, 86, 0.13);
+    --bad-strong: #FF8469;
+    /* critical / out-of-range emphasis */
+    --warn: #F0B24A;
+    --warn-soft: rgba(240, 178, 74, 0.13);
+    --cool: #6FB6C9;
+    /* day / info */
+    --cool-soft: rgba(111, 182, 201, 0.13);
+    --violet: #B093D6;
+    /* evening / night */
+    --violet-soft: rgba(176, 147, 214, 0.13);
 
-    --radius:       14px;
-    --radius-sm:    10px;
-    --radius-lg:    20px;
-    --radius-pill:  999px;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --radius-lg: 20px;
+    --radius-pill: 999px;
 
-    --shadow:       0 1px 2px rgba(0,0,0,.25), 0 12px 30px -16px rgba(0,0,0,.55);
-    --shadow-lg:    0 24px 60px -22px rgba(0,0,0,.7);
+    --shadow: 0 1px 2px rgba(0, 0, 0, .25), 0 12px 30px -16px rgba(0, 0, 0, .55);
+    --shadow-lg: 0 24px 60px -22px rgba(0, 0, 0, .7);
 
     /* Typography scale — six sizes, no others. */
-    --text-title:   26px;   /* page hero titles (H1) */
-    --text-metric:  28px;   /* big numbers in stat cards */
-    --text-heading: 18px;   /* section headings */
-    --text-card:    15px;   /* card titles */
-    --text-body:    14px;   /* table values, body text */
-    --text-label:   13px;   /* labels, column headers (muted) */
-    --text-micro:   12px;   /* units, dates, secondary info (muted) */
+    --text-title: 26px;
+    /* page hero titles (H1) */
+    --text-metric: 28px;
+    /* big numbers in stat cards */
+    --text-heading: 18px;
+    /* section headings */
+    --text-card: 15px;
+    /* card titles */
+    --text-body: 14px;
+    /* table values, body text */
+    --text-label: 13px;
+    /* labels, column headers (muted) */
+    --text-micro: 12px;
+    /* units, dates, secondary info (muted) */
 
     /* Spacing — 4px base grid */
-    --space-1:  4px;
-    --space-2:  8px;
-    --space-3:  12px;
-    --space-4:  16px;
-    --space-6:  24px;
-    --space-8:  32px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
     --space-12: 48px;
 }
 
 /* ── Base ──────────────────────────────────────────────────────────────── */
-html, body {
+html,
+body {
     background-color: var(--bg);
     color: var(--fg);
     font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
+
 body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -85,7 +110,8 @@ body {
 
 /* No monospace. Repurpose every `.font-mono` usage to tabular Inter so the
    existing number-heavy markup keeps its alignment without a mono typeface. */
-.font-mono, .tnum {
+.font-mono,
+.tnum {
     font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif !important;
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum" 1, "cv01" 1, "ss01" 1;
@@ -94,48 +120,155 @@ body {
 
 /* ── Typography scale ─────────────────────────────────────────────────────
    Six sizes, no others. Apply one of these classes instead of ad-hoc
-   text-*/text-[...] utilities so every label, heading and value in the app
-   resolves to the same scale. */
-.v-text-metric  { font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: var(--text-metric);  font-weight: 650; line-height: 1.1; }
-.v-text-title   { font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: var(--text-title);   font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; color: var(--fg); }
-.v-text-heading { font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: var(--text-heading); font-weight: 700; line-height: 1.3; color: var(--fg); }
+   text-*/
+text-[...] utilities so every label,
+heading and value in the app resolves to the same scale. */ .v-text-metric {
+    font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-size: var(--text-metric);
+    font-weight: 650;
+    line-height: 1.1;
+}
+
+.v-text-title {
+    font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-size: var(--text-title);
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+}
+
+.v-text-heading {
+    font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-size: var(--text-heading);
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--fg);
+}
+
 /* Page hero: the single <h1> per page (header card) leads as a title. Section
    headings use <span class="v-text-heading"> and stay at the smaller size. */
-h1.v-text-heading { font-size: var(--text-title); font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; }
-.v-text-card    { font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: var(--text-card);    font-weight: 600; line-height: 1.4; color: var(--fg); }
-.v-text-body    { font-size: var(--text-body);    font-weight: 400; line-height: 1.5; color: var(--fg-2); }
-.v-text-label   { font-size: var(--text-label);   font-weight: 500; line-height: 1.3; color: var(--muted); }
-.v-text-micro   { font-size: var(--text-micro);   font-weight: 400; line-height: 1.3; color: var(--muted); }
+h1.v-text-heading {
+    font-size: var(--text-title);
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+}
+
+.v-text-card {
+    font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-size: var(--text-card);
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--fg);
+}
+
+.v-text-body {
+    font-size: var(--text-body);
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--fg-2);
+}
+
+.v-text-label {
+    font-size: var(--text-label);
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--muted);
+}
+
+.v-text-micro {
+    font-size: var(--text-micro);
+    font-weight: 400;
+    line-height: 1.3;
+    color: var(--muted);
+}
 
 /* Unit suffix — sits after a metric/body number, never competes with it. */
-.v-unit { font-size: var(--text-micro); font-weight: 400; color: var(--muted); margin-left: 2px; }
+.v-unit {
+    font-size: var(--text-micro);
+    font-weight: 400;
+    color: var(--muted);
+    margin-left: 2px;
+}
 
-::selection { background: var(--accent-soft); color: var(--fg); }
+::selection {
+    background: var(--accent-soft);
+    color: var(--fg);
+}
 
 /* Scrollbars — quiet, warm */
-* { scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 999px; border: 1px solid transparent; background-clip: content-box; }
-::-webkit-scrollbar-thumb:hover { background: var(--faint); background-clip: content-box; }
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-2) transparent;
+}
+
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--line-2);
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--faint);
+    background-clip: content-box;
+}
 
 /* Date-picker / file indicators legible on dark */
 input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="file"]::-webkit-file-upload-button { filter: invert(0.85); }
+input[type="file"]::-webkit-file-upload-button {
+    filter: invert(0.85);
+}
+
 /* Date overlay — iOS renders date text centered via system component;
    JS wraps each date input, hides native text on mobile, shows a
    left-aligned overlay span instead. */
-.v-date-wrap { position: relative; overflow: hidden; max-width: 100%; }
-input[type="date"].v-input { min-width: 0; max-width: 100%; overflow: hidden; }
+.v-date-wrap {
+    position: relative;
+    overflow: hidden;
+    max-width: 100%;
+}
+
+input[type="date"].v-input {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
 .v-date-display {
-    position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%);
-    pointer-events: none; font-size: var(--text-body); color: var(--fg);
+    position: absolute;
+    left: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: var(--text-body);
+    color: var(--fg);
     display: none;
 }
+
 @media (max-width: 768px) {
-    input[type="date"].v-date-native { color: transparent !important; }
-    input[type="date"].v-date-native::-webkit-date-and-time-value { color: transparent !important; }
-    .v-date-display { display: block; font-size: 16px; }
+    input[type="date"].v-date-native {
+        color: transparent !important;
+    }
+
+    input[type="date"].v-date-native::-webkit-date-and-time-value {
+        color: transparent !important;
+    }
+
+    .v-date-display {
+        display: block;
+        font-size: 16px;
+    }
 }
 
 /* ── Safe-area envelope ───────────────────────────────────────────────── */
@@ -145,6 +278,7 @@ html {
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
 }
+
 /* App shell fills the visible screen exactly so the in-flow bottom nav sits at
    the true viewport bottom. 100dvh (iOS 15.4+) accounts for PWA chrome; the
    100vh line is a fallback for older engines. A class (not the bare `body`
@@ -164,11 +298,15 @@ html {
     padding-top: env(safe-area-inset-top);
     height: calc(4rem + env(safe-area-inset-top));
 }
+
 .v-brand-dot {
-    width: 9px; height: 9px; border-radius: 999px;
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
     background: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft), 0 0 14px 1px rgba(245,166,35,.5);
+    box-shadow: 0 0 0 3px var(--accent-soft), 0 0 14px 1px rgba(245, 166, 35, .5);
 }
+
 .v-brand-icon {
     width: 1.4rem;
     height: 1.4rem;
@@ -176,10 +314,21 @@ html {
     filter: drop-shadow(0 0 4px rgba(245, 166, 35, 0.4));
     animation: pulse-glow 2.5s infinite ease-in-out;
 }
+
 @keyframes pulse-glow {
-    0%, 100% { filter: drop-shadow(0 0 2px rgba(245, 166, 35, 0.3)); opacity: 0.85; }
-    50% { filter: drop-shadow(0 0 8px rgba(245, 166, 35, 0.7)); opacity: 1; }
+
+    0%,
+    100% {
+        filter: drop-shadow(0 0 2px rgba(245, 166, 35, 0.3));
+        opacity: 0.85;
+    }
+
+    50% {
+        filter: drop-shadow(0 0 8px rgba(245, 166, 35, 0.7));
+        opacity: 1;
+    }
 }
+
 .v-wordmark {
     font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
     font-size: 1.35rem;
@@ -190,16 +339,20 @@ html {
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
+
 .v-nav-link {
     position: relative;
-    display: inline-flex; align-items: center;
+    display: inline-flex;
+    align-items: center;
     padding: 0.4rem 0.75rem;
-    font-size: 0.85rem; font-weight: 500;
+    font-size: 0.85rem;
+    font-weight: 500;
     color: var(--muted);
     border-radius: var(--radius-sm);
     border: 1px solid transparent;
     transition: color .15s ease, background-color .15s ease, border-color .15s ease;
 }
+
 .v-nav-link svg {
     width: 0.95rem;
     height: 0.95rem;
@@ -207,29 +360,35 @@ html {
     color: var(--muted);
     transition: color .15s ease, transform .2s ease;
 }
+
 .v-nav-link:hover {
     color: var(--fg);
     background: var(--surface-2);
 }
+
 .v-nav-link:hover svg {
     color: var(--fg);
     transform: translateY(-0.5px);
 }
+
 .v-nav-link.is-active {
     color: var(--accent-2);
     background: var(--accent-soft);
     border-color: var(--accent-line);
     box-shadow: 0 4px 12px -3px rgba(245, 166, 35, 0.15);
 }
+
 .v-nav-link.is-active svg {
     color: var(--accent-2);
 }
+
 .v-nav-divider {
     width: 1px;
     height: 0.9rem;
     background-color: var(--line);
     margin: 0 0.4rem;
 }
+
 /* The active nav tab is one of only two places amber appears at rest —
    see .v-btn (primary CTA) for the other. Everything else in this file
    uses neutral surfaces/borders so those two spots keep their signal. */
@@ -239,24 +398,28 @@ html {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.05);
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, .05);
 }
+
 .v-card-flat {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
 }
+
 .v-card-inset {
     background: var(--bg-inset);
     border: 1px solid var(--line);
     border-radius: var(--radius);
 }
+
 .v-card-tile {
     background: var(--bg-inset);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
 }
+
 .v-card-tile:hover {
     border-color: var(--accent-line);
     transform: translateY(-2px);
@@ -269,246 +432,550 @@ html {
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
     padding: var(--space-4) var(--space-6);
-    display: flex; flex-direction: column; gap: var(--space-2);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--space-2);
     min-height: 5.25rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.045);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .2), inset 0 1px 0 rgba(255, 255, 255, .045);
 }
+
 .v-metric-label {
-    font-size: var(--text-label); font-weight: 500;
+    font-size: var(--text-label);
+    font-weight: 500;
     color: var(--muted);
 }
+
 .v-metric-value {
     font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
-    font-size: var(--text-metric); font-weight: 600; line-height: 1.1;
-    font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+    font-size: var(--text-metric);
+    font-weight: 600;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
     color: var(--fg);
 }
+
 .v-metric-value-text {
     font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
-    font-size: 1.375rem; /* 22px */
+    font-size: 1.375rem;
+    /* 22px */
     font-weight: 600;
     line-height: 1.2;
     color: var(--fg);
 }
+
 /* Metric numbers stay neutral — amber is reserved for the active nav tab
    and the page's one primary CTA, never for data values. */
-.v-metric-value.good, .v-metric-value-text.good   { color: var(--good); }
-.v-metric-value.bad, .v-metric-value-text.bad    { color: var(--bad); }
-.v-metric-unit { font-size: var(--text-micro); font-weight: 400; color: var(--muted); margin-left: 2px; }
+.v-metric-value.good,
+.v-metric-value-text.good {
+    color: var(--good);
+}
+
+.v-metric-value.bad,
+.v-metric-value-text.bad {
+    color: var(--bad);
+}
+
+.v-metric-unit {
+    font-size: var(--text-micro);
+    font-weight: 400;
+    color: var(--muted);
+    margin-left: 2px;
+}
 
 
 /* ── Buttons ───────────────────────────────────────────────────────────── */
 .v-btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
     background: var(--accent);
     color: var(--accent-ink);
-    font-weight: 650; font-size: .875rem;
+    font-weight: 650;
+    font-size: .875rem;
     padding: .7rem 1.15rem;
     border-radius: var(--radius);
     border: 1px solid transparent;
     transition: background .15s ease, transform .12s ease, box-shadow .15s ease;
-    box-shadow: 0 6px 18px -8px rgba(245,166,35,.6);
+    box-shadow: 0 6px 18px -8px rgba(245, 166, 35, .6);
     cursor: pointer;
 }
-.v-btn:hover { background: var(--accent-2); }
-.v-btn:active { transform: translateY(1px); }
+
+.v-btn:hover {
+    background: var(--accent-2);
+}
+
+.v-btn:active {
+    transform: translateY(1px);
+}
 
 .v-btn-ghost {
-    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
     background: transparent;
     color: var(--fg-2);
-    font-weight: 600; font-size: .875rem;
+    font-weight: 600;
+    font-size: .875rem;
     padding: .7rem 1.15rem;
     border-radius: var(--radius);
     border: 1px solid var(--line-2);
     transition: border-color .15s ease, color .15s ease, background .15s ease;
     cursor: pointer;
 }
-.v-btn-ghost:hover { border-color: var(--accent-line); color: var(--fg); background: var(--accent-soft); }
+
+.v-btn-ghost:hover {
+    border-color: var(--accent-line);
+    color: var(--fg);
+    background: var(--accent-soft);
+}
 
 .v-btn-danger {
-    background: var(--bad); color: #2a0d07;
+    background: var(--bad);
+    color: #2a0d07;
     font-weight: 650;
-    border-radius: var(--radius); border: 1px solid transparent;
-    cursor: pointer; transition: filter .15s ease;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: filter .15s ease;
 }
-.v-btn-danger:hover { filter: brightness(1.08); }
+
+.v-btn-danger:hover {
+    filter: brightness(1.08);
+}
 
 /* Small square icon action (edit / delete / archive in row corners) */
 .v-icon-btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 2rem; height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
     border-radius: var(--radius-sm);
     color: var(--muted);
     opacity: .6;
     transition: color .15s ease, background .15s ease, opacity .15s ease;
-    cursor: pointer; background: transparent; border: 0;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
 }
-.v-icon-btn:hover { opacity: 1; color: var(--accent-2); background: var(--surface-2); }
-.v-icon-btn.danger:hover { color: var(--bad); background: var(--bad-soft); }
+
+.v-icon-btn:hover {
+    opacity: 1;
+    color: var(--accent-2);
+    background: var(--surface-2);
+}
+
+.v-icon-btn.danger:hover {
+    color: var(--bad);
+    background: var(--bad-soft);
+}
 
 /* ── Form controls ─────────────────────────────────────────────────────── */
 .v-label {
     display: block;
-    font-size: var(--text-label); font-weight: 500;
+    font-size: var(--text-label);
+    font-weight: 500;
     color: var(--muted);
     margin-bottom: .4rem;
 }
-.v-input, .v-select, .v-textarea {
+
+.v-input,
+.v-select,
+.v-textarea {
     width: 100%;
     background: var(--bg-inset);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: .65rem .85rem;
-    font-size: var(--text-body); color: var(--fg);
+    font-size: var(--text-body);
+    color: var(--fg);
     transition: border-color .15s ease, box-shadow .15s ease;
 }
-.v-input::placeholder, .v-textarea::placeholder { color: var(--faint); }
-.v-input:focus, .v-select:focus, .v-textarea:focus {
+
+.v-input::placeholder,
+.v-textarea::placeholder {
+    color: var(--faint);
+}
+
+.v-input:focus,
+.v-select:focus,
+.v-textarea:focus {
     outline: none;
     border-color: var(--accent-line);
     box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.v-textarea { resize: none; }
-.v-select { cursor: pointer; appearance: none;
+
+.v-textarea {
+    resize: none;
+}
+
+.v-select {
+    cursor: pointer;
+    appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23A39AB0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right .7rem center; padding-right: 2.2rem;
+    background-repeat: no-repeat;
+    background-position: right .7rem center;
+    padding-right: 2.2rem;
 }
 
 /* Segmented control (tabs) */
 .v-seg {
-    display: flex; gap: .25rem; padding: .28rem;
-    background: var(--bg-inset); border: 1px solid var(--line);
+    display: flex;
+    gap: .15rem;
+    padding: .2rem;
+    background: var(--bg-inset);
+    border: 1px solid var(--line);
     border-radius: var(--radius);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
+
+.v-seg::-webkit-scrollbar {
+    display: none;
+}
+
 .v-seg-btn {
-    flex: 1; text-align: center;
-    padding: .5rem .5rem; font-size: var(--text-label); font-weight: 600;
-    color: var(--muted); border-radius: var(--radius-sm);
-    transition: background .15s ease, color .15s ease; cursor: pointer; border: 0; background: transparent;
+    flex: 1;
+    text-align: center;
+    padding: .5rem .35rem;
+    font-size: var(--text-label);
+    font-weight: 600;
+    color: var(--muted);
+    border-radius: var(--radius-sm);
+    transition: background .15s ease, color .15s ease;
+    cursor: pointer;
+    border: 0;
+    background: transparent;
+    white-space: nowrap;
+    min-width: max-content;
 }
-.v-seg-btn:hover { color: var(--fg-2); }
-.v-seg-btn.is-active { background: var(--surface-2); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+
+.v-seg-btn:hover {
+    color: var(--fg-2);
+}
+
+.v-seg-btn.is-active {
+    background: var(--surface-2);
+    color: var(--fg);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+}
 
 /* ── Pills / badges / chips ────────────────────────────────────────────── */
 .v-chip {
-    display: inline-flex; align-items: center; gap: .35rem;
-    font-size: var(--text-micro); font-weight: 500; line-height: 1;
-    padding: .32rem .55rem; border-radius: var(--radius-sm);
-    background: var(--surface-3); color: var(--fg-2);
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: var(--text-micro);
+    font-weight: 500;
+    line-height: 1;
+    padding: .32rem .55rem;
+    border-radius: var(--radius-sm);
+    background: var(--surface-3);
+    color: var(--fg-2);
     border: 1px solid var(--line);
     font-variant-numeric: tabular-nums;
 }
+
 /* No .accent modifier — dosage/info chips stay neutral gray by default. */
-.v-chip.good   { background: var(--good-soft); color: var(--good); border-color: rgba(111,197,142,.3); }
-.v-chip.bad    { background: var(--bad-soft); color: var(--bad); border-color: rgba(232,112,86,.3); }
+.v-chip.good {
+    background: var(--good-soft);
+    color: var(--good);
+    border-color: rgba(111, 197, 142, .3);
+}
+
+.v-chip.bad {
+    background: var(--bad-soft);
+    color: var(--bad);
+    border-color: rgba(232, 112, 86, .3);
+}
 
 .v-tag {
-    display: inline-flex; align-items: center; gap: .4rem;
-    font-size: var(--text-label); font-weight: 600;
-    padding: .35rem .6rem; border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: var(--text-label);
+    font-weight: 600;
+    padding: .35rem .6rem;
+    border-radius: var(--radius-sm);
     border: 1px solid transparent;
 }
+
 /* No .amber modifier — decorative header tags use .muted instead so amber
    stays confined to the active nav tab and the page's one primary CTA. */
-.v-tag.cool   { color: var(--cool);   background: var(--cool-soft);   border-color: rgba(111,182,201,.3); }
-.v-tag.violet { color: var(--violet); background: var(--violet-soft); border-color: rgba(176,147,214,.3); }
-.v-tag.good   { color: var(--good);   background: var(--good-soft);   border-color: rgba(111,197,142,.3); }
-.v-tag.bad    { color: var(--bad);    background: var(--bad-soft);    border-color: rgba(232,112,86,.3); }
-.v-tag.muted  { color: var(--muted);  background: var(--surface-3);   border-color: var(--line); }
+.v-tag.cool {
+    color: var(--cool);
+    background: var(--cool-soft);
+    border-color: rgba(111, 182, 201, .3);
+}
+
+.v-tag.violet {
+    color: var(--violet);
+    background: var(--violet-soft);
+    border-color: rgba(176, 147, 214, .3);
+}
+
+.v-tag.good {
+    color: var(--good);
+    background: var(--good-soft);
+    border-color: rgba(111, 197, 142, .3);
+}
+
+.v-tag.bad {
+    color: var(--bad);
+    background: var(--bad-soft);
+    border-color: rgba(232, 112, 86, .3);
+}
+
+.v-tag.muted {
+    color: var(--muted);
+    background: var(--surface-3);
+    border-color: var(--line);
+}
 
 /* ── Toggle switch (module enable/disable) ─────────────────────────────────── */
 .v-module-row {
-    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-    padding: .6rem .85rem; border-radius: var(--radius-sm);
-    background: var(--bg-inset); border: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .6rem .85rem;
+    border-radius: var(--radius-sm);
+    background: var(--bg-inset);
+    border: 1px solid var(--line);
 }
-.v-switch { position: relative; display: inline-flex; flex: none; cursor: pointer; }
-.v-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+.v-switch {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+    cursor: pointer;
+}
+
+.v-switch input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
 .v-switch-track {
-    width: 40px; height: 23px; border-radius: var(--radius-pill);
-    background: var(--surface-3); border: 1px solid var(--line-2);
+    width: 40px;
+    height: 23px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-3);
+    border: 1px solid var(--line-2);
     transition: background .18s ease, border-color .18s ease;
 }
+
 .v-switch-thumb {
-    position: absolute; top: 3px; left: 3px;
-    width: 17px; height: 17px; border-radius: 50%;
-    background: var(--muted); box-shadow: 0 1px 2px rgba(0,0,0,.4);
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    background: var(--muted);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .4);
     transition: transform .18s ease, background .18s ease;
 }
-.v-switch input:checked ~ .v-switch-track { background: var(--accent-soft); border-color: var(--accent-line); }
-.v-switch input:checked ~ .v-switch-track .v-switch-thumb { transform: translateX(17px); background: var(--accent); }
-.v-switch input:focus-visible ~ .v-switch-track { box-shadow: 0 0 0 2px var(--accent-line); }
-.v-switch input:disabled ~ .v-switch-track { opacity: .55; cursor: not-allowed; }
-.v-switch input:disabled { cursor: not-allowed; }
+
+.v-switch input:checked~.v-switch-track {
+    background: var(--accent-soft);
+    border-color: var(--accent-line);
+}
+
+.v-switch input:checked~.v-switch-track .v-switch-thumb {
+    transform: translateX(17px);
+    background: var(--accent);
+}
+
+.v-switch input:focus-visible~.v-switch-track {
+    box-shadow: 0 0 0 2px var(--accent-line);
+}
+
+.v-switch input:disabled~.v-switch-track {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+.v-switch input:disabled {
+    cursor: not-allowed;
+}
 
 /* Small colored dot — timing/category indicators that don't need a filled pill. */
-.v-dot { width: 7px; height: 7px; border-radius: 999px; display: inline-block; flex-shrink: 0; background: var(--muted); }
-.v-dot.amber  { background: var(--accent-2); opacity: .85; }
-.v-dot.cool   { background: var(--cool); opacity: .85; }
-.v-dot.violet { background: var(--violet); opacity: .85; }
-.v-dot.good   { background: var(--good); opacity: .85; }
+.v-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    display: inline-block;
+    flex-shrink: 0;
+    background: var(--muted);
+}
+
+.v-dot.amber {
+    background: var(--accent-2);
+    opacity: .85;
+}
+
+.v-dot.cool {
+    background: var(--cool);
+    opacity: .85;
+}
+
+.v-dot.violet {
+    background: var(--violet);
+    opacity: .85;
+}
+
+.v-dot.good {
+    background: var(--good);
+    opacity: .85;
+}
 
 /* Icon-button group — consistent gap between edit/delete/archive actions. */
-.v-icon-actions { display: inline-flex; align-items: center; gap: var(--space-3); }
+.v-icon-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+}
 
 /* Body-map rotation buttons (GLP-1) */
 .v-site-btn {
-    background: var(--bg-inset); border: 1px solid var(--line);
-    color: var(--fg-2); font-size: var(--text-label); font-weight: 600;
-    padding: .55rem .75rem; border-radius: var(--radius-sm);
-    transition: border-color .15s ease, background .15s ease, color .15s ease; cursor: pointer;
+    background: var(--bg-inset);
+    border: 1px solid var(--line);
+    color: var(--fg-2);
+    font-size: var(--text-label);
+    font-weight: 600;
+    padding: .55rem .75rem;
+    border-radius: var(--radius-sm);
+    transition: border-color .15s ease, background .15s ease, color .15s ease;
+    cursor: pointer;
 }
-.v-site-btn:hover { border-color: var(--line-2); }
+
+.v-site-btn:hover {
+    border-color: var(--line-2);
+}
+
 /* Selected state mirrors .v-seg-btn.is-active — a neutral "elevated" look,
    not amber, so the body map doesn't compete with the page's one CTA. */
-.v-site-on { background: var(--surface-2) !important; border-color: var(--line-2) !important; color: var(--fg) !important; }
+.v-site-on {
+    background: var(--surface-2) !important;
+    border-color: var(--line-2) !important;
+    color: var(--fg) !important;
+}
 
 /* Filter pills (genetics) */
 .v-pill {
-    padding: .5rem .9rem; border-radius: var(--radius); cursor: pointer;
-    font-size: var(--text-label); font-weight: 500;
-    color: var(--muted); background: var(--bg-inset); border: 1px solid var(--line);
+    padding: .5rem .9rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: var(--text-label);
+    font-weight: 500;
+    color: var(--muted);
+    background: var(--bg-inset);
+    border: 1px solid var(--line);
     transition: color .15s ease, background .15s ease, border-color .15s ease;
 }
-.v-pill:hover { color: var(--fg-2); }
-.v-pill-on { color: var(--fg) !important; background: var(--surface-2) !important; border-color: var(--line-2) !important; }
+
+.v-pill:hover {
+    color: var(--fg-2);
+}
+
+.v-pill-on {
+    color: var(--fg) !important;
+    background: var(--surface-2) !important;
+    border-color: var(--line-2) !important;
+}
 
 /* ── Section heading accent bar ────────────────────────────────────────── */
 /* Neutral, not amber — it's a structural marker for every section heading,
    so coloring it would put amber everywhere at once. */
-.v-bar { width: 2px; height: 1.25rem; border-radius: 999px; background: var(--line-2); display: inline-block; }
-.v-bar-sm { width: 2px; height: 1rem; }
+.v-bar {
+    width: 2px;
+    height: 1.25rem;
+    border-radius: 999px;
+    background: var(--line-2);
+    display: inline-block;
+}
+
+.v-bar-sm {
+    width: 2px;
+    height: 1rem;
+}
+
 /* Amber hero bar — used once per page beside the H1 title, the page's single
    "warm" landmark. Section bars stay neutral (.v-bar) so amber doesn't spread. */
-.v-bar-accent, .v-bar.mt-1 { width: 3px; background: var(--accent); box-shadow: 0 0 8px -1px var(--accent-line); }
+.v-bar-accent,
+.v-bar.mt-1 {
+    width: 3px;
+    background: var(--accent);
+    box-shadow: 0 0 8px -1px var(--accent-line);
+}
 
 /* ── Tables ────────────────────────────────────────────────────────────── */
-.v-table { width: 100%; min-width: 100%; border-collapse: collapse; font-size: var(--text-body); }
+.v-table {
+    width: 100%;
+    min-width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-body);
+}
+
 .v-table thead th {
-    text-align: left; padding: var(--space-2) var(--space-3);
-    font-size: var(--text-label); font-weight: 500;
-    color: var(--muted); background: var(--surface);
-    position: sticky; top: 0; z-index: 1;
+    text-align: left;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-label);
+    font-weight: 500;
+    color: var(--muted);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 1;
     border-bottom: 1px solid var(--line);
 }
-.v-table tbody td { padding: var(--space-2) var(--space-3); color: var(--fg-2); border-bottom: 1px solid var(--line); }
-.v-table tbody tr:last-child td { border-bottom: 0; }
-.v-table tbody tr:hover { background: var(--surface-2); }
-.v-num { font-variant-numeric: tabular-nums; letter-spacing: 0; }
+
+.v-table tbody td {
+    padding: var(--space-2) var(--space-3);
+    color: var(--fg-2);
+    border-bottom: 1px solid var(--line);
+}
+
+.v-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.v-table tbody tr:hover {
+    background: var(--surface-2);
+}
+
+.v-num {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+}
 
 /* ── Modals ────────────────────────────────────────────────────────────── */
 .v-backdrop {
-    position: fixed; inset: 0; z-index: 50;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
     background: rgba(15, 13, 18, 0.7);
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-    display: flex; align-items: flex-start; justify-content: center;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
     padding: 1.5rem 1rem;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
+
 .v-modal {
-    width: 100%; max-width: 32rem;
+    width: 100%;
+    max-width: 32rem;
     background: var(--surface);
     border: 1px solid var(--line-2);
     border-radius: var(--radius-lg);
@@ -517,10 +984,12 @@ html {
     margin-top: auto;
     margin-bottom: auto;
 }
+
 @media (max-width: 640px) {
     .v-backdrop {
         padding: 1rem 0.5rem;
     }
+
     .v-modal {
         margin-top: auto;
         margin-bottom: auto;
@@ -528,34 +997,67 @@ html {
 }
 
 /* ── Alerts (system) ───────────────────────────────────────────────────── */
-.v-alert { border-radius: var(--radius); border: 1px solid var(--line); padding: .7rem 1rem; font-size: var(--text-body); }
-.v-alert.info  { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-2); }
-.v-alert.warn  { background: var(--warn-soft); border-color: rgba(240,178,74,.35); color: var(--warn); }
-.v-alert.block { background: var(--bad-soft); border-color: rgba(232,112,86,.4); color: var(--bad); }
+.v-alert {
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    padding: .7rem 1rem;
+    font-size: var(--text-body);
+}
 
-[x-cloak] { display: none !important; }
+.v-alert.info {
+    background: var(--accent-soft);
+    border-color: var(--accent-line);
+    color: var(--accent-2);
+}
+
+.v-alert.warn {
+    background: var(--warn-soft);
+    border-color: rgba(240, 178, 74, .35);
+    color: var(--warn);
+}
+
+.v-alert.block {
+    background: var(--bad-soft);
+    border-color: rgba(232, 112, 86, .4);
+    color: var(--bad);
+}
+
+[x-cloak] {
+    display: none !important;
+}
 
 /* ── Mobile & Responsive ──────────────────────────────────────────────── */
 
 /* Prevent iOS zoom on input focus — inputs must be >= 16px */
 @media (max-width: 768px) {
-    .v-input, .v-select, .v-textarea {
+
+    .v-input,
+    .v-select,
+    .v-textarea {
         font-size: 16px;
     }
 }
 
 @media (max-width: 640px) {
+
     /* ── Typography scale — tighter on mobile ── */
     :root {
-        --text-title:   22px;
-        --text-metric:  24px;
+        --text-title: 22px;
+        --text-metric: 24px;
         --text-heading: 16px;
-        --text-card:    14px;
+        --text-card: 14px;
     }
 
     /* ── Page content padding — narrower gutters ── */
-    .px-6 { padding-left: 1rem !important; padding-right: 1rem !important; }
-    .py-7 { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
+    .px-6 {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    .py-7 {
+        padding-top: 1.25rem !important;
+        padding-bottom: 1.25rem !important;
+    }
 
     /* ── Header — compact on mobile ── */
     .v-header {
@@ -564,12 +1066,24 @@ html {
         padding-left: 0.875rem;
         padding-right: 0.875rem;
     }
-    .v-wordmark { font-size: 1.15rem; }
-    .v-brand-icon { width: 1.15rem; height: 1.15rem; }
+
+    .v-wordmark {
+        font-size: 1.15rem;
+    }
+
+    .v-brand-icon {
+        width: 1.15rem;
+        height: 1.15rem;
+    }
 
     /* ── Cards — tighter padding ── */
-    .v-card > .p-6 { padding: 1rem; }
-    .v-card.p-6 { padding: 1rem; }
+    .v-card>.p-6 {
+        padding: 1rem;
+    }
+
+    .v-card.p-6 {
+        padding: 1rem;
+    }
 
     /* ── Metrics — compact grid ── */
     .v-metric {
@@ -578,15 +1092,19 @@ html {
         gap: var(--space-1);
         border-radius: var(--radius);
     }
+
     .v-metric-value {
         font-size: 1.25rem;
     }
+
     .v-metric-value-text {
         font-size: 1rem;
     }
+
     .v-metric-label {
         font-size: 11px;
     }
+
     .v-metric-unit {
         font-size: 10px;
     }
@@ -596,6 +1114,7 @@ html {
         padding: var(--space-1) var(--space-2);
         font-size: 11px;
     }
+
     .v-table tbody td {
         padding: var(--space-1) var(--space-2);
         font-size: 13px;
@@ -606,10 +1125,12 @@ html {
         min-height: 2.75rem;
         padding: 0.75rem 1rem;
     }
+
     .v-btn-ghost {
         min-height: 2.75rem;
         padding: 0.75rem 1rem;
     }
+
     .v-icon-btn {
         width: 2.5rem;
         height: 2.5rem;
@@ -623,7 +1144,9 @@ html {
     }
 
     /* ── Form controls — comfortable touch ── */
-    .v-input, .v-select, .v-textarea {
+    .v-input,
+    .v-select,
+    .v-textarea {
         padding: 0.75rem 0.875rem;
         border-radius: var(--radius-sm);
     }
@@ -633,6 +1156,7 @@ html {
         padding: 0.75rem 0.5rem;
         align-items: flex-end;
     }
+
     .v-modal {
         max-width: 100%;
         border-radius: var(--radius-lg) var(--radius-lg) 0 0;
@@ -642,23 +1166,48 @@ html {
     }
 
     /* ── Section spacing — tighter vertical rhythm ── */
-    .space-y-8 > * + * { margin-top: 1.25rem !important; }
-    .space-y-6 > * + * { margin-top: 1rem !important; }
-    .gap-8 { gap: 1.25rem !important; }
-    .gap-6 { gap: 1rem !important; }
+    .space-y-8>*+* {
+        margin-top: 1.25rem !important;
+    }
+
+    .space-y-6>*+* {
+        margin-top: 1rem !important;
+    }
+
+    .gap-8 {
+        gap: 1.25rem !important;
+    }
+
+    .gap-6 {
+        gap: 1rem !important;
+    }
 
     /* ── Chart — shorter on mobile ── */
-    .h-\[320px\] { height: 220px !important; }
+    .h-\[320px\] {
+        height: 220px !important;
+    }
 
     /* ── Alerts — compact ── */
-    .v-alert { padding: 0.6rem 0.75rem; font-size: 13px; }
+    .v-alert {
+        padding: 0.6rem 0.75rem;
+        font-size: 13px;
+    }
 
     /* ── File drop zone — compact ── */
-    .v-file-drop { padding: 1rem 0.75rem; }
+    .v-file-drop {
+        padding: 1rem 0.75rem;
+    }
 
     /* ── Filter pills — touch friendly ── */
-    .v-pill { padding: 0.55rem 0.85rem; min-height: 2.5rem; }
-    .v-site-btn { min-height: 2.75rem; padding: 0.6rem 0.75rem; }
+    .v-pill {
+        padding: 0.55rem 0.85rem;
+        min-height: 2.5rem;
+    }
+
+    .v-site-btn {
+        min-height: 2.75rem;
+        padding: 0.6rem 0.75rem;
+    }
 
     /* ── Mobile drawer grid — bigger targets ── */
     .v-mobile-drawer-item {
@@ -681,19 +1230,26 @@ html {
     transition: opacity 0.2s ease-in-out;
     pointer-events: none;
 }
+
 .v-progress-bar.is-active {
     opacity: 1;
 }
 
 @keyframes progress-bar-loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 /* ── Page View Transitions (View Transitions API & CSS Fallbacks) ── */
 ::view-transition-old(root) {
     animation: 90ms cubic-bezier(0.4, 0, 1, 1) both fade-out;
 }
+
 ::view-transition-new(root) {
     animation: 210ms cubic-bezier(0, 0, 0.2, 1) 90ms both fade-in;
 }
@@ -703,21 +1259,34 @@ html {
     opacity: 0;
     transition: opacity 150ms ease-out;
 }
+
 .htmx-settling main {
     opacity: 0;
 }
+
 .htmx-settling main {
     opacity: 1;
     transition: opacity 200ms ease-in;
 }
 
 @keyframes fade-out {
-    from { opacity: 1; }
-    to { opacity: 0; }
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
 }
+
 @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 /* ── Global Loading Overlay ── */
@@ -752,8 +1321,13 @@ html {
 }
 
 @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ── Fixed Column Widths ── */
@@ -762,10 +1336,11 @@ html {
     min-width: 90px;
     max-width: 90px;
 }
+
 .v-col-actions {
-    width: 80px;
-    min-width: 80px;
-    max-width: 80px;
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
 }
 
 /* ── Table Horizontal Scroll Wrap ── */
@@ -773,6 +1348,7 @@ html {
     overflow-x: auto;
     width: 100%;
 }
+
 @media (min-width: 768px) {
     .v-table-wrap {
         overflow-x: hidden;
@@ -795,25 +1371,30 @@ html {
     text-align: center;
     width: 100%;
 }
+
 .v-file-drop:hover {
     border-color: var(--accent-line);
     background: var(--accent-soft);
 }
+
 .v-file-drop__text {
     font-size: var(--text-body);
     font-weight: 500;
     color: var(--fg-2);
 }
+
 .v-file-drop__hint {
     font-size: var(--text-micro);
     color: var(--faint);
 }
+
 .v-file-drop svg {
     color: var(--muted);
     width: 1.5rem;
     height: 1.5rem;
     transition: color 0.15s ease;
 }
+
 .v-file-drop:hover svg {
     color: var(--accent-2);
 }
@@ -830,12 +1411,14 @@ html {
     text-align: center;
     width: 100%;
 }
+
 .v-empty-state svg {
     opacity: 0.4;
     color: var(--muted);
     width: 2rem;
     height: 2rem;
 }
+
 .v-empty-state p {
     font-size: var(--text-micro);
     margin: 0;
@@ -867,7 +1450,12 @@ sup {
     padding-top: 1.25rem;
     border-top: 1px solid var(--line);
 }
-.v-text-body h2:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+
+.v-text-body h2:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
 
 .v-text-body h3 {
     font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -877,6 +1465,7 @@ sup {
     margin-top: 1.5rem;
     margin-bottom: 0.4rem;
 }
+
 .v-text-body h4 {
     font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
     font-size: 0.95rem;
@@ -890,7 +1479,10 @@ sup {
     margin-bottom: 0.65rem;
     line-height: 1.65;
 }
-.v-text-body p:last-child { margin-bottom: 0; }
+
+.v-text-body p:last-child {
+    margin-bottom: 0;
+}
 
 .v-text-body ul {
     list-style-type: disc;
@@ -898,17 +1490,22 @@ sup {
     margin-top: 0.4rem;
     margin-bottom: 0.75rem;
 }
+
 .v-text-body ol {
     list-style-type: decimal;
     margin-left: 1.35rem;
     margin-top: 0.4rem;
     margin-bottom: 0.75rem;
 }
+
 .v-text-body li {
     margin-bottom: 0.3rem;
     line-height: 1.6;
 }
-.v-text-body li::marker { color: var(--muted); }
+
+.v-text-body li::marker {
+    color: var(--muted);
+}
 
 .v-text-body blockquote {
     border-left: 3px solid var(--accent);
@@ -919,26 +1516,33 @@ sup {
     color: var(--fg-2);
     font-size: 0.92em;
 }
-.v-text-body blockquote p { margin-bottom: 0; }
+
+.v-text-body blockquote p {
+    margin-bottom: 0;
+}
 
 .v-text-body hr {
     border: 0;
     border-top: 1px solid var(--line);
     margin: 1.75rem 0;
 }
+
 .v-text-body strong {
     font-weight: 600;
     color: var(--fg);
 }
+
 .v-text-body em {
     font-style: italic;
     color: var(--muted);
 }
+
 .v-text-body a {
     color: var(--accent);
     text-decoration: underline;
     text-underline-offset: 2px;
 }
+
 .v-text-body code {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: 0.85em;
@@ -955,6 +1559,7 @@ sup {
     margin: 1rem 0;
     font-size: 0.9em;
 }
+
 .v-text-body thead th {
     text-align: left;
     font-weight: 600;
@@ -963,22 +1568,39 @@ sup {
     border-bottom: 2px solid var(--line-2);
     white-space: nowrap;
 }
+
 .v-text-body tbody td {
     padding: 0.45rem 0.75rem;
     border-bottom: 1px solid var(--line);
     color: var(--fg-2);
 }
-.v-text-body tbody tr:last-child td { border-bottom: none; }
-.v-text-body tbody tr:hover { background: var(--surface-2); }
+
+.v-text-body tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.v-text-body tbody tr:hover {
+    background: var(--surface-2);
+}
 
 /* Digest wrapper — cap line length for readability without shrinking the card */
-.v-digest { max-width: 52rem; }
+.v-digest {
+    max-width: 52rem;
+}
 
 /* ── Login page float-up animation ── */
 @keyframes float-up {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
+
 .animate-float-up {
     animation: float-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -995,6 +1617,7 @@ sup {
     max-width: min(22rem, calc(100vw - 2rem));
     pointer-events: none;
 }
+
 @media (max-width: 768px) {
     .v-toast-container {
         right: 0.5rem;
@@ -1003,6 +1626,7 @@ sup {
         max-width: none;
     }
 }
+
 .v-toast {
     pointer-events: auto;
     box-shadow: var(--shadow-lg);
@@ -1010,6 +1634,7 @@ sup {
     transform: translateY(12px);
     transition: opacity .25s ease, transform .25s ease;
 }
+
 .v-toast.is-visible {
     opacity: 1;
     transform: translateY(0);
@@ -1026,34 +1651,58 @@ sup {
 
 /* ── Mobile table card headers — hide low-priority columns ── */
 @media (max-width: 480px) {
-    .v-table .hide-xs { display: none; }
+    .v-table .hide-xs {
+        display: none;
+    }
 
     .v-metric-value {
         font-size: 1.125rem;
     }
+
     .v-metric-label {
         font-size: 10px;
     }
 
-    .v-seg { gap: 0.15rem; padding: 0.2rem; }
-    .v-seg-btn { padding: 0.5rem 0.15rem; font-size: 11px; }
+    .v-seg {
+        gap: 0.15rem;
+        padding: 0.2rem;
+    }
 
-    .v-text-heading { font-size: 15px; }
-    .v-text-card { font-size: 13px; }
-    .v-text-title { font-size: 20px; }
-    h1.v-text-heading { font-size: 20px; }
+    .v-seg-btn {
+        padding: 0.5rem 0.5rem;
+        font-size: 11px;
+    }
+
+    .v-text-heading {
+        font-size: 15px;
+    }
+
+    .v-text-card {
+        font-size: 13px;
+    }
+
+    .v-text-title {
+        font-size: 20px;
+    }
+
+    h1.v-text-heading {
+        font-size: 20px;
+    }
 }
 
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+
+    *,
+    *::before,
+    *::after {
         animation-duration: .001ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: .001ms !important;
         scroll-behavior: auto !important;
     }
-    .v-brand-icon { animation: none !important; }
+
+    .v-brand-icon {
+        animation: none !important;
+    }
 }
-
-
-

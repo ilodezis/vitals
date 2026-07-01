@@ -1,25 +1,35 @@
-"""Endpoints for managing weight logs, measurements, noise markers, and photos."""
+"""Endpoints for managing weight logs, measurements, noise markers, photos, and
+body-composition scans (InBody / МедАсс — the optional ``body_comp`` module)."""
 from __future__ import annotations
 
 from datetime import date as date_type
+import logging
 import os
 import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.config import load_config
-from vitals.enums import Domain
+from vitals.enums import Domain, Source
 from vitals.i18n import t
-from vitals.services import alerts_service, weight_service
+from vitals.integrations.llm_client import LLMClient, LLMNotConfigured
+from vitals.services import alerts_service, body_scan_service, raw_payload_service, weight_service
+from vitals.services.analytics import body_metrics
 from vitals.services.conflict_engine import ConflictBlocked
-from web.deps import get_session, require_auth
+from web.deps import get_session, require_auth, require_module
 from web.templating import STATIC_DIR, templates
-from web.uploads import IMAGE_EXTS, read_capped, validate_extension
+from web.uploads import DOC_EXTS, IMAGE_EXTS, file_ext, read_capped, validate_extension
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/weight", tags=["weight"])
+
+# Render order of metric categories in the body-composition detail view.
+BODY_CAT_ORDER = ["composition", "water", "segmental", "score", "derived", "other"]
 
 
 @router.get("", response_class=HTMLResponse)
@@ -29,8 +39,15 @@ async def weight_dashboard(
     username: str = Depends(require_auth),
 ):
     """Renders the weight OS dashboard, refreshing alerts and passing active metrics."""
-    # Refresh noise alerts for today
+    # Is the optional body-composition module on? Gates the tab, the BIA chart
+    # overlay, and the scan section — disabled behaves as if it isn't there.
+    em = getattr(request.state, "enabled_modules", None) or {}
+    body_comp_enabled = bool(em.get("body_comp"))
+
+    # Refresh noise alerts for today (+ body-scan alerts when the module is on)
     await weight_service.refresh_noise_alert(db)
+    if body_comp_enabled:
+        await body_scan_service.refresh_alerts(db)
     await db.commit()
 
     # Load data
@@ -39,7 +56,26 @@ async def weight_dashboard(
     noise_markers = await weight_service.list_noise_markers(db)
     photos = await weight_service.list_progress_photos(db)
     alerts = await alerts_service.list_active(db, domain=Domain.WEIGHT.value)
-    series = await weight_service.chart_series(db)
+    series = await weight_service.chart_series(db, include_bia=body_comp_enabled)
+
+    # Body-composition scans + the compact summary chips for the latest one.
+    bc_scans = await body_scan_service.list_scans(db) if body_comp_enabled else []
+    bc_latest = bc_scans[0] if bc_scans else None
+    lang = getattr(request.state, "lang", "ru")
+    bc_headline = []
+    if bc_latest is not None:
+        by_key: dict = {}
+        for m in bc_latest.metrics:
+            by_key.setdefault(m.metric_key, m)
+        for key in body_metrics.HEADLINE_KEYS:
+            m = by_key.get(key)
+            if m is not None:
+                bc_headline.append({
+                    "key": key,
+                    "name": body_metrics.display_name(key, lang) or m.label,
+                    "value": m.value,
+                    "unit": body_metrics.METRIC_REGISTRY[key].unit or "",
+                })
 
     # Reverse logs list for table view (newest first)
     sorted_weights = sorted(weights, key=lambda w: w.date, reverse=True)
@@ -76,6 +112,13 @@ async def weight_dashboard(
             "series": series,
             "today": today_str,
             "sex": load_config().sex,
+            # Body composition (optional module)
+            "body_comp_enabled": body_comp_enabled,
+            "bc_scans": bc_scans,
+            "bc_latest": bc_latest,
+            "bc_headline": bc_headline,
+            "bc_cat_order": BODY_CAT_ORDER,
+            "llm_configured": bool(load_config().openrouter_api_key),
         },
     )
 
@@ -265,6 +308,164 @@ async def add_photo_entry(
         response.headers["HX-Redirect"] = "/weight"
         return response
 
+    return RedirectResponse(url="/weight", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# ── Body composition (InBody / МедАсс) — optional module ──────────────────────
+class BodyScanMetricIn(BaseModel):
+    metric_key: Optional[str] = None
+    label: Optional[str] = None
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    ref_low: Optional[float] = None
+    ref_high: Optional[float] = None
+    segment: Optional[str] = None
+    category: Optional[str] = None
+
+
+class BodyScanConfirm(BaseModel):
+    date: str
+    device: Optional[str] = None
+    file_key: Optional[str] = None
+    raw_payload_id: Optional[int] = None
+    note: Optional[str] = None
+    override: bool = False
+    metrics: list[BodyScanMetricIn] = []
+
+
+@router.post("/body-scan/upload")
+async def body_scan_upload(
+    request: Request,
+    file: UploadFile = File(...),
+    date: Optional[str] = Form(None),
+    db: AsyncSession = Depends(get_session),
+    username: str = Depends(require_auth),
+    _gate: None = Depends(require_module("body_comp")),
+):
+    """Step 1: a photo/PDF of a scan sheet → vision extraction → editable preview.
+
+    The original file + verbatim vision payload are stored now (data-lake); the
+    normalized ``BodyScan`` rows are only written on confirm, with the owner's
+    edits. Returns JSON the client renders as an editable table."""
+    from vitals.utils.timeutils import today_local
+
+    # 415/413 surface as HTTP errors (handled by the client's error branch).
+    validate_extension(file.filename, DOC_EXTS)
+    contents = await read_capped(file)
+
+    try:
+        llm = LLMClient()
+    except LLMNotConfigured:
+        return JSONResponse({"ok": False, "reason": "not_configured", "message": t("body.not_configured")})
+
+    # Persist the original sheet image for reference (served at /static/uploads/...).
+    ext = file_ext(file.filename) or ".bin"
+    file_key = f"body/{uuid.uuid4().hex}{ext}"
+    os.makedirs(os.path.join(STATIC_DIR, "uploads", "body"), exist_ok=True)
+    with open(os.path.join(STATIC_DIR, "uploads", file_key), "wb") as fh:
+        fh.write(contents)
+
+    try:
+        extracted = await body_scan_service.extract_from_file(
+            contents,
+            llm=llm,
+            content_type=file.content_type or "image/jpeg",
+            filename=file.filename,
+        )
+    except LLMNotConfigured:
+        return JSONResponse({"ok": False, "reason": "not_configured", "message": t("body.not_configured")})
+    except Exception as e:  # noqa: BLE001 — surface parse failures softly
+        logger.warning("Body-scan extraction failed for %s: %s", file.filename, e)
+        return JSONResponse({"ok": False, "reason": "error", "message": t("body.upload.error")})
+
+    raw_row = await raw_payload_service.upsert_raw_payload(
+        db,
+        domain=Domain.BODY_COMPOSITION.value,
+        source=Source.BODY_SCAN.value,
+        external_id=file_key,
+        payload=extracted,
+    )
+    await db.commit()
+
+    rows = body_scan_service.normalize_extracted(extracted)
+    raw_date = date or extracted.get("date")
+    try:
+        scan_date = date_type.fromisoformat(str(raw_date)[:10]).isoformat()
+    except (ValueError, TypeError):
+        scan_date = today_local().isoformat()
+
+    return JSONResponse({
+        "ok": True,
+        "scan": {
+            "date": scan_date,
+            "device": extracted.get("device"),
+            "file_key": file_key,
+            "raw_payload_id": raw_row.id,
+            "metrics": rows,
+        },
+    })
+
+
+@router.post("/body-scan/confirm")
+async def body_scan_confirm(
+    request: Request,
+    payload: BodyScanConfirm,
+    db: AsyncSession = Depends(get_session),
+    username: str = Depends(require_auth),
+    _gate: None = Depends(require_module("body_comp")),
+):
+    """Step 2: persist the owner-edited scan rows. 409 + violations on a block."""
+    try:
+        on_date = date_type.fromisoformat(payload.date)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid date")
+
+    try:
+        await body_scan_service.save_scan(
+            db,
+            on_date=on_date,
+            device=payload.device,
+            file_key=payload.file_key,
+            raw_payload_id=payload.raw_payload_id,
+            metrics=[m.model_dump() for m in payload.metrics],
+            note=payload.note,
+            override=payload.override,
+        )
+        await body_scan_service.refresh_alerts(db)
+        await db.commit()
+    except ConflictBlocked as e:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"violations": [v.to_dict() for v in e.violations]},
+        )
+    return JSONResponse({"ok": True, "redirect": "/weight"})
+
+
+@router.post("/body-scan/{scan_id}/delete")
+async def delete_body_scan_entry(
+    request: Request,
+    scan_id: int,
+    db: AsyncSession = Depends(get_session),
+    username: str = Depends(require_auth),
+    _gate: None = Depends(require_module("body_comp")),
+):
+    scan = await body_scan_service.get_scan(db, scan_id)
+    file_key = scan.file_key if scan is not None else None
+    await body_scan_service.delete_scan(db, scan_id)
+    await db.commit()
+
+    if file_key:
+        file_path = os.path.join(STATIC_DIR, "uploads", file_key)
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except OSError as e:
+                logger.warning("Could not remove scan file %s: %s", file_path, e)
+
+    if "hx-request" in request.headers:
+        response = RedirectResponse(url="/weight", status_code=status.HTTP_303_SEE_OTHER)
+        response.headers["HX-Redirect"] = "/weight"
+        return response
     return RedirectResponse(url="/weight", status_code=status.HTTP_303_SEE_OTHER)
 
 

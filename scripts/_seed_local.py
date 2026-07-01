@@ -1,5 +1,5 @@
 # Local scratch seeder — UTF-8 safe (run with the venv python).
-import time, urllib.parse, urllib.request, http.cookiejar
+import time, urllib.parse, urllib.request, http.cookiejar, json
 
 BASE = "http://127.0.0.1:8000"
 cj = http.cookiejar.CookieJar()
@@ -14,6 +14,15 @@ def post(path, data):
     except urllib.error.HTTPError as e:
         return e.code
 
+def post_json(path, data):
+    body = json.dumps(data).encode("utf-8")
+    req = urllib.request.Request(BASE + path, data=body,
+        headers={"Content-Type": "application/json"})
+    try:
+        return opener.open(req).getcode()
+    except urllib.error.HTTPError as e:
+        return e.code
+
 # wait for server
 for _ in range(30):
     try:
@@ -21,7 +30,10 @@ for _ in range(30):
     except Exception:
         time.sleep(0.5)
 
-post("/login", {"username": "timur", "password": "password", "next": "/weight"})
+print("login", post("/login", {"username": "timur", "password": "password", "next": "/weight"}))
+
+# Enable body_comp module
+print("enable_body_comp", post("/settings/modules", {"module": "body_comp", "enabled": "true"}))
 
 S = [
     {"name": "Креатин моногидрат", "dose": "5 г", "timing": "Утро", "evidence": "A", "active": "true", "note": "ежедневно, можно с едой"},
@@ -58,4 +70,40 @@ print("m2", post("/weight/measurement", {"date": "2026-06-23", "neck_cm": "42"})
 # a GLP-1 phase + injection for that page
 print("phase", post("/glp1/phase", {"start_date": "2026-05-15", "drug": "semaglutide", "dose_mg": "0.5"}))
 print("inj", post("/glp1/injection", {"date": "2026-06-22", "dose_mg": "0.5", "drug": "semaglutide", "site": "abdomen_left", "note": "без побочек"}))
+
+# Seed body-scans (InBody / МедАсс)
+scan1 = {
+    "date": "2026-06-18",
+    "device": "InBody 770",
+    "override": True,
+    "metrics": [
+        {"label": "Вес", "value": 111.3, "unit": "кг"},
+        {"label": "Процент жира", "value": 22.4, "unit": "%"},
+        {"label": "Скелетно-мышечная масса", "value": 48.5, "unit": "кг"},
+        {"label": "Безжировая масса", "value": 86.4, "unit": "кг"},
+        {"label": "Общая жидкость организма", "value": 64.2, "unit": "л"},
+        {"label": "Фазовый угол", "value": 6.8, "unit": "°"},
+        {"label": "Балл InBody", "value": 78},
+        {"label": "Площадь висцерального жира", "value": 124.0, "unit": "см²"}
+    ]
+}
+print("scan1", post_json("/weight/body-scan/confirm", scan1))
+
+scan2 = {
+    "date": "2026-06-25",
+    "device": "InBody 770",
+    "override": True,
+    "metrics": [
+        {"label": "Вес", "value": 110.2, "unit": "кг"},
+        {"label": "Процент жира", "value": 21.8, "unit": "%"},
+        {"label": "Скелетно-мышечная масса", "value": 48.8, "unit": "кг"},
+        {"label": "Безжировая масса", "value": 86.2, "unit": "кг"},
+        {"label": "Общая жидкость организма", "value": 64.5, "unit": "л"},
+        {"label": "Фазовый угол", "value": 7.0, "unit": "°"},
+        {"label": "Балл InBody", "value": 80},
+        {"label": "Площадь висцерального жира", "value": 120.0, "unit": "см²"}
+    ]
+}
+print("scan2", post_json("/weight/body-scan/confirm", scan2))
+
 print("DONE")

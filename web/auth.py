@@ -26,6 +26,15 @@ def _get_serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(cfg.session_secret, salt="vitals-session")
 
 
+def _get_mcp_serializer() -> URLSafeTimedSerializer:
+    """Separate salt from the session serializer so a session cookie and an MCP
+    access token can never be mistaken for one another (signature verification
+    fails across salts even though both derive from the same session secret).
+    """
+    cfg = get_web_config()
+    return URLSafeTimedSerializer(cfg.session_secret, salt="vitals-mcp")
+
+
 def safe_next(next: str | None) -> str:
     """Confine the post-login redirect to a local path (open-redirect guard).
 
@@ -41,16 +50,21 @@ def safe_next(next: str | None) -> str:
 def read_session(token: str | None) -> Optional[str]:
     """Verify and load the username from a signed session token.
 
-    Returns the username if valid, or None if expired or tampered.
+    Returns the username if valid, or None if expired, tampered, or — since MCP
+    access tokens are dict payloads, not bare usernames — actually an MCP token
+    presented as a session cookie.
     """
     if not token:
         return None
     cfg = get_web_config()
     serializer = _get_serializer()
     try:
-        return serializer.loads(token, max_age=cfg.session_ttl)
+        payload = serializer.loads(token, max_age=cfg.session_ttl)
     except (SignatureExpired, BadSignature):
         return None
+    if not isinstance(payload, str):
+        return None
+    return payload
 
 
 def create_session(username: str) -> str:

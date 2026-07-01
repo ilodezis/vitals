@@ -99,6 +99,28 @@ async def test_measurement_without_weight_has_null_lbm(db_session):
     assert m.lbm_kg is None
 
 
+async def test_partial_measurement_update_preserves_other_fields(db_session):
+    d = date(2026, 6, 8)
+    await weight_service.log_weight(db_session, on_date=d, weight_kg=88.0)
+    first = await weight_service.upsert_body_measurement(
+        db_session, on_date=d, neck_cm=38, waist_cm=85, hips_cm=100
+    )
+    await db_session.commit()
+    assert first.body_fat_pct is not None
+
+    # A partial call (e.g. MCP log_measurement given just one field) must merge
+    # onto the existing row, not blank the fields it didn't mention.
+    second = await weight_service.upsert_body_measurement(
+        db_session, on_date=d, waist_cm=86
+    )
+    await db_session.commit()
+    assert second.id == first.id
+    assert second.neck_cm == 38
+    assert second.hips_cm == 100
+    assert second.waist_cm == 86
+    assert second.body_fat_pct is not None
+
+
 async def test_noise_alert_raise_and_resolve(db_session):
     # Active marker covering "today" → info alert raised.
     await weight_service.add_noise_marker(

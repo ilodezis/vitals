@@ -41,6 +41,7 @@ class Domain(StrEnum):
     """
 
     WEIGHT = "weight"
+    BODY_COMPOSITION = "body_comp"  # InBody / МедАсс BIA scans (lives under /weight)
     GLP1 = "glp1"
     SUPPLEMENTS = "supplements"
     GENETICS = "genetics"
@@ -126,6 +127,7 @@ class Source(StrEnum):
     HEALTH_AUTO_EXPORT = "health_auto_export"  # Garmin backup channel (uploaded JSON)
     HEVY_API = "hevy_api"
     LAB_PARSER = "lab_parser"
+    BODY_SCAN = "body_scan"  # InBody / МедАсс body-composition scan (vision-parsed or manual)
     VCF_IMPORT = "vcf_import"
     SCHEDULER = "scheduler"
     SYSTEM = "system"

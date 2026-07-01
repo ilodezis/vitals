@@ -57,9 +57,19 @@ def _body_config() -> tuple[float, str]:
     return _config.height_cm, _config.sex
 
 
+# A direct measurement — a manual entry or a body-composition scan (InBody/МедАсс)
+# — outranks a passive device import (Garmin). Manual and scan tie at the top, so
+# the latest of the two wins; Garmin never supersedes either (owner's rule:
+# "Garmin overrides nothing").
+_SOURCE_PRIORITY: dict[str, int] = {
+    Source.MANUAL.value: 2,
+    Source.BODY_SCAN.value: 2,
+}
+
+
 def _source_priority(source: str) -> int:
-    """Manual entries win over any external import for the same date."""
-    return 2 if source == Source.MANUAL.value else 1
+    """Priority of a weight source for the one-active-per-date invariant."""
+    return _SOURCE_PRIORITY.get(source, 1)
 
 
 # ── Weight logs ───────────────────────────────────────────────────────────────
@@ -167,7 +177,11 @@ async def upsert_body_measurement(
     note: Optional[str] = None,
     override: bool = False,
 ) -> BodyMeasurement:
-    """Create/update the day's measurement and (re)derive body-fat % + LBM."""
+    """Create/update the day's measurement and (re)derive body-fat % + LBM.
+
+    Partial merge: a field left ``None`` keeps whatever's already on file for
+    the date instead of being blanked (e.g. MCP ``log_measurement`` is often
+    called with just one of the three circumferences)."""
     await conflict_engine.enforce(
         session,
         Domain.WEIGHT.value,
@@ -176,16 +190,28 @@ async def upsert_body_measurement(
         entity_ref=f"body_measurement:{on_date.isoformat()}",
     )
 
+    result = await session.execute(
+        select(BodyMeasurement).where(BodyMeasurement.date == on_date)
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        row = BodyMeasurement(date=on_date, domain=DOMAIN, source=Source.MANUAL.value)
+        session.add(row)
+
+    effective_neck = neck_cm if neck_cm is not None else row.neck_cm
+    effective_waist = waist_cm if waist_cm is not None else row.waist_cm
+    effective_hips = hips_cm if hips_cm is not None else row.hips_cm
+
     height_cm, sex = _body_config()
     body_fat_pct = None
-    if neck_cm and waist_cm:
+    if effective_neck and effective_waist:
         try:
             body_fat_pct = navy_body_fat_pct(
-                waist_cm=waist_cm,
-                neck_cm=neck_cm,
+                waist_cm=effective_waist,
+                neck_cm=effective_neck,
                 height_cm=height_cm,
                 sex=sex,
-                hips_cm=hips_cm,
+                hips_cm=effective_hips,
             )
         except ValueError:
             body_fat_pct = None
@@ -196,17 +222,9 @@ async def upsert_body_measurement(
         if active is not None:
             lbm_kg = lean_body_mass_kg(active.weight_kg, body_fat_pct)
 
-    result = await session.execute(
-        select(BodyMeasurement).where(BodyMeasurement.date == on_date)
-    )
-    row = result.scalar_one_or_none()
-    if row is None:
-        row = BodyMeasurement(date=on_date, domain=DOMAIN, source=Source.MANUAL.value)
-        session.add(row)
-
-    row.neck_cm = neck_cm
-    row.waist_cm = waist_cm
-    row.hips_cm = hips_cm
+    row.neck_cm = effective_neck
+    row.waist_cm = effective_waist
+    row.hips_cm = effective_hips
     row.body_fat_pct = body_fat_pct
     row.lbm_kg = lbm_kg
     if note is not None:
@@ -330,17 +348,20 @@ async def refresh_noise_alert(
 
 # ── Chart series ──────────────────────────────────────────────────────────────
 async def chart_series(
-    session: AsyncSession, *, goal_kg: Optional[float] = None
+    session: AsyncSession, *, goal_kg: Optional[float] = None, include_bia: bool = False
 ) -> dict:
     """Assemble everything the weight dashboard chart needs.
 
     Returns JSON-serialisable structures:
       * ``raw``        — [{date, weight_kg}] active points (secondary scatter)
       * ``trend_ma``   — [{date, weight_kg}] 7-day MA over noise-excluded points
-      * ``lbm``        — [{date, lbm_kg}] from measurements
+      * ``lbm``        — [{date, lbm_kg}] from Navy measurements
       * ``noise``      — [{start, end}] ranges (for the chart annotation overlay)
       * ``projection`` — {target_kg, date} or None
       * ``trend``      — {slope_per_week} or None
+      * ``bia``        — {bf:[{date,value}], lbm:[{date,value}]} from BIA scans,
+                         only when ``include_bia`` (the body_comp module is on).
+                         Coexists with the Navy ``lbm`` series — both are shown.
     """
     weights = await list_active_weights(session)
     raw_points = [(w.date, w.weight_kg) for w in weights]
@@ -368,6 +389,15 @@ async def chart_series(
 
     phases = await _glp1_phase_overlays(session)
 
+    # BIA overlay (InBody/МедАсс) — a second source for body-fat % / LBM shown
+    # alongside the Navy series. Lazily imported so the weight module never hard-
+    # depends on body_comp; only assembled when the module is enabled.
+    bia = None
+    if include_bia:
+        from vitals.services import body_scan_service
+
+        bia = await body_scan_service.bia_chart_points(session)
+
     return {
         "raw": [{"date": d.isoformat(), "weight_kg": v} for (d, v) in raw_points],
         "trend_ma": [{"date": d.isoformat(), "weight_kg": v} for (d, v) in ma],
@@ -381,6 +411,7 @@ async def chart_series(
         "trend": (
             {"slope_per_week": round(trend.slope_per_week, 3)} if trend else None
         ),
+        "bia": bia,
     }
 
 
@@ -425,12 +456,14 @@ async def delete_weight_log(session: AsyncSession, log_id: int) -> bool:
         remaining = await session.execute(
             select(WeightLog)
             .where(WeightLog.date == target_date)
-            # Highest-priority source first (manual beats imports), then newest row.
-            .order_by(
-                (WeightLog.source == Source.MANUAL.value).desc(), WeightLog.id.desc()
-            )
+            .order_by(WeightLog.id.desc())
         )
-        next_row = remaining.scalars().first()
+        rows = remaining.scalars().all()
+        # Reactivate the highest-priority source (manual/scan beat Garmin), and
+        # among ties the newest row (id desc, already the scan order).
+        next_row = max(
+            rows, key=lambda r: (_source_priority(r.source), r.id), default=None
+        )
         if next_row:
             next_row.superseded = False
             await session.flush()

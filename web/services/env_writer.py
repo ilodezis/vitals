@@ -47,7 +47,15 @@ def write_keys(updates: dict[str, str]) -> None:
 
     Existing keys are updated in-place; new keys are appended.  The write
     is atomic on POSIX (rename) and best-effort on Windows (overwrite).
+
+    Rejects values containing ``\\n``/``\\r``: unescaped, they'd break out of
+    their ``KEY=value`` line and let a saved field inject or overwrite an
+    arbitrary env var (e.g. ``VITALS_SESSION_SECRET``) on the next write.
     """
+    for key, value in updates.items():
+        if "\n" in value or "\r" in value:
+            raise ValueError(f"Value for {key!r} contains a newline character")
+
     path = _find_env_path()
     with _LOCK:
         # Read existing lines (tolerate missing file).

@@ -141,13 +141,29 @@
         return s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
     }
 
+    // Markdown link syntax ([x](url)) survives escapeHtml() untouched, so
+    // marked still turns a "javascript:" URL into a clickable <a href>.
+    // Strip dangerous schemes from the parsed output before it hits innerHTML.
+    function sanitizeLinks(html) {
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        template.content.querySelectorAll('a[href], img[src]').forEach(el => {
+            const attr = el.hasAttribute('href') ? 'href' : 'src';
+            const scheme = (el.getAttribute(attr) || '').replace(/[\x00-\x20]/g, '').toLowerCase();
+            if (scheme.startsWith('javascript:') || scheme.startsWith('vbscript:') || scheme.startsWith('data:')) {
+                el.removeAttribute(attr);
+            }
+        });
+        return template.innerHTML;
+    }
+
     function renderAllMarkdown() {
         if (window.marked) {
             document.querySelectorAll('.v-markdown-content').forEach(el => {
                 const rawText = el.textContent || el.innerText;
                 const target = el.nextElementSibling;
                 if (target && target.classList.contains('v-text-body') && !target.innerHTML) {
-                    target.innerHTML = marked.parse(escapeHtml(rawText));
+                    target.innerHTML = sanitizeLinks(marked.parse(escapeHtml(rawText)));
                 }
             });
         }

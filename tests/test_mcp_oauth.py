@@ -1,15 +1,17 @@
 """Integration tests for Vitals OAuth 2.0 authorization server and MCP tools."""
 from __future__ import annotations
 
+import html
 import json
 from datetime import date
+from urllib.parse import parse_qs, urlsplit
 import pytest
 from sqlalchemy import select
 
 from vitals.enums import Source
 from vitals.models import WeightLog, GarminDaily, HevyWorkout, LabResult
-from web.auth import read_session, _get_serializer
-from web.config import get_web_config
+from web.auth import create_session, read_session, _get_mcp_serializer, _get_serializer
+from web.config import SESSION_COOKIE, get_web_config
 
 pytestmark = pytest.mark.asyncio
 
@@ -31,7 +33,58 @@ async def test_oauth_authorize_unauthenticated_redirects(client):
         "/oauth/authorize?response_type=code&client_id=vitals-claude-connector&redirect_uri=https://claude.ai/callback"
     )
     assert response.status_code == 302
-    assert response.headers["location"].startswith("/login?next=/oauth/authorize")
+    parsed = urlsplit(response.headers["location"])
+    assert parsed.path == "/login"
+    assert parse_qs(parsed.query)["next"][0].startswith("/oauth/authorize")
+
+
+async def test_oauth_authorize_unauthenticated_redirect_preserves_full_query(client):
+    """The `next` param must be percent-encoded as a single value — the OAuth
+    query string it carries (redirect_uri, code_challenge, state...) contains
+    its own '&'/'?' characters that would otherwise be parsed as separate
+    top-level params on /login, truncating `next` and 422ing after login."""
+    original_query = (
+        "response_type=code&client_id=vitals-claude-connector"
+        "&redirect_uri=https://claude.ai/callback"
+        "&code_challenge=abc123&code_challenge_method=S256&state=xyz789"
+    )
+    response = await client.get(f"/oauth/authorize?{original_query}")
+    assert response.status_code == 302
+
+    location = response.headers["location"]
+    parsed = urlsplit(location)
+    assert parsed.path == "/login"
+    next_value = parse_qs(parsed.query)["next"][0]
+    assert next_value == f"/oauth/authorize?{original_query}"
+
+
+async def test_oauth_login_redirect_reaches_authorize_with_full_params(client):
+    """End-to-end: an unauthenticated visit to /oauth/authorize with PKCE +
+    state, followed by a successful login, must land back on the SAME
+    /oauth/authorize URL with every original param intact (not a truncated
+    /oauth/authorize?response_type=code that 422s)."""
+    original_query = (
+        "response_type=code&client_id=vitals-claude-connector"
+        "&redirect_uri=https://claude.ai/callback"
+        "&code_challenge=abc123&code_challenge_method=S256&state=xyz789"
+    )
+    r1 = await client.get(f"/oauth/authorize?{original_query}")
+    login_url = r1.headers["location"]
+
+    r2 = await client.get(login_url)
+    assert r2.status_code == 200
+    next_value = parse_qs(urlsplit(login_url).query)["next"][0]
+    assert next_value == f"/oauth/authorize?{original_query}"
+    # Jinja HTML-escapes the hidden field's value (e.g. & -> &amp;) — correct
+    # and safe; escape before comparing to the raw query string.
+    assert f'value="{html.escape(next_value)}"' in r2.text
+
+    # Credentials match conftest's TEST_USERNAME/TEST_PASSWORD, referenced as
+    # literals rather than re-imported (a site-packages `tests` package can
+    # shadow `tests.conftest` and break the import — see auth_client fixture).
+    r3 = await client.post("/login", data={"username": "tester", "password": "password", "next": next_value})
+    assert r3.status_code == 303
+    assert r3.headers["location"] == f"/oauth/authorize?{original_query}"
 
 
 async def test_oauth_authorize_authenticated_renders(auth_client):
@@ -54,6 +107,50 @@ async def test_oauth_authorize_invalid_client(auth_client):
     )
     assert response.status_code == 200
     assert "Неверный client_id" in response.text
+
+
+async def test_oauth_authorize_invalid_redirect_uri(auth_client):
+    """GET /oauth/authorize with a redirect_uri outside the allowlist is rejected,
+    not silently carried through to the consent screen or a login redirect."""
+    response = await auth_client.get(
+        "/oauth/authorize?response_type=code&client_id=vitals-claude-connector&redirect_uri=https://evil.com/callback"
+    )
+    assert response.status_code == 200
+    assert "Недопустимый redirect_uri" in response.text
+
+
+async def test_oauth_authorize_invalid_redirect_uri_unauthenticated(client):
+    """Same rejection happens before the unauthenticated login redirect, so an
+    attacker can't ride the login flow into an approval with a bad redirect_uri."""
+    response = await client.get(
+        "/oauth/authorize?response_type=code&client_id=vitals-claude-connector&redirect_uri=https://evil.com/callback"
+    )
+    assert response.status_code == 200
+    assert "Недопустимый redirect_uri" in response.text
+
+
+async def test_oauth_authorize_shows_redirect_target(auth_client):
+    """The consent screen displays the real destination domain."""
+    response = await auth_client.get(
+        "/oauth/authorize?response_type=code&client_id=vitals-claude-connector&redirect_uri=https://claude.ai/callback"
+    )
+    assert response.status_code == 200
+    assert "Вы будете перенаправлены на" in response.text
+    assert "claude.ai" in response.text
+
+
+async def test_oauth_approve_invalid_redirect_uri(auth_client):
+    """POST /oauth/authorize/approve rejects a redirect_uri outside the allowlist
+    even if somehow reached (defense in depth behind the GET-time check)."""
+    response = await auth_client.post(
+        "/oauth/authorize/approve",
+        data={
+            "client_id": "vitals-claude-connector",
+            "redirect_uri": "https://evil.com/callback",
+            "state": "x",
+        },
+    )
+    assert response.status_code == 400
 
 
 async def test_oauth_full_flow_and_token_exchange(auth_client, redis):
@@ -92,6 +189,7 @@ async def test_oauth_full_flow_and_token_exchange(auth_client, redis):
             "code": code,
             "redirect_uri": "https://claude.ai/callback",
             "client_id": "vitals-claude-connector",
+            "client_secret": "test-mcp-secret",
             "code_verifier": "some_challenge",  # matches plain code_challenge
         },
     )
@@ -103,11 +201,85 @@ async def test_oauth_full_flow_and_token_exchange(auth_client, redis):
     # Verify the code is deleted from Redis (single-use constraint)
     assert await redis.get(f"oauth_code:{code}") is None
 
-    # Verify token signature and contents
-    serializer = _get_serializer()
+    # Verify token signature and contents — signed with the dedicated MCP salt,
+    # not the session salt (see web.auth._get_mcp_serializer).
+    serializer = _get_mcp_serializer()
     payload = serializer.loads(token_data["access_token"], max_age=3600)
     assert payload["username"] == "tester"
     assert payload["client_id"] == "vitals-claude-connector"
+    assert payload["type"] == "mcp_access_token"
+
+    # The session serializer must NOT be able to verify an MCP token (different salt).
+    with pytest.raises(Exception):
+        _get_serializer().loads(token_data["access_token"], max_age=3600)
+
+
+async def test_oauth_token_missing_client_secret_rejected(auth_client, redis, monkeypatch):
+    """Fail-closed: an unconfigured VITALS_MCP_CLIENT_SECRET must refuse token
+    issuance rather than skipping the secret check."""
+    monkeypatch.setenv("VITALS_MCP_CLIENT_SECRET", "")
+
+    response = await auth_client.post(
+        "/oauth/authorize/approve",
+        data={"client_id": "vitals-claude-connector", "redirect_uri": "https://claude.ai/callback"},
+    )
+    code = response.headers["location"].split("code=")[1].split("&")[0]
+
+    token_response = await auth_client.post(
+        "/oauth/token",
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": "https://claude.ai/callback",
+            "client_id": "vitals-claude-connector",
+        },
+    )
+    assert token_response.status_code == 400
+    assert token_response.json()["error"] == "invalid_client"
+
+
+async def test_oauth_token_wrong_client_secret_rejected(auth_client, redis):
+    """A client_secret that doesn't match the configured one is rejected."""
+    response = await auth_client.post(
+        "/oauth/authorize/approve",
+        data={"client_id": "vitals-claude-connector", "redirect_uri": "https://claude.ai/callback"},
+    )
+    code = response.headers["location"].split("code=")[1].split("&")[0]
+
+    token_response = await auth_client.post(
+        "/oauth/token",
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": "https://claude.ai/callback",
+            "client_id": "vitals-claude-connector",
+            "client_secret": "not-the-right-secret",
+        },
+    )
+    assert token_response.status_code == 400
+    assert token_response.json()["error"] == "invalid_client"
+
+
+async def test_mcp_token_rejected_as_session_cookie(client):
+    """An MCP access token (dict payload) must not authenticate a normal session
+    even though it's signed with the same session_secret (different salt + type
+    check in read_session)."""
+    mcp_token = _get_mcp_serializer().dumps({
+        "username": "tester",
+        "client_id": "vitals-claude-connector",
+        "type": "mcp_access_token",
+    })
+    client.cookies.set(SESSION_COOKIE, mcp_token)
+    response = await client.get("/weight", headers={"Accept": "text/html"})
+    assert response.status_code == 302
+    assert "/login" in response.headers["location"]
+
+
+async def test_session_token_rejected_as_mcp_bearer(client):
+    """A session cookie token must not authenticate as an MCP Bearer token."""
+    session_token = create_session("tester")
+    response = await client.get("/mcp/sse", headers={"Authorization": f"Bearer {session_token}"})
+    assert response.status_code == 401
 
 
 async def test_mcp_auth_middleware(client, redis):
@@ -121,7 +293,7 @@ async def test_mcp_auth_middleware(client, redis):
     assert r_unauth_post.status_code == 401
 
     # Generate a valid token
-    serializer = _get_serializer()
+    serializer = _get_mcp_serializer()
     valid_token = serializer.dumps({
         "username": "tester",
         "client_id": "vitals-claude-connector",

@@ -156,7 +156,7 @@ class GarminClient:
                     method = getattr(garmin, method_name)
                     out[key] = method(ds)
                 except Exception as e:  # noqa: BLE001
-                    logger.debug("Garmin %s(%s) failed: %s", method_name, ds, e)
+                    logger.warning("Garmin %s(%s) failed: %s", method_name, ds, e)
                     out[key] = None
             # body battery + body composition use a (start, end) range signature.
             for key, method_name in (
@@ -166,7 +166,7 @@ class GarminClient:
                 try:
                     out[key] = getattr(garmin, method_name)(ds, ds)
                 except Exception as e:  # noqa: BLE001
-                    logger.debug("Garmin %s(%s) failed: %s", method_name, ds, e)
+                    logger.warning("Garmin %s(%s) failed: %s", method_name, ds, e)
                     out[key] = None
             return out
 

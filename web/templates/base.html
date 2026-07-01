@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="{{ request.state.lang|default('en') }}" class="h-full">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -21,7 +22,9 @@
     <!-- Google Fonts: Inter & Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
 
     <!-- Tailwind CSS (compiled CLI bundle) + Vitals design system -->
     <link rel="stylesheet" href="{{ static_version('/static/tailwind.css') }}">
@@ -36,10 +39,11 @@
     <script>
         window.__STRINGS__ = {{ get_js_strings(request.state.lang) | tojson | safe }};
         window.__LANG__ = "{{ request.state.lang|default('en') }}";
-        window.t = function(key) { return window.__STRINGS__[key] || key; };
+        window.t = function (key) { return window.__STRINGS__[key] || key; };
     </script>
     <!-- Alpine loads at end of body so page-specific scripts (protocol.js etc) run first -->
 </head>
+
 <body class="v-app-shell flex flex-col overflow-hidden select-none" x-data="{ mobileMenuOpen: false }" hx-boost="true">
     <div id="top-progress-bar" class="v-progress-bar"></div>
 
@@ -69,14 +73,16 @@
                 {{ username }}
             </span>
             <a href="/settings" title="{{ t('nav.settings_title') }}"
-               class="v-icon-btn {% if current_path.startswith('/settings') %}text-[var(--accent)]{% endif %}">
+                class="v-icon-btn {% if current_path.startswith('/settings') %}text-[var(--accent)]{% endif %}">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
             </a>
             <form action="/logout" method="POST" class="hidden md:inline" hx-boost="false">
-                <button type="submit" class="v-btn-ghost text-xs" style="padding:.45rem .9rem">{{ t("nav.logout") }}</button>
+                <button type="submit" class="v-btn-ghost text-xs" style="padding:.45rem .9rem">{{ t("nav.logout")
+                    }}</button>
             </form>
             {% endif %}
         </div>
@@ -89,16 +95,16 @@
         <div id="alerts-container" class="flex-none px-6 pt-5 max-w-6xl mx-auto w-full space-y-2">
             {% if alerts|length > 1 %}
             <div class="flex justify-end pb-1">
-                <button hx-post="/alerts/resolve-all?domain={{ alerts[0].domain }}" 
-                        hx-target="#alerts-container" 
-                        hx-swap="outerHTML" 
-                        class="text-xs font-semibold hover:text-[var(--accent-2)] transition text-[var(--muted)] flex items-center gap-1">
+                <button hx-post="/alerts/resolve-all?domain={{ alerts[0].domain }}" hx-target="#alerts-container"
+                    hx-swap="outerHTML"
+                    class="text-xs font-semibold hover:text-[var(--accent-2)] transition text-[var(--muted)] flex items-center gap-1">
                     {{ t("alert.hide_all") }}
                 </button>
             </div>
             {% endif %}
             {% for alert in alerts %}
-            <div id="alert-{{ alert.id }}" class="v-alert {{ alert.severity }} flex items-center justify-between gap-3 flex-wrap">
+            <div id="alert-{{ alert.id }}"
+                class="v-alert {{ alert.severity }} flex items-center justify-between gap-3 flex-wrap">
                 <div class="flex items-center gap-2 font-medium">
                     <span class="font-bold v-text-micro opacity-80">{{ t("alert.severity." + alert.severity) }}</span>
                     <span>{{ alert.message }}</span>
@@ -107,7 +113,8 @@
                     {% if alert.override_at %}
                     <span class="text-xs italic" style="color: var(--muted)">{{ t("alert.overridden") }}</span>
                     {% endif %}
-                    <button hx-post="/alerts/{{ alert.id }}/resolve" hx-target="#alert-{{ alert.id }}" hx-swap="outerHTML" class="font-semibold text-xs hover:opacity-70 transition">
+                    <button hx-post="/alerts/{{ alert.id }}/resolve" hx-target="#alert-{{ alert.id }}"
+                        hx-swap="outerHTML" class="font-semibold text-xs hover:opacity-70 transition">
                         {{ t("alert.hide") }}
                     </button>
                 </div>
@@ -122,26 +129,32 @@
 
     {% if username %}
     <!-- Mobile Bottom Navigation -->
-    <nav class="md:hidden v-bottom-nav bg-[rgba(28,25,32,0.95)] backdrop-blur-md border-t border-[var(--line)] grid grid-cols-5 items-center px-1" style="padding-bottom: env(safe-area-inset-bottom); min-height: calc(3.5rem + env(safe-area-inset-bottom))">
+    <nav class="md:hidden v-bottom-nav bg-[rgba(28,25,32,0.95)] backdrop-blur-md border-t border-[var(--line)] grid grid-cols-5 items-center px-1"
+        style="padding-bottom: env(safe-area-inset-bottom); min-height: calc(3.5rem + env(safe-area-inset-bottom))">
         <!-- Weight -->
-        <a href="/weight" class="flex flex-col items-center justify-center gap-1 h-full py-1 text-center {% if current_path.startswith('/weight') %}text-[var(--accent)]{% else %}text-[var(--muted)] hover:text-[var(--fg-2)]{% endif %}">
+        <a href="/weight"
+            class="flex flex-col items-center justify-center gap-1 h-full py-1 text-center {% if current_path.startswith('/weight') %}text-[var(--accent)]{% else %}text-[var(--muted)] hover:text-[var(--fg-2)]{% endif %}">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
             </svg>
             <span class="text-[0.62rem] font-bold">{{ t("nav.weight") }}</span>
         </a>
 
         <!-- Organism -->
-        <a href="/garmin" class="flex flex-col items-center justify-center gap-1 h-full py-1 text-center {% if current_path.startswith('/garmin') %}text-[var(--accent)]{% else %}text-[var(--muted)] hover:text-[var(--fg-2)]{% endif %}">
+        <a href="/garmin"
+            class="flex flex-col items-center justify-center gap-1 h-full py-1 text-center {% if current_path.startswith('/garmin') %}text-[var(--accent)]{% else %}text-[var(--muted)] hover:text-[var(--fg-2)]{% endif %}">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
             <span class="text-[0.62rem] font-bold">{{ t("nav.organism") }}</span>
         </a>
 
         <!-- Workouts -->
         {% if em.get('hevy') %}
-        <a href="/hevy" class="flex flex-col items-center justify-center gap-1 h-full py-1 text-center {% if current_path.startswith('/hevy') %}text-[var(--accent)]{% else %}text-[var(--muted)] hover:text-[var(--fg-2)]{% endif %}">
+        <a href="/hevy"
+            class="flex flex-col items-center justify-center gap-1 h-full py-1 text-center {% if current_path.startswith('/hevy') %}text-[var(--accent)]{% else %}text-[var(--muted)] hover:text-[var(--fg-2)]{% endif %}">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
@@ -151,16 +164,19 @@
 
         <!-- Supplements -->
         {% if em.get('supplements') %}
-        <a href="/supplements" class="flex flex-col items-center justify-center gap-1 h-full py-1 text-center {% if current_path.startswith('/supplements') %}text-[var(--accent)]{% else %}text-[var(--muted)] hover:text-[var(--fg-2)]{% endif %}">
+        <a href="/supplements"
+            class="flex flex-col items-center justify-center gap-1 h-full py-1 text-center {% if current_path.startswith('/supplements') %}text-[var(--accent)]{% else %}text-[var(--muted)] hover:text-[var(--fg-2)]{% endif %}">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.435 5.565a6.002 6.002 0 00-8.485 0L3.586 11.93a6.002 6.002 0 008.485 8.485l6.364-6.364a6.002 6.002 0 000-8.485z M8 16l8-8" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M18.435 5.565a6.002 6.002 0 00-8.485 0L3.586 11.93a6.002 6.002 0 008.485 8.485l6.364-6.364a6.002 6.002 0 000-8.485z M8 16l8-8" />
             </svg>
             <span class="text-[0.62rem] font-bold">{{ t("nav.supplements") }}</span>
         </a>
         {% endif %}
 
         <!-- More -->
-        <button @click="mobileMenuOpen = true" class="flex flex-col items-center justify-center gap-1 h-full py-1 text-center text-[var(--muted)] hover:text-[var(--fg-2)] focus:outline-none">
+        <button @click="mobileMenuOpen = true"
+            class="flex flex-col items-center justify-center gap-1 h-full py-1 text-center text-[var(--muted)] hover:text-[var(--fg-2)] focus:outline-none">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -169,73 +185,85 @@
     </nav>
 
     <!-- Mobile Drawer/Overlay -->
-    <div x-show="mobileMenuOpen" 
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0 translate-y-full"
-         x-transition:enter-end="opacity-100 translate-y-0"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100 translate-y-0"
-         x-transition:leave-end="opacity-0 translate-y-full"
-         class="fixed inset-0 z-50 flex flex-col justify-end"
-         x-cloak>
-        
+    <div x-show="mobileMenuOpen" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 translate-y-full" x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 translate-y-full" class="fixed inset-0 z-50 flex flex-col justify-end"
+        x-cloak>
+
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="mobileMenuOpen = false"></div>
-        
+
         <!-- Drawer Content -->
-        <div class="relative bg-[var(--surface)] border-t border-[var(--line-2)] rounded-t-[var(--radius-lg)] p-6 space-y-6 max-h-[85vh] overflow-y-auto select-none" style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom))">
+        <div class="relative bg-[var(--surface)] border-t border-[var(--line-2)] rounded-t-[var(--radius-lg)] p-6 space-y-6 max-h-[85vh] overflow-y-auto select-none"
+            style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom))">
             <!-- Close Button/Indicator -->
             <div class="flex justify-between items-center pb-3 border-b border-[var(--line)]">
                 <span class="v-text-card">{{ t("nav.menu_title") }}</span>
                 <button @click="mobileMenuOpen = false" class="v-icon-btn">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                            d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
-            
+
             <!-- Navigation Links inside Drawer -->
             <div class="grid grid-cols-2 gap-4">
                 {% if em.get('skincare') %}
-                <a href="/skincare" @click="mobileMenuOpen = false" class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
+                <a href="/skincare" @click="mobileMenuOpen = false"
+                    class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
                     <svg class="h-6 w-6 text-[var(--fg-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
                     <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.skincare") }}</span>
                 </a>
                 {% endif %}
                 {% if em.get('nutrition') %}
-                <a href="/nutrition" @click="mobileMenuOpen = false" class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
+                <a href="/nutrition" @click="mobileMenuOpen = false"
+                    class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
                     <svg class="h-6 w-6 text-[var(--fg-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
                     </svg>
                     <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.nutrition") }}</span>
                 </a>
                 {% endif %}
-                <a href="/reports" @click="mobileMenuOpen = false" class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
+                <a href="/reports" @click="mobileMenuOpen = false"
+                    class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
                     <svg class="h-6 w-6 text-[var(--fg-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.reports") }}</span>
                 </a>
                 {% if em.get('glp1') %}
-                <a href="/glp1" @click="mobileMenuOpen = false" class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
+                <a href="/glp1" @click="mobileMenuOpen = false"
+                    class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
                     <svg class="h-6 w-6 text-[var(--fg-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                     </svg>
                     <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.glp1") }}</span>
                 </a>
                 {% endif %}
-                <a href="/labs" @click="mobileMenuOpen = false" class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
+                <a href="/labs" @click="mobileMenuOpen = false"
+                    class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
                     <svg class="h-6 w-6 text-[var(--fg-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                     </svg>
                     <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.labs") }}</span>
                 </a>
                 {% if em.get('genetics') %}
-                <a href="/genetics" @click="mobileMenuOpen = false" class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
+                <a href="/genetics" @click="mobileMenuOpen = false"
+                    class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
                     <svg class="h-6 w-6 text-[var(--fg-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-3.517-1.009-6.799-2.753-9.571m-3.44 2.04A11.003 11.003 0 002 11m14 12c0-1.305-.14-2.578-.408-3.803M14 4.51C13.12 3.238 12 2.22 10.747 1.5m6.89 2.502a11.962 11.962 0 011.603 5.3A12.012 12.012 0 0118 19.006m-5.836-8.837a4 4 0 016.425 2.19M16.022 9.022a7.001 7.001 0 00-11.042 5.6M12 9v12m-8.083-4a11.002 11.002 0 0020.166 0" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 3C12 3 12 7 17 7C12 7 12 11 7 11C12 11 12 15 17 15C12 15 12 19 7 19" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 3C12 3 12 7 7 7C12 7 12 11 17 11C12 11 12 15 7 15C12 15 12 19 17 19" />
                     </svg>
                     <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.genetics") }}</span>
                 </a>
@@ -267,13 +295,16 @@
             <div class="flex justify-center">
                 <svg class="v-loading-spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <path class="opacity-75" fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                    </path>
                 </svg>
             </div>
             <!-- Text -->
             <div class="space-y-2">
                 <h3 id="loader-title" class="v-text-heading">{{ t("js.loader.operation_title") }}</h3>
-                <p id="loader-text" class="text-xs text-[var(--muted)] leading-relaxed">{{ t("js.loader.operation_text") }}</p>
+                <p id="loader-text" class="text-xs text-[var(--muted)] leading-relaxed">{{ t("js.loader.operation_text")
+                    }}</p>
             </div>
         </div>
     </div>
@@ -281,7 +312,7 @@
     <script>
         // Transient toast for client-side feedback (form errors, network failures).
         // type: 'error' (default) | 'warn' | 'success'.
-        window.vitalsToast = function(message, type) {
+        window.vitalsToast = function (message, type) {
             let container = document.getElementById('toast-container');
             if (!container) {
                 container = document.createElement('div');
@@ -355,7 +386,7 @@
                 title: window.t('loader.default_title'),
                 text: window.t('loader.default_text')
             };
-            
+
             // Match route
             for (const [route, cfg] of Object.entries(slowRoutes)) {
                 if (actionUrl.includes(route)) {
@@ -363,10 +394,10 @@
                     break;
                 }
             }
-            
+
             titleEl.textContent = config.title;
             textEl.textContent = config.text;
-            
+
             loader.classList.add('is-active');
         }
 
@@ -381,13 +412,13 @@
         document.addEventListener('htmx:configRequest', (evt) => {
             const path = evt.detail.path;
             const isSlow = Object.keys(slowRoutes).some(route => path.includes(route));
-            
+
             // Activate top progress bar
             const progressBar = document.getElementById('top-progress-bar');
             if (progressBar) {
                 progressBar.classList.add('is-active');
             }
-            
+
             if (isSlow) {
                 showLoader(path);
             }
@@ -429,44 +460,45 @@
          mobile, and overlay a left-aligned formatted span. Runs on first load AND
          after every HTMX swap (hx-boost navigation replaces <main>). -->
     <script>
-    (function(){
-        var valDesc=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');
-        function wrapDate(input){
-            if(input.dataset.dateWrapped) return;
-            input.dataset.dateWrapped='1';
-            var wrap=document.createElement('div');
-            wrap.className='v-date-wrap';
-            input.parentNode.insertBefore(wrap,input);
-            wrap.appendChild(input);
-            input.classList.add('v-date-native');
-            var disp=document.createElement('span');
-            disp.className='v-date-display';
-            wrap.appendChild(disp);
-            function sync(){
-                var v=valDesc.get.call(input);
-                if(!v){disp.textContent='';return;}
-                var p=v.split('-');
-                disp.textContent=new Date(+p[0],p[1]-1,+p[2])
-                    .toLocaleDateString(window.__LANG__||'ru',{day:'numeric',month:'long',year:'numeric'});
+        (function () {
+            var valDesc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+            function wrapDate(input) {
+                if (input.dataset.dateWrapped) return;
+                input.dataset.dateWrapped = '1';
+                var wrap = document.createElement('div');
+                wrap.className = 'v-date-wrap';
+                input.parentNode.insertBefore(wrap, input);
+                wrap.appendChild(input);
+                input.classList.add('v-date-native');
+                var disp = document.createElement('span');
+                disp.className = 'v-date-display';
+                wrap.appendChild(disp);
+                function sync() {
+                    var v = valDesc.get.call(input);
+                    if (!v) { disp.textContent = ''; return; }
+                    var p = v.split('-');
+                    disp.textContent = new Date(+p[0], p[1] - 1, +p[2])
+                        .toLocaleDateString(window.__LANG__ || 'ru', { day: 'numeric', month: 'long', year: 'numeric' });
+                }
+                Object.defineProperty(input, 'value', {
+                    get: function () { return valDesc.get.call(this); },
+                    set: function (v) { valDesc.set.call(this, v); sync(); },
+                    configurable: true
+                });
+                input.addEventListener('change', sync);
+                sync();
             }
-            Object.defineProperty(input,'value',{
-                get:function(){return valDesc.get.call(this);},
-                set:function(v){valDesc.set.call(this,v);sync();},
-                configurable:true
-            });
-            input.addEventListener('change',sync);
-            sync();
-        }
-        function initDates(root){
-            (root||document).querySelectorAll('input[type="date"].v-input').forEach(wrapDate);
-        }
-        document.addEventListener('DOMContentLoaded',function(){initDates();});
-        document.addEventListener('htmx:load',function(e){initDates(e.target);});
-        initDates();
-    })();
+            function initDates(root) {
+                (root || document).querySelectorAll('input[type="date"].v-input').forEach(wrapDate);
+            }
+            document.addEventListener('DOMContentLoaded', function () { initDates(); });
+            document.addEventListener('htmx:load', function (e) { initDates(e.target); });
+            initDates();
+        })();
     </script>
 
     <!-- Alpine.js — loaded last so all page-specific component factories are defined first -->
     <script id="alpine-script" hx-preserve="true" src="{{ static_version('/static/vendor/alpine.min.js') }}"></script>
 </body>
+
 </html>

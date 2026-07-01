@@ -17,9 +17,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from vitals.config import load_config
-from vitals.enums import Domain
+from vitals.enums import Domain, Source
 from vitals.models import (
     BodyMeasurement,
+    BodyScan,
     DosePhase,
     GarminActivity,
     GarminDaily,
@@ -91,8 +92,11 @@ async def get_user_profile() -> dict:
 
 
 @mcp.tool()
-async def get_weight_logs(start_date: Optional[str] = None, end_date: Optional[str] = None) -> dict:
-    """Retrieves active weight logs, body measurements, and noise markers for a date range (YYYY-MM-DD)."""
+async def get_weight_logs(
+    start_date: Optional[str] = None, end_date: Optional[str] = None, limit: int = 100
+) -> dict:
+    """Retrieves active weight logs, body measurements, and noise markers for a
+    date range (YYYY-MM-DD). Weights/measurements default to the most recent 100."""
     session_factory = get_session_factory()
     start = date_type.fromisoformat(start_date) if start_date else None
     end = date_type.fromisoformat(end_date) if end_date else None
@@ -104,7 +108,7 @@ async def get_weight_logs(start_date: Optional[str] = None, end_date: Optional[s
             w_stmt = w_stmt.where(WeightLog.date >= start)
         if end:
             w_stmt = w_stmt.where(WeightLog.date <= end)
-        w_stmt = w_stmt.order_by(WeightLog.date.desc())
+        w_stmt = w_stmt.order_by(WeightLog.date.desc()).limit(limit)
         weights = (await session.execute(w_stmt)).scalars().all()
 
         # Body measurements
@@ -113,7 +117,7 @@ async def get_weight_logs(start_date: Optional[str] = None, end_date: Optional[s
             m_stmt = m_stmt.where(BodyMeasurement.date >= start)
         if end:
             m_stmt = m_stmt.where(BodyMeasurement.date <= end)
-        m_stmt = m_stmt.order_by(BodyMeasurement.date.desc())
+        m_stmt = m_stmt.order_by(BodyMeasurement.date.desc()).limit(limit)
         measurements = (await session.execute(m_stmt)).scalars().all()
 
         # Noise markers
@@ -128,8 +132,11 @@ async def get_weight_logs(start_date: Optional[str] = None, end_date: Optional[s
 
 
 @mcp.tool()
-async def get_glp1_logs(start_date: Optional[str] = None, end_date: Optional[str] = None) -> dict:
-    """Retrieves GLP-1 injection logs, active dosage phases, and recorded side effects."""
+async def get_glp1_logs(
+    start_date: Optional[str] = None, end_date: Optional[str] = None, limit: int = 100
+) -> dict:
+    """Retrieves GLP-1 injection logs, active dosage phases, and recorded side
+    effects. Injections/side effects default to the most recent 100."""
     session_factory = get_session_factory()
     start = date_type.fromisoformat(start_date) if start_date else None
     end = date_type.fromisoformat(end_date) if end_date else None
@@ -141,7 +148,7 @@ async def get_glp1_logs(start_date: Optional[str] = None, end_date: Optional[str
             i_stmt = i_stmt.where(Injection.date >= start)
         if end:
             i_stmt = i_stmt.where(Injection.date <= end)
-        i_stmt = i_stmt.order_by(Injection.date.desc())
+        i_stmt = i_stmt.order_by(Injection.date.desc()).limit(limit)
         injections = (await session.execute(i_stmt)).scalars().all()
 
         # Dose phases
@@ -154,7 +161,7 @@ async def get_glp1_logs(start_date: Optional[str] = None, end_date: Optional[str
             s_stmt = s_stmt.where(SideEffect.date >= start)
         if end:
             s_stmt = s_stmt.where(SideEffect.date <= end)
-        s_stmt = s_stmt.order_by(SideEffect.date.desc())
+        s_stmt = s_stmt.order_by(SideEffect.date.desc()).limit(limit)
         effects = (await session.execute(s_stmt)).scalars().all()
 
         return {
@@ -165,8 +172,11 @@ async def get_glp1_logs(start_date: Optional[str] = None, end_date: Optional[str
 
 
 @mcp.tool()
-async def get_garmin_metrics(start_date: Optional[str] = None, end_date: Optional[str] = None) -> dict:
-    """Retrieves daily Garmin recovery/sleep scores and recorded activity sessions."""
+async def get_garmin_metrics(
+    start_date: Optional[str] = None, end_date: Optional[str] = None, limit: int = 100
+) -> dict:
+    """Retrieves daily Garmin recovery/sleep scores and recorded activity sessions.
+    Each series defaults to the most recent 100 rows."""
     session_factory = get_session_factory()
     start = date_type.fromisoformat(start_date) if start_date else None
     end = date_type.fromisoformat(end_date) if end_date else None
@@ -178,7 +188,7 @@ async def get_garmin_metrics(start_date: Optional[str] = None, end_date: Optiona
             d_stmt = d_stmt.where(GarminDaily.date >= start)
         if end:
             d_stmt = d_stmt.where(GarminDaily.date <= end)
-        d_stmt = d_stmt.order_by(GarminDaily.date.desc())
+        d_stmt = d_stmt.order_by(GarminDaily.date.desc()).limit(limit)
         daily = (await session.execute(d_stmt)).scalars().all()
 
         # Activities
@@ -187,7 +197,7 @@ async def get_garmin_metrics(start_date: Optional[str] = None, end_date: Optiona
             a_stmt = a_stmt.where(GarminActivity.date >= start)
         if end:
             a_stmt = a_stmt.where(GarminActivity.date <= end)
-        a_stmt = a_stmt.order_by(GarminActivity.date.desc(), GarminActivity.start_time.desc())
+        a_stmt = a_stmt.order_by(GarminActivity.date.desc(), GarminActivity.start_time.desc()).limit(limit)
         activities = (await session.execute(a_stmt)).scalars().all()
 
         return {
@@ -197,8 +207,11 @@ async def get_garmin_metrics(start_date: Optional[str] = None, end_date: Optiona
 
 
 @mcp.tool()
-async def get_hevy_workouts(start_date: Optional[str] = None, end_date: Optional[str] = None) -> list[dict]:
-    """Retrieves Hevy strength training workouts, including exercises, sets, weights, and reps."""
+async def get_hevy_workouts(
+    start_date: Optional[str] = None, end_date: Optional[str] = None, limit: int = 100
+) -> list[dict]:
+    """Retrieves Hevy strength training workouts, including exercises, sets,
+    weights, and reps. Defaults to the most recent 100 workouts."""
     session_factory = get_session_factory()
     start = date_type.fromisoformat(start_date) if start_date else None
     end = date_type.fromisoformat(end_date) if end_date else None
@@ -210,7 +223,7 @@ async def get_hevy_workouts(start_date: Optional[str] = None, end_date: Optional
         if end:
             stmt = stmt.where(HevyWorkout.date <= end)
         stmt = stmt.options(selectinload(HevyWorkout.exercises).selectinload(HevyExercise.sets))
-        stmt = stmt.order_by(HevyWorkout.date.desc())
+        stmt = stmt.order_by(HevyWorkout.date.desc()).limit(limit)
         workouts = (await session.execute(stmt)).scalars().all()
 
         serialized = []
@@ -236,8 +249,11 @@ async def get_supplements_catalog() -> list[dict]:
 
 
 @mcp.tool()
-async def get_skincare_logs(start_date: Optional[str] = None, end_date: Optional[str] = None) -> dict:
-    """Retrieves skincare routine application logs and skin status observations."""
+async def get_skincare_logs(
+    start_date: Optional[str] = None, end_date: Optional[str] = None, limit: int = 100
+) -> dict:
+    """Retrieves skincare routine application logs and skin status observations.
+    Each series defaults to the most recent 100 rows."""
     session_factory = get_session_factory()
     start = date_type.fromisoformat(start_date) if start_date else None
     end = date_type.fromisoformat(end_date) if end_date else None
@@ -249,7 +265,7 @@ async def get_skincare_logs(start_date: Optional[str] = None, end_date: Optional
             l_stmt = l_stmt.where(SkincareLog.date >= start)
         if end:
             l_stmt = l_stmt.where(SkincareLog.date <= end)
-        l_stmt = l_stmt.order_by(SkincareLog.date.desc())
+        l_stmt = l_stmt.order_by(SkincareLog.date.desc()).limit(limit)
         logs = (await session.execute(l_stmt)).scalars().all()
 
         # Observations
@@ -258,7 +274,7 @@ async def get_skincare_logs(start_date: Optional[str] = None, end_date: Optional
             o_stmt = o_stmt.where(SkincareObservation.date >= start)
         if end:
             o_stmt = o_stmt.where(SkincareObservation.date <= end)
-        o_stmt = o_stmt.order_by(SkincareObservation.date.desc())
+        o_stmt = o_stmt.order_by(SkincareObservation.date.desc()).limit(limit)
         observations = (await session.execute(o_stmt)).scalars().all()
 
         return {
@@ -268,21 +284,27 @@ async def get_skincare_logs(start_date: Optional[str] = None, end_date: Optional
 
 
 @mcp.tool()
-async def get_lab_results() -> list[dict]:
-    """Retrieves medical laboratory test reports and all parsed biomarkers/ranges."""
+async def get_lab_results(limit: int = 100) -> list[dict]:
+    """Retrieves medical laboratory test reports and all parsed biomarkers/ranges.
+    Defaults to the most recent 100 rows."""
     session_factory = get_session_factory()
     async with session_factory() as session:
-        stmt = select(LabResult).order_by(LabResult.date.desc())
+        stmt = select(LabResult).order_by(LabResult.date.desc()).limit(limit)
         results = (await session.execute(stmt)).scalars().all()
         return [serialize_row(r) for r in results]
 
 
 @mcp.tool()
-async def get_genetics_snps() -> list[dict]:
-    """Retrieves oцифрованные SNPs (генетические варианты) с описанием их влияния."""
+async def get_genetics_snps(limit: int = 100) -> list[dict]:
+    """Retrieves oцифрованные SNPs (генетические варианты) с описанием их влияния.
+    Defaults to the first 100 variants (gene, rsid order)."""
     session_factory = get_session_factory()
     async with session_factory() as session:
-        stmt = select(GeneticVariant).order_by(GeneticVariant.gene, GeneticVariant.rsid)
+        stmt = (
+            select(GeneticVariant)
+            .order_by(GeneticVariant.gene, GeneticVariant.rsid)
+            .limit(limit)
+        )
         variants = (await session.execute(stmt)).scalars().all()
         return [serialize_row(v) for v in variants]
 
@@ -597,8 +619,10 @@ async def log_measurement(
 async def get_measurements(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    limit: int = 100,
 ) -> list[dict]:
-    """Retrieves body measurements (neck, waist, hips, body-fat %, LBM) for a date range."""
+    """Retrieves body measurements (neck, waist, hips, body-fat %, LBM) for a date
+    range. Defaults to the most recent 100 rows."""
     session_factory = get_session_factory()
     start = date_type.fromisoformat(start_date) if start_date else None
     end = date_type.fromisoformat(end_date) if end_date else None
@@ -609,7 +633,7 @@ async def get_measurements(
             stmt = stmt.where(BodyMeasurement.date >= start)
         if end:
             stmt = stmt.where(BodyMeasurement.date <= end)
-        stmt = stmt.order_by(BodyMeasurement.date.desc())
+        stmt = stmt.order_by(BodyMeasurement.date.desc()).limit(limit)
         rows = (await session.execute(stmt)).scalars().all()
         return [serialize_row(r) for r in rows]
 
@@ -634,6 +658,7 @@ async def log_note(
         "glp1": Injection,
         "skincare": SkincareLog,
         "measurement": BodyMeasurement,
+        "body_comp": BodyScan,
     }
     model = model_map.get(domain)
     if model is None:
@@ -668,6 +693,7 @@ async def get_notes(
         "glp1": Injection,
         "skincare": SkincareLog,
         "measurement": BodyMeasurement,
+        "body_comp": BodyScan,
     }
 
     if domain and domain not in model_map:
@@ -695,6 +721,127 @@ async def get_notes(
 
     results.sort(key=lambda x: x.get("date", ""), reverse=True)
     return results[:limit]
+
+
+# ── Body composition tools (InBody / МедАсс — optional module) ────────────────
+def _serialize_scan(scan: BodyScan) -> dict:
+    """A scan plus its metrics nested (relationship must be loaded already)."""
+    d = serialize_row(scan)
+    d["metrics"] = [serialize_row(m) for m in scan.metrics]
+    return d
+
+
+async def _module_enabled(session, key: str) -> bool:
+    """True when an optional module is on (write tools honour the toggle)."""
+    from vitals.services import modules_service
+
+    state = await modules_service.get_enabled_modules(session)
+    return bool(state.get(key))
+
+
+@mcp.tool()
+async def get_body_scans(
+    start_date: Optional[str] = None, end_date: Optional[str] = None, limit: int = 100
+) -> list[dict]:
+    """Retrieves body-composition scans (InBody / МедАсс) with every parsed metric
+    (skeletal muscle, body water, visceral fat, segmental analysis, phase angle…).
+    Defaults to the most recent 100 scans."""
+    session_factory = get_session_factory()
+    start = date_type.fromisoformat(start_date) if start_date else None
+    end = date_type.fromisoformat(end_date) if end_date else None
+
+    async with session_factory() as session:
+        stmt = select(BodyScan).options(selectinload(BodyScan.metrics))
+        if start:
+            stmt = stmt.where(BodyScan.date >= start)
+        if end:
+            stmt = stmt.where(BodyScan.date <= end)
+        stmt = stmt.order_by(BodyScan.date.desc(), BodyScan.id.desc()).limit(limit)
+        scans = (await session.execute(stmt)).scalars().all()
+        return [_serialize_scan(s) for s in scans]
+
+
+@mcp.tool()
+async def get_body_scan(scan_id: int) -> dict:
+    """Retrieves a single body-composition scan with its full metric sheet."""
+    from vitals.services import body_scan_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        scan = await body_scan_service.get_scan(session, scan_id)
+        if scan is None:
+            return {"error": f"Body scan {scan_id} not found"}
+        return _serialize_scan(scan)
+
+
+@mcp.tool()
+async def get_body_metric_history(
+    metric_key: str,
+    segment: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> list[dict]:
+    """Time series for one body-composition metric (e.g. ``skeletal_muscle_mass``,
+    ``phase_angle``, ``visceral_fat_area``), optionally for a single body segment."""
+    from vitals.services import body_scan_service
+
+    session_factory = get_session_factory()
+    start = date_type.fromisoformat(start_date) if start_date else None
+    end = date_type.fromisoformat(end_date) if end_date else None
+    async with session_factory() as session:
+        return await body_scan_service.metric_history(
+            session, metric_key, segment=segment, start=start, end=end
+        )
+
+
+@mcp.tool()
+async def log_body_scan(
+    metrics: list[dict],
+    on_date: Optional[str] = None,
+    device: Optional[str] = None,
+    note: Optional[str] = None,
+) -> dict:
+    """Records a body-composition scan from structured metrics (no photo needed).
+
+    Each metric is ``{"label" or "metric_key": str, "value": number, "unit": str?,
+    "ref_low": number?, "ref_high": number?, "segment": str?}``. The scan's weight /
+    body-fat% / LBM are bridged into the weight domain. WRITE tool — saved
+    immediately. No-op with an error if the body_comp module is disabled."""
+    from vitals.services import body_scan_service
+    from vitals.utils.timeutils import today_local
+
+    session_factory = get_session_factory()
+    parsed_date = date_type.fromisoformat(on_date) if on_date else today_local()
+
+    async with session_factory() as session:
+        if not await _module_enabled(session, "body_comp"):
+            return {"error": "module 'body_comp' is disabled"}
+        scan = await body_scan_service.save_scan(
+            session,
+            on_date=parsed_date,
+            device=device,
+            metrics=metrics,
+            note=note,
+            source=Source.BODY_SCAN.value,
+        )
+        await session.commit()
+        full = await body_scan_service.get_scan(session, scan.id)
+        return _serialize_scan(full) if full else {"scan_id": scan.id}
+
+
+@mcp.tool()
+async def delete_body_scan(scan_id: int) -> dict:
+    """Deletes a body-composition scan and its metrics. WRITE tool. No-op with an
+    error if the body_comp module is disabled."""
+    from vitals.services import body_scan_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        if not await _module_enabled(session, "body_comp"):
+            return {"error": "module 'body_comp' is disabled"}
+        ok = await body_scan_service.delete_scan(session, scan_id)
+        await session.commit()
+        return {"deleted": ok, "scan_id": scan_id}
 
 
 class MCPAuthMiddleware:
@@ -747,13 +894,17 @@ class MCPAuthMiddleware:
 
         authenticated = False
         if token:
-            from web.auth import _get_serializer
+            from web.auth import _get_mcp_serializer
             from itsdangerous import SignatureExpired, BadSignature
-            serializer = _get_serializer()
+            serializer = _get_mcp_serializer()
             try:
                 # Validate access token with 1 year TTL limit
                 payload = serializer.loads(token, max_age=31536000)
-                if payload.get("type") == "mcp_access_token" and payload.get("client_id") == self.client_id:
+                if (
+                    isinstance(payload, dict)
+                    and payload.get("type") == "mcp_access_token"
+                    and payload.get("client_id") == self.client_id
+                ):
                     authenticated = True
             except (SignatureExpired, BadSignature):
                 pass
@@ -779,7 +930,7 @@ class MCPAuthMiddleware:
         try:
             await self.app(scope, receive, send)
         except TypeError:
-            pass
+            logger.exception("MCP app raised TypeError handling %s", scope.get("path"))
 
 
 def get_mcp_app() -> object:

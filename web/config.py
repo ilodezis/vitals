@@ -13,6 +13,10 @@ from dataclasses import dataclass
 SESSION_COOKIE = "vitals_session"
 DEFAULT_SESSION_TTL = 30 * 24 * 3600  # 30 days
 
+# Claude.ai's custom-connector OAuth callback (same URI for web/desktop/mobile/Cowork).
+# Override/extend via VITALS_MCP_REDIRECT_URIS (csv) if Anthropic changes this.
+DEFAULT_MCP_REDIRECT_URIS: tuple[str, ...] = ("https://claude.ai/api/mcp/auth_callback",)
+
 
 @dataclass(frozen=True)
 class WebConfig:
@@ -24,6 +28,7 @@ class WebConfig:
     cookie_samesite: str = "lax"
     mcp_client_id: str = "vitals-claude-connector"
     mcp_client_secret: str = ""
+    mcp_redirect_uris: tuple[str, ...] = DEFAULT_MCP_REDIRECT_URIS
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -36,6 +41,14 @@ def _env_bool(name: str, default: bool) -> bool:
 def _env_pos_int(name: str, default: int) -> int:
     raw = (os.getenv(name) or "").strip()
     return int(raw) if raw.isdigit() and int(raw) > 0 else default
+
+
+def _env_csv(name: str, default: tuple[str, ...]) -> tuple[str, ...]:
+    raw = os.getenv(name)
+    if not raw:
+        return default
+    values = tuple(v.strip() for v in raw.split(",") if v.strip())
+    return values or default
 
 
 def get_web_config() -> WebConfig:
@@ -60,5 +73,6 @@ def get_web_config() -> WebConfig:
         cookie_samesite=os.getenv("VITALS_COOKIE_SAMESITE", "lax"),
         mcp_client_id=os.getenv("VITALS_MCP_CLIENT_ID", "vitals-claude-connector"),
         mcp_client_secret=os.getenv("VITALS_MCP_CLIENT_SECRET", ""),
+        mcp_redirect_uris=_env_csv("VITALS_MCP_REDIRECT_URIS", DEFAULT_MCP_REDIRECT_URIS),
     )
 

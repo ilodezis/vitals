@@ -11,6 +11,12 @@ os.environ["VITALS_AUTH_USERNAME"] = "timur"
 # bcrypt hash of "password"
 os.environ["VITALS_AUTH_PASSWORD_HASH"] = "$2b$04$V2PTdRXGL2bhQbX8frCBeuQp8X01Cj84UQCRKDsVNGAOU/siMDlha"
 os.environ["VITALS_COOKIE_SECURE"] = "false"
+os.environ["VITALS_MCP_CLIENT_SECRET"] = "local-test-mcp-secret"
+# Real Claude.ai callback (so a real connector can be tested against localhost via
+# a tunnel) plus a fake local one for manual curl/browser checks of the OAuth flow.
+os.environ["VITALS_MCP_REDIRECT_URIS"] = (
+    "https://claude.ai/api/mcp/auth_callback,http://127.0.0.1:8000/callback"
+)
 
 import fakeredis.aioredis
 import uvicorn

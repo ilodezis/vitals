@@ -23,6 +23,8 @@ os.environ.setdefault(
     "$2b$04$V2PTdRXGL2bhQbX8frCBeuQp8X01Cj84UQCRKDsVNGAOU/siMDlha",
 )
 os.environ.setdefault("VITALS_COOKIE_SECURE", "false")
+os.environ.setdefault("VITALS_MCP_CLIENT_SECRET", "test-mcp-secret")
+os.environ.setdefault("VITALS_MCP_REDIRECT_URIS", "https://claude.ai/callback")
 
 # Explicitly clear external API credentials to isolate test runs from developer's .env
 os.environ["VITALS_GARMIN_EMAIL"] = ""

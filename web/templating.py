@@ -5,6 +5,7 @@ import os
 from typing import Any
 
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup, escape
 
 from vitals.i18n import t, get_js_strings, plural
 
@@ -92,12 +93,21 @@ def meal_word(n: Any) -> str:
     return plural_ru(n, "приём", "приёма", "приёмов")
 
 
+def format_unit(value: Any) -> Markup:
+    """Escape a lab unit string, then render '10^9' as a safe superscript.
+    Escaping happens first so any HTML that ended up in the raw value
+    (e.g. via a mis-parsed lab-photo import) can't reach the page unescaped."""
+    escaped = str(escape(value or ""))
+    return Markup(escaped.replace("10^9", "10<sup>9</sup>"))
+
+
 # Register filters and globals
 templates.env.filters["format_number"] = format_number
 templates.env.filters["format_date"] = format_date
 templates.env.filters["plural_ru"] = plural_ru
 templates.env.filters["plural"] = lambda n, *args: plural(n, *args)
 templates.env.filters["meal_word"] = meal_word
+templates.env.filters["format_unit"] = format_unit
 templates.env.globals["static_version"] = static_version
 templates.env.globals["t"] = t
 templates.env.globals["get_js_strings"] = get_js_strings

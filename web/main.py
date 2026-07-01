@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from urllib.parse import urlencode
 
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -105,7 +106,11 @@ async def auth_exception_handler(request: Request, exc: NotAuthenticated):
             next_param += f"?{request.url.query}"
         login_url = "/login"
         if next_param not in ("", "/"):
-            login_url += f"?next={next_param}"
+            # Percent-encode next_param as a single query value — it can itself
+            # contain '&'/'?' (e.g. redirecting back into an OAuth authorize
+            # URL), which would otherwise be parsed as separate top-level params
+            # on /login and silently truncate `next`.
+            login_url += f"?{urlencode({'next': next_param})}"
         return RedirectResponse(url=login_url, status_code=status.HTTP_302_FOUND)
 
     return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Not authenticated"})
