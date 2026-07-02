@@ -286,6 +286,11 @@ html {
 .v-app-shell {
     height: 100vh;
     height: 100dvh;
+    /* iOS standalone PWA resolves dvh unreliably across cold starts/resumes.
+       base.html's viewport-sync script caches a live window.innerHeight reading
+       in --app-height; prefer it over dvh once available, falling back to dvh
+       until the script's first sync() runs. */
+    height: var(--app-height, 100dvh);
 }
 
 /* ── App shell ─────────────────────────────────────────────────────────── */
@@ -294,9 +299,11 @@ html {
     backdrop-filter: saturate(140%) blur(12px);
     -webkit-backdrop-filter: saturate(140%) blur(12px);
     border-bottom: 1px solid var(--line);
-    /* Absorb the status-bar safe area so content never clips under the notch */
-    padding-top: env(safe-area-inset-top);
-    height: calc(4rem + env(safe-area-inset-top));
+    /* Absorb the status-bar safe area so content never clips under the notch.
+       env() can resolve to 0 on the first standalone-PWA frame; max() falls back
+       to the JS-measured --sat cached by base.html's viewport-sync script. */
+    padding-top: max(env(safe-area-inset-top), var(--sat, 0px));
+    height: calc(4rem + max(env(safe-area-inset-top), var(--sat, 0px)));
 }
 
 .v-brand-dot {
@@ -1061,8 +1068,8 @@ html {
 
     /* ── Header — compact on mobile ── */
     .v-header {
-        height: calc(3.25rem + env(safe-area-inset-top));
-        padding-top: env(safe-area-inset-top);
+        height: calc(3.25rem + max(env(safe-area-inset-top), var(--sat, 0px)));
+        padding-top: max(env(safe-area-inset-top), var(--sat, 0px));
         padding-left: 0.875rem;
         padding-right: 0.875rem;
     }
@@ -1609,7 +1616,7 @@ sup {
 .v-toast-container {
     position: fixed;
     right: 1rem;
-    bottom: calc(1rem + env(safe-area-inset-bottom));
+    bottom: calc(1rem + max(env(safe-area-inset-bottom), var(--sab, 0px)));
     z-index: 100000;
     display: flex;
     flex-direction: column;
@@ -1622,7 +1629,7 @@ sup {
     .v-toast-container {
         right: 0.5rem;
         left: 0.5rem;
-        bottom: calc(4.5rem + env(safe-area-inset-bottom));
+        bottom: calc(4.5rem + max(env(safe-area-inset-bottom), var(--sab, 0px)));
         max-width: none;
     }
 }

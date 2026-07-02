@@ -44,6 +44,51 @@
         window.t = function (key) { return window.__STRINGS__[key] || key; };
     </script>
     <!-- Alpine loads at end of body so page-specific scripts (protocol.js etc) run first -->
+
+    <!-- Viewport/safe-area sync: iOS WebKit (standalone PWA) resolves dvh/env(safe-area-inset-*)
+         unreliably on cold start/resume and doesn't always re-layout once real metrics settle.
+         This measures real values from JS and re-measures on the events where iOS tends to
+         change its mind, caching them as CSS vars that vitals.css reads via max(env, var). Lives
+         in <head> (not a page script) because hx-boost only swaps <body> innerHTML, so this
+         registers once and survives boosted navigations. The probe hangs off <html> for the
+         same reason. -->
+    <script>
+        (function () {
+            var root = document.documentElement, probe = null;
+            function ensureProbe() {
+                if (probe && probe.isConnected) return probe;
+                probe = document.createElement('div');
+                probe.setAttribute('aria-hidden', 'true');
+                probe.style.cssText =
+                    'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;' +
+                    'padding:env(safe-area-inset-top) env(safe-area-inset-right) ' +
+                    'env(safe-area-inset-bottom) env(safe-area-inset-left);';
+                root.appendChild(probe);
+                return probe;
+            }
+            function setHeight() { root.style.setProperty('--app-height', window.innerHeight + 'px'); }
+            function sync() {
+                setHeight();
+                if (!document.body) return;
+                var cs = getComputedStyle(ensureProbe());
+                root.style.setProperty('--sat', cs.paddingTop || '0px');
+                root.style.setProperty('--sab', cs.paddingBottom || '0px');
+                root.style.setProperty('--sal', cs.paddingLeft || '0px');
+                root.style.setProperty('--sar', cs.paddingRight || '0px');
+            }
+            setHeight();
+            document.addEventListener('DOMContentLoaded', sync);
+            ['resize', 'orientationchange', 'pageshow'].forEach(function (e) {
+                window.addEventListener(e, sync, { passive: true });
+            });
+            document.addEventListener('visibilitychange', function () { if (!document.hidden) sync(); });
+            if (window.visualViewport) window.visualViewport.addEventListener('resize', sync, { passive: true });
+            window.addEventListener('load', function () {
+                sync(); requestAnimationFrame(sync); setTimeout(sync, 300);
+            });
+            document.addEventListener('htmx:load', sync);
+        })();
+    </script>
 </head>
 
 <body class="v-app-shell flex flex-col overflow-hidden select-none {% if request.state.ui_version == 'masthead' %}ui-masthead{% endif %}" x-data="{ mobileMenuOpen: false }" hx-boost="true">
@@ -153,7 +198,7 @@
     {% if username %}
     <!-- Mobile Bottom Navigation -->
     <nav class="md:hidden v-bottom-nav bg-[rgba(28,25,32,0.95)] backdrop-blur-md border-t border-[var(--line)] grid grid-cols-5 items-center px-1"
-        style="padding-bottom: env(safe-area-inset-bottom); min-height: calc(3.5rem + env(safe-area-inset-bottom))">
+        style="padding-bottom: max(env(safe-area-inset-bottom), var(--sab, 0px)); min-height: calc(3.5rem + max(env(safe-area-inset-bottom), var(--sab, 0px)))">
         <!-- Weight -->
         <a href="/weight"
             class="flex flex-col items-center justify-center gap-1 h-full py-1 text-center {% if current_path.startswith('/weight') %}text-[var(--accent)]{% else %}text-[var(--muted)] hover:text-[var(--fg-2)]{% endif %}">
@@ -219,7 +264,7 @@
 
         <!-- Drawer Content -->
         <div class="relative bg-[var(--surface)] border-t border-[var(--line-2)] rounded-t-[var(--radius-lg)] p-6 space-y-6 max-h-[85vh] overflow-y-auto select-none"
-            style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom))">
+            style="padding-bottom: calc(1.5rem + max(env(safe-area-inset-bottom), var(--sab, 0px)))">
             <!-- Close Button/Indicator -->
             <div class="flex justify-between items-center pb-3 border-b border-[var(--line)]">
                 <span class="v-text-card">{{ t("nav.menu_title") }}</span>

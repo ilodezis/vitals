@@ -167,12 +167,15 @@ body.ui-masthead .mh-rail-avatar {
 /* Shown below md, hidden from md up (media query at the bottom). Owned here for
    the same specificity reason as the rail above. */
 body.ui-masthead .mh-topbar {
-    height: 52px;
+    min-height: 52px;
+    height: calc(52px + max(env(safe-area-inset-top), var(--sat, 0px)));
+    padding-top: max(env(safe-area-inset-top), var(--sat, 0px));
     flex: none;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 16px;
+    padding-left: 16px;
+    padding-right: 16px;
     border-bottom: 1px solid var(--line);
     background: var(--bg-inset);
 }
