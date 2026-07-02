@@ -196,7 +196,8 @@ async def test_extract_and_ingest(db_session):
 
     summary = await labs_service.ingest_extracted(db_session, extracted, file_key="doc1")
     await db_session.commit()
-    assert summary == {"created": 2, "skipped": 0}
+    assert summary["created"] == 2 and summary["skipped"] == 0
+    assert {r.marker for r in summary["results"]} == {"Ferritin", "TSH"}
 
     tsh = await labs_service.list_results(db_session, marker="TSH")
     assert tsh[0].flag == "high"
@@ -208,7 +209,7 @@ async def test_extract_and_ingest(db_session):
     # Re-ingesting the same document dedupes.
     summary2 = await labs_service.ingest_extracted(db_session, extracted, file_key="doc1")
     await db_session.commit()
-    assert summary2 == {"created": 0, "skipped": 2}
+    assert summary2["created"] == 0 and summary2["skipped"] == 2 and summary2["results"] == []
     n = (await db_session.execute(select(LabResult))).scalars().all()
     assert len(n) == 2
 

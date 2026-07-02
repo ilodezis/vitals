@@ -3,7 +3,7 @@
 Exposes access to all health domains using FastMCP and standard SQLAlchemy
 preloading patterns. Read tools cover every domain; write tools let Claude
 record meals, weight, GLP-1 injections, skincare logs, body measurements,
-and notes directly from the conversation.
+lab results, and notes directly from the conversation.
 """
 from __future__ import annotations
 
@@ -281,17 +281,6 @@ async def get_skincare_logs(
             "logs": [serialize_row(l) for l in logs],
             "observations": [serialize_row(o) for o in observations],
         }
-
-
-@mcp.tool()
-async def get_lab_results(limit: int = 100) -> list[dict]:
-    """Retrieves medical laboratory test reports and all parsed biomarkers/ranges.
-    Defaults to the most recent 100 rows."""
-    session_factory = get_session_factory()
-    async with session_factory() as session:
-        stmt = select(LabResult).order_by(LabResult.date.desc()).limit(limit)
-        results = (await session.execute(stmt)).scalars().all()
-        return [serialize_row(r) for r in results]
 
 
 @mcp.tool()
@@ -647,7 +636,7 @@ async def log_note(
     note: str,
 ) -> dict:
     """Adds or updates the note field on any domain record by its ID.
-    Supported domains: weight, nutrition, glp1, skincare, measurement.
+    Supported domains: weight, nutrition, glp1, skincare, measurement, body_comp, labs.
     WRITE tool — saved immediately."""
     from vitals.models.glp1 import Injection
     from vitals.models.skincare import SkincareLog
@@ -659,6 +648,7 @@ async def log_note(
         "skincare": SkincareLog,
         "measurement": BodyMeasurement,
         "body_comp": BodyScan,
+        "labs": LabResult,
     }
     model = model_map.get(domain)
     if model is None:
@@ -683,7 +673,8 @@ async def get_notes(
     limit: int = 50,
 ) -> list[dict]:
     """Retrieves records that have non-empty notes, optionally filtered by domain
-    and date range. Returns records from: weight, nutrition, glp1, skincare, measurement."""
+    and date range. Returns records from: weight, nutrition, glp1, skincare,
+    measurement, body_comp, labs."""
     from vitals.models.glp1 import Injection
     from vitals.models.skincare import SkincareLog
 
@@ -694,6 +685,7 @@ async def get_notes(
         "skincare": SkincareLog,
         "measurement": BodyMeasurement,
         "body_comp": BodyScan,
+        "labs": LabResult,
     }
 
     if domain and domain not in model_map:
@@ -842,6 +834,121 @@ async def delete_body_scan(scan_id: int) -> dict:
         ok = await body_scan_service.delete_scan(session, scan_id)
         await session.commit()
         return {"deleted": ok, "scan_id": scan_id}
+
+
+# ── Labs tools ──────────────────────────────────────────────────────────────
+@mcp.tool()
+async def get_lab_results(
+    marker: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    limit: int = 100,
+) -> list[dict]:
+    """Retrieves lab results (biomarker, value, unit, reference range, computed
+    out-of-range flag), optionally filtered by marker name and/or date range
+    (YYYY-MM-DD). Defaults to the most recent 100 rows across all markers."""
+    from vitals.services import labs_service
+
+    session_factory = get_session_factory()
+    start = date_type.fromisoformat(start_date) if start_date else None
+    end = date_type.fromisoformat(end_date) if end_date else None
+
+    async with session_factory() as session:
+        stmt = select(LabResult)
+        if marker:
+            stmt = stmt.where(LabResult.marker == labs_service.normalize_marker(marker))
+        if start:
+            stmt = stmt.where(LabResult.date >= start)
+        if end:
+            stmt = stmt.where(LabResult.date <= end)
+        stmt = stmt.order_by(LabResult.date.desc(), LabResult.id.desc()).limit(limit)
+        results = (await session.execute(stmt)).scalars().all()
+        return [serialize_row(r) for r in results]
+
+
+@mcp.tool()
+async def log_lab_result(
+    marker: str,
+    value: float,
+    on_date: Optional[str] = None,
+    unit: Optional[str] = None,
+    ref_low: Optional[float] = None,
+    ref_high: Optional[float] = None,
+    lab_name: Optional[str] = None,
+    note: Optional[str] = None,
+) -> dict:
+    """Records a single lab marker value (one biomarker from a blood/urine test).
+    The out-of-range flag is computed automatically; a range left out here falls
+    back to the marker's catalog range if one is already on file. WRITE tool —
+    saved immediately. Defaults: on_date = today."""
+    from vitals.services import labs_service
+    from vitals.utils.timeutils import today_local
+
+    session_factory = get_session_factory()
+    parsed_date = date_type.fromisoformat(on_date) if on_date else today_local()
+
+    async with session_factory() as session:
+        row = await labs_service.add_result(
+            session,
+            on_date=parsed_date,
+            marker=marker,
+            value=value,
+            unit=unit,
+            ref_low=ref_low,
+            ref_high=ref_high,
+            lab_name=lab_name,
+            note=note,
+        )
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def log_lab_results(
+    results: list[dict],
+    on_date: Optional[str] = None,
+    lab_name: Optional[str] = None,
+) -> dict:
+    """Records every marker from one lab report at once (e.g. a full blood panel
+    read from a photo/PDF shared in the conversation) — the natural way to push a
+    whole report in one call instead of calling log_lab_result per marker.
+
+    Each item in ``results`` is ``{"marker": str, "value": number, "unit": str?,
+    "ref_low": number?, "ref_high": number?}``. Identical (date, marker, value)
+    rows are deduped, so retrying a call is safe. The verbatim payload is kept in
+    raw_payloads, same as a document uploaded through the web UI. WRITE tool —
+    saved immediately. Defaults: on_date = today."""
+    from vitals.services import labs_service
+    from vitals.utils.timeutils import today_local
+
+    session_factory = get_session_factory()
+    parsed_date = date_type.fromisoformat(on_date) if on_date else today_local()
+
+    async with session_factory() as session:
+        extracted = {
+            "date": parsed_date.isoformat(),
+            "lab_name": lab_name,
+            "results": results,
+        }
+        summary = await labs_service.ingest_extracted(session, extracted)
+        await session.commit()
+        return {
+            "created": summary["created"],
+            "skipped": summary["skipped"],
+            "results": [await serialize_written(session, r) for r in summary["results"]],
+        }
+
+
+@mcp.tool()
+async def delete_lab_result(result_id: int) -> dict:
+    """Deletes a lab result by ID. WRITE tool — deletion is immediate."""
+    from vitals.services import labs_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        ok = await labs_service.delete_result(session, result_id)
+        await session.commit()
+        return {"deleted": ok, "result_id": result_id}
 
 
 class MCPAuthMiddleware:

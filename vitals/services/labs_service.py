@@ -453,7 +453,12 @@ async def ingest_extracted(
     file_key: Optional[str] = None,
 ) -> dict:
     """Persist an extracted document: keep it raw, then create a result row per
-    marker (deduping identical (date, marker, value)). Does not commit."""
+    marker (deduping identical (date, marker, value)). Does not commit.
+
+    Returns ``{"created": int, "skipped": int, "results": list[LabResult]}`` — the
+    freshly created rows (already flushed, so ``.flag``/``.id`` are populated),
+    handy for a caller that wants to report back exactly what was saved (e.g. the
+    MCP batch tool) without a follow-up query."""
     on_date = _parse_date(extracted.get("date")) or today_local()
     lab_name = extracted.get("lab_name")
     results = extracted.get("results") or []
@@ -466,7 +471,7 @@ async def ingest_extracted(
         payload=extracted,
     )
 
-    summary = {"created": 0, "skipped": 0}
+    summary = {"created": 0, "skipped": 0, "results": []}
     for item in results:
         marker = (item.get("marker") or "").strip()
         value = _num(item.get("value"))
@@ -476,7 +481,7 @@ async def ingest_extracted(
         if await _result_exists(session, on_date, marker, value):
             summary["skipped"] += 1
             continue
-        await add_result(
+        row = await add_result(
             session,
             on_date=on_date,
             marker=marker,
@@ -488,6 +493,7 @@ async def ingest_extracted(
             source=Source.LAB_PARSER.value,
             raw_payload_id=raw_row.id,
         )
+        summary["results"].append(row)
         summary["created"] += 1
 
     raw_row.processed_at = now_local()
