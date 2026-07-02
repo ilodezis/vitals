@@ -224,11 +224,16 @@ def normalize_metric(label: str, segment: Any = None) -> tuple[str, str, Optiona
 
     key = LABEL_ALIASES.get(norm)
     if key is None:
-        # Some devices (e.g. МедАсс) print the unit inline as a trailing
-        # "(кг)"/"(%)" annotation instead of a separate unit field — strip one
-        # trailing parenthetical group and retry before giving up.
-        stripped = re.sub(r"\s*\([^()]*\)\s*$", "", norm).strip()
-        if stripped != norm:
+        # Some devices (e.g. МедАсс) print the unit inline as one or more
+        # trailing "(кг)"/"(%)"/"(BMI)" annotations instead of a separate unit
+        # field — strip trailing parenthetical groups one at a time and retry
+        # before giving up.
+        stripped = norm
+        while key is None:
+            next_stripped = re.sub(r"\s*\([^()]*\)\s*$", "", stripped).strip()
+            if next_stripped == stripped:
+                break
+            stripped = next_stripped
             key = LABEL_ALIASES.get(stripped)
     if key is not None:
         return key, METRIC_REGISTRY[key].category, None

@@ -97,3 +97,50 @@ def test_extractors_accept_orm_like_objects():
     metrics = [_M("body_fat_pct", 15.0), _M("weight", 90.0)]
     assert bm.body_fat_pct_from_scan(metrics) == 15.0
     assert bm.lbm_from_scan(metrics) == 76.5  # 90*(1-0.15)
+
+
+def test_new_anthropometric_labels_bind_to_registry():
+    # МедАсс sheet: height + waist/hip circumference + skeletal muscle mass %
+    assert bm.normalize_metric("Рост")[0] == "height"
+    assert bm.normalize_metric("Окружность талии")[0] == "waist_circumference"
+    assert bm.normalize_metric("Окр. бедер")[0] == "hip_circumference"
+    assert bm.normalize_metric("Доля скелетно-мышечной массы")[0] == "skeletal_muscle_mass_pct"
+    assert bm.normalize_metric("Минеральная масса тела")[0] == "minerals"
+    assert bm.normalize_metric("Соотношение талии/бедра")[0] == "waist_hip_ratio"
+    assert bm.normalize_metric("Клеточная жидкость")[0] == "intracellular_water"
+    # every new key is actually registered (would KeyError in normalize_metric otherwise)
+    for key in ("height", "waist_circumference", "hip_circumference", "skeletal_muscle_mass_pct"):
+        assert key in bm.METRIC_REGISTRY
+
+
+def test_trailing_unit_annotation_is_stripped_before_matching():
+    # МедАсс prints the unit inline in the label instead of a separate field.
+    assert bm.normalize_metric("Тощая масса (кг)")[0] == "fat_free_mass"
+    assert bm.normalize_metric("Процент жира (%)")[0] == "body_fat_pct"
+    # unrecognised even after stripping still falls back to 'other' (no data lost)
+    key, category, _ = bm.normalize_metric("Совершенно неизвестная штука (шт)")
+    assert category == "other"
+
+
+def test_multiple_trailing_unit_annotations_are_all_stripped():
+    # a label can carry more than one trailing parenthetical (unit + abbreviation) —
+    # each one is stripped in turn until a known label or a dead end is found.
+    assert bm.normalize_metric("Индекс массы тела (BMI) (кг/м²)")[0] == "bmi"
+
+
+def test_medass_device_specific_aliases_documented_by_pr2():
+    """Locks in the two МедАсс aliases added in PR #2 (github.com/ilodezis/vitals/pull/2).
+
+    Both are device-specific relabelings the PR author matched against a real
+    МедАсс printout. FLAGGED FOR MANUAL RE-VERIFICATION against the original
+    scan photo/PDF if body-fat % or body-fat-mass ever look wrong on a scan
+    from this device — see PR #2 review notes:
+      - "классификация по проценту жировой массы" is assumed to carry the
+        numeric body-fat % reading itself, not a text/coded classification.
+      - "жировая масса (кг), нормированная по росту" (height-normalized fat
+        mass) is assumed to be device phrasing for plain fat mass, not a
+        distinct Fat Mass Index (FMI = fat_kg / height_m²) value on a
+        different scale.
+    """
+    assert bm.normalize_metric("Классификация по проценту жировой массы")[0] == "body_fat_pct"
+    assert bm.normalize_metric("Жировая масса (кг), нормированная по росту")[0] == "body_fat_mass"
