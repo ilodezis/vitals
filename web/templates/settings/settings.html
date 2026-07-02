@@ -46,6 +46,8 @@
     <div class="v-alert info" style="background: var(--good-soft); border-color: rgba(111,197,142,0.3); color: var(--good);">✅ {{ t("settings.saved.restart") }}</div>
     {% elif saved == 'language' %}
     <div class="v-alert info">✅ {{ t("settings.saved.language") }}</div>
+    {% elif saved == 'ui_version' %}
+    <div class="v-alert info">✅ {{ t("settings.saved.ui_version") }}</div>
     {% endif %}
 
     {% if error == 'wrong_password' %}
@@ -79,6 +81,29 @@
                         :class="selected === 'ru' ? 'is-active' : ''"
                         class="v-seg-btn py-2.5">
                     Русский
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ─── INTERFACE (Classic / Masthead) ─────────────────────────────────── -->
+    <div class="v-card p-6 space-y-5">
+        <div class="flex items-center gap-2 pb-2" style="border-bottom: 1px solid var(--line)">
+            <span class="v-bar v-bar-sm"></span>
+            <span class="v-text-card">🖥️ {{ t("settings.ui_version_title") }}</span>
+        </div>
+        <p class="v-text-body" style="color: var(--muted)">
+            {{ t("settings.ui_version_description") }}
+        </p>
+        <form action="/settings/ui-version" method="POST" hx-boost="false">
+            <div class="v-seg max-w-[280px]">
+                <button type="submit" name="ui_version" value="classic"
+                        class="v-seg-btn py-2.5 {% if ui_version != 'masthead' %}is-active{% endif %}">
+                    {{ t("settings.ui_version_classic") }}
+                </button>
+                <button type="submit" name="ui_version" value="masthead"
+                        class="v-seg-btn py-2.5 {% if ui_version == 'masthead' %}is-active{% endif %}">
+                    {{ t("settings.ui_version_masthead") }}
                 </button>
             </div>
         </form>

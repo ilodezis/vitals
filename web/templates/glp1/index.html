@@ -3,9 +3,22 @@
 {% block title %}{{ t("glp1.page_title") }}{% endblock %}
 
 {% block content %}
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8"
      x-data="glp1Dashboard({{ (last_injection.site | tojson if last_injection and last_injection.site else 'null') | forceescape }})">
 
+    {% if request.state.ui_version == 'masthead' %}
+    {% call masthead_header('glp1', t('nav.glp1'), [
+        {'label': t('glp1.current_dose'), 'primary': true, 'unit': t('common.mg'), 'value': (active_phase.dose_mg | format_number) if active_phase else '—'},
+        {'label': t('glp1.drug'), 'value': (t('enum.drug.' + active_phase.drug)) if active_phase else '—'},
+        {'label': t('glp1.days_on_dose'), 'unit': t('common.days_abbr'), 'value': ((today_date - active_phase.start_date).days) if active_phase else '—'},
+        {'label': t('glp1.last_injection'), 'value': (last_injection.date | format_date) if last_injection else '—'}
+    ]) %}
+        <button @click="showForm = !showForm" class="v-btn-ghost text-xs">
+            <span x-text="showForm ? '{{ t("glp1.toggle_history") }}' : '{{ t("glp1.toggle_form") }}'"></span>
+        </button>
+    {% endcall %}
+    {% else %}
     <!-- Header -->
     <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
         <div class="flex items-start gap-3.5">
@@ -54,6 +67,7 @@
             {% endif %}
         </div>
     </div>
+    {% endif %}
 
     <!-- Workspace -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

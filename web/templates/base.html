@@ -19,16 +19,18 @@
     <link rel="manifest" href="/static/manifest.webmanifest">
     <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
 
-    <!-- Google Fonts: Inter & Outfit -->
+    <!-- Google Fonts: Inter, Outfit & Bricolage Grotesque (masthead titles) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=Bricolage+Grotesque:wght@600;700;800&display=swap"
         rel="stylesheet">
 
     <!-- Tailwind CSS (compiled CLI bundle) + Vitals design system -->
     <link rel="stylesheet" href="{{ static_version('/static/tailwind.css') }}">
     <link rel="stylesheet" href="{{ static_version('/static/vitals.css') }}">
+    <!-- "Masthead" interface skin — inert unless <body> carries .ui-masthead -->
+    <link rel="stylesheet" href="{{ static_version('/static/vitals-masthead.css') }}">
 
     <!-- Core JS libraries — vendored locally (no CDN) -->
     <script src="{{ static_version('/static/vendor/htmx.min.js') }}"></script>
@@ -44,12 +46,29 @@
     <!-- Alpine loads at end of body so page-specific scripts (protocol.js etc) run first -->
 </head>
 
-<body class="v-app-shell flex flex-col overflow-hidden select-none" x-data="{ mobileMenuOpen: false }" hx-boost="true">
+<body class="v-app-shell flex flex-col overflow-hidden select-none {% if request.state.ui_version == 'masthead' %}ui-masthead{% endif %}" x-data="{ mobileMenuOpen: false }" hx-boost="true">
     <div id="top-progress-bar" class="v-progress-bar"></div>
 
-    <!-- Header -->
     {% set current_path = request.url.path if request else '' %}
     {% set em = request.state.enabled_modules or {} %}
+    {% if request.state.ui_version == 'masthead' %}
+    <!-- Masthead: compact mobile top bar; the desktop rail is included below -->
+    {% if username %}
+    <header class="mh-topbar">
+        <a href="/" class="mh-topbar-brand">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h2.5l2.5-6 3.5 12 2.5-9 1.5 3h3" /></svg>
+            <span>VITALS</span>
+        </a>
+        <button type="button" @click="mobileMenuOpen = true" class="mh-topbar-menu">
+            {{ t("nav.menu_title") }}
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
+        </button>
+    </header>
+    {% endif %}
+    <div class="mh-shell">
+        {% if username %}{% include "partials/nav_masthead.html" %}{% endif %}
+    {% else %}
+    <!-- Header -->
     <header class="v-header flex-none h-16 flex items-center justify-between px-6">
         <!-- Left: brand + navigation -->
         <div class="flex items-center gap-8">
@@ -87,9 +106,10 @@
             {% endif %}
         </div>
     </header>
+    {% endif %}
 
     <!-- Main Workspace -->
-    <main class="flex-1 w-full overflow-y-auto">
+    <main class="flex-1 min-w-0 w-full overflow-y-auto">
         <!-- System Alerts Container -->
         {% if alerts %}
         <div id="alerts-container" class="flex-none px-6 pt-5 max-w-6xl mx-auto w-full space-y-2">
@@ -126,6 +146,9 @@
         <!-- Page Specific Content -->
         {% block content %}{% endblock %}
     </main>
+    {% if request.state.ui_version == 'masthead' %}
+    </div>
+    {% endif %}
 
     {% if username %}
     <!-- Mobile Bottom Navigation -->

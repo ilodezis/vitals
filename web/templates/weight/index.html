@@ -3,8 +3,17 @@
 {% block title %}{{ t("weight.page_title") }}{% endblock %}
 
 {% block content %}
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="weightOSDashboard()">
 
+    {% if request.state.ui_version == 'masthead' %}
+    {{ masthead_header('weight', t('nav.weight'), [
+        {'label': t('weight.latest'), 'unit': t('common.kg'), 'primary': true, 'value': (weights[0].weight_kg | format_number) if weights else '—'},
+        {'label': t('weight.ma7'), 'unit': t('common.kg'), 'value': (series.trend_ma[-1].weight_kg | round(2) | format_number) if series.trend_ma else '—'},
+        {'label': t('weight.body_fat'), 'unit': '%', 'value': (latest_bf | round(1) | format_number) if latest_bf is not none else '—'},
+        {'label': t('weight.weekly_change'), 'unit': t('common.kg'), 'tone': ('good' if (series.trend and series.trend.slope_per_week < 0) else ('bad' if series.trend else '')), 'value': (('+' if series.trend.slope_per_week > 0 else '') ~ (series.trend.slope_per_week | round(1) | format_number)) if series.trend else '—'}
+    ]) }}
+    {% else %}
     <!-- Top Row: Metrics Grid -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
@@ -51,6 +60,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- Chart Block -->
     <div class="v-card p-6 space-y-3">

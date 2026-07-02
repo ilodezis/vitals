@@ -3,6 +3,7 @@
 {% block title %}{{ t("supplements.page_title") }}{% endblock %}
 
 {% block content %}
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
 
 {# ── Supplement card macro (defined in-block so it's reliably in scope) ──── #}
 {% macro supplement_card(s, show_timing=False, archived=False) %}
@@ -61,6 +62,16 @@
 
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="protocolForm()">
 
+    {% if request.state.ui_version == 'masthead' %}
+    {% call masthead_header('supplements', t('nav.supplements'), [
+        {'label': t('masthead.supplements.active'), 'primary': true, 'value': supplements | selectattr('active') | list | length},
+        {'label': t('masthead.supplements.total'), 'value': supplements | length}
+    ]) %}
+        <button @click="cancelEdit('form-supplement', '{{ t("common.save") }}'); showFormModal = true" class="v-btn-ghost text-xs">
+            <span>{{ t("supplements.new_btn") }}</span>
+        </button>
+    {% endcall %}
+    {% else %}
     <!-- Header -->
     <div class="v-card p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div class="flex items-start gap-3.5">
@@ -76,6 +87,7 @@
             <span>{{ t("supplements.new_btn") }}</span>
         </button>
     </div>
+    {% endif %}
 
     <!-- Active Protocol -->
     <div class="v-card p-6 space-y-8">

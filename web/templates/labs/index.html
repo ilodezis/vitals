@@ -3,8 +3,20 @@
 {% block title %}{{ t("labs.page_title") }}{% endblock %}
 
 {% block content %}
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showUpload: {% if latest %}false{% else %}true{% endif %}, showOnlyProblematic: false }">
 
+    {% if request.state.ui_version == 'masthead' %}
+    {% call masthead_header('labs', t('nav.labs'), [
+        {'label': t('labs.metric_markers'), 'primary': true, 'value': markers | length},
+        {'label': t('labs.metric_oor'), 'tone': ('bad' if out_of_range > 0 else ''), 'value': out_of_range},
+        {'label': t('labs.metric_selected'), 'value': selected or '—'}
+    ]) %}
+        <button @click="showUpload = !showUpload" class="v-btn-ghost text-xs">
+            <span x-text="showUpload ? '{{ t("labs.toggle_results") }}' : '{{ t("labs.toggle_upload") }}'"></span>
+        </button>
+    {% endcall %}
+    {% else %}
     <!-- Header -->
     <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
         <div class="flex items-start gap-3.5">
@@ -48,6 +60,7 @@
             </span>
         </div>
     </div>
+    {% endif %}
 
     {% if upload == 'ok' %}
     <div class="v-alert info" x-init="showUpload = false">{{ t("labs.upload_ok", count=added) }}</div>

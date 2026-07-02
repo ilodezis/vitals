@@ -3,7 +3,16 @@
 {% block title %}{{ t("reports.page_title") }}{% endblock %}
 
 {% block content %}
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showGoalForm: false }">
+
+    {% if request.state.ui_version == 'masthead' %}
+    {{ masthead_header('reports', t('nav.reports'), [
+        {'label': t('masthead.reports.goals'), 'primary': true, 'value': cards | length},
+        {'label': t('masthead.reports.digests'), 'value': history | length},
+        {'label': t('masthead.reports.latest'), 'value': (latest_digest.date | format_date) if latest_digest else '—'}
+    ]) }}
+    {% endif %}
 
     <!-- Goal cards -->
     <div class="flex items-center justify-between gap-3">

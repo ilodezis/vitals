@@ -1,0 +1,365 @@
+/* ============================================================================
+   Vitals — "Masthead" interface skin
+   ----------------------------------------------------------------------------
+   Every rule is scoped under `body.ui-masthead`, so this file is completely
+   inert in the classic interface (the <link> is unconditional, the class is
+   not). Palette is NOT redefined — all colours come from the existing
+   :root tokens in vitals.css. Only the frame changes: a sidebar icon-rail
+   instead of the top navbar, and an editorial masthead (eyebrow → tabs → big
+   title → key figures) instead of KPI cards.
+   ============================================================================ */
+
+body.ui-masthead {
+    /* Display face for titles/tabs only; body text stays on Inter. */
+    --mh-display: 'Bricolage Grotesque', 'Outfit', ui-sans-serif, system-ui, sans-serif;
+    --mh-rail-w: 76px;
+}
+
+/* ── Desktop layout row ──────────────────────────────────────────────────
+   base.html wraps the rail + <main> in `.mh-shell`; the rail is a flex-none
+   column and <main> takes the rest and scrolls. */
+body.ui-masthead .mh-shell {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+}
+
+/* ── The rail ──────────────────────────────────────────────────────────────
+   Responsive display is owned here (not via Tailwind's hidden/md:flex): these
+   rules are more specific than the utilities, so they would always win — the
+   rail is hidden below md and shown from md up via the media query below. */
+body.ui-masthead .mh-rail {
+    width: var(--mh-rail-w);
+    flex: none;
+    height: 100%;
+    background: var(--bg-inset);
+    border-right: 1px solid var(--line);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 0;
+    gap: 18px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+@media (min-width: 768px) {
+    body.ui-masthead .mh-rail {
+        display: flex;
+    }
+}
+
+body.ui-masthead .mh-rail-logo {
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+}
+
+body.ui-masthead .mh-rail-logo svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Soft pulse around the logo — the active page marker. */
+body.ui-masthead .mh-rail-logo.is-live {
+    animation: mh-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes mh-pulse {
+    0%, 100% { opacity: .9; filter: drop-shadow(0 0 2px rgba(245, 166, 35, .25)); }
+    50%      { opacity: 1;  filter: drop-shadow(0 0 7px rgba(245, 166, 35, .6)); }
+}
+
+body.ui-masthead .mh-rail-div {
+    width: 24px;
+    height: 1px;
+    flex: none;
+    background: var(--line);
+}
+
+body.ui-masthead .mh-rail-nav {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Section buttons — 40×40, rounded, muted → accent when active. */
+body.ui-masthead .mh-rail-btn {
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid transparent;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+
+body.ui-masthead .mh-rail-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+body.ui-masthead .mh-rail-btn:hover {
+    color: var(--fg-2);
+    background: var(--surface);
+}
+
+body.ui-masthead .mh-rail-btn.is-active {
+    color: var(--accent-2);
+    background: var(--accent-soft);
+    border-color: var(--accent-line);
+}
+
+/* Bottom cluster: interface toggle, settings, avatar. */
+body.ui-masthead .mh-rail-foot {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding-top: 12px;
+}
+
+body.ui-masthead .mh-rail-settings {
+    color: var(--faint);
+    display: flex;
+    transition: color .15s ease;
+}
+
+body.ui-masthead .mh-rail-settings:hover,
+body.ui-masthead .mh-rail-settings.is-active {
+    color: var(--accent-2);
+}
+
+body.ui-masthead .mh-rail-settings svg {
+    width: 18px;
+    height: 18px;
+}
+
+body.ui-masthead .mh-rail-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 600 11px 'Inter', sans-serif;
+    color: var(--fg-2);
+    text-decoration: none;
+}
+
+/* ── Mobile top bar (replaces the classic <header> under md) ──────────────── */
+/* Shown below md, hidden from md up (media query at the bottom). Owned here for
+   the same specificity reason as the rail above. */
+body.ui-masthead .mh-topbar {
+    height: 52px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-inset);
+}
+
+body.ui-masthead .mh-topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    text-decoration: none;
+}
+
+body.ui-masthead .mh-topbar-brand svg {
+    width: 15px;
+    height: 15px;
+    color: var(--accent);
+}
+
+body.ui-masthead .mh-topbar-brand span {
+    font: 700 12px var(--mh-display);
+    letter-spacing: -.02em;
+    color: var(--fg);
+}
+
+body.ui-masthead .mh-topbar-menu {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--fg-2);
+    font: 600 10px 'Inter', sans-serif;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+body.ui-masthead .mh-topbar-menu svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* ── The editorial masthead (rendered at the top of each section's content) ── */
+body.ui-masthead .mh-head {
+    display: flex;
+    flex-direction: column;
+}
+
+body.ui-masthead .mh-eyebrow-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+body.ui-masthead .mh-eyebrow {
+    font: 600 11px 'Inter', sans-serif;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--faint);
+}
+
+body.ui-masthead .mh-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: none;
+}
+
+body.ui-masthead .mh-tabs {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-top: 14px;
+}
+
+body.ui-masthead .mh-tab {
+    font: 500 14px var(--mh-display);
+    color: var(--muted);
+    text-decoration: none;
+    padding-bottom: 8px;
+    border-bottom: 2px solid transparent;
+    transition: color .15s ease, border-color .15s ease;
+    white-space: nowrap;
+}
+
+body.ui-masthead .mh-tab:hover {
+    color: var(--fg-2);
+}
+
+body.ui-masthead .mh-tab.is-active {
+    font-weight: 600;
+    color: var(--fg);
+    border-bottom-color: var(--accent);
+}
+
+body.ui-masthead .mh-title {
+    font: 800 62px/1.05 var(--mh-display);
+    color: var(--fg);
+    letter-spacing: -.02em;
+    margin: 16px 0 0;
+}
+
+/* Key figures row — replaces the KPI cards. */
+body.ui-masthead .mh-metrics {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 32px;
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+    margin-top: 20px;
+}
+
+body.ui-masthead .mh-metric-div {
+    width: 1px;
+    height: 42px;
+    background: var(--line);
+    align-self: center;
+}
+
+body.ui-masthead .mh-metric-value {
+    font: 600 21px 'Inter', sans-serif;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+}
+
+body.ui-masthead .mh-metric-value.is-primary {
+    font: 700 50px var(--mh-display);
+    letter-spacing: -.01em;
+}
+
+body.ui-masthead .mh-metric.good .mh-metric-value {
+    color: var(--good);
+}
+
+body.ui-masthead .mh-metric.bad .mh-metric-value {
+    color: var(--bad);
+}
+
+body.ui-masthead .mh-metric-unit {
+    font: 400 12px 'Inter', sans-serif;
+    color: var(--muted);
+    margin-left: 4px;
+}
+
+body.ui-masthead .mh-metric-label {
+    font: 600 11px 'Inter', sans-serif;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-top: 4px;
+}
+
+/* Top bar is mobile-only. */
+@media (min-width: 768px) {
+    body.ui-masthead .mh-topbar {
+        display: none;
+    }
+}
+
+/* ── Mobile adaptations ──────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+    body.ui-masthead .mh-tabs {
+        display: none;
+    }
+
+    body.ui-masthead .mh-title {
+        font-size: 38px;
+        margin-top: 8px;
+    }
+
+    body.ui-masthead .mh-metric-value.is-primary {
+        font-size: 38px;
+    }
+
+    body.ui-masthead .mh-metrics {
+        gap: 20px;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+    }
+
+    body.ui-masthead .mh-metric {
+        flex: none;
+    }
+
+    body.ui-masthead .mh-metric-div {
+        display: none;
+    }
+}

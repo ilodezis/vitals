@@ -3,8 +3,22 @@
 {% block title %}{{ t("hevy.page_title") }}{% endblock %}
 
 {% block content %}
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ }">
 
+    {% if request.state.ui_version == 'masthead' %}
+    {% call masthead_header('hevy', t('nav.workouts'), [
+        {'label': t('hevy.total_workouts'), 'primary': true, 'value': count},
+        {'label': t('hevy.last_date'), 'value': (last_date | format_date) if last_date else '—'},
+        {'label': t('hevy.exercises_in_catalog'), 'value': catalog | length}
+    ]) %}
+        <form action="/hevy/sync" method="POST">
+            <button type="submit" class="v-btn text-xs" {% if not is_configured %}disabled style="opacity:.5;cursor:not-allowed"{% endif %}>
+                {% if is_configured %}{{ t("common.synchronize") }}{% else %}{{ t("common.not_configured") }}{% endif %}
+            </button>
+        </form>
+    {% endcall %}
+    {% else %}
     <!-- Header -->
     <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
         <div class="flex items-start gap-3.5">
@@ -51,6 +65,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- Sync status banner -->
     {% if sync == 'ok' %}

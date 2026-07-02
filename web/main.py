@@ -25,6 +25,7 @@ from web.deps import (
     get_redis,
     load_enabled_modules,
     load_language,
+    load_ui_version,
     require_module,
 )
 from web.templating import STATIC_DIR
@@ -75,7 +76,7 @@ app = FastAPI(
     redoc_url=None,
     # Resolve the enabled-module map once per request → request.state (read by
     # base.html nav and the require_module guards below).
-    dependencies=[Depends(load_language), Depends(load_enabled_modules)],
+    dependencies=[Depends(load_language), Depends(load_enabled_modules), Depends(load_ui_version)],
 )
 
 # Install security barriers

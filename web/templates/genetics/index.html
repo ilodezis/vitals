@@ -3,8 +3,18 @@
 {% block title %}{{ t("genetics.page_title") }}{% endblock %}
 
 {% block content %}
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showAdminPanels: {% if variants %}false{% else %}true{% endif %}, activeTab: 'all' }">
 
+    {% if request.state.ui_version == 'masthead' %}
+    {% call masthead_header('genetics', t('nav.genetics'), [
+        {'label': t('genetics.interpreted'), 'primary': true, 'value': variants | length}
+    ]) %}
+        <button @click="showAdminPanels = !showAdminPanels" class="v-btn-ghost text-xs">
+            <span x-text="showAdminPanels ? '{{ t("genetics.toggle_profile") }}' : '{{ t("genetics.toggle_admin") }}'"></span>
+        </button>
+    {% endcall %}
+    {% else %}
     <!-- Header -->
     <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
         <div class="flex items-start gap-3.5">
@@ -25,6 +35,7 @@
             <span x-text="showAdminPanels ? '{{ t("genetics.toggle_profile") }}' : '{{ t("genetics.toggle_admin") }}'"></span>
         </button>
     </div>
+    {% endif %}
 
     {% if imported is not none %}
     <div x-init="showAdminPanels = false" class="v-alert info flex items-center gap-2">

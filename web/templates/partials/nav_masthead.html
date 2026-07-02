@@ -1,0 +1,6 @@
+{# Sidebar rail for the "Masthead" interface. Thin wrapper over the shared
+   masthead_rail macro so it can be {% include %}d by base.html and re-rendered
+   standalone for an HTMX out-of-band swap (live module toggle), mirroring
+   nav_primary.html. Pass `oob=true` to emit the hx-swap-oob marker. #}
+{% from "partials/masthead.html" import masthead_rail with context %}
+{{ masthead_rail(oob=oob|default(false)) }}

@@ -3,8 +3,19 @@
 {% block title %}{{ t("skincare.page_title") }}{% endblock %}
 
 {% block content %}
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="protocolForm()">
 
+    {% if request.state.ui_version == 'masthead' %}
+    {% call masthead_header('skincare', t('nav.skincare'), [
+        {'label': t('masthead.skincare.active'), 'primary': true, 'value': products | selectattr('active') | list | length},
+        {'label': t('masthead.skincare.total'), 'value': products | length}
+    ]) %}
+        <button @click="cancelEdit('form-skincare-product', '{{ t("common.save") }}'); showFormModal = true" class="v-btn-ghost text-xs">
+            <span>{{ t("skincare.add_product") }}</span>
+        </button>
+    {% endcall %}
+    {% else %}
     <!-- Header -->
     <div class="v-card p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div class="flex items-start gap-3.5">
@@ -19,6 +30,7 @@
             <span>{{ t("skincare.add_product") }}</span>
         </button>
     </div>
+    {% endif %}
 
     <!-- Weekly Schedule -->
     <div class="v-card p-6 space-y-4">
