@@ -64,6 +64,10 @@ METRIC_REGISTRY: dict[str, MetricDef] = {
         _d("active_cell_mass_pct", "Доля активной клеточной массы", "Active Cell Mass %", "%", CAT_COMPOSITION),
         _d("visceral_fat_area", "Площадь висцерального жира", "Visceral Fat Area", "см²", CAT_COMPOSITION, headline=True),
         _d("visceral_fat_level", "Уровень висцерального жира", "Visceral Fat Level", None, CAT_COMPOSITION),
+        _d("skeletal_muscle_mass_pct", "Доля скелетно-мышечной массы", "Skeletal Muscle Mass %", "%", CAT_COMPOSITION),
+        _d("height", "Рост", "Height", "см", CAT_COMPOSITION),
+        _d("waist_circumference", "Окружность талии", "Waist Circumference", "см", CAT_COMPOSITION),
+        _d("hip_circumference", "Окружность бёдер", "Hip Circumference", "см", CAT_COMPOSITION),
         # ── Water / hydration ────────────────────────────────────────────────
         _d("total_body_water", "Общая жидкость организма", "Total Body Water", "л", CAT_WATER),
         _d("intracellular_water", "Внутриклеточная жидкость", "Intracellular Water", "л", CAT_WATER),
@@ -120,6 +124,13 @@ LABEL_ALIASES: dict[str, str] = {
     "процент жира": "body_fat_pct", "процент жировой массы": "body_fat_pct",
     "содержание жира": "body_fat_pct", "percent body fat": "body_fat_pct",
     "pbf": "body_fat_pct", "body fat percentage": "body_fat_pct", "% жира": "body_fat_pct",
+    # МедАсс prints this as a combined "value + classification" row rather than a
+    # bare "% жира" label — same metric, different phrasing on this device.
+    "классификация по проценту жировой массы": "body_fat_pct",
+    # МедАсс's height-normalized fat mass reading — closest canonical slot is
+    # plain fat mass (kg); the normalization is a device-specific presentation,
+    # not a distinct metric.
+    "жировая масса (кг), нормированная по росту": "body_fat_mass",
     # lean / fat-free
     "безжировая масса": "lean_body_mass", "lean body mass": "lean_body_mass", "lbm": "lean_body_mass",
     "тощая масса": "fat_free_mass", "fat free mass": "fat_free_mass", "ffm": "fat_free_mass",
@@ -132,6 +143,15 @@ LABEL_ALIASES: dict[str, str] = {
     # cell mass
     "активная клеточная масса": "active_cell_mass", "active cell mass": "active_cell_mass", "акм": "active_cell_mass",
     "доля активной клеточной массы": "active_cell_mass_pct", "% акм": "active_cell_mass_pct",
+    "доля скелетно-мышечной массы": "skeletal_muscle_mass_pct",
+    # anthropometrics
+    "рост": "height", "height": "height",
+    "окр. талии": "waist_circumference", "окружность талии": "waist_circumference",
+    "waist circumference": "waist_circumference",
+    "окр. бедер": "hip_circumference", "окружность бедер": "hip_circumference",
+    "hip circumference": "hip_circumference",
+    "минеральная масса тела": "minerals",
+    "соотношение талии/бедра": "waist_hip_ratio",
     # visceral
     "площадь висцерального жира": "visceral_fat_area", "висцеральный жир": "visceral_fat_area",
     "visceral fat area": "visceral_fat_area", "vfa": "visceral_fat_area",
@@ -139,7 +159,8 @@ LABEL_ALIASES: dict[str, str] = {
     # water
     "общая жидкость организма": "total_body_water", "общая вода организма": "total_body_water",
     "общая жидкость": "total_body_water", "total body water": "total_body_water", "tbw": "total_body_water",
-    "внутриклеточная жидкость": "intracellular_water", "intracellular water": "intracellular_water", "icw": "intracellular_water",
+    "внутриклеточная жидкость": "intracellular_water", "клеточная жидкость": "intracellular_water",
+    "intracellular water": "intracellular_water", "icw": "intracellular_water",
     "внеклеточная жидкость": "extracellular_water", "extracellular water": "extracellular_water", "ecw": "extracellular_water",
     "отношение внекж/ово": "ecw_tbw_ratio", "ecw/tbw": "ecw_tbw_ratio", "внекж/ово": "ecw_tbw_ratio",
     # score / quality
@@ -202,6 +223,13 @@ def normalize_metric(label: str, segment: Any = None) -> tuple[str, str, Optiona
         return key, CAT_SEGMENTAL, seg
 
     key = LABEL_ALIASES.get(norm)
+    if key is None:
+        # Some devices (e.g. МедАсс) print the unit inline as a trailing
+        # "(кг)"/"(%)" annotation instead of a separate unit field — strip one
+        # trailing parenthetical group and retry before giving up.
+        stripped = re.sub(r"\s*\([^()]*\)\s*$", "", norm).strip()
+        if stripped != norm:
+            key = LABEL_ALIASES.get(stripped)
     if key is not None:
         return key, METRIC_REGISTRY[key].category, None
     return slugify(label), CAT_OTHER, None

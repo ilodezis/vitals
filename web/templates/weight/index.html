@@ -236,7 +236,7 @@
                 {% if body_comp_enabled %}
                 <div x-show="activeTab === 'body'" class="space-y-4">
                     <p class="v-text-micro" style="color: var(--muted)">{{ t("body.upload_hint") }}</p>
-                    <form @submit.prevent="bsUpload($event)" class="space-y-4">
+                    <form @submit.prevent="bsUpload($event)" hx-boost="false" class="space-y-4">
                         <label class="v-file-drop cursor-pointer">
                             <input type="file" name="file" accept="image/*,application/pdf" required class="sr-only"
                                 onchange="const h=this.closest('form').querySelector('.v-file-drop__hint'); h.textContent = this.files.length ? this.files[0].name : h.dataset.default;">
