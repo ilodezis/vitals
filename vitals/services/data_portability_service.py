@@ -508,6 +508,8 @@ async def export_llm(session: AsyncSession) -> dict[str, Any]:
                 "peel": s.peel,
                 "niacinamide_spf": s.niacinamide_spf,
                 "moisturizer": s.moisturizer,
+                "vitamin_c": s.vitamin_c,
+                "benzoyl_peroxide": s.benzoyl_peroxide,
             }
         )
         for s in sk_logs

@@ -14,6 +14,9 @@ from vitals.enums import Domain
 from vitals.services import conflict_engine
 from vitals.services import (
     genetics_service,
+    glp1_service,
+    labs_service,
+    nutrition_service,
     skincare_service,
     supplements_service,
 )
@@ -30,4 +33,13 @@ def register_all_resolvers() -> None:
     )
     conflict_engine.register_domain_resolver(
         Domain.SKINCARE.value, skincare_service.resolve_today
+    )
+    conflict_engine.register_domain_resolver(
+        Domain.GLP1.value, glp1_service.resolve_active
+    )
+    conflict_engine.register_domain_resolver(
+        Domain.LABS.value, labs_service.resolve_latest
+    )
+    conflict_engine.register_domain_resolver(
+        Domain.NUTRITION.value, nutrition_service.resolve_today
     )

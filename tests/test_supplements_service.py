@@ -22,6 +22,27 @@ def test_slugify():
     assert supplements_service.slugify("  Vitamin D3 ") == "vitamin_d3"
 
 
+def test_slugify_transliterates_cyrillic_name():
+    """Кириллица must not collapse to the useless "supplement" fallback."""
+    assert supplements_service.slugify("Креатин") == "kreatin"
+
+
+def test_parse_slot_am_pm_meal_day():
+    assert supplements_service._parse_slot("утро") == "AM"
+    assert supplements_service._parse_slot("Morning") == "AM"
+    assert supplements_service._parse_slot("вечер") == "PM"
+    assert supplements_service._parse_slot("ночь") == "PM"
+    assert supplements_service._parse_slot("Night") == "PM"
+    assert supplements_service._parse_slot("с едой") == "MEAL"
+    assert supplements_service._parse_slot("день") == "DAY"
+
+
+def test_parse_slot_unknown_or_blank_is_none():
+    assert supplements_service._parse_slot(None) is None
+    assert supplements_service._parse_slot("") is None
+    assert supplements_service._parse_slot("перед тренировкой") is None
+
+
 async def test_add_list_toggle_delete(db_session):
     s = await supplements_service.add_supplement(
         db_session, name="Креатин", dose="5 г", evidence="A"
@@ -47,7 +68,7 @@ async def test_resolver_shape(db_session):
     await supplements_service.add_supplement(db_session, name="Iron", key="iron", active=True)
     await db_session.commit()
     items = await supplements_service.resolve_active(db_session)
-    assert {"key": "iron", "active": True, "name": "Iron"} in items
+    assert {"key": "iron", "active": True, "name": "Iron", "timing_slot": None} in items
 
 
 async def _seed_iron_rule(db_session):
@@ -78,6 +99,22 @@ async def test_iron_blocked_for_hemochromatosis_carrier(db_session):
         await supplements_service.add_supplement(
             db_session, name="Iron", key="iron", active=True
         )
+    await db_session.rollback()
+
+
+async def test_cyrillic_name_no_explicit_key_still_blocked(db_session):
+    """The bug this plan set out to fix: adding "Железо" (no explicit key) used
+    to slugify to the useless "supplement" fallback, silently never matching
+    the iron rule. It must now resolve to "iron" via the dictionary and block."""
+    conflict_registrations.register_all_resolvers()
+    await _seed_iron_rule(db_session)
+    await genetics_service.add_variant(
+        db_session, gene="HFE", rsid="rs1800562", marker="hemochromatosis_carrier"
+    )
+    await db_session.commit()
+
+    with pytest.raises(ConflictBlocked):
+        await supplements_service.add_supplement(db_session, name="Железо", active=True)
     await db_session.rollback()
 
 

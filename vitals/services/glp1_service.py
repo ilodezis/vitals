@@ -143,6 +143,16 @@ async def active_dose_phase(
     return match
 
 
+async def resolve_active(session: AsyncSession) -> list[dict]:
+    """Conflict-engine resolver: the current dose phase (if any) as a match item
+    — lets a rule reference "on drug X at dose >= Y" against the ongoing phase,
+    not just a one-off injection being logged right now."""
+    phase = await active_dose_phase(session)
+    if phase is None:
+        return []
+    return [{"drug": phase.drug, "dose_mg": phase.dose_mg, "active": True}]
+
+
 async def add_dose_phase(
     session: AsyncSession,
     *,

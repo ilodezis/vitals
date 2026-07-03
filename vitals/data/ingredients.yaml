@@ -1,0 +1,637 @@
+# Ingredient/drug identity normalization — canonical key -> aliases.
+#
+# Backbone for vitals.services.conflict_catalog.normalize_ingredient(): a
+# supplement's free-text ``name`` (RU or EN, any casing) is normalized to a
+# stable ``key`` so conflict_rules can match it regardless of spelling. Aliases
+# are matched as whole words/phrases (space-padded substring) against the
+# lowercased, ё->е-normalized name — see conflict_catalog.py for the algorithm.
+#
+# Keys here double as the canonical ``key`` written to Supplement.key. Add new
+# canonical entries as new rules need them; keep aliases realistic (names a
+# Russian- or English-speaking user would actually type), not exhaustive brand
+# lists. A name that matches nothing here falls back to a transliterating slug
+# (supplements_service.slugify) — still stable, just not linked to any rule.
+
+# ── Minerals ─────────────────────────────────────────────────────────────────
+iron:
+  - iron
+  - ferrum
+  - fe
+  - ferrous sulfate
+  - ferrous bisglycinate
+  - iron bisglycinate
+  - железо
+  - железа сульфат
+  - железа бисглицинат
+  - сульфат железа
+  - бисглицинат железа
+
+calcium:
+  - calcium
+  - calcium carbonate
+  - calcium citrate
+  - кальций
+  - карбонат кальция
+  - цитрат кальция
+
+zinc:
+  - zinc
+  - zinc picolinate
+  - zinc gluconate
+  - цинк
+  - пиколинат цинка
+  - глюконат цинка
+
+magnesium:
+  - magnesium
+  - magnesium glycinate
+  - magnesium citrate
+  - magnesium oxide
+  - magnesium threonate
+  - магний
+  - магния глицинат
+  - магния цитрат
+  - магния оксид
+  - магния треонат
+  - магникум
+
+copper:
+  - copper
+  - copper glycinate
+  - медь
+  - глицинат меди
+
+manganese:
+  - manganese
+  - марганец
+
+potassium:
+  - potassium
+  - potassium chloride
+  - potassium citrate
+  - калий
+  - хлорид калия
+  - цитрат калия
+  - панангин
+  - аспаркам
+
+selenium:
+  - selenium
+  - selenium methionine
+  - selenomethionine
+  - селен
+  - селенметионин
+
+iodine:
+  - iodine
+  - potassium iodide
+  - йод
+  - йодомарин
+  - калия йодид
+
+chromium:
+  - chromium
+  - chromium picolinate
+  - хром
+  - пиколинат хрома
+
+boron:
+  - boron
+  - бор
+
+molybdenum:
+  - molybdenum
+  - молибден
+
+phosphorus:
+  - phosphorus
+  - фосфор
+
+# ── Vitamins ─────────────────────────────────────────────────────────────────
+vitamin_a:
+  - vitamin a
+  - retinol
+  - retinyl palmitate
+  - витамин a
+  - витамин а
+  - ретинол
+  - ретинил пальмитат
+
+vitamin_c:
+  - vitamin c
+  - ascorbic acid
+  - витамин c
+  - витамин с
+  - аскорбиновая кислота
+  - аскорбинка
+
+vitamin_d:
+  - vitamin d
+  - vitamin d3
+  - cholecalciferol
+  - vitamin d2
+  - ergocalciferol
+  - витамин d
+  - витамин д
+  - витамин д3
+  - холекальциферол
+  - аквадетрим
+  - вигантол
+
+vitamin_e:
+  - vitamin e
+  - tocopherol
+  - alpha tocopherol
+  - витамин e
+  - витамин е
+  - токоферол
+
+vitamin_k:
+  - vitamin k
+  - vitamin k2
+  - menaquinone
+  - phylloquinone
+  - витамин k
+  - витамин к
+  - витамин к2
+  - менахинон
+
+thiamine:
+  - thiamine
+  - vitamin b1
+  - тиамин
+  - витамин b1
+  - витамин в1
+
+riboflavin:
+  - riboflavin
+  - vitamin b2
+  - рибофлавин
+  - витамин b2
+  - витамин в2
+
+niacin:
+  - niacin
+  - vitamin b3
+  - nicotinic acid
+  - niacinamide oral
+  - ниацин
+  - витамин b3
+  - витамин в3
+  - никотиновая кислота
+
+pantothenic_acid:
+  - pantothenic acid
+  - vitamin b5
+  - пантотеновая кислота
+  - витамин b5
+  - витамин в5
+
+vitamin_b6:
+  - vitamin b6
+  - pyridoxine
+  - витамин b6
+  - витамин в6
+  - пиридоксин
+
+biotin:
+  - biotin
+  - vitamin b7
+  - vitamin h
+  - биотин
+  - витамин b7
+  - витамин н
+
+folate:
+  - folate
+  - natural folate
+  - фолат
+
+folic_acid:
+  - folic acid
+  - vitamin b9
+  - фолиевая кислота
+  - витамин b9
+  - витамин в9
+
+methylfolate:
+  - methylfolate
+  - l-methylfolate
+  - 5-mthf
+  - метилфолат
+  - метафолин
+
+vitamin_b12:
+  - vitamin b12
+  - cobalamin
+  - methylcobalamin
+  - cyanocobalamin
+  - витамин b12
+  - витамин в12
+  - кобаламин
+  - метилкобаламин
+  - цианокобаламин
+
+choline:
+  - choline
+  - alpha-gpc
+  - citicoline
+  - холин
+  - альфа-гпц
+  - цитиколин
+
+# ── Omega / fats ─────────────────────────────────────────────────────────────
+omega3:
+  - omega 3
+  - omega-3
+  - fish oil
+  - epa dha
+  - cod liver oil
+  - омега 3
+  - омега-3
+  - рыбий жир
+  - рыбий жир омега
+
+# ── Performance / amino acids ───────────────────────────────────────────────
+creatine:
+  - creatine
+  - creatine monohydrate
+  - креатин
+  - креатин моногидрат
+
+l_carnitine:
+  - l-carnitine
+  - carnitine
+  - acetyl-l-carnitine
+  - карнитин
+  - л-карнитин
+  - ацетил-л-карнитин
+
+beta_alanine:
+  - beta alanine
+  - beta-alanine
+  - бета-аланин
+
+citrulline:
+  - citrulline
+  - citrulline malate
+  - цитруллин
+  - цитруллин малат
+
+arginine:
+  - arginine
+  - l-arginine
+  - аргинин
+  - л-аргинин
+
+taurine:
+  - taurine
+  - таурин
+
+bcaa:
+  - bcaa
+  - branched chain amino acids
+  - бцаа
+
+glutamine:
+  - glutamine
+  - l-glutamine
+  - глютамин
+  - глутамин
+
+hmb:
+  - hmb
+
+# ── Herbal / adaptogens ──────────────────────────────────────────────────────
+ashwagandha:
+  - ashwagandha
+  - withania somnifera
+  - ашваганда
+
+rhodiola:
+  - rhodiola
+  - rhodiola rosea
+  - родиола
+  - родиола розовая
+
+st_johns_wort:
+  - st john's wort
+  - st johns wort
+  - hypericum
+  - зверобой
+
+ginkgo_biloba:
+  - ginkgo
+  - ginkgo biloba
+  - гинкго
+  - гинкго билоба
+
+ginseng:
+  - ginseng
+  - panax ginseng
+  - женьшень
+
+turmeric_curcumin:
+  - turmeric
+  - curcumin
+  - куркума
+  - куркумин
+
+milk_thistle:
+  - milk thistle
+  - silymarin
+  - расторопша
+  - силимарин
+  - карсил
+
+green_tea_extract:
+  - green tea extract
+  - egcg
+  - зеленый чай экстракт
+  - экстракт зеленого чая
+
+garlic_extract:
+  - garlic extract
+  - allicin
+  - чеснок экстракт
+  - экстракт чеснока
+
+valerian_root:
+  - valerian
+  - valerian root
+  - валериана
+
+kava:
+  - kava
+  - kava kava
+  - кава
+
+licorice_root:
+  - licorice
+  - licorice root
+  - glycyrrhizin
+  - солодка
+  - корень солодки
+
+saw_palmetto:
+  - saw palmetto
+  - со пальметто
+  - пальма сереноа
+
+black_cohosh:
+  - black cohosh
+  - клопогон
+
+echinacea:
+  - echinacea
+  - эхинацея
+
+elderberry:
+  - elderberry
+  - sambucus
+  - бузина
+
+berberine:
+  - berberine
+  - берберин
+
+bitter_orange:
+  - bitter orange
+  - synephrine
+  - померанец горький
+  - синефрин
+
+# ── Other common supplements ────────────────────────────────────────────────
+melatonin:
+  - melatonin
+  - мелатонин
+
+caffeine:
+  - caffeine
+  - caffeine anhydrous
+  - кофеин
+  - кофеин безводный
+
+l_theanine:
+  - theanine
+  - l-theanine
+  - теанин
+  - л-теанин
+
+coq10:
+  - coq10
+  - coenzyme q10
+  - ubiquinol
+  - ubiquinone
+  - коэнзим q10
+  - убихинол
+  - убихинон
+
+alpha_lipoic_acid:
+  - alpha lipoic acid
+  - ala
+  - альфа-липоевая кислота
+  - тиоктовая кислота
+
+nac:
+  - nac
+  - n-acetylcysteine
+  - ацетилцистеин
+  - n-ацетилцистеин
+
+glucosamine:
+  - glucosamine
+  - глюкозамин
+
+chondroitin:
+  - chondroitin
+  - хондроитин
+
+msm:
+  - msm
+  - methylsulfonylmethane
+  - мсм
+
+collagen:
+  - collagen
+  - collagen peptides
+  - коллаген
+  - пептиды коллагена
+
+probiotics:
+  - probiotics
+  - lactobacillus
+  - bifidobacterium
+  - пробиотики
+  - лактобактерии
+  - бифидобактерии
+
+psyllium_fiber:
+  - psyllium
+  - psyllium husk
+  - псиллиум
+  - шелуха подорожника
+
+quercetin:
+  - quercetin
+  - кверцетин
+
+resveratrol:
+  - resveratrol
+  - ресвератрол
+
+dhea:
+  - dhea
+  - дгэа
+
+pregnenolone:
+  - pregnenolone
+  - прегненолон
+
+five_htp:
+  - 5-htp
+  - 5 htp
+  - griffonia
+  - 5-гидрокситриптофан
+
+gaba:
+  - gaba
+  - гамк
+
+tyrosine:
+  - tyrosine
+  - l-tyrosine
+  - тирозин
+  - л-тирозин
+
+phosphatidylserine:
+  - phosphatidylserine
+  - фосфатидилсерин
+
+spirulina:
+  - spirulina
+  - спирулина
+
+chlorella:
+  - chlorella
+  - хлорелла
+
+activated_charcoal:
+  - activated charcoal
+  - активированный уголь
+
+multivitamin:
+  - multivitamin
+  - multivitamins
+  - мультивитамины
+  - поливитамины
+
+# ── Prescription / OTC drugs sometimes logged in the same catalog ──────────
+isotretinoin:
+  - isotretinoin
+  - accutane
+  - roaccutane
+  - изотретиноин
+  - роаккутан
+  - акненормин
+
+finasteride:
+  - finasteride
+  - propecia
+  - финастерид
+  - пропеция
+
+minoxidil:
+  - minoxidil
+  - миноксидил
+
+spironolactone:
+  - spironolactone
+  - верошпирон
+  - спиронолактон
+
+metformin:
+  - metformin
+  - glucophage
+  - метформин
+  - глюкофаж
+  - сиофор
+
+levothyroxine:
+  - levothyroxine
+  - l-thyroxine
+  - euthyrox
+  - левотироксин
+  - эутирокс
+  - l-тироксин
+
+warfarin:
+  - warfarin
+  - варфарин
+
+statin:
+  - statin
+  - atorvastatin
+  - rosuvastatin
+  - simvastatin
+  - статин
+  - аторвастатин
+  - розувастатин
+  - симвастатин
+
+ssri_antidepressant:
+  - ssri
+  - sertraline
+  - fluoxetine
+  - escitalopram
+  - сертралин
+  - флуоксетин
+  - эсциталопрам
+
+ppi_omeprazole:
+  - omeprazole
+  - ppi
+  - esomeprazole
+  - omez
+  - омепразол
+  - эзомепразол
+  - омез
+
+nsaid_ibuprofen:
+  - ibuprofen
+  - nsaid
+  - nurofen
+  - ибупрофен
+  - нурофен
+
+aspirin:
+  - aspirin
+  - acetylsalicylic acid
+  - аспирин
+  - ацетилсалициловая кислота
+
+oral_contraceptive:
+  - oral contraceptive
+  - birth control pill
+  - contraceptive pill
+  - оральные контрацептивы
+  - противозачаточные таблетки
+  - джес
+  - ярина
+
+ace_inhibitor:
+  - ace inhibitor
+  - lisinopril
+  - enalapril
+  - ramipril
+  - лизиноприл
+  - эналаприл
+  - рамиприл
+  - ингибитор апф
+
+arb_sartan:
+  - losartan
+  - valsartan
+  - лозартан
+  - валсартан
+  - сартан
