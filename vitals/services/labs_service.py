@@ -372,18 +372,20 @@ async def refresh_alerts(
     session: AsyncSession, *, on_date: Optional[date_type] = None
 ) -> None:
     """Raise/clear out-of-range + overdue-retest alerts from the latest values.
-    Idempotent — safe on every dashboard load / scheduler tick."""
+    Idempotent — safe on every dashboard load / scheduler tick. Each alert is
+    bound to the specific LabResult row that triggered it (``entity_ref =
+    f"{marker}:{result_id}"``), so a dismissal sticks forever for that row —
+    only a new result for the marker can raise it again."""
     today = on_date or today_local()
     latest = await latest_per_marker(session)
     markers = {m.name: m for m in await list_markers(session)}
 
     for r in latest:
         key = OUT_OF_RANGE_KEY
-        entity = r.marker
+        entity = f"{r.marker}:{r.id}"
+        await alerts_service.resolve_superseded(session, alert_key=key, marker=r.marker, keep_entity=entity)
         if is_out_of_range(r.flag):
-            # Don't re-raise if the user already dismissed this alert today.
-            # It becomes raiseable again on the next calendar day.
-            if await alerts_service._was_dismissed_today(session, key, entity, on_date=today):
+            if await alerts_service._was_ever_dismissed(session, key, entity):
                 continue
             tier = markers.get(r.marker).tier if markers.get(r.marker) else 2
             critical = _is_critical(r.flag) or tier == 1
@@ -405,14 +407,16 @@ async def refresh_alerts(
         else:
             await alerts_service.resolve_by_key(session, alert_key=key, entity_ref=entity)
 
-        # Overdue retest (respecting a deferral).
-        marker = markers.get(r.marker)
-        if marker and marker.retest_interval_days:
-            due = r.date + timedelta(days=marker.retest_interval_days)
-            deferred = marker.defer_until is not None and marker.defer_until >= today
+        # Overdue retest (respecting a deferral) — bound to the same result row.
+        marker_row = markers.get(r.marker)
+        if marker_row and marker_row.retest_interval_days:
+            due = r.date + timedelta(days=marker_row.retest_interval_days)
+            deferred = marker_row.defer_until is not None and marker_row.defer_until >= today
+            await alerts_service.resolve_superseded(
+                session, alert_key=RETEST_DUE_KEY, marker=r.marker, keep_entity=entity
+            )
             if today > due and not deferred:
-                # Don't re-raise overdue-retest alert if dismissed today.
-                if await alerts_service._was_dismissed_today(session, RETEST_DUE_KEY, r.marker, on_date=today):
+                if await alerts_service._was_ever_dismissed(session, RETEST_DUE_KEY, entity):
                     continue
                 await alerts_service.raise_alert(
                     session,
@@ -420,11 +424,11 @@ async def refresh_alerts(
                     severity=Severity.INFO.value,
                     message=t("alert.lab_retest", marker=r.marker, date=r.date),
                     alert_key=RETEST_DUE_KEY,
-                    entity_ref=r.marker,
+                    entity_ref=entity,
                 )
             else:
                 await alerts_service.resolve_by_key(
-                    session, alert_key=RETEST_DUE_KEY, entity_ref=r.marker
+                    session, alert_key=RETEST_DUE_KEY, entity_ref=entity
                 )
 
 

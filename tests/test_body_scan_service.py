@@ -224,20 +224,69 @@ async def test_refresh_alerts_visceral_high_then_resolves(db_session):
         {"label": "Площадь висцерального жира", "value": 120.0, "unit": "см²", "ref_high": 100.0},
     ])
     await db_session.commit()
-    await body_scan_service.refresh_alerts(db_session, on_date=DAY)
+    await body_scan_service.refresh_alerts(db_session)
     await db_session.commit()
     active = await alerts_service.list_active(db_session, domain="body_comp")
     assert len(active) == 1
 
-    # A later, in-range scan resolves it.
+    # A later, in-range scan resolves it — this also guards the supersede logic:
+    # the alert is tied to the *first* scan's id, so a naive exact-entity lookup
+    # would miss it; refresh_alerts must clear it via resolve_superseded.
     await body_scan_service.save_scan(db_session, on_date=DAY2, metrics=[
         {"label": "Площадь висцерального жира", "value": 80.0, "unit": "см²", "ref_high": 100.0},
     ])
     await db_session.commit()
-    await body_scan_service.refresh_alerts(db_session, on_date=DAY2)
+    await body_scan_service.refresh_alerts(db_session)
     await db_session.commit()
     active2 = await alerts_service.list_active(db_session, domain="body_comp")
     assert active2 == []
+
+
+async def test_dismissed_visceral_alert_stays_hidden_until_new_scan(db_session):
+    """Same forever-until-new-data contract as labs: dismissing a visceral-fat
+    alert hides it forever for that scan; a new out-of-range scan raises a
+    fresh one."""
+    from freezegun import freeze_time
+
+    await body_scan_service.save_scan(db_session, on_date=DAY, metrics=[
+        {"label": "Площадь висцерального жира", "value": 120.0, "unit": "см²", "ref_high": 100.0},
+    ])
+    await db_session.commit()
+
+    with freeze_time("2026-06-10 10:00:00"):
+        await body_scan_service.refresh_alerts(db_session)
+        await db_session.commit()
+        active = await alerts_service.list_active(db_session, domain="body_comp")
+        alert = next((a for a in active if a.alert_key == body_scan_service.VISCERAL_ALERT_KEY), None)
+        assert alert is not None
+
+        await alerts_service.resolve_alert(db_session, alert.id)
+        await db_session.commit()
+
+        await body_scan_service.refresh_alerts(db_session)
+        await db_session.commit()
+        active = await alerts_service.list_active(db_session, domain="body_comp")
+        assert not any(a.alert_key == body_scan_service.VISCERAL_ALERT_KEY for a in active)
+
+    # Next calendar day, same scan: still hidden — under the old daily-nag
+    # design this would have reappeared.
+    with freeze_time("2026-06-11 10:00:00"):
+        await body_scan_service.refresh_alerts(db_session)
+        await db_session.commit()
+        active = await alerts_service.list_active(db_session, domain="body_comp")
+        assert not any(
+            a.alert_key == body_scan_service.VISCERAL_ALERT_KEY for a in active
+        ), "Alert should stay hidden indefinitely for the same scan"
+
+        # A new scan, still out of range, raises a fresh alert.
+        await body_scan_service.save_scan(db_session, on_date=DAY2, metrics=[
+            {"label": "Площадь висцерального жира", "value": 130.0, "unit": "см²", "ref_high": 100.0},
+        ])
+        await db_session.commit()
+        await body_scan_service.refresh_alerts(db_session)
+        await db_session.commit()
+        active = await alerts_service.list_active(db_session, domain="body_comp")
+        assert any(a.alert_key == body_scan_service.VISCERAL_ALERT_KEY for a in active)
 
 
 async def _latest_scan_id(db_session) -> int:

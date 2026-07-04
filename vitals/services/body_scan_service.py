@@ -377,47 +377,50 @@ async def delete_scan(session: AsyncSession, scan_id: int) -> bool:
 
 
 # ── Alerts (light) ────────────────────────────────────────────────────────────
-async def refresh_alerts(
-    session: AsyncSession, *, on_date: Optional[date_type] = None
-) -> None:
+async def refresh_alerts(session: AsyncSession) -> None:
     """Raise/clear passive ``info`` alerts from the latest scan: visceral fat above
-    its printed range, or phase angle below its printed range. Idempotent."""
-    today = on_date or today_local()
+    its printed range, or phase angle below its printed range. Idempotent. Each
+    alert is bound to the triggering scan's id, so a dismissal sticks forever
+    for that scan — only a newer scan can raise it again."""
     scan = await latest_scan(session)
     if scan is None:
-        await alerts_service.resolve_by_key(session, alert_key=VISCERAL_ALERT_KEY, entity_ref="")
-        await alerts_service.resolve_by_key(session, alert_key=PHASE_ALERT_KEY, entity_ref="")
+        await alerts_service.resolve_superseded(session, alert_key=VISCERAL_ALERT_KEY, keep_entity=None)
+        await alerts_service.resolve_superseded(session, alert_key=PHASE_ALERT_KEY, keep_entity=None)
         return
+
+    entity = str(scan.id)
+    await alerts_service.resolve_superseded(session, alert_key=VISCERAL_ALERT_KEY, keep_entity=entity)
+    await alerts_service.resolve_superseded(session, alert_key=PHASE_ALERT_KEY, keep_entity=entity)
 
     by_key = {m.metric_key: m for m in scan.metrics}
 
     vfa = by_key.get("visceral_fat_area") or by_key.get("visceral_fat_level")
     if vfa is not None and vfa.ref_high is not None and vfa.value > vfa.ref_high:
-        if not await alerts_service._was_dismissed_today(session, VISCERAL_ALERT_KEY, "", on_date=today):
+        if not await alerts_service._was_ever_dismissed(session, VISCERAL_ALERT_KEY, entity):
             await alerts_service.raise_alert(
                 session,
                 domain=Domain.BODY_COMPOSITION.value,
                 severity=Severity.INFO.value,
                 message=t("alert.body_visceral_high", value=vfa.value, unit=((" " + vfa.unit) if vfa.unit else "")),
                 alert_key=VISCERAL_ALERT_KEY,
-                entity_ref="",
+                entity_ref=entity,
             )
     else:
-        await alerts_service.resolve_by_key(session, alert_key=VISCERAL_ALERT_KEY, entity_ref="")
+        await alerts_service.resolve_by_key(session, alert_key=VISCERAL_ALERT_KEY, entity_ref=entity)
 
     phase = by_key.get("phase_angle")
     if phase is not None and phase.ref_low is not None and phase.value < phase.ref_low:
-        if not await alerts_service._was_dismissed_today(session, PHASE_ALERT_KEY, "", on_date=today):
+        if not await alerts_service._was_ever_dismissed(session, PHASE_ALERT_KEY, entity):
             await alerts_service.raise_alert(
                 session,
                 domain=Domain.BODY_COMPOSITION.value,
                 severity=Severity.INFO.value,
                 message=t("alert.body_phase_low", value=phase.value),
                 alert_key=PHASE_ALERT_KEY,
-                entity_ref="",
+                entity_ref=entity,
             )
     else:
-        await alerts_service.resolve_by_key(session, alert_key=PHASE_ALERT_KEY, entity_ref="")
+        await alerts_service.resolve_by_key(session, alert_key=PHASE_ALERT_KEY, entity_ref=entity)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

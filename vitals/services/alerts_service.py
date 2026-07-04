@@ -40,9 +40,15 @@ async def _was_dismissed_today(
 ) -> bool:
     """Return True if this alert was already dismissed (resolved) today.
 
-    This prevents the noise-period alert (and similar auto-raised alerts) from
-    reappearing on every page-load after the user hits 'Hide'. The alert will
-    become raiseable again the next calendar day.
+    For status alerts recomputed from fast-moving data (a new weigh-in lands
+    most days), binding entity_ref to "the latest triggering row" would barely
+    change anything, and binding it to something coarser (e.g. the active
+    noise period) could suppress a still-relevant status for weeks. So these
+    keep the daily-nag contract: dismissing hides the alert for the rest of
+    today; it becomes raiseable again the next calendar day. Used by the
+    weight noise-period alert and the GLP-1 plateau alert — contrast with
+    :func:`_was_ever_dismissed`, used where the alert is bound to a specific,
+    infrequently-arriving row (lab results, body scans).
     """
     today = on_date or today_local()
     result = await session.execute(
@@ -54,6 +60,66 @@ async def _was_dismissed_today(
         )
     )
     return (result.scalar() or 0) > 0
+
+
+async def _was_ever_dismissed(
+    session: AsyncSession, alert_key: str, entity_ref: str
+) -> bool:
+    """Return True if this exact (alert_key, entity_ref) was ever dismissed.
+
+    Callers bind ``entity_ref`` to the specific row that triggered the alert
+    (e.g. ``f"{marker}:{lab_result_id}"``), so once dismissed it never comes
+    back for that row — only a new triggering row (new entity_ref) can raise
+    it again. See :func:`resolve_superseded` for cleaning up alerts tied to a
+    row that's no longer the current one.
+    """
+    result = await session.execute(
+        select(func.count()).where(
+            SystemAlert.alert_key == alert_key,
+            SystemAlert.entity_ref == entity_ref,
+            SystemAlert.resolved_at.is_not(None),
+        )
+    )
+    return (result.scalar() or 0) > 0
+
+
+async def resolve_superseded(
+    session: AsyncSession,
+    *,
+    alert_key: str,
+    keep_entity: Optional[str],
+    marker: Optional[str] = None,
+) -> None:
+    """Resolve active ``alert_key`` rows that no longer correspond to the
+    current triggering row, so they don't linger as orphaned duplicates once
+    ``entity_ref`` starts varying per row instead of staying fixed per marker.
+
+    If ``marker`` is given, only rows for that marker are touched — either the
+    bare legacy ``entity_ref == marker`` form or the ``f"{marker}:"``-prefixed
+    form — since multiple markers share one ``alert_key``. If ``marker`` is
+    ``None``, every active row for ``alert_key`` other than ``keep_entity`` is
+    resolved (the singleton case, e.g. body-scan alerts, where only one entity
+    is ever current). ``keep_entity=None`` resolves everything for the key.
+    """
+    result = await session.execute(
+        select(SystemAlert).where(
+            SystemAlert.alert_key == alert_key,
+            SystemAlert.resolved_at.is_(None),
+        )
+    )
+    now = now_local()
+    changed = False
+    for row in result.scalars().all():
+        if row.entity_ref == keep_entity:
+            continue
+        if marker is not None and not (
+            row.entity_ref == marker or row.entity_ref.startswith(f"{marker}:")
+        ):
+            continue
+        row.resolved_at = now
+        changed = True
+    if changed:
+        await session.flush()
 
 
 async def raise_alert(

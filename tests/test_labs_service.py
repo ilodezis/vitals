@@ -87,7 +87,7 @@ async def test_refresh_alerts_raises_and_resolves(db_session):
     await db_session.commit()
 
     active = await alerts_service.list_active(db_session, domain="labs")
-    assert any(a.alert_key == labs_service.OUT_OF_RANGE_KEY and a.entity_ref == "TSH" for a in active)
+    assert any(a.alert_key == labs_service.OUT_OF_RANGE_KEY and a.entity_ref.startswith("TSH:") for a in active)
 
     # A later in-range value clears it.
     await labs_service.add_result(db_session, on_date=DAY + timedelta(days=90), marker="TSH", value=2.0, ref_low=0.4, ref_high=4.0)
@@ -119,9 +119,10 @@ async def test_overdue_retest_alert_and_defer(db_session):
     assert not any(a.alert_key == labs_service.RETEST_DUE_KEY for a in active)
 
 
-async def test_dismissed_out_of_range_alert_does_not_reappear_same_day(db_session):
-    """Dismissing an out-of-range alert should suppress it for the rest of the day.
-    On the next calendar day it becomes raiseable again."""
+async def test_dismissed_out_of_range_alert_stays_hidden_until_new_result(db_session):
+    """Dismissing an out-of-range alert hides it forever for that result — not
+    just for the rest of the day, unlike the noise/plateau alerts. Only a new
+    out-of-range result for the same marker raises a fresh alert."""
     from freezegun import freeze_time
 
     await labs_service.add_result(
@@ -129,39 +130,119 @@ async def test_dismissed_out_of_range_alert_does_not_reappear_same_day(db_sessio
     )
     await db_session.commit()
 
-    # First load on DAY: alert is raised.
     with freeze_time("2026-06-10 10:00:00"):
         await labs_service.refresh_alerts(db_session, on_date=DAY)
         await db_session.commit()
         active = await alerts_service.list_active(db_session, domain="labs")
         alert = next(
-            (a for a in active if a.alert_key == labs_service.OUT_OF_RANGE_KEY and a.entity_ref == "TSH"),
+            (a for a in active if a.alert_key == labs_service.OUT_OF_RANGE_KEY and a.entity_ref.startswith("TSH:")),
             None,
         )
         assert alert is not None
 
-        # User dismisses the alert — resolved_at is stamped to 2026-06-10.
+        # User dismisses the alert.
         await alerts_service.resolve_alert(db_session, alert.id)
         await db_session.commit()
 
-        # Second load (same day): refresh_alerts should NOT re-raise it.
+        # Second load (same day): stays hidden.
         await labs_service.refresh_alerts(db_session, on_date=DAY)
         await db_session.commit()
         active = await alerts_service.list_active(db_session, domain="labs")
         assert not any(
-            a.alert_key == labs_service.OUT_OF_RANGE_KEY and a.entity_ref == "TSH"
+            a.alert_key == labs_service.OUT_OF_RANGE_KEY and a.entity_ref.startswith("TSH:")
             for a in active
         ), "Alert should stay hidden after dismiss on the same day"
 
-    # Next calendar day: alert should return.
+    # Next calendar day, same underlying result: still hidden — this is the
+    # behavior change from the old daily-nag design.
     with freeze_time("2026-06-11 10:00:00"):
         await labs_service.refresh_alerts(db_session, on_date=DAY + timedelta(days=1))
         await db_session.commit()
         active = await alerts_service.list_active(db_session, domain="labs")
-        assert any(
-            a.alert_key == labs_service.OUT_OF_RANGE_KEY and a.entity_ref == "TSH"
+        assert not any(
+            a.alert_key == labs_service.OUT_OF_RANGE_KEY and a.entity_ref.startswith("TSH:")
             for a in active
-        ), "Alert should reappear the next calendar day"
+        ), "Alert should stay hidden indefinitely for the same result — only new data revives it"
+
+        # A genuinely new out-of-range result for the same marker (a new upload)
+        # raises a fresh alert.
+        await labs_service.add_result(
+            db_session, on_date=DAY + timedelta(days=1), marker="TSH", value=9.5, ref_low=0.4, ref_high=4.0
+        )
+        await db_session.commit()
+        await labs_service.refresh_alerts(db_session, on_date=DAY + timedelta(days=1))
+        await db_session.commit()
+        active = await alerts_service.list_active(db_session, domain="labs")
+        new_alerts = [
+            a for a in active
+            if a.alert_key == labs_service.OUT_OF_RANGE_KEY and a.entity_ref.startswith("TSH:")
+        ]
+        assert len(new_alerts) == 1, "A new upload should raise exactly one fresh alert"
+        assert new_alerts[0].entity_ref != alert.entity_ref
+
+
+async def test_new_out_of_range_result_supersedes_previous_alert(db_session):
+    """A new out-of-range result for the same marker resolves the (still-active,
+    never dismissed) alert tied to the previous result, instead of leaving it
+    active alongside a fresh duplicate."""
+    await labs_service.add_result(db_session, on_date=DAY, marker="TSH", value=9.0, ref_low=0.4, ref_high=4.0)
+    await db_session.commit()
+    await labs_service.refresh_alerts(db_session, on_date=DAY)
+    await db_session.commit()
+    active = await alerts_service.list_active(db_session, domain="labs")
+    tsh_alerts = [a for a in active if a.alert_key == labs_service.OUT_OF_RANGE_KEY and a.entity_ref.startswith("TSH:")]
+    assert len(tsh_alerts) == 1
+    old_entity = tsh_alerts[0].entity_ref
+
+    await labs_service.add_result(
+        db_session, on_date=DAY + timedelta(days=1), marker="TSH", value=9.8, ref_low=0.4, ref_high=4.0
+    )
+    await db_session.commit()
+    await labs_service.refresh_alerts(db_session, on_date=DAY + timedelta(days=1))
+    await db_session.commit()
+
+    active = await alerts_service.list_active(db_session, domain="labs")
+    tsh_alerts = [a for a in active if a.alert_key == labs_service.OUT_OF_RANGE_KEY and a.entity_ref.startswith("TSH:")]
+    assert len(tsh_alerts) == 1, "The stale alert for the old result must be superseded, not left active"
+    assert tsh_alerts[0].entity_ref != old_entity
+
+
+async def test_dismissed_retest_due_alert_stays_hidden_until_new_result(db_session):
+    """Same forever-until-new-data contract as out-of-range alerts applies to
+    the overdue-retest reminder."""
+    await labs_service.add_result(db_session, on_date=DAY, marker="Ferritin", value=100, ref_low=30, ref_high=400)
+    marker = await labs_service.get_marker(db_session, "Ferritin")
+    marker.retest_interval_days = 90
+    await db_session.commit()
+
+    later = DAY + timedelta(days=120)  # overdue
+    await labs_service.refresh_alerts(db_session, on_date=later)
+    await db_session.commit()
+    active = await alerts_service.list_active(db_session, domain="labs")
+    alert = next((a for a in active if a.alert_key == labs_service.RETEST_DUE_KEY), None)
+    assert alert is not None
+
+    await alerts_service.resolve_alert(db_session, alert.id)
+    await db_session.commit()
+
+    # Much later, still no new test taken: stays hidden — under the old
+    # daily-nag design this would have reappeared the very next day.
+    much_later = DAY + timedelta(days=200)
+    await labs_service.refresh_alerts(db_session, on_date=much_later)
+    await db_session.commit()
+    active = await alerts_service.list_active(db_session, domain="labs")
+    assert not any(a.alert_key == labs_service.RETEST_DUE_KEY for a in active)
+
+    # The user finally retests — once the new result in turn becomes overdue,
+    # a fresh reminder is raised.
+    retest_date = DAY + timedelta(days=210)
+    await labs_service.add_result(db_session, on_date=retest_date, marker="Ferritin", value=90, ref_low=30, ref_high=400)
+    await db_session.commit()
+    final_check = retest_date + timedelta(days=100)
+    await labs_service.refresh_alerts(db_session, on_date=final_check)
+    await db_session.commit()
+    active = await alerts_service.list_active(db_session, domain="labs")
+    assert any(a.alert_key == labs_service.RETEST_DUE_KEY for a in active)
 
 
 # ── LLM extraction → ingest ───────────────────────────────────────────────────
