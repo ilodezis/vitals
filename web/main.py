@@ -193,6 +193,7 @@ from web.routers.labs import router as labs_router  # noqa: E402
 from web.routers.reports import router as reports_router  # noqa: E402
 from web.routers.nutrition import router as nutrition_router  # noqa: E402
 from web.routers.settings import router as settings_router  # noqa: E402
+from web.routers.charts import router as charts_router  # noqa: E402
 
 # Core modules — always reachable.
 app.include_router(alerts_router)
@@ -201,6 +202,7 @@ app.include_router(garmin_router)
 app.include_router(labs_router)
 app.include_router(reports_router)
 app.include_router(settings_router)
+app.include_router(charts_router)
 
 # Optional modules — guarded: a disabled module's routes 404 → redirect to /weight.
 app.include_router(glp1_router, dependencies=[Depends(require_module("glp1"))])

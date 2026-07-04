@@ -44,6 +44,7 @@ _EN: dict[str, str] = {
     "nav.labs": "Labs",
     "nav.genetics": "Genetics",
     "nav.settings": "Settings",
+    "nav.charts": "Charts",
 
     # ── Common ────────────────────────────────────────────────────────────
     "common.save": "Save",
@@ -833,6 +834,23 @@ _EN: dict[str, str] = {
     "js.confirm.delete_scan": "Delete this scan?",
     "js.loader.body_upload_title": "Scan recognition",
     "js.loader.body_upload_text": "Reading the body-composition sheet via AI. This may take up to 15 seconds…",
+
+    # ── Custom chart builder ─────────────────────────────────────────────────
+    "charts.page_title": "Custom Charts",
+    "charts.no_charts": "No custom charts yet.",
+    "charts.builder_title": "New chart",
+    "charts.name_label": "Chart name",
+    "charts.add_series": "Add metric",
+    "charts.remove_series": "Remove",
+    "charts.select_domain": "Domain",
+    "charts.select_metric": "Metric",
+    "charts.select_param": "Parameter",
+    "charts.normalize_label": "Normalize (index = 100 at start)",
+    "charts.save": "Save chart",
+    "charts.delete": "Delete",
+    "charts.delete_confirm": "Delete this chart?",
+    "charts.error_invalid": "Could not save — check your selection.",
+    "js.chart.normalized_axis": "= 100 at start",
 }
 
 _RU: dict[str, str] = {
@@ -854,6 +872,7 @@ _RU: dict[str, str] = {
     "nav.labs": "Анализы",
     "nav.genetics": "Генетика",
     "nav.settings": "Настройки",
+    "nav.charts": "Графики",
 
     # ── Common ────────────────────────────────────────────────────────────
     "common.save": "Сохранить",
@@ -1643,6 +1662,23 @@ _RU: dict[str, str] = {
     "js.confirm.delete_scan": "Удалить этот замер?",
     "js.loader.body_upload_title": "Распознавание замера",
     "js.loader.body_upload_text": "Читаю листок состава тела через AI. Это может занять до 15 секунд…",
+
+    # ── Конструктор кастомных графиков ───────────────────────────────────────
+    "charts.page_title": "Кастомные графики",
+    "charts.no_charts": "Пока нет кастомных графиков.",
+    "charts.builder_title": "Новый график",
+    "charts.name_label": "Название графика",
+    "charts.add_series": "Добавить метрику",
+    "charts.remove_series": "Удалить",
+    "charts.select_domain": "Домен",
+    "charts.select_metric": "Метрика",
+    "charts.select_param": "Параметр",
+    "charts.normalize_label": "Нормализовать (индекс = 100 в начале)",
+    "charts.save": "Сохранить график",
+    "charts.delete": "Удалить",
+    "charts.delete_confirm": "Удалить этот график?",
+    "charts.error_invalid": "Не удалось сохранить — проверьте выбор.",
+    "js.chart.normalized_axis": "= 100 в начале",
 }
 
 STRINGS: dict[str, dict[str, str]] = {"en": _EN, "ru": _RU}

@@ -298,6 +298,43 @@ async def metric_history(
     ]
 
 
+# Display labels for the canonical segments (chart-builder picklist only — the
+# label->segment direction already lives in body_metrics.SEGMENT_ALIASES).
+# Public (not underscore-prefixed): reused by chart_data_service for auto-labeling
+# saved chart series.
+SEGMENT_LABELS_RU = {
+    "right_arm": "правая рука",
+    "left_arm": "левая рука",
+    "trunk": "туловище",
+    "right_leg": "правая нога",
+    "left_leg": "левая нога",
+}
+
+
+async def available_metrics(session: AsyncSession) -> list[dict]:
+    """Distinct (metric_key, segment) pairs actually present across all scans,
+    each with a display label and a stable ``value`` (``metric_key`` for
+    whole-body rows, ``"metric_key:segment"`` for segmental rows) — the
+    parameter picklist for the chart-builder catalog (analogous to
+    ``hevy_service.exercise_catalog``)."""
+    result = await session.execute(
+        select(BodyScanMetric.metric_key, BodyScanMetric.segment)
+        .distinct()
+        .order_by(BodyScanMetric.metric_key, BodyScanMetric.segment)
+    )
+    out: list[dict] = []
+    for metric_key, segment in result.all():
+        label = display_name(metric_key) or metric_key
+        if segment:
+            out.append({
+                "value": f"{metric_key}:{segment}",
+                "label": f"{label} — {SEGMENT_LABELS_RU.get(segment, segment)}",
+            })
+        else:
+            out.append({"value": metric_key, "label": label})
+    return out
+
+
 async def bia_chart_points(session: AsyncSession) -> dict:
     """BIA body-fat % and LBM series (latest scan per date) for the weight chart.
     Coexists with the Navy series — both are drawn."""
