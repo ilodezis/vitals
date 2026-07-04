@@ -306,6 +306,14 @@
                     </svg>
                     <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.reports") }}</span>
                 </a>
+                <a href="/charts" @click="mobileMenuOpen = false"
+                    class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
+                    <svg class="h-6 w-6 text-[var(--fg-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6m4 6V9m4 10v-4M5 19h14M5 19V9a2 2 0 012-2h1m8-2h4v4" />
+                    </svg>
+                    <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.charts") }}</span>
+                </a>
                 {% if em.get('glp1') %}
                 <a href="/glp1" @click="mobileMenuOpen = false"
                     class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("charts.page_title") }}{% endblock %}
+
+{% block content %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
+
+    <!-- Header -->
+    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+        <div class="flex items-start gap-3.5">
+            <span class="v-bar mt-1"></span>
+            <div class="space-y-2">
+                <span class="v-tag muted">{{ t("charts.page_title") }}</span>
+                <h1 class="v-text-heading">{{ t("charts.page_title") }}</h1>
+            </div>
+        </div>
+    </div>
+
+    {% if error == 'invalid' %}
+    <div class="v-alert warn">{{ t("charts.error_invalid") }}</div>
+    {% endif %}
+
+    <!-- Saved charts -->
+    {% if charts %}
+    <div class="space-y-6">
+        {% for chart in charts %}
+        <div class="v-card p-6 space-y-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="v-bar v-bar-sm"></span>
+                    <span class="v-text-card">{{ chart.name }}</span>
+                </div>
+                <form action="/charts/{{ chart.id }}/delete" method="POST"
+                      onsubmit="return confirm('{{ t("charts.delete_confirm") }}')">
+                    <button type="submit" class="v-btn-ghost text-xs">{{ t("charts.delete") }}</button>
+                </form>
+            </div>
+            <div class="h-[280px] w-full relative">
+                <canvas id="customChart-{{ chart.id }}"></canvas>
+            </div>
+        </div>
+        <script>
+            window.vitalsCustomCharts = window.vitalsCustomCharts || {};
+            window.vitalsCustomCharts["{{ chart.id }}"] = {
+                normalize: {{ chart.normalize | tojson }},
+                series: {{ resolved[chart.id] | tojson | safe }}
+            };
+        </script>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="v-card p-6 text-center" style="color: var(--faint)">{{ t("charts.no_charts") }}</div>
+    {% endif %}
+
+    <!-- Builder -->
+    <div class="v-card p-6 space-y-4" x-data="chartBuilder({{ catalog | tojson | forceescape }})">
+        <div class="flex items-center gap-2">
+            <span class="v-bar v-bar-sm"></span>
+            <span class="v-text-card">{{ t("charts.builder_title") }}</span>
+        </div>
+        <form action="/charts" method="POST" class="space-y-4"
+              onsubmit="this.querySelector('button[type=submit]').disabled = true">
+            <div>
+                <label class="v-label">{{ t("charts.name_label") }}</label>
+                <input type="text" name="name" required class="v-input" x-model="name">
+            </div>
+
+            <div class="space-y-3">
+                <template x-for="(row, index) in series" :key="index">
+                    <div class="border border-[var(--line)] rounded-lg p-3 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="v-text-label font-semibold" x-text="'{{ t("charts.select_metric") }} #' + (index + 1)"></span>
+                            <button type="button" class="v-btn-ghost text-xs" @click="removeSeries(index)" x-show="series.length > 1">
+                                {{ t("charts.remove_series") }}
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+                            <div class="lg:col-span-4">
+                                <label class="v-label">{{ t("charts.select_domain") }}</label>
+                                <select class="v-select" x-model="row.domain" @change="onDomainChange(row)">
+                                    <option value="" disabled>—</option>
+                                    <template x-for="d in domains()" :key="d">
+                                        <option :value="d" x-text="catalog[d].label"></option>
+                                    </template>
+                                </select>
+                                <input type="hidden" name="domain" :value="row.domain">
+                            </div>
+                            <div class="lg:col-span-4">
+                                <label class="v-label">{{ t("charts.select_metric") }}</label>
+                                <select class="v-select" x-model="row.metricKey" @change="onMetricChange(row)" :disabled="!row.domain">
+                                    <option value="" disabled>—</option>
+                                    <template x-for="m in metricsFor(row.domain)" :key="m.key">
+                                        <option :value="m.key" x-text="m.label + (m.unit ? ' (' + m.unit + ')' : '')"></option>
+                                    </template>
+                                </select>
+                                <input type="hidden" name="metric_key" :value="row.metricKey">
+                            </div>
+                            <div class="lg:col-span-4" x-show="needsParam(row.domain, row.metricKey)">
+                                <label class="v-label">{{ t("charts.select_param") }}</label>
+                                <select class="v-select" x-model="row.param">
+                                    <option value="" disabled>—</option>
+                                    <template x-for="p in paramsFor(row.domain, row.metricKey)" :key="p.value">
+                                        <option :value="p.value" x-text="p.label"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <input type="hidden" name="param" :value="needsParam(row.domain, row.metricKey) ? row.param : ''">
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <button type="button" class="v-btn-ghost text-xs" @click="addSeries()" x-show="series.length < maxSeries">
+                + {{ t("charts.add_series") }}
+            </button>
+
+            <label class="flex items-center gap-2 v-text-label cursor-pointer select-none">
+                <input type="checkbox" name="normalize" value="true" x-model="normalize" class="rounded bg-surface-2 border-line text-accent focus:ring-accent">
+                <span>{{ t("charts.normalize_label") }}</span>
+            </label>
+
+            <button type="submit" class="v-btn w-full">{{ t("charts.save") }}</button>
+        </form>
+    </div>
+</div>
+
+<script src="{{ static_version('/static/charts.js') }}"></script>
+{% endblock %}
