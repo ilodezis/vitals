@@ -840,6 +840,7 @@ _EN: dict[str, str] = {
 
     # ── Custom chart builder ─────────────────────────────────────────────────
     "charts.page_title": "Custom Charts",
+    "charts.metric_count": "Charts",
     "charts.no_charts": "No custom charts yet.",
     "charts.builder_title": "New chart",
     "charts.name_label": "Chart name",
@@ -1701,6 +1702,7 @@ _RU: dict[str, str] = {
 
     # ── Конструктор кастомных графиков ───────────────────────────────────────
     "charts.page_title": "Кастомные графики",
+    "charts.metric_count": "Графиков",
     "charts.no_charts": "Пока нет кастомных графиков.",
     "charts.builder_title": "Новый график",
     "charts.name_label": "Название графика",
