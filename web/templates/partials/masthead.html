@@ -97,7 +97,7 @@
 {% macro masthead_header(section, title, metrics) %}
 {% set em = request.state.enabled_modules or {} %}
 {% set rb = namespace(cat=none, members=[], num=0) %}
-{% for r in MH_RUBRICS %}{% if section in r.members %}{% set rb.members = r.members %}{% set rb.cat = MH_SECTIONS[section].cat or r.cat %}{% for mem in r.members %}{% if mem == section %}{% set rb.num = loop.index %}{% endif %}{% endfor %}{% endif %}{% endfor %}
+{% for r in MH_RUBRICS %}{% if section in r.members %}{% set rb.members = r.members %}{% set rb.cat = MH_SECTIONS[section].cat or r.cat %}{% set rb.num = loop.index %}{% endif %}{% endfor %}
 <div class="mh-head">
     <div class="mh-eyebrow-row">
         <span class="mh-eyebrow">{{ t("masthead.section_word") }} {{ "%02d" | format(rb.num) }} · {{ t(rb.cat) if rb.cat else '' }}</span>

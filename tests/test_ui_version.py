@@ -84,6 +84,30 @@ async def test_classic_is_the_default_render(auth_client):
     assert 'id="primary-nav-masthead"' not in r.text
 
 
+async def test_masthead_rubric_number_is_stable_per_rubric(auth_client):
+    """The eyebrow's "Раздел NN" must track the rubric's own position (Health=01,
+    Markers=02, Lifestyle=03) — not the position of whichever tab is active inside
+    it. Regression test: it used to reuse the tab's index within its rubric, so
+    switching tabs (Вес/Организм/Отчёты, all "Health") changed the number, and
+    unrelated rubrics could show the same number by coincidence."""
+    await auth_client.post("/settings/ui-version", data={"ui_version": "masthead"})
+
+    # Same rubric (Health), different tabs → same number, every time.
+    for path in ("/weight", "/garmin", "/reports"):
+        r = await auth_client.get(path, headers={"Accept": "text/html"})
+        assert r.status_code == 200
+        assert "Раздел 01 ·" in r.text
+
+    # Different rubrics → their own stable number.
+    r = await auth_client.get("/genetics", headers={"Accept": "text/html"})
+    assert r.status_code == 200
+    assert "Раздел 02 · Маркеры" in r.text
+
+    r = await auth_client.get("/supplements", headers={"Accept": "text/html"})
+    assert r.status_code == 200
+    assert "Раздел 03 · Образ жизни" in r.text
+
+
 async def test_settings_card_and_banner_present(auth_client):
     """The interface toggle card renders, and the saved banner shows after a switch."""
     r = await auth_client.get("/settings", headers={"Accept": "text/html"})
