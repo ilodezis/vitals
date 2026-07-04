@@ -17,6 +17,11 @@ Owns the labs domain:
 
 The product is a navigator: nothing here blocks. Extraction is *optional* — every
 result can be entered manually, so the module works with no LLM configured.
+:func:`add_result` also feeds a value into the conflict engine's ``lab_safety``
+rules (:func:`_raise_conflict_alerts`) so e.g. logging a high potassium result
+while a potassium supplement is active surfaces a warning immediately — but,
+per the navigator principle above, it reads ``evaluate()`` directly rather than
+the ``enforce()``/override flow, so a rule can never block a lab save.
 """
 from __future__ import annotations
 
@@ -31,7 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from vitals.enums import Domain, LabFlag, Severity, Source
 from vitals.i18n import t
 from vitals.models.labs import DOMAIN, LabMarker, LabResult
-from vitals.services import alerts_service, raw_payload_service
+from vitals.services import alerts_service, conflict_engine, raw_payload_service
 from vitals.utils.timeutils import now_local, today_local
 
 logger = logging.getLogger(__name__)
@@ -277,7 +282,31 @@ async def add_result(
     )
     session.add(row)
     await session.flush()
+
+    await _raise_conflict_alerts(session, marker=marker, value=value, flag=flag)
     return row
+
+
+async def _raise_conflict_alerts(
+    session: AsyncSession, *, marker: str, value: float, flag: Optional[str]
+) -> None:
+    """Surface cross-domain conflict rules referencing this marker as passive
+    alerts. Labs is a navigator — nothing here blocks — so this reads
+    ``evaluate()`` directly instead of the enforce()/override flow every other
+    domain uses; a ``hard_block``-severity rule just becomes a warn-like alert
+    here, never a save-time error."""
+    violations = await conflict_engine.evaluate(
+        session, Domain.LABS.value, {"marker": marker, "value": value, "flag": flag}
+    )
+    for v in violations:
+        await alerts_service.raise_alert(
+            session,
+            domain=Domain.LABS.value,
+            severity=v.severity,
+            message=v.message,
+            alert_key=f"conflict:{v.rule_id}",
+            entity_ref=f"labs:{marker}",
+        )
 
 
 async def list_results(
@@ -319,6 +348,14 @@ async def latest_per_marker(session: AsyncSession) -> list[LabResult]:
     for r in result.scalars().all():
         seen.setdefault(r.marker, r)
     return list(seen.values())
+
+
+async def resolve_latest(session: AsyncSession) -> list[dict]:
+    """Conflict-engine resolver: the latest value+flag per marker as match items
+    — lets a lab_safety rule reference e.g. {"marker": "Калий", "value": {"$gt":
+    5.0}} against the current panel, not just a freshly logged result."""
+    latest = await latest_per_marker(session)
+    return [{"marker": r.marker, "value": r.value, "flag": r.flag} for r in latest]
 
 
 async def delete_result(session: AsyncSession, result_id: int) -> bool:

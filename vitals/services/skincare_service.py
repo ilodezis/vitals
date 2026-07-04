@@ -19,7 +19,10 @@ from vitals.models.skincare import DOMAIN, SkincareLog, SkincareObservation, Ski
 from vitals.services import conflict_engine
 from vitals.utils.timeutils import today_local
 
-_FLAGS = ("retinoid", "azelaic", "peel", "niacinamide_spf", "moisturizer")
+_FLAGS = (
+    "retinoid", "azelaic", "peel", "niacinamide_spf", "moisturizer",
+    "vitamin_c", "benzoyl_peroxide",
+)
 
 
 # ── Checklist log ─────────────────────────────────────────────────────────────
@@ -39,6 +42,8 @@ async def upsert_log(
     peel: bool = False,
     niacinamide_spf: bool = False,
     moisturizer: bool = False,
+    vitamin_c: bool = False,
+    benzoyl_peroxide: bool = False,
     note: Optional[str] = None,
     override: bool = False,
 ) -> SkincareLog:
@@ -48,6 +53,8 @@ async def upsert_log(
         "peel": peel,
         "niacinamide_spf": niacinamide_spf,
         "moisturizer": moisturizer,
+        "vitamin_c": vitamin_c,
+        "benzoyl_peroxide": benzoyl_peroxide,
     }
     await conflict_engine.enforce(
         session,
@@ -66,6 +73,8 @@ async def upsert_log(
     row.peel = peel
     row.niacinamide_spf = niacinamide_spf
     row.moisturizer = moisturizer
+    row.vitamin_c = vitamin_c
+    row.benzoyl_peroxide = benzoyl_peroxide
     if note is not None:
         row.note = note
     await session.flush()

@@ -62,6 +62,9 @@ class Violation:
     domain_a: str
     domain_b: str
     params: dict = field(default_factory=dict)
+    category: Optional[str] = None
+    source: Optional[str] = None
+    evidence: Optional[str] = None
 
     @property
     def is_blocking(self) -> bool:
@@ -76,6 +79,9 @@ class Violation:
             "domain_a": self.domain_a,
             "domain_b": self.domain_b,
             "params": self.params,
+            "category": self.category,
+            "source": self.source,
+            "evidence": self.evidence,
         }
 
 
@@ -100,15 +106,90 @@ def _normalize_proposed(proposed_state: Any) -> list[dict]:
     return [item for item in proposed_state if isinstance(item, dict)]
 
 
+# Recognized comparison/membership/presence operators for a field's expected
+# value (e.g. ``condition_a = {"dose_mg": {"$gte": 2.0}}``). Any dict whose keys
+# all start with "$" is treated as an operator dict rather than a literal value.
+_OPERATOR_KEYS = frozenset({"$gt", "$gte", "$lt", "$lte", "$in", "$nin", "$exists", "$contains"})
+# Top-level boolean combinators — these replace the implicit per-key AND with OR
+# / explicit AND / negation over a list of *conditions* (not field values).
+_LOGIC_KEYS = frozenset({"$any", "$all", "$not"})
+
+
+def _looks_like_operator_dict(value: Any) -> bool:
+    return isinstance(value, dict) and bool(value) and all(
+        isinstance(k, str) and k.startswith("$") for k in value
+    )
+
+
+def _apply_operators(actual: Any, ops: dict) -> bool:
+    """Evaluate an operator dict against one field's actual value. Every operator
+    present must hold (implicit AND). A comparison against an incompatible type
+    (e.g. ``$gt`` on a string) fails the match rather than raising — a malformed
+    rule must never crash evaluation/save."""
+    try:
+        for op, expected in ops.items():
+            if op == "$gt":
+                if actual is None or not (actual > expected):
+                    return False
+            elif op == "$gte":
+                if actual is None or not (actual >= expected):
+                    return False
+            elif op == "$lt":
+                if actual is None or not (actual < expected):
+                    return False
+            elif op == "$lte":
+                if actual is None or not (actual <= expected):
+                    return False
+            elif op == "$in":
+                if actual not in expected:
+                    return False
+            elif op == "$nin":
+                if actual in expected:
+                    return False
+            elif op == "$exists":
+                if (actual is not None) != bool(expected):
+                    return False
+            elif op == "$contains":
+                if actual is None or expected not in actual:
+                    return False
+            else:
+                logger.warning("conflict_engine: unknown operator %r ignored", op)
+        return True
+    except TypeError:
+        logger.warning(
+            "conflict_engine: type mismatch evaluating %r against %r", ops, actual
+        )
+        return False
+
+
+def _field_matches(actual: Any, expected: Any) -> bool:
+    if _looks_like_operator_dict(expected):
+        return _apply_operators(actual, expected)
+    return actual == expected
+
+
 def _matches(condition: dict, item: dict) -> bool:
-    """Subset-equality match: every key/value in ``condition`` must be present and
-    equal in ``item``. Deliberately simple — modules with richer predicates wrap
-    their own logic in a resolver/condition shape. An empty condition matches any
-    item (a domain-presence rule)."""
+    """Predicate match: every key in ``condition`` must hold against ``item``
+    (implicit AND). A key's value is either a literal (equality, the original
+    behavior — fully backward compatible) or an operator dict (``$gt``/``$gte``/
+    ``$lt``/``$lte``/``$in``/``$nin``/``$exists``/``$contains``). The three
+    top-level keys ``$any``/``$all``/``$not`` take a list of *conditions* (or, for
+    ``$not``, a single condition) instead of matching a field, giving OR/AND/NOT
+    over whole sub-conditions. An empty condition matches any item (a
+    domain-presence rule)."""
     if not isinstance(condition, dict):
         return False
     for key, expected in condition.items():
-        if item.get(key) != expected:
+        if key == "$any":
+            if not (isinstance(expected, (list, tuple)) and any(_matches(c, item) for c in expected)):
+                return False
+        elif key == "$all":
+            if not (isinstance(expected, (list, tuple)) and all(_matches(c, item) for c in expected)):
+                return False
+        elif key == "$not":
+            if _matches(expected, item):
+                return False
+        elif not _field_matches(item.get(key), expected):
             return False
     return True
 
@@ -135,6 +216,18 @@ def _side_satisfied(condition: dict, items: list[dict]) -> bool:
     return any(_matches(condition, item) for item in items)
 
 
+def _matching_items(condition: dict, items: list[dict]) -> list[dict]:
+    return [item for item in items if _matches(condition, item)]
+
+
+def _slots(items: list[dict]) -> set:
+    """The distinct non-empty ``timing_slot`` values carried by matching items.
+    Only the supplements resolver currently sets this key (see
+    ``supplements_service._parse_slot``); other domains' items simply have no
+    slot, which safely excludes them here."""
+    return {item.get("timing_slot") for item in items if item.get("timing_slot")}
+
+
 async def evaluate(
     session: AsyncSession,
     domain: str,
@@ -158,20 +251,33 @@ async def evaluate(
         items_a = await _domain_items(session, rule.domain_a, domain, proposed_items)
         items_b = await _domain_items(session, rule.domain_b, domain, proposed_items)
 
-        if _side_satisfied(rule.condition_a or {}, items_a) and _side_satisfied(
-            rule.condition_b or {}, items_b
-        ):
-            violations.append(
-                Violation(
-                    rule_id=rule.id,
-                    rule_type=rule.rule_type,
-                    severity=rule.severity,
-                    message=rule.message,
-                    domain_a=rule.domain_a,
-                    domain_b=rule.domain_b,
-                    params=dict(rule.params or {}),
-                )
+        matches_a = _matching_items(rule.condition_a or {}, items_a)
+        matches_b = _matching_items(rule.condition_b or {}, items_b)
+        if not matches_a or not matches_b:
+            continue
+
+        if _is_timing_rule(rule.rule_type):
+            # A timing_separation rule is about two items taken *together* — it
+            # only fires when some matching item on each side shares the same
+            # declared AM/PM/MEAL/DAY slot. Different (or unknown) slots mean
+            # they're already separated in practice, so no warning is raised.
+            if not (_slots(matches_a) & _slots(matches_b)):
+                continue
+
+        violations.append(
+            Violation(
+                rule_id=rule.id,
+                rule_type=rule.rule_type,
+                severity=rule.severity,
+                message=rule.message,
+                domain_a=rule.domain_a,
+                domain_b=rule.domain_b,
+                params=dict(rule.params or {}),
+                category=rule.category,
+                source=rule.source,
+                evidence=rule.evidence,
             )
+        )
     return violations
 
 

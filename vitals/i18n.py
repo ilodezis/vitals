@@ -291,6 +291,9 @@ _EN: dict[str, str] = {
     "enum.domain.garmin": "Garmin",
     "enum.domain.labs": "Labs",
     "enum.domain.skincare": "Skincare",
+    "enum.domain.supplements": "Supplements",
+    "enum.domain.genetics": "Genetics",
+    "enum.domain.nutrition": "Nutrition",
 
     # ── Labs ──────────────────────────────────────────────────────────────
     "labs.page_title": "Labs — Vitals",
@@ -851,6 +854,36 @@ _EN: dict[str, str] = {
     "charts.delete_confirm": "Delete this chart?",
     "charts.error_invalid": "Could not save — check your selection.",
     "js.chart.normalized_axis": "= 100 at start",
+
+    # ── Interactions (curated conflict-rule catalog browser) ──────────────
+    "nav.interactions": "Interactions",
+    "interactions.page_title": "Interactions",
+    "interactions.heading": "Cross-domain interactions",
+    "interactions.subheading": "Curated rule catalog — toggle rules off, see what's firing right now.",
+    "interactions.total_count": "{n} rules",
+    "interactions.total_label": "Rules",
+    "interactions.filter_domain": "Domain",
+    "interactions.filter_severity": "Severity",
+    "interactions.filter_all": "All",
+    "interactions.firing_now": "Firing now",
+    "interactions.no_rules": "No rules match this filter.",
+    "interactions.evidence_label": "Evidence",
+    "interactions.source_label": "Source",
+    "interactions.severity.block": "Block",
+    "interactions.severity.warn": "Warning",
+    "interactions.severity.info": "Info",
+    "interactions.rule_type.hard_block": "Hard block",
+    "interactions.rule_type.soft_warn": "Soft warning",
+    "interactions.rule_type.timing_separation": "Timing separation",
+    "interactions.hours_apart": "{n}h apart",
+    "interactions.category.absorption": "Absorption",
+    "interactions.category.pharmacogenomics": "Pharmacogenomics",
+    "interactions.category.dermatology": "Dermatology",
+    "interactions.category.lab_safety": "Lab safety",
+    "interactions.category.glp1": "GLP-1",
+    "interactions.category.contraindication": "Contraindication",
+    "interactions.category.other": "Other",
+    "modules.interactions_hint": "Browse and toggle the cross-domain conflict-rule catalog.",
 }
 
 _RU: dict[str, str] = {
@@ -1119,6 +1152,9 @@ _RU: dict[str, str] = {
     "enum.domain.garmin": "Garmin",
     "enum.domain.labs": "Анализы",
     "enum.domain.skincare": "Кожа",
+    "enum.domain.supplements": "Добавки",
+    "enum.domain.genetics": "Генетика",
+    "enum.domain.nutrition": "Питание",
 
     # ── Labs ──────────────────────────────────────────────────────────────
     "labs.page_title": "Анализы — Vitals",
@@ -1679,6 +1715,36 @@ _RU: dict[str, str] = {
     "charts.delete_confirm": "Удалить этот график?",
     "charts.error_invalid": "Не удалось сохранить — проверьте выбор.",
     "js.chart.normalized_axis": "= 100 в начале",
+
+    # ── Взаимодействия (браузер курируемого каталога правил) ──────────────
+    "nav.interactions": "Взаимодействия",
+    "interactions.page_title": "Взаимодействия",
+    "interactions.heading": "Кросс-доменные взаимодействия",
+    "interactions.subheading": "Курируемый каталог правил — выключайте ненужные, смотрите что срабатывает прямо сейчас.",
+    "interactions.total_count": "{n} правил",
+    "interactions.total_label": "Правил",
+    "interactions.filter_domain": "Область",
+    "interactions.filter_severity": "Важность",
+    "interactions.filter_all": "Все",
+    "interactions.firing_now": "Срабатывает сейчас",
+    "interactions.no_rules": "Нет правил под этот фильтр.",
+    "interactions.evidence_label": "Доказательность",
+    "interactions.source_label": "Источник",
+    "interactions.severity.block": "Блок",
+    "interactions.severity.warn": "Предупреждение",
+    "interactions.severity.info": "Инфо",
+    "interactions.rule_type.hard_block": "Жёсткий блок",
+    "interactions.rule_type.soft_warn": "Мягкое предупреждение",
+    "interactions.rule_type.timing_separation": "Разнесение по времени",
+    "interactions.hours_apart": "разнести на {n} ч.",
+    "interactions.category.absorption": "Усвоение",
+    "interactions.category.pharmacogenomics": "Фармакогенетика",
+    "interactions.category.dermatology": "Дерматология",
+    "interactions.category.lab_safety": "Безопасность анализов",
+    "interactions.category.glp1": "GLP-1",
+    "interactions.category.contraindication": "Противопоказание",
+    "interactions.category.other": "Прочее",
+    "modules.interactions_hint": "Каталог кросс-доменных правил — просмотр и включение/выключение.",
 }
 
 STRINGS: dict[str, dict[str, str]] = {"en": _EN, "ru": _RU}

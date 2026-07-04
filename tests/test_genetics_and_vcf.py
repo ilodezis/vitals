@@ -74,13 +74,12 @@ def test_interpret_unknown_rsid_is_raw():
     assert fields == {"gene": "unknown", "rsid": "rs9999999", "genotype": "A/T"}
 
 
-def test_interpret_informational_entry_has_no_marker():
-    """A curated-but-informational SNP (no marker) fills gene/impact but never
-    stamps a conflict marker, even when an ALT allele is present."""
-    v = ParsedVariant(rsid="rs1801133", ref="C", alt="T", genotype="C/T")  # MTHFR
+def test_interpret_purely_informational_entry_has_no_marker():
+    """A curated SNP with no marker mapping at all (het or hom) fills gene/impact
+    but never stamps a conflict marker."""
+    v = ParsedVariant(rsid="rs602662", ref="G", alt="A", genotype="G/A")  # FUT2
     fields = interpret(v)
-    assert fields["gene"] == "MTHFR"
-    assert fields["impact_domain"] == "supplements"
+    assert fields["gene"] == "FUT2"
     assert "interpretation" in fields
     assert "marker" not in fields
 
@@ -88,6 +87,51 @@ def test_interpret_informational_entry_has_no_marker():
 def test_interpret_g6pd_marker_when_alt_present():
     v = ParsedVariant(rsid="rs1050828", ref="C", alt="T", genotype="C/T")
     assert interpret(v)["marker"] == "g6pd_deficiency"
+
+
+# ── Zygosity-aware markers (MTHFR het vs hom; COMT hom-only) ────────────────
+
+def test_mthfr_homozygous_ref_no_marker():
+    v = ParsedVariant(rsid="rs1801133", ref="C", alt="T", genotype="C/C")
+    fields = interpret(v)
+    assert fields["gene"] == "MTHFR"
+    assert "marker" not in fields
+
+
+def test_mthfr_heterozygous_marker():
+    v = ParsedVariant(rsid="rs1801133", ref="C", alt="T", genotype="C/T")
+    assert interpret(v)["marker"] == "mthfr_heterozygous"
+
+
+def test_mthfr_homozygous_alt_marker():
+    v = ParsedVariant(rsid="rs1801133", ref="C", alt="T", genotype="T/T")
+    assert interpret(v)["marker"] == "mthfr_c677t_homozygous"
+
+
+def test_cyp1a2_fast_homozygous_ref_no_marker():
+    v = ParsedVariant(rsid="rs762551", ref="A", alt="C", genotype="A/A")
+    assert "marker" not in interpret(v)
+
+
+def test_cyp1a2_slow_carrier_marker():
+    v = ParsedVariant(rsid="rs762551", ref="A", alt="C", genotype="A/C")
+    assert interpret(v)["marker"] == "cyp1a2_slow_metabolizer"
+
+
+def test_cyp1a2_slow_homozygous_marker():
+    v = ParsedVariant(rsid="rs762551", ref="A", alt="C", genotype="C/C")
+    assert interpret(v)["marker"] == "cyp1a2_slow_metabolizer"
+
+
+def test_comt_heterozygous_is_informational_only():
+    """Val/Met is genuinely intermediate — only Met/Met gets the firm marker."""
+    v = ParsedVariant(rsid="rs4680", ref="G", alt="A", genotype="G/A")
+    assert "marker" not in interpret(v)
+
+
+def test_comt_homozygous_met_marker():
+    v = ParsedVariant(rsid="rs4680", ref="G", alt="A", genotype="A/A")
+    assert interpret(v)["marker"] == "comt_slow_metabolizer"
 
 
 def test_iter_parsed_filters():

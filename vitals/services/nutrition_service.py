@@ -147,6 +147,16 @@ def _sum_macros(meals: Sequence[MealLog]) -> dict[str, float]:
     }
 
 
+# ── Conflict-engine resolver ──────────────────────────────────────────────────
+
+async def resolve_today(session: AsyncSession) -> list[dict]:
+    """Conflict-engine resolver: today's macro totals as a single match item —
+    lets a rule reference e.g. {"calories": {"$gt": 4000}} against the running
+    daily total, not just the one meal being logged right now."""
+    meals = await list_meals_for_date(session, today_local())
+    return [_sum_macros(meals)]
+
+
 def _on_track(totals: dict[str, float], goals: dict[str, Any]) -> dict[str, bool]:
     cal = totals["calories"]
     return {

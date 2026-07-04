@@ -47,14 +47,21 @@ async def lifespan(app: FastAPI):
     from vitals.config import load_config
     from vitals.scheduler.jobs import register_all_jobs
     from vitals.scheduler.scheduler import seed_heartbeats, setup_scheduler
+    from vitals.services import conflict_catalog
     from vitals.services.conflict_registrations import register_all_resolvers
 
     config = load_config()
 
     # Attach per-module jobs before the scheduler reads the registry.
     register_all_jobs()
-    # Register cross-domain conflict resolvers (supplements/genetics/skincare).
+    # Register cross-domain conflict resolvers (supplements/genetics/skincare/...).
     register_all_resolvers()
+    # Upsert the curated rule catalog (vitals/data/conflict_rules.yaml) — cheap,
+    # idempotent, and keeps the DB in sync with the checked-in YAML on every
+    # deploy without a data migration per rule change.
+    async with session_factory() as session:
+        await conflict_catalog.sync_catalog(session)
+        await session.commit()
 
     if redis is not None:
         await seed_heartbeats(redis)
@@ -192,6 +199,7 @@ from web.routers.garmin import router as garmin_router  # noqa: E402
 from web.routers.labs import router as labs_router  # noqa: E402
 from web.routers.reports import router as reports_router  # noqa: E402
 from web.routers.nutrition import router as nutrition_router  # noqa: E402
+from web.routers.interactions import router as interactions_router  # noqa: E402
 from web.routers.settings import router as settings_router  # noqa: E402
 from web.routers.charts import router as charts_router  # noqa: E402
 
@@ -211,6 +219,7 @@ app.include_router(supplements_router, dependencies=[Depends(require_module("sup
 app.include_router(genetics_router, dependencies=[Depends(require_module("genetics"))])
 app.include_router(skincare_router, dependencies=[Depends(require_module("skincare"))])
 app.include_router(nutrition_router, dependencies=[Depends(require_module("nutrition"))])
+app.include_router(interactions_router, dependencies=[Depends(require_module("interactions"))])
 
 # ── OAuth & MCP Integration ──────────────────────────────────────────────────
 try:

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("interactions.page_title") }}{% endblock %}
+
+{% block content %}
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
+
+    {% if request.state.ui_version == 'masthead' %}
+    {{ masthead_header('interactions', t('nav.interactions'), [
+        {'label': t('interactions.total_label'), 'primary': true, 'value': total_count},
+        {'label': t('interactions.firing_now'), 'value': firing_ids | length, 'tone': 'bad' if firing_ids else ''}
+    ]) }}
+    {% else %}
+    <div class="v-card p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div class="flex items-start gap-3.5">
+            <span class="v-bar mt-1"></span>
+            <div>
+                <h1 class="v-text-heading">{{ t("interactions.heading") }}</h1>
+                <p class="v-text-body mt-1">{{ t("interactions.subheading") }}</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="v-chip">{{ t("interactions.total_count", n=total_count) }}</span>
+            {% if firing_ids %}
+            <span class="v-chip" style="background: var(--bad-soft); color: var(--bad)">{{ t("interactions.firing_now") }}: {{ firing_ids | length }}</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filters -->
+    <form method="get" action="/interactions" class="v-card p-4 flex flex-wrap items-end gap-4">
+        <div>
+            <label class="v-label">{{ t("interactions.filter_domain") }}</label>
+            <select name="domain" class="v-select" onchange="this.form.submit()">
+                <option value="">{{ t("interactions.filter_all") }}</option>
+                {% for d in all_domains %}
+                <option value="{{ d }}" {% if domain_filter == d %}selected{% endif %}>{{ t("enum.domain." + d) }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="v-label">{{ t("interactions.filter_severity") }}</label>
+            <select name="severity" class="v-select" onchange="this.form.submit()">
+                <option value="">{{ t("interactions.filter_all") }}</option>
+                {% for s in ("block", "warn", "info") %}
+                <option value="{{ s }}" {% if severity_filter == s %}selected{% endif %}>{{ t("interactions.severity." + s) }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+
+    {% if not ordered_categories %}
+    <div class="v-card p-8 text-center v-text-body" style="color: var(--faint)">{{ t("interactions.no_rules") }}</div>
+    {% endif %}
+
+    {% for category in ordered_categories %}
+    <div class="v-card p-6 space-y-4">
+        <div class="flex items-center gap-2.5">
+            <span class="v-bar"></span>
+            <h2 class="v-text-heading">{{ t("interactions.category." + category) }}</h2>
+            <span class="v-chip">{{ by_category[category] | length }}</span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {% for r in by_category[category] %}
+            {% set is_block = r.severity == 'block' %}
+            <div class="v-card-tile p-5 space-y-3" style="{% if is_block %}background: var(--bad-soft); border: 1px solid rgba(232,112,86,.35){% else %}background: var(--warn-soft); border: 1px solid rgba(240,178,74,.35){% endif %}">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center gap-2 font-semibold v-text-label" style="color: {% if is_block %}var(--bad){% else %}var(--warn){% endif %}">
+                        <span>{% if r.rule_type == 'hard_block' %}🚫{% elif r.rule_type == 'timing_separation' %}⏱️{% else %}⚠️{% endif %}</span>
+                        <span>{{ t("interactions.rule_type." + r.rule_type) }}</span>
+                        {% if r.rule_type == 'timing_separation' and r.params and r.params.hours %}
+                        <span class="v-chip" style="font-size:10px; padding:2px 6px;">{{ t("interactions.hours_apart", n=r.params.hours) }}</span>
+                        {% endif %}
+                    </div>
+                    <label class="v-switch shrink-0" title="{{ r.code or '' }}">
+                        <input type="checkbox" role="switch" {% if r.active %}checked{% endif %}
+                               hx-post="/interactions/{{ r.id }}/toggle"
+                               hx-vals='js:{active: event.target.checked}'
+                               hx-trigger="change"
+                               hx-swap="none">
+                        <span class="v-switch-track"><span class="v-switch-thumb"></span></span>
+                    </label>
+                </div>
+
+                <p class="v-text-body leading-relaxed font-medium" style="color: var(--fg-2)">{{ r.message }}</p>
+
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="v-chip">{{ t("enum.domain." + r.domain_a) }} ↔ {{ t("enum.domain." + r.domain_b) }}</span>
+                    {% if r.evidence %}
+                    <span class="v-chip" title="{{ t('interactions.evidence_label') }}">{{ t("interactions.evidence_label") }} {{ r.evidence }}</span>
+                    {% endif %}
+                    {% if r.id in firing_ids %}
+                    <span class="v-chip" style="background: var(--bad-soft); color: var(--bad); font-weight: 700;">{{ t("interactions.firing_now") }}</span>
+                    {% endif %}
+                </div>
+
+                {% if r.source %}
+                <p class="v-text-micro" style="color: var(--faint)"><span class="font-semibold">{{ t("interactions.source_label") }}:</span> {{ r.source }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

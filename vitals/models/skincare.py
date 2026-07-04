@@ -39,6 +39,12 @@ class SkincareLog(Base, InsightsMixin, TimestampMixin):
     moisturizer: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    # Added for the dermatology conflict-rule catalog (retinoid/peel vs. these —
+    # the checklist previously had no way to represent either active).
+    vitamin_c: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    benzoyl_peroxide: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 

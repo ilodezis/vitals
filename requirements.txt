@@ -8,6 +8,9 @@ redis>=5.0,<6.0
 greenlet==3.0.3
 tzdata==2025.2
 numpy>=1.26,<3.0
+# Conflict-engine catalog (vitals/data/*.yaml) — was previously only a
+# transitive dependency (uvicorn[standard]); now imported directly.
+PyYAML>=6.0,<7.0
 
 # ── Web delivery (FastAPI + Jinja PWA) ───────────────────────────────────────
 fastapi>=0.115,<1.0

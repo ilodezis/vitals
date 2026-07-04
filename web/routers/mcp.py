@@ -320,14 +320,64 @@ async def get_weekly_digests(limit: int = 5) -> list[dict]:
 
 @mcp.tool()
 async def check_supplement_conflicts(supplement_name: str) -> list[dict]:
-    """Evaluates a proposed supplement name against active supplements, skincare routines, and genetics."""
+    """Evaluates a proposed supplement (by free-text name) against the curated
+    conflict-rule catalog — active supplements, genetics, skincare routine,
+    labs, and GLP-1 state. The name is normalized to the same stable ``key``
+    the catalog matches rules on (e.g. "Железо" -> "iron"), so this works
+    regardless of spelling/language. Read-only — never writes, never blocks."""
+    from vitals.services import conflict_catalog
+
     session_factory = get_session_factory()
+    key = conflict_catalog.normalize_ingredient(supplement_name)
     async with session_factory() as session:
         violations = await conflict_engine.evaluate(
             session,
             Domain.SUPPLEMENTS.value,
-            {"name": supplement_name}
+            {"key": key, "name": supplement_name, "active": True},
         )
+        return [v.to_dict() for v in violations]
+
+
+_VALID_CONFLICT_DOMAINS = {d.value for d in Domain}
+
+
+@mcp.tool()
+async def list_conflict_rules(
+    domain: Optional[str] = None, category: Optional[str] = None
+) -> list[dict]:
+    """Lists the curated cross-domain conflict rules (vitals/data/conflict_rules.yaml),
+    optionally filtered by ``domain`` (matches either side of the rule) and/or
+    ``category`` (absorption, pharmacogenomics, dermatology, lab_safety, glp1,
+    contraindication). Only ``active`` rules are meaningful for evaluation, but
+    inactive ones are included too so a caller can see the full catalog."""
+    from vitals.models.conflict_rule import ConflictRule
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        stmt = select(ConflictRule)
+        if category:
+            stmt = stmt.where(ConflictRule.category == category)
+        rows = (await session.execute(stmt)).scalars().all()
+        if domain:
+            rows = [r for r in rows if r.domain_a == domain or r.domain_b == domain]
+        return [serialize_row(r) for r in rows]
+
+
+@mcp.tool()
+async def check_conflicts(domain: str, payload: dict) -> list[dict]:
+    """Evaluates an arbitrary proposed state against the active conflict rules
+    for ``domain`` (one of: weight, glp1, supplements, genetics, skincare,
+    labs, nutrition, workouts, garmin, milestones, system, body_comp). E.g.
+    ``check_conflicts("labs", {"marker": "Калий", "value": 5.5})`` or
+    ``check_conflicts("supplements", {"key": "iron", "active": True})``.
+    Read-only — never writes, never blocks; returns the violations that would
+    fire if this state were saved."""
+    if domain not in _VALID_CONFLICT_DOMAINS:
+        return [{"error": f"Unknown domain '{domain}'. Use one of: {', '.join(sorted(_VALID_CONFLICT_DOMAINS))}"}]
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        violations = await conflict_engine.evaluate(session, domain, payload)
         return [v.to_dict() for v in violations]
 
 
@@ -556,6 +606,8 @@ async def log_skincare(
     peel: bool = False,
     niacinamide_spf: bool = False,
     moisturizer: bool = False,
+    vitamin_c: bool = False,
+    benzoyl_peroxide: bool = False,
     note: Optional[str] = None,
 ) -> dict:
     """Records or updates the daily skincare routine checklist (one per day, upsert).
@@ -570,6 +622,7 @@ async def log_skincare(
         row = await skincare_service.upsert_log(
             session, on_date=parsed_date, retinoid=retinoid, azelaic=azelaic,
             peel=peel, niacinamide_spf=niacinamide_spf, moisturizer=moisturizer,
+            vitamin_c=vitamin_c, benzoyl_peroxide=benzoyl_peroxide,
             note=note,
         )
         await session.commit()

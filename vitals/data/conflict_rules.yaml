@@ -1,0 +1,1422 @@
+# Curated cross-domain conflict-rule catalog — the single source of truth for
+# `conflict_rules` (see vitals/services/conflict_catalog.sync_catalog).
+#
+# Each entry is upserted by `code` (stable, never reused/renumbered — renaming
+# a code creates a new row and orphans the old one). Editing rule_type/domains/
+# conditions/severity/message/params/category/source/evidence here and re-running
+# sync takes effect immediately; the one field sync never touches is `active`
+# (the user's toggle on /interactions).
+#
+# condition_a / condition_b are matched by conflict_engine._matches — plain
+# key:value is equality; a value can be an operator object ($gt/$gte/$lt/$lte/
+# $in/$nin/$exists/$contains), and the whole condition can use $any/$all/$not.
+#
+# domain_a/domain_b must be one of vitals.enums.Domain. rule_type is one of
+# vitals.enums.RuleType (hard_block/soft_warn/timing_separation); severity is
+# one of vitals.enums.Severity (block/warn/info). evidence is A (strong —
+# meta-analyses/RCTs/regulatory guidance) / B (moderate) / C (weak/theoretical).
+#
+# category is one of: absorption, pharmacogenomics, dermatology, lab_safety,
+# glp1, contraindication.
+
+# ═══════════════════════════════════════════════════════════════════════════
+# DERMATOLOGY — skincare ↔ skincare, supplements ↔ skincare
+# ═══════════════════════════════════════════════════════════════════════════
+
+- code: derm_retinoid_peel_same_day
+  rule_type: hard_block
+  domain_a: skincare
+  condition_a: {retinoid: true}
+  domain_b: skincare
+  condition_b: {peel: true}
+  severity: block
+  message: "Ретиноид и пилинг (AHA/BHA) в один вечер — высокий риск раздражения и нарушения барьера."
+  category: dermatology
+  source: "Дерматологическая практика: ретиноиды и альфа/бета-гидроксикислоты — оба эксфолианты; совмещение в один вечер многократно повышает риск ирритации."
+  evidence: B
+
+- code: derm_isotretinoin_peel_contraindicated
+  rule_type: hard_block
+  domain_a: supplements
+  condition_a: {key: isotretinoin, active: true}
+  domain_b: skincare
+  condition_b: {peel: true}
+  severity: block
+  message: "Системный изотретиноин активен — химический пилинг противопоказан (риск рубцевания и замедленного заживления)."
+  category: dermatology
+  source: "Стандартная дерматологическая рекомендация: избегать агрессивных процедур (пилинги, дермабразия) во время и минимум 6 мес после курса изотретиноина."
+  evidence: A
+
+- code: derm_isotretinoin_topical_retinoid_redundant
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: isotretinoin, active: true}
+  domain_b: skincare
+  condition_b: {retinoid: true}
+  severity: warn
+  message: "Системный изотретиноин + топический ретиноид — избыточно, повышает сухость и раздражение без дополнительной пользы."
+  category: dermatology
+  source: "Дерматологическая практика: пероральный изотретиноин уже насыщает кожу ретиноевой кислотой; добавление топического ретиноида обычно излишне."
+  evidence: C
+
+- code: derm_isotretinoin_benzoyl_peroxide_dryness
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: isotretinoin, active: true}
+  domain_b: skincare
+  condition_b: {benzoyl_peroxide: true}
+  severity: warn
+  message: "Изотретиноин + бензоилпероксид — суммарная сухость и раздражение кожи выше ожидаемой."
+  category: dermatology
+  source: "Дерматологическая практика: оба средства сушат кожу; на фоне изотретиноина барьер уже ослаблен."
+  evidence: C
+
+- code: derm_retinoid_benzoyl_peroxide_same_day
+  rule_type: soft_warn
+  domain_a: skincare
+  condition_a: {retinoid: true}
+  domain_b: skincare
+  condition_b: {benzoyl_peroxide: true}
+  severity: warn
+  message: "Ретиноид и бензоилпероксид в один вечер — часть ретиноидов (третиноин) окисляется бензоилпероксидом, плюс суммарное раздражение."
+  category: dermatology
+  source: "Дерматологическая практика: третиноин нестабилен в присутствии бензоилпероксида; адапален устойчивее, но раздражение всё равно суммируется — разносить на утро/вечер."
+  evidence: B
+
+- code: derm_retinoid_vitamin_c_same_day
+  rule_type: soft_warn
+  domain_a: skincare
+  condition_a: {retinoid: true}
+  domain_b: skincare
+  condition_b: {vitamin_c: true}
+  severity: warn
+  message: "Ретиноид и витамин C (аскорбиновая кислота) в один момент — разный оптимальный pH, риск раздражения; обычно разносят на утро (вит. C) и вечер (ретиноид)."
+  category: dermatology
+  source: "Дерматологическая практика: L-аскорбиновая кислота работает при низком pH, ретиноиды — в более нейтральной среде; совместное применение снижает эффективность обоих и раздражает."
+  evidence: B
+
+- code: derm_peel_vitamin_c_same_day
+  rule_type: soft_warn
+  domain_a: skincare
+  condition_a: {peel: true}
+  domain_b: skincare
+  condition_b: {vitamin_c: true}
+  severity: warn
+  message: "Пилинг (AHA/BHA) и витамин C в один момент — оба низкого pH, суммарное раздражение и риск нарушения барьера."
+  category: dermatology
+  source: "Дерматологическая практика: оба компонента активны в кислой среде; совмещение усиливает эксфолиацию сверх безопасного порога."
+  evidence: B
+
+- code: derm_peel_benzoyl_peroxide_same_day
+  rule_type: soft_warn
+  domain_a: skincare
+  condition_a: {peel: true}
+  domain_b: skincare
+  condition_b: {benzoyl_peroxide: true}
+  severity: warn
+  message: "Пилинг и бензоилпероксид в один момент — избыточная эксфолиация и сухость."
+  category: dermatology
+  source: "Дерматологическая практика: сочетание двух сильных эксфолиантов/окислителей одномоментно повышает риск ожога и шелушения сверх ожидаемого."
+  evidence: B
+
+- code: derm_benzoyl_peroxide_vitamin_c_same_day
+  rule_type: soft_warn
+  domain_a: skincare
+  condition_a: {benzoyl_peroxide: true}
+  domain_b: skincare
+  condition_b: {vitamin_c: true}
+  severity: warn
+  message: "Бензоилпероксид окисляет и инактивирует L-аскорбиновую кислоту — совмещать в одном приёме нецелесообразно."
+  category: dermatology
+  source: "Химическая несовместимость: бензоилпероксид — сильный окислитель, разрушает нестабилизированный витамин C при контакте."
+  evidence: B
+
+- code: derm_azelaic_peel_mild_caution
+  rule_type: soft_warn
+  domain_a: skincare
+  condition_a: {azelaic: true}
+  domain_b: skincare
+  condition_b: {peel: true}
+  severity: warn
+  message: "Азелаиновая кислота + пилинг в один момент — обычно переносится нормально, но при чувствительной коже может раздражать сильнее ожидаемого."
+  category: dermatology
+  source: "Дерматологическая практика: азелаиновая кислота мягче большинства эксфолиантов и часто комбинируется с BHA, но одновременное нанесение двух кислотных продуктов всё же стоит вводить осторожно."
+  evidence: C
+
+- code: derm_isotretinoin_oral_vitamin_a_stacking
+  rule_type: hard_block
+  domain_a: supplements
+  condition_a: {key: isotretinoin, active: true}
+  domain_b: supplements
+  condition_b: {key: vitamin_a, active: true}
+  severity: block
+  message: "Изотретиноин уже является производным витамина A — дополнительный приём витамина A создаёт риск гипервитаминоза A (токсичность для печени, головные боли)."
+  category: dermatology
+  source: "Изотретиноин — синтетический ретиноид; официальные инструкции к препарату прямо предупреждают не принимать добавки с витамином A на фоне терапии."
+  evidence: A
+
+- code: derm_topical_retinoid_high_dose_oral_vitamin_a
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: vitamin_a, active: true, dose_mg: {$gte: 1.5}}
+  domain_b: skincare
+  condition_b: {retinoid: true}
+  severity: warn
+  message: "Высокая доза перорального витамина A (ретинол) вместе с топическим ретиноидом — суммарная ретиноидная нагрузка выше типичной; проверить дозу (>1.5 мг/1500 мкг RAE в сутки — уже высокая)."
+  category: dermatology
+  source: "NIH ODS Vitamin A Fact Sheet: верхний допустимый уровень для взрослых — 3000 мкг RAE/сутки (~10000 МЕ); регулярный топический ретиноид добавляет системную нагрузку не сильно, но стоит отслеживать при уже высокой пероральной дозе."
+  evidence: C
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ABSORPTION — nutrient ↔ nutrient / supplement ↔ supplement timing & binding
+# ═══════════════════════════════════════════════════════════════════════════
+
+- code: abs_iron_zinc_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: iron, active: true}
+  domain_b: supplements
+  condition_b: {key: zinc, active: true}
+  severity: warn
+  message: "Железо и цинк конкурируют за один и тот же транспортный механизм всасывания — разнести приём на 2+ часа."
+  params: {hours: 2}
+  category: absorption
+  source: "NIH ODS Iron / Zinc Fact Sheets for Health Professionals: оба минерала используют дивалентный транспортёр металлов (DMT1), высокие дозы одного подавляют всасывание другого."
+  evidence: B
+
+- code: abs_iron_calcium_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: iron, active: true}
+  domain_b: supplements
+  condition_b: {key: calcium, active: true}
+  severity: warn
+  message: "Кальций подавляет всасывание негемового железа — разнести приём на 2+ часа."
+  params: {hours: 2}
+  category: absorption
+  source: "NIH ODS Iron Fact Sheet for Health Professionals: кальций (особенно ≥300 мг за приём) дозозависимо снижает всасывание негемового железа."
+  evidence: B
+
+- code: abs_iron_magnesium_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: iron, active: true}
+  domain_b: supplements
+  condition_b: {key: magnesium, active: true}
+  severity: warn
+  message: "Магний может снижать всасывание железа при одновременном приёме — разнести на 2+ часа."
+  params: {hours: 2}
+  category: absorption
+  source: "Наблюдаемая конкуренция минералов за кишечные транспортёры; эффект слабее, чем у кальция/цинка, но разнесение приёма — стандартная предосторожность."
+  evidence: C
+
+- code: abs_iron_manganese_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: iron, active: true}
+  domain_b: supplements
+  condition_b: {key: manganese, active: true}
+  severity: warn
+  message: "Железо и марганец используют общий транспортный путь всасывания — разнести приём на 2+ часа."
+  params: {hours: 2}
+  category: absorption
+  source: "NIH ODS: марганец всасывается через тот же DMT1-транспортёр, что и железо; избыток одного снижает усвоение другого."
+  evidence: B
+
+- code: abs_zinc_calcium_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: zinc, active: true}
+  domain_b: supplements
+  condition_b: {key: calcium, active: true}
+  severity: warn
+  message: "Кальций в высокой дозе снижает всасывание цинка — разнести приём на 2+ часа."
+  params: {hours: 2}
+  category: absorption
+  source: "NIH ODS Zinc Fact Sheet for Health Professionals: кальциевые добавки (особенно в форме карбоната) дозозависимо снижают биодоступность цинка."
+  evidence: B
+
+- code: abs_zinc_copper_chronic
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: zinc, active: true, dose_mg: {$gte: 40}}
+  domain_b: supplements
+  condition_b: {key: copper, active: false}
+  severity: warn
+  message: "Цинк в высокой дозе (≥40 мг/сут) активен, а медь в каталоге приостановлена — риск медной недостаточности при длительном приёме; рассмотреть возобновление меди или контроль уровня в крови."
+  category: absorption
+  source: "NIH ODS Zinc Fact Sheet: избыток цинка индуцирует металлотионеин в энтероцитах, который связывает медь и блокирует её всасывание — классическая причина приобретённой медной недостаточности."
+  evidence: A
+
+- code: abs_calcium_magnesium_high_dose
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: calcium, active: true}
+  domain_b: supplements
+  condition_b: {key: magnesium, active: true}
+  severity: warn
+  message: "Кальций и магний в высоких дозах конкурируют за всасывание — разнести приём на 2+ часа для лучшего усвоения обоих."
+  params: {hours: 2}
+  category: absorption
+  source: "Общая практика минеральных добавок: оба двухвалентных катиона используют перекрывающиеся транспортные пути в кишечнике при больших дозах."
+  evidence: C
+
+- code: abs_caffeine_iron_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: caffeine, active: true}
+  domain_b: supplements
+  condition_b: {key: iron, active: true}
+  severity: warn
+  message: "Кофеин (и танины чая/кофе) снижают всасывание негемового железа — разнести приём на 1-2 часа."
+  params: {hours: 2}
+  category: absorption
+  source: "NIH ODS Iron Fact Sheet: полифенолы кофе и чая связывают негемовое железо в кишечнике, снижая всасывание до 60-90%."
+  evidence: A
+
+- code: abs_green_tea_iron_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: green_tea_extract, active: true}
+  domain_b: supplements
+  condition_b: {key: iron, active: true}
+  severity: warn
+  message: "Экстракт зелёного чая (катехины) значительно снижает всасывание негемового железа — разнести приём на 2+ часа."
+  params: {hours: 2}
+  category: absorption
+  source: "Исследования биодоступности железа: катехины (EGCG) образуют нерастворимые комплексы с железом в просвете кишечника."
+  evidence: B
+
+- code: abs_psyllium_general_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: psyllium_fiber, active: true}
+  domain_b: supplements
+  condition_b: {key: multivitamin, active: true}
+  severity: warn
+  message: "Растворимая клетчатка (псиллиум) может снижать всасывание витаминов/минералов из мультивитамина — разнести приём на 2+ часа."
+  params: {hours: 2}
+  category: absorption
+  source: "Общий принцип: вязкая растворимая клетчатка замедляет и частично снижает всасывание жирорастворимых витаминов и некоторых минералов."
+  evidence: C
+
+- code: abs_hemochromatosis_vitamin_c_iron_absorption
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: hemochromatosis_carrier}
+  domain_b: supplements
+  condition_b: {key: vitamin_c, active: true, dose_mg: {$gte: 1000}}
+  severity: warn
+  message: "Высокая доза витамина C (≥1000 мг) резко усиливает всасывание железа — при носительстве гемохроматоза стоит ограничить дозу и не принимать с богатой железом едой."
+  category: absorption
+  source: "NIH ODS Vitamin C Fact Sheet: аскорбиновая кислота восстанавливает Fe3+ до Fe2+, значительно повышая всасывание негемового железа — риск перегрузки железом у предрасположенных лиц."
+  evidence: A
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PHARMACOGENOMICS — genetics ↔ supplements/glp1
+# ═══════════════════════════════════════════════════════════════════════════
+
+- code: pgx_hemochromatosis_iron_block
+  rule_type: hard_block
+  domain_a: genetics
+  condition_a: {marker: hemochromatosis_carrier}
+  domain_b: supplements
+  condition_b: {key: iron, active: true}
+  severity: block
+  message: "Носительство гемохроматоза (HFE) — препараты железа противопоказаны без контроля ферритина/врача."
+  category: pharmacogenomics
+  source: "CPIC / клиническая практика: гомозиготы и составные гетерозиготы HFE C282Y/H63D накапливают железо; экзогенное железо ускоряет перегрузку и повреждение органов."
+  evidence: A
+
+- code: pgx_mthfr_folic_acid
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: mthfr_c677t_homozygous}
+  domain_b: supplements
+  condition_b: {key: folic_acid, active: true}
+  severity: warn
+  message: "MTHFR C677T (гомозигота) — сниженная конверсия фолиевой кислоты; рассмотреть метилфолат (5-MTHF) вместо синтетической фолиевой кислоты."
+  category: pharmacogenomics
+  source: "PharmGKB/литература по MTHFR: гомозиготный C677T снижает активность фермента до ~30%, что может приводить к накоплению неметаболизированной фолиевой кислоты."
+  evidence: B
+
+- code: pgx_mthfr_heterozygous_folic_acid
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: mthfr_heterozygous}
+  domain_b: supplements
+  condition_b: {key: folic_acid, active: true}
+  severity: warn
+  message: "MTHFR C677T (гетерозигота) — умеренно сниженная конверсия фолиевой кислоты; метилфолат может быть предпочтительнее."
+  category: pharmacogenomics
+  source: "PharmGKB/литература по MTHFR: гетерозиготный C677T снижает активность фермента до ~65%."
+  evidence: C
+
+- code: pgx_g6pd_high_dose_vitamin_c
+  rule_type: hard_block
+  domain_a: genetics
+  condition_a: {marker: g6pd_deficiency}
+  domain_b: supplements
+  condition_b: {key: vitamin_c, active: true, dose_mg: {$gte: 1000}}
+  severity: block
+  message: "Дефицит G6PD — высокие дозы витамина C (≥1000 мг) описаны как триггер гемолиза; ограничить дозу без консультации врача."
+  category: pharmacogenomics
+  source: "Клинические описания случаев: мегадозы аскорбиновой кислоты (обычно в/в, но и очень высокие пероральные дозы) ассоциированы с гемолитическими эпизодами при дефиците G6PD."
+  evidence: B
+
+- code: pgx_cyp1a2_slow_caffeine
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: cyp1a2_slow_metabolizer}
+  domain_b: supplements
+  condition_b: {key: caffeine, active: true}
+  severity: warn
+  message: "Медленный метаболизм CYP1A2 — повышенная чувствительность к кофеину; высокое потребление ассоциировано с большим кардиоваскулярным риском именно у медленных метаболизаторов."
+  category: pharmacogenomics
+  source: "Cornelis et al. (JAMA 2006) и последующие работы: у носителей медленного аллеля CYP1A2 высокое потребление кофеина ассоциировано с повышенным риском инфаркта миокарда, у быстрых метаболизаторов — нет."
+  evidence: B
+
+- code: pgx_comt_slow_stimulants
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: comt_slow_metabolizer}
+  domain_b: supplements
+  condition_b: {$any: [{key: caffeine, active: true}, {key: green_tea_extract, active: true}]}
+  severity: warn
+  message: "Медленный вариант COMT (Val158Met) — замедленный клиренс катехоламинов/катехинов; стимуляторы (кофеин, EGCG) чаще вызывают тревожность и перевозбуждение."
+  category: pharmacogenomics
+  source: "Литература по COMT Val158Met: медленный вариант фермента снижает распад дофамина/катехинов, повышая чувствительность к стимулирующим веществам."
+  evidence: C
+
+- code: pgx_apoe4_high_dose_vitamin_a
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: apoe_e3e4}
+  domain_b: supplements
+  condition_b: {key: vitamin_a, active: true, dose_mg: {$gte: 1.5}}
+  severity: warn
+  message: "Носительство APOE ε4 + высокая доза витамина A (ретинол) — рассмотреть более консервативную дозу; предпочесть бета-каротин из пищи."
+  category: pharmacogenomics
+  source: "Наблюдательные данные о взаимодействии APOE-генотипа с метаболизмом ретинола; носители ε4 медленнее клирят ретинол из плазмы."
+  evidence: C
+
+- code: pgx_hfe_carrier_vitamin_c_moderate
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: hemochromatosis_carrier}
+  domain_b: supplements
+  condition_b: {key: vitamin_c, active: true, dose_mg: {$lt: 1000, $gte: 250}}
+  severity: warn
+  message: "Носительство гемохроматоза + регулярный витамин C (250-1000 мг) — усиливает всасывание железа из пищи/добавок; принимать отдельно от железосодержащих приёмов пищи."
+  category: pharmacogenomics
+  source: "NIH ODS Vitamin C Fact Sheet + клиническая практика ведения гемохроматоза: даже умеренные дозы витамина C заметно повышают усвоение пищевого железа."
+  evidence: B
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# LAB SAFETY — supplements/glp1 ↔ labs (value/flag thresholds)
+# ═══════════════════════════════════════════════════════════════════════════
+
+- code: lab_potassium_supplement_hyperkalemia
+  rule_type: hard_block
+  domain_a: supplements
+  condition_a: {key: potassium, active: true}
+  domain_b: labs
+  condition_b: {marker: "Калий", value: {$gt: 5.0}}
+  severity: block
+  message: "Калий в крови уже выше нормы (>5.0 ммоль/л) — приём препаратов калия противопоказан без контроля врача (риск аритмии)."
+  category: lab_safety
+  source: "Клиническая референсная норма калия сыворотки ~3.5-5.0 ммоль/л; значения выше связаны с риском жизнеугрожающих аритмий, экзогенный калий этот риск усиливает."
+  evidence: A
+
+- code: lab_calcium_vitamind_hypercalcemia
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {$all: [{key: calcium, active: true}, {key: vitamin_d, active: true}]}
+  domain_b: labs
+  condition_b: {marker: "Кальций общий", value: {$gt: 2.6}}
+  severity: warn
+  message: "Кальций в крови уже выше нормы — приём кальция и витамина D вместе повышает риск дальнейшей гиперкальциемии."
+  category: lab_safety
+  source: "Референсная норма общего кальция сыворотки ~2.2-2.6 ммоль/л; витамин D повышает кишечное всасывание кальция, потенцируя гиперкальциемию."
+  evidence: B
+
+- code: lab_iron_ferritin_high
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: iron, active: true}
+  domain_b: labs
+  condition_b: {marker: "Ферритин", value: {$gt: 300}}
+  severity: warn
+  message: "Ферритин уже выше нормы (>300 нг/мл) — продолжать приём железа стоит только под контролем врача."
+  category: lab_safety
+  source: "Ферритин — маркер запасов железа; устойчиво высокие значения указывают на возможную перегрузку железом (гемохроматоз, воспаление) — экзогенное железо в этой ситуации требует осторожности."
+  evidence: B
+
+- code: lab_b12_masking_folate_deficiency
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: folic_acid, active: true, dose_mg: {$gte: 1}}
+  domain_b: labs
+  condition_b: {marker: "Витамин B12", value: {$lt: 200}}
+  severity: warn
+  message: "Низкий B12 при высокой дозе фолиевой кислоты (≥1 мг) — фолат может маскировать гематологические признаки дефицита B12, позволяя прогрессировать неврологическому повреждению."
+  category: lab_safety
+  source: "Классическое клиническое предупреждение (FDA/NIH ODS Folate Fact Sheet): высокие дозы фолиевой кислоты корректируют мегалобластную анемию, но не неврологические проявления дефицита B12 — задержка диагностики опасна."
+  evidence: A
+
+- code: lab_potassium_low_supplement_needed_check
+  rule_type: soft_warn
+  domain_a: labs
+  condition_a: {marker: "Калий", value: {$lt: 3.5}}
+  domain_b: labs
+  condition_b: {}
+  severity: warn
+  message: "Калий в крови ниже нормы (<3.5 ммоль/л) — обсудить с врачом необходимость коррекции (диета/добавка)."
+  category: lab_safety
+  source: "Референсная норма калия сыворотки ~3.5-5.0 ммоль/л; гипокалиемия требует внимания, особенно на фоне диуретиков/ЖКТ-потерь."
+  evidence: B
+
+- code: lab_alt_elevated_hepatotoxic_supplements
+  rule_type: soft_warn
+  domain_a: labs
+  condition_a: {marker: "АЛТ", value: {$gt: 55}}
+  domain_b: supplements
+  condition_b: {$any: [{key: niacin, active: true, dose_mg: {$gte: 500}}, {key: green_tea_extract, active: true}, {key: kava, active: true}]}
+  severity: warn
+  message: "АЛТ выше нормы — высокие дозы ниацина, концентрированный экстракт зелёного чая и кава описаны как редкие причины лекарственного поражения печени; пересмотреть на фоне повышенных показателей."
+  category: lab_safety
+  source: "Случаи гепатотоксичности ниацина (≥500 мг/сут, особенно пролонгированного высвобождения), высококонцентрированных экстрактов зелёного чая (EGCG) и кавы описаны в литературе по DILI (drug-induced liver injury) и в регуляторных предупреждениях."
+  evidence: B
+
+- code: lab_creatinine_high_creatine_caution
+  rule_type: soft_warn
+  domain_a: labs
+  condition_a: {marker: "Креатинин", value: {$gt: 115}}
+  domain_b: supplements
+  condition_b: {key: creatine, active: true}
+  severity: warn
+  message: "Креатинин выше нормы — приём креатина ожидаемо ещё немного повышает этот показатель (не токсично само по себе, но затрудняет оценку реальной функции почек); обсудить с врачом трактовку."
+  category: lab_safety
+  source: "Креатин моногидрат физиологически повышает креатинин сыворотки через увеличение мышечного креатина/креатинина без реального ухудшения СКФ — но маскирует интерпретацию при уже повышенном показателе."
+  evidence: B
+
+- code: lab_glucose_high_chromium_berberine_caution
+  rule_type: soft_warn
+  domain_a: labs
+  condition_a: {marker: "Глюкоза", value: {$gt: 7.0}}
+  domain_b: supplements
+  condition_b: {$any: [{key: chromium, active: true}, {key: berberine, active: true}]}
+  severity: warn
+  message: "Глюкоза выше нормы — хром/берберин влияют на чувствительность к инсулину; при совместном приёме с сахароснижающими препаратами уточнить у врача риск гипогликемии."
+  category: lab_safety
+  source: "Хром пиколинат и берберин имеют документированный сахароснижающий эффект (метаанализы), что при сопутствующей терапии диабета может суммироваться и приводить к гипогликемии."
+  evidence: B
+
+- code: lab_tsh_biotin_interference
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: biotin, active: true, dose_mg: {$gte: 5}}
+  domain_b: labs
+  condition_b: {marker: "ТТГ", value: {$exists: true}}
+  severity: warn
+  message: "Высокая доза биотина (≥5 мг/сут) искажает результаты иммуноанализов на гормоны щитовидной железы — отменить приём за 2-3 дня до сдачи анализа."
+  category: lab_safety
+  source: "FDA Safety Communication (2019): биотин в дозах, обычных для добавок 'для волос/кожи/ногтей' (часто 5-10 мг), может давать ложные результаты иммуноанализов (ТТГ, Т4, тропонин), построенных на биотин-стрептавидиновой технологии."
+  evidence: A
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# GLP-1 — glp1 ↔ supplements/nutrition (gastroparesis, absorption, hydration)
+# ═══════════════════════════════════════════════════════════════════════════
+
+- code: glp1_oral_absorption_delay
+  rule_type: soft_warn
+  domain_a: glp1
+  condition_a: {active: true}
+  domain_b: supplements
+  condition_b: {$exists: true}
+  severity: warn
+  message: "GLP-1 замедляет опорожнение желудка — всасывание одновременно принятых пероральных препаратов/добавок может задерживаться и меняться по скорости/степени."
+  category: glp1
+  source: "Инструкции к пероральному семаглутиду (Rybelsus) и клинические данные по агонистам GLP-1: задержка опорожнения желудка описана как механизм, потенциально влияющий на всасывание сопутствующих пероральных препаратов."
+  evidence: A
+
+- code: glp1_dehydration_risk_diuretic_supplements
+  rule_type: soft_warn
+  domain_a: glp1
+  condition_a: {active: true}
+  domain_b: supplements
+  condition_b: {$any: [{key: dhea, active: true}, {key: green_tea_extract, active: true}]}
+  severity: warn
+  message: "На фоне GLP-1 (снижение аппетита/жидкости, возможная тошнота) добавки с мочегонным эффектом повышают риск обезвоживания — следить за потреблением воды."
+  category: glp1
+  source: "Клиническая практика ведения пациентов на GLP-1: тошнота/рвота/сниженное потребление жидкости — частые побочные эффекты, повышающие уязвимость к дополнительной дегидратации."
+  evidence: C
+
+- code: glp1_hypoglycemia_risk_insulin_mimetics
+  rule_type: soft_warn
+  domain_a: glp1
+  condition_a: {active: true}
+  domain_b: supplements
+  condition_b: {$any: [{key: berberine, active: true}, {key: chromium, active: true}, {key: alpha_lipoic_acid, active: true}]}
+  severity: warn
+  message: "GLP-1 уже снижает глюкозу — берберин/хром/альфа-липоевая кислота дополнительно повышают чувствительность к инсулину; суммарный риск гипогликемии, особенно вместе с другими сахароснижающими препаратами."
+  category: glp1
+  source: "Механистическое перекрытие: агонисты GLP-1 и берберин/хром/ALA независимо снижают уровень глюкозы; при комбинации риск гипогликемии выше, чем от каждого средства по отдельности."
+  evidence: C
+
+- code: glp1_high_dose_metformin_gi_overlap
+  rule_type: soft_warn
+  domain_a: glp1
+  condition_a: {dose_mg: {$gte: 1.0}}
+  domain_b: supplements
+  condition_b: {key: metformin, active: true}
+  severity: warn
+  message: "GLP-1 в поддерживающей дозе + метформин — оба вызывают тошноту/ЖКТ-дискомфорт независимо; суммарная переносимость может быть хуже в период титрации."
+  category: glp1
+  source: "Клиническая практика: тошнота, диарея — общие побочные эффекты и метформина, и агонистов GLP-1; часто применяются совместно при диабете 2 типа, но требуют внимания к переносимости."
+  evidence: B
+
+- code: glp1_plateau_high_calorie_day
+  rule_type: soft_warn
+  domain_a: glp1
+  condition_a: {active: true}
+  domain_b: nutrition
+  condition_b: {calories: {$gt: 4000}}
+  severity: warn
+  message: "Очень высокое потребление калорий за день на фоне GLP-1 — стоит проверить, не связано ли с компенсаторным перееданием в окно сниженного эффекта препарата."
+  category: glp1
+  source: "Клиническое наблюдение: резкие эпизоды высококалорийного питания на GLP-1 иногда сигнализируют о приближающемся плато или психологической компенсации подавленного аппетита."
+  evidence: C
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CONTRAINDICATION — single/related-domain presence rules
+# ═══════════════════════════════════════════════════════════════════════════
+
+- code: contra_st_johns_wort_oral_contraceptive
+  rule_type: hard_block
+  domain_a: supplements
+  condition_a: {key: st_johns_wort, active: true}
+  domain_b: supplements
+  condition_b: {key: oral_contraceptive, active: true}
+  severity: block
+  message: "Зверобой индуцирует ферменты печени и значительно снижает эффективность гормональных контрацептивов — риск незапланированной беременности."
+  category: contraindication
+  source: "Хорошо документированное лекарственное взаимодействие: зверобой (через индукцию CYP3A4) ускоряет метаболизм эстрогенов/прогестинов, описаны случаи прорывных кровотечений и неудач контрацепции."
+  evidence: A
+
+- code: contra_st_johns_wort_ssri
+  rule_type: hard_block
+  domain_a: supplements
+  condition_a: {key: st_johns_wort, active: true}
+  domain_b: supplements
+  condition_b: {key: ssri_antidepressant, active: true}
+  severity: block
+  message: "Зверобой + СИОЗС — риск серотонинового синдрома; комбинация противопоказана без наблюдения врача."
+  category: contraindication
+  source: "Хорошо документированное взаимодействие: зверобой сам обладает серотонинергической активностью; вместе с СИОЗС описаны случаи серотонинового синдрома."
+  evidence: A
+
+- code: contra_warfarin_vitamin_k_high_dose
+  rule_type: hard_block
+  domain_a: supplements
+  condition_a: {key: warfarin, active: true}
+  domain_b: supplements
+  condition_b: {key: vitamin_k, active: true}
+  severity: block
+  message: "Варфарин + витамин K — витамин K напрямую противодействует антикоагулянтному эффекту; менять дозу/начинать приём только по согласованию с врачом, ведущим МНО."
+  category: contraindication
+  source: "Фармакология варфарина: механизм действия — антагонизм витамина K; нестабильное потребление витамина K — частая причина колебаний МНО."
+  evidence: A
+
+- code: contra_warfarin_fish_oil_high_dose
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: warfarin, active: true}
+  domain_b: supplements
+  condition_b: {key: omega3, active: true, dose_mg: {$gte: 3000}}
+  severity: warn
+  message: "Варфарин + высокая доза рыбьего жира (≥3 г/сут) — рыбий жир может дополнительно влиять на свёртываемость; выше риск повышенного МНО/кровоточивости."
+  category: contraindication
+  source: "Литература по взаимодействиям антикоагулянтов: высокие дозы EPA/DHA умеренно снижают агрегацию тромбоцитов, потенциально усиливая эффект варфарина."
+  evidence: B
+
+- code: contra_warfarin_ginkgo
+  rule_type: hard_block
+  domain_a: supplements
+  condition_a: {key: warfarin, active: true}
+  domain_b: supplements
+  condition_b: {key: ginkgo_biloba, active: true}
+  severity: block
+  message: "Варфарин + гинкго билоба — гинкго снижает агрегацию тромбоцитов, описаны случаи кровотечений при совместном приёме."
+  category: contraindication
+  source: "Описанные клинические случаи и обзоры взаимодействий трав с антикоагулянтами: гинкго повышает риск кровотечения на фоне варфарина/антиагрегантов."
+  evidence: B
+
+- code: contra_ssri_five_htp_serotonin_syndrome
+  rule_type: hard_block
+  domain_a: supplements
+  condition_a: {key: ssri_antidepressant, active: true}
+  domain_b: supplements
+  condition_b: {key: five_htp, active: true}
+  severity: block
+  message: "СИОЗС + 5-HTP — оба повышают серотонин; комбинация несёт риск серотонинового синдрома."
+  category: contraindication
+  source: "Фармакология: 5-HTP — прямой предшественник серотонина; сочетание с любым серотонинергическим препаратом (СИОЗС и т.п.) описано как фактор риска серотонинового синдрома."
+  evidence: B
+
+- code: contra_maoi_like_tyramine_supplements
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: st_johns_wort, active: true}
+  domain_b: supplements
+  condition_b: {key: five_htp, active: true}
+  severity: warn
+  message: "Зверобой + 5-HTP — оба влияют на серотонинергическую передачу; совместный приём без наблюдения повышает риск серотонинового синдрома."
+  category: contraindication
+  source: "Оба вещества независимо повышают серотонинергическую активность; комбинация двух безрецептурных серотонинергических средств недостаточно изучена и потенциально рискованна."
+  evidence: C
+
+- code: contra_licorice_hypertension_risk
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: licorice_root, active: true}
+  domain_b: labs
+  condition_b: {marker: "Калий", value: {$lt: 3.5}}
+  severity: warn
+  message: "Солодка (глицирризин) вызывает задержку натрия и потерю калия, имитируя избыток минералокортикоидов — на фоне уже сниженного калия приём стоит пересмотреть."
+  category: contraindication
+  source: "Хорошо документированный эффект глицирризиновой кислоты: псевдоальдостеронизм — гипокалиемия, задержка натрия, повышение АД при регулярном употреблении."
+  evidence: A
+
+- code: contra_grapefruit_like_statin_supplement_interaction
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: statin, active: true}
+  domain_b: supplements
+  condition_b: {key: berberine, active: true}
+  severity: warn
+  message: "Берберин + статины — оба метаболизируются через перекрывающиеся пути и влияют на липидный профиль; сочетание требует контроля переносимости (риск миопатии выше ожидаемого)."
+  category: contraindication
+  source: "Фармакокинетические исследования берберина указывают на ингибирование CYP3A4/P-гликопротеина, потенциально повышающее экспозицию некоторых статинов."
+  evidence: C
+
+- code: contra_finasteride_saw_palmetto_redundant
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: finasteride, active: true}
+  domain_b: supplements
+  condition_b: {key: saw_palmetto, active: true}
+  severity: warn
+  message: "Финастерид уже подавляет 5-альфа-редуктазу — со пальметто действует похожим (более слабым) механизмом; комбинация избыточна и не подтверждена дополнительной пользой."
+  category: contraindication
+  source: "Оба воздействуют на путь 5-альфа-редуктазы/ДГТ; клинические данные не показывают явного дополнительного эффекта со пальметто поверх финастерида."
+  evidence: C
+
+- code: contra_ppi_long_term_b12_magnesium
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: ppi_omeprazole, active: true}
+  domain_b: labs
+  condition_b: {marker: "Витамин B12", value: {$lt: 200}}
+  severity: warn
+  message: "Длительный приём ИПП (омепразол и аналоги) снижает всасывание B12 — при уже низком уровне стоит обсудить добавку B12 с врачом."
+  category: contraindication
+  source: "FDA Drug Safety Communication + литература: длительное подавление кислотности ИПП ассоциировано со снижением всасывания витамина B12 (нужна кислая среда для высвобождения B12 из белков пищи)."
+  evidence: A
+
+- code: contra_nsaid_long_term_gi_supplements
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: nsaid_ibuprofen, active: true}
+  domain_b: supplements
+  condition_b: {key: ginkgo_biloba, active: true}
+  severity: warn
+  message: "НПВС + гинкго билоба — оба независимо повышают риск кровотечения (НПВС слизистой ЖКТ, гинкго — за счёт антиагрегантного эффекта)."
+  category: contraindication
+  source: "НПВС повреждают слизистую ЖКТ и снижают защитные простагландины; гинкго снижает агрегацию тромбоцитов — суммарный риск ЖКТ-кровотечения выше, чем от каждого средства отдельно."
+  evidence: B
+
+- code: contra_spironolactone_potassium_supplement
+  rule_type: hard_block
+  domain_a: supplements
+  condition_a: {key: spironolactone, active: true}
+  domain_b: supplements
+  condition_b: {key: potassium, active: true}
+  severity: block
+  message: "Спиронолактон — калийсберегающий диуретик; добавки калия поверх него создают серьёзный риск гиперкалиемии."
+  category: contraindication
+  source: "Фармакология спиронолактона (антагонист альдостерона): препарат сам по себе задерживает калий; экзогенный калий поверх него — классическая причина ятрогенной гиперкалиемии."
+  evidence: A
+
+- code: contra_ace_inhibitor_potassium_supplement
+  rule_type: hard_block
+  domain_a: supplements
+  condition_a: {key: ace_inhibitor, active: true}
+  domain_b: supplements
+  condition_b: {key: potassium, active: true}
+  severity: block
+  message: "иАПФ (лизиноприл и аналоги) задерживают калий — добавки калия поверх них повышают риск гиперкалиемии."
+  category: contraindication
+  source: "Фармакология иАПФ: снижение секреции альдостерона задерживает калий; сочетание с калиевыми добавками/заменителями соли — известная причина гиперкалиемии, особенно при сниженной функции почек."
+  evidence: A
+
+- code: contra_arb_potassium_supplement
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: arb_sartan, active: true}
+  domain_b: supplements
+  condition_b: {key: potassium, active: true}
+  severity: warn
+  message: "Сартаны (лозартан и аналоги) также задерживают калий — добавки калия требуют контроля уровня в крови."
+  category: contraindication
+  source: "Механизм аналогичен иАПФ (блокада ренин-ангиотензин-альдостероновой системы) — риск гиперкалиемии при сочетании с калиевыми добавками."
+  evidence: B
+
+- code: contra_multivitamin_vitamin_a_redundant
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: multivitamin, active: true}
+  domain_b: supplements
+  condition_b: {key: vitamin_a, active: true}
+  severity: warn
+  message: "Мультивитамин обычно уже содержит витамин A — отдельная добавка поверх него повышает риск превышения безопасной дозы (жирорастворимый, накапливается)."
+  category: contraindication
+  source: "NIH ODS Vitamin A Fact Sheet: верхний допустимый уровень для взрослых ~3000 мкг RAE/сутки; двойной источник (мультивитамин + отдельная добавка) — частая причина превышения на практике."
+  evidence: B
+
+- code: contra_multivitamin_iron_redundant
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: multivitamin, active: true}
+  domain_b: supplements
+  condition_b: {key: iron, active: true}
+  severity: warn
+  message: "Мультивитамин часто уже содержит железо — отдельная добавка поверх него может привести к избыточному потреблению без реальной необходимости."
+  category: contraindication
+  source: "Общая практика: у мужчин и женщин в постменопаузе избыточное железо не выводится активно и накапливается — двойной источник стоит пересматривать без подтверждённого дефицита."
+  evidence: C
+
+- code: contra_valerian_kava_sedation_stacking
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: valerian_root, active: true}
+  domain_b: supplements
+  condition_b: {key: kava, active: true}
+  severity: warn
+  message: "Валериана + кава — оба седативны, суммарный эффект может быть сильнее ожидаемого (сонливость, снижение внимания)."
+  category: contraindication
+  source: "Оба растительных средства действуют как седативные/анксиолитики через разные, но перекрывающиеся механизмы (ГАМК-ергические эффекты) — комбинация усиливает угнетение ЦНС."
+  evidence: C
+
+- code: contra_valerian_melatonin_sedation_stacking
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: valerian_root, active: true}
+  domain_b: supplements
+  condition_b: {key: melatonin, active: true}
+  severity: warn
+  message: "Валериана + мелатонин — оба используются для сна, суммарная седация может быть избыточной (утренняя сонливость/заторможенность)."
+  category: contraindication
+  source: "Общая практика: комбинация двух снотворных добавок для «усиления эффекта» часто просто увеличивает остаточную седацию на следующий день без явного выигрыша в качестве сна."
+  evidence: C
+
+- code: contra_niacin_high_dose_statin_myopathy
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: niacin, active: true, dose_mg: {$gte: 500}}
+  domain_b: supplements
+  condition_b: {key: statin, active: true}
+  severity: warn
+  message: "Высокая доза ниацина (≥500 мг) вместе со статином повышает риск миопатии — обсудить с врачом при появлении мышечной боли/слабости."
+  category: contraindication
+  source: "Клинические исследования комбинации ниацин+статин (в т.ч. пересмотр AIM-HIGH/HPS2-THRIVE) отмечали повышенную частоту миопатии на комбинации по сравнению со статином отдельно."
+  evidence: B
+
+- code: contra_iodine_high_dose_levothyroxine
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: iodine, active: true, dose_mg: {$gte: 0.5}}
+  domain_b: supplements
+  condition_b: {key: levothyroxine, active: true}
+  severity: warn
+  message: "Высокая доза йода (≥500 мкг) на фоне левотироксина может дестабилизировать функцию щитовидной железы, особенно при аутоиммунном тиреоидите — обсудить с эндокринологом."
+  category: contraindication
+  source: "Избыток йода может индуцировать как гипо-, так и гипертиреоз (эффект Wolff-Chaikoff / jod-Basedow), особенно на фоне уже существующей патологии щитовидной железы."
+  evidence: B
+
+- code: contra_ssri_hyponatremia_check
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: ssri_antidepressant, active: true}
+  domain_b: labs
+  condition_b: {marker: "Натрий", value: {$lt: 135}}
+  severity: warn
+  message: "Натрий ниже нормы на фоне СИОЗС — препараты этого класса описаны как причина гипонатриемии (SIADH), особенно у пожилых; обсудить с врачом."
+  category: contraindication
+  source: "Хорошо документированное явление: СИОЗС могут вызывать синдром неадекватной секреции АДГ (SIADH), приводящий к гипонатриемии, чаще у пожилых пациентов."
+  evidence: A
+
+- code: contra_platelets_low_antiplatelet_supplements
+  rule_type: soft_warn
+  domain_a: labs
+  condition_a: {marker: "Тромбоциты", value: {$lt: 150}}
+  domain_b: supplements
+  condition_b: {$any: [{key: ginkgo_biloba, active: true}, {key: omega3, active: true, dose_mg: {$gte: 3000}}]}
+  severity: warn
+  message: "Тромбоциты ниже нормы — добавки с антиагрегантным эффектом (гинкго, высокая доза рыбьего жира) повышают риск кровоточивости при уже сниженных тромбоцитах."
+  category: contraindication
+  source: "Тромбоцитопения сама по себе повышает риск кровотечений; антиагрегантный эффект гинкго/высоких доз EPA-DHA добавляет риск поверх исходного дефицита."
+  evidence: B
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ABSORPTION (continued) — thyroid hormone binding, metformin/PPI depletion
+# ═══════════════════════════════════════════════════════════════════════════
+
+- code: abs_levothyroxine_calcium_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: levothyroxine, active: true}
+  domain_b: supplements
+  condition_b: {key: calcium, active: true}
+  severity: warn
+  message: "Кальций значительно снижает всасывание левотироксина — разнести приём минимум на 4 часа."
+  params: {hours: 4}
+  category: absorption
+  source: "Хорошо документированное взаимодействие (эндокринологическая практика): кальций образует нерастворимые комплексы с левотироксином в кишечнике, снижая его биодоступность на 20-40%."
+  evidence: A
+
+- code: abs_levothyroxine_iron_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: levothyroxine, active: true}
+  domain_b: supplements
+  condition_b: {key: iron, active: true}
+  severity: warn
+  message: "Железо значительно снижает всасывание левотироксина — разнести приём минимум на 4 часа."
+  params: {hours: 4}
+  category: absorption
+  source: "Хорошо документированное взаимодействие: железо связывает левотироксин в ЖКТ, аналогично кальцию — стандартная рекомендация эндокринологов разносить приём."
+  evidence: A
+
+- code: abs_levothyroxine_magnesium_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: levothyroxine, active: true}
+  domain_b: supplements
+  condition_b: {key: magnesium, active: true}
+  severity: warn
+  message: "Магний может снижать всасывание левотироксина — разнести приём минимум на 4 часа."
+  params: {hours: 4}
+  category: absorption
+  source: "Эндокринологическая практика: магнийсодержащие препараты (в т.ч. антациды) снижают биодоступность левотироксина через тот же механизм связывания."
+  evidence: B
+
+- code: abs_levothyroxine_multivitamin_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: levothyroxine, active: true}
+  domain_b: supplements
+  condition_b: {key: multivitamin, active: true}
+  severity: warn
+  message: "Мультивитамин (содержит кальций/железо) может снижать всасывание левотироксина — разнести приём минимум на 4 часа."
+  params: {hours: 4}
+  category: absorption
+  source: "Мультивитаминные комплексы обычно содержат кальций и/или железо — оба независимо снижают биодоступность левотироксина."
+  evidence: B
+
+- code: abs_levothyroxine_psyllium_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: levothyroxine, active: true}
+  domain_b: supplements
+  condition_b: {key: psyllium_fiber, active: true}
+  severity: warn
+  message: "Растворимая клетчатка (псиллиум) снижает всасывание левотироксина — разнести приём минимум на 4 часа."
+  params: {hours: 4}
+  category: absorption
+  source: "Эндокринологическая практика: вязкая клетчатка связывает левотироксин и замедляет его всасывание, аналогично действию у других препаратов с узким терапевтическим окном."
+  evidence: B
+
+- code: abs_levothyroxine_coffee_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: levothyroxine, active: true}
+  domain_b: supplements
+  condition_b: {key: caffeine, active: true}
+  severity: warn
+  message: "Кофе/кофеин, принятый слишком близко к левотироксину, заметно снижает его всасывание — выдержать минимум 30-60 минут (здесь используется общий порог 2 часа)."
+  params: {hours: 2}
+  category: absorption
+  source: "Клинические исследования (Benvenga et al. и др.): приём кофе одновременно с левотироксином снижал его всасывание на 25-30% по сравнению с приёмом на воде натощак."
+  evidence: A
+
+- code: abs_metformin_b12_depletion
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: metformin, active: true}
+  domain_b: labs
+  condition_b: {marker: "Витамин B12", value: {$lt: 300}}
+  severity: warn
+  message: "Метформин при длительном приёме снижает всасывание B12 — уровень уже ближе к нижней границе, стоит обсудить контроль/добавку с врачом."
+  category: absorption
+  source: "Хорошо документированный эффект (в т.ч. упоминается в инструкциях к препарату): длительная терапия метформином ассоциирована со снижением всасывания B12 в подвздошной кишке (кальций-зависимый механизм)."
+  evidence: A
+
+- code: abs_ppi_long_term_magnesium_depletion
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: ppi_omeprazole, active: true}
+  domain_b: labs
+  condition_b: {marker: "Магний", value: {$lt: 0.66}}
+  severity: warn
+  message: "Магний ниже нормы на фоне длительного приёма ИПП (омепразол и аналоги) — известная связь, обсудить с врачом коррекцию/контроль."
+  category: absorption
+  source: "FDA Drug Safety Communication (2011): длительное применение ИПП ассоциировано с гипомагниемией, иногда тяжёлой, требующей отмены препарата."
+  evidence: A
+
+- code: abs_statin_coq10_depletion
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: statin, active: true}
+  domain_b: supplements
+  condition_b: {key: coq10, active: false}
+  severity: warn
+  message: "Статин активен, а коэнзим Q10 в каталоге приостановлен — статины снижают эндогенный синтез CoQ10; при мышечных симптомах стоит рассмотреть возобновление приёма."
+  category: absorption
+  source: "Механизм: статины блокируют ГМГ-КоА-редуктазу — тот же путь синтеза, что и для CoQ10; часть клинических руководств рекомендует рассмотреть добавку при статин-ассоциированной миалгии."
+  evidence: B
+
+- code: abs_zinc_magnesium_high_dose_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: zinc, active: true}
+  domain_b: supplements
+  condition_b: {key: magnesium, active: true}
+  severity: warn
+  message: "Цинк в высокой дозе может конкурировать с магнием за всасывание — разнести приём на 2+ часа при одновременном приёме высоких доз обоих."
+  params: {hours: 2}
+  category: absorption
+  source: "Слабее документированное взаимодействие минералов на уровне кишечных транспортёров; предосторожность разнесения приёма — общепринятая практика для двухвалентных катионов."
+  evidence: C
+
+- code: abs_manganese_calcium_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: manganese, active: true}
+  domain_b: supplements
+  condition_b: {key: calcium, active: true}
+  severity: warn
+  message: "Кальций снижает всасывание марганца — разнести приём на 2+ часа."
+  params: {hours: 2}
+  category: absorption
+  source: "NIH ODS Manganese Fact Sheet: кальций дозозависимо снижает всасывание марганца при совместном приёме."
+  evidence: B
+
+- code: abs_calcium_iron_food_general
+  rule_type: soft_warn
+  domain_a: nutrition
+  condition_a: {calories: {$gt: 0}}
+  domain_b: supplements
+  condition_b: {$all: [{key: calcium, active: true}, {key: iron, active: true}]}
+  severity: warn
+  message: "Кальций и железо в один приём (в том числе с едой, богатой кальцием — молочные продукты) взаимно снижают усвоение — по возможности разносить приёмы пищи и добавок."
+  category: absorption
+  source: "NIH ODS Iron / Calcium Fact Sheets: то же взаимодействие, что и между добавками, распространяется и на богатую кальцием пищу (молочные продукты) при одновременном приёме железа."
+  evidence: B
+
+- code: abs_selenium_vitamin_c_high_dose
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: selenium, active: true}
+  domain_b: supplements
+  condition_b: {key: vitamin_c, active: true, dose_mg: {$gte: 1000}}
+  severity: warn
+  message: "Очень высокая доза витамина C может снижать всасывание неорганических форм селена (селенит) — при использовании селенита разнести приём."
+  params: {hours: 2}
+  category: absorption
+  source: "Исследования биодоступности селена: аскорбиновая кислота может восстанавливать селенит до менее усвояемых форм; эффект не показан для селенометионина."
+  evidence: C
+
+- code: abs_chromium_zinc_timing
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: chromium, active: true}
+  domain_b: supplements
+  condition_b: {key: zinc, active: true}
+  severity: warn
+  message: "Хром и цинк используют схожие транспортные пути — при высоких дозах разнести приём на 2+ часа."
+  params: {hours: 2}
+  category: absorption
+  source: "Теоретическое перекрытие транспортных механизмов трёхвалентных/двухвалентных катионов; практическая значимость умеренная, разнесение — простая предосторожность."
+  evidence: C
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PHARMACOGENOMICS (continued)
+# ═══════════════════════════════════════════════════════════════════════════
+
+- code: pgx_cyp2c19_ppi_exposure
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: cyp2c19_poor_metabolizer}
+  domain_b: supplements
+  condition_b: {key: ppi_omeprazole, active: true}
+  severity: warn
+  message: "CYP2C19 медленный метаболизатор — концентрация омепразола и аналогов в крови выше ожидаемой; обсудить с врачом возможную коррекцию дозы."
+  category: pharmacogenomics
+  source: "CPIC Guideline for CYP2C19 and Proton Pump Inhibitor Dosing: медленные метаболизаторы CYP2C19 достигают значимо более высокой экспозиции ИПП при стандартных дозах."
+  evidence: A
+
+- code: pgx_vdr_low_sensitivity_vitamin_d_dose
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: vdr_reduced_sensitivity}
+  domain_b: supplements
+  condition_b: {key: vitamin_d, active: true, dose_mg: {$lt: 0.05}}
+  severity: warn
+  message: "Вариант рецептора витамина D (VDR) со сниженной чувствительностью — стандартная поддерживающая доза может быть недостаточной; ориентироваться на уровень 25(OH)D в анализах, а не только на дозу."
+  category: pharmacogenomics
+  source: "Предварительные данные о полиморфизмах VDR (FokI/BsmI/TaqI) и вариабельности ответа на добавки витамина D; клиническая значимость для дозирования обсуждается, доказательная база слабее, чем у HFE/MTHFR."
+  evidence: C
+
+- code: pgx_fut2_nonsecretor_b12
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: fut2_nonsecretor}
+  domain_b: labs
+  condition_b: {marker: "Витамин B12", value: {$lt: 250}}
+  severity: warn
+  message: "Статус FUT2 «несекретор» ассоциирован с более низким уровнем B12 в сыворотке — при пограничном значении может потребоваться более высокая поддерживающая доза."
+  category: pharmacogenomics
+  source: "Исследования GWAS сывороточного B12 стабильно указывают FUT2 как один из сильнейших генетических предикторов уровня B12 в крови (не обязательно истинного клеточного дефицита)."
+  evidence: B
+
+- code: pgx_cyp2c9_vkorc1_informational_warfarin
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {$any: [{marker: cyp2c9_poor_metabolizer}, {marker: vkorc1_high_sensitivity}]}
+  domain_b: supplements
+  condition_b: {key: warfarin, active: true}
+  severity: warn
+  message: "Вариант CYP2C9/VKORC1 — известный фактор чувствительности к варфарину; дозирование должно вестись строго по МНО совместно с врачом, не по стандартной схеме."
+  category: pharmacogenomics
+  source: "CPIC Guideline for Pharmacogenetics-Guided Warfarin Dosing: CYP2C9 и VKORC1 генотип — основа существующих алгоритмов подбора стартовой дозы варфарина."
+  evidence: A
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# GLP-1 (continued) — nutrition-linked (protein/LBM preservation, extremes)
+# ═══════════════════════════════════════════════════════════════════════════
+
+- code: glp1_low_protein_lbm_risk
+  rule_type: soft_warn
+  domain_a: glp1
+  condition_a: {active: true}
+  domain_b: nutrition
+  condition_b: {protein_g: {$lt: 60}}
+  severity: warn
+  message: "Низкое потребление белка за день на фоне GLP-1 — при быстрой потере веса недостаточный белок повышает риск потери мышечной массы, а не только жира."
+  category: glp1
+  source: "Клинические данные по агонистам GLP-1 и быстрой потере веса: значимая доля теряемой массы может приходиться на тощую массу без адекватного белка и силовой нагрузки; общие рекомендации — 1.2-1.6 г/кг массы тела."
+  evidence: B
+
+- code: glp1_very_low_calorie_extreme
+  rule_type: soft_warn
+  domain_a: glp1
+  condition_a: {active: true}
+  domain_b: nutrition
+  condition_b: {calories: {$gt: 0, $lt: 800}}
+  severity: warn
+  message: "Очень низкое потребление калорий за день (<800) на фоне GLP-1 — подавленный аппетит не должен приводить к экстремальному дефициту; риск дефицита нутриентов и потери мышечной массы."
+  category: glp1
+  source: "Клиническая практика ведения пациентов на GLP-1: сильно подавленный аппетит иногда приводит к непреднамеренному крайне низкому потреблению — навигатор должен подсвечивать это, а не только переедание."
+  evidence: C
+
+- code: glp1_nsaid_dehydration_kidney_risk
+  rule_type: soft_warn
+  domain_a: glp1
+  condition_a: {active: true}
+  domain_b: supplements
+  condition_b: {key: nsaid_ibuprofen, active: true}
+  severity: warn
+  message: "НПВС на фоне возможного сниженного потребления жидкости при GLP-1 (тошнота, ранняя сытость) повышает риск нагрузки на почки — следить за гидратацией."
+  category: glp1
+  source: "НПВС снижают почечный кровоток через ингибирование простагландинов; в сочетании с уменьшенным потреблением жидкости (частый побочный эффект GLP-1) риск острого повреждения почек выше обычного."
+  evidence: C
+
+- code: glp1_high_dose_new_supplement_absorption
+  rule_type: soft_warn
+  domain_a: glp1
+  condition_a: {dose_mg: {$gte: 1.0}}
+  domain_b: supplements
+  condition_b: {key: oral_contraceptive, active: true}
+  severity: warn
+  message: "На высокой дозе GLP-1 задержка опорожнения желудка может влиять на всасывание пероральных контрацептивов — при сильной тошноте/рвоте использовать барьерный метод дополнительно и уточнить у врача."
+  category: glp1
+  source: "Инструкции к пероральному семаглутиду (Rybelsus) содержат отдельное предупреждение о возможном снижении эффективности пероральных контрацептивов при сопутствующей рвоте/диарее."
+  evidence: A
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# LAB SAFETY (continued)
+# ═══════════════════════════════════════════════════════════════════════════
+
+- code: lab_egfr_low_nsaid_caution
+  rule_type: soft_warn
+  domain_a: labs
+  condition_a: {marker: "СКФ", value: {$lt: 60}}
+  domain_b: supplements
+  condition_b: {key: nsaid_ibuprofen, active: true}
+  severity: warn
+  message: "Сниженная СКФ (<60) — НПВС дополнительно снижают почечный кровоток; регулярное использование стоит обсудить с врачом."
+  category: lab_safety
+  source: "НПВС ингибируют простагландин-опосредованную вазодилатацию почечных артериол; при уже сниженной функции почек это создаёт дополнительный риск острого повреждения."
+  evidence: A
+
+- code: lab_uric_acid_high_dose_vitamin_c
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: vitamin_c, active: true, dose_mg: {$gte: 2000}}
+  domain_b: labs
+  condition_b: {marker: "Мочевая кислота", value: {$exists: true}}
+  severity: warn
+  message: "Очень высокая доза витамина C (≥2 г/сут) может повышать риск оксалатных камней в почках и искажать некоторые лабораторные тесты (глюкоза тест-полосками, скрытая кровь) — учитывать при интерпретации анализов."
+  category: lab_safety
+  source: "NIH ODS Vitamin C Fact Sheet: мегадозы аскорбиновой кислоты метаболизируются в оксалат, повышая риск камнеобразования у предрасположенных лиц; также описано влияние на результаты некоторых тест-полосок."
+  evidence: B
+
+- code: lab_hba1c_high_chromium_berberine
+  rule_type: soft_warn
+  domain_a: labs
+  condition_a: {marker: "Гликированный гемоглобин (HbA1c)", value: {$gt: 5.7}}
+  domain_b: supplements
+  condition_b: {$any: [{key: chromium, active: true}, {key: berberine, active: true}]}
+  severity: warn
+  message: "HbA1c выше нормы — хром/берберин влияют на гликемический контроль; при сопутствующей сахароснижающей терапии уточнить у врача риск гипогликемии."
+  category: lab_safety
+  source: "См. эффект хрома/берберина на глюкозу — HbA1c как интегральный показатель за 3 месяца дополнительно подтверждает клиническую значимость гликемического статуса при подборе дозы сахароснижающих средств/добавок."
+  evidence: B
+
+- code: lab_magnesium_low_creatine_hydration
+  rule_type: soft_warn
+  domain_a: labs
+  condition_a: {marker: "Магний", value: {$lt: 0.66}}
+  domain_b: supplements
+  condition_b: {key: creatine, active: true}
+  severity: warn
+  message: "Магний ниже нормы — креатин увеличивает внутриклеточную задержку воды, что при электролитном дисбалансе может усиливать симптомы (судороги, спазмы)."
+  category: lab_safety
+  source: "Креатин повышает внутримышечное осмотическое давление и задержку воды; на фоне уже сниженного магния мышечные симптомы (судороги) могут быть выражены сильнее."
+  evidence: C
+
+- code: lab_ldl_high_niacin_consideration
+  rule_type: soft_warn
+  domain_a: labs
+  condition_a: {marker: "Холестерин-ЛПНП", value: {$gt: 3.4}}
+  domain_b: supplements
+  condition_b: {key: niacin, active: false}
+  severity: warn
+  message: "ЛПНП выше целевого, а ниацин в каталоге приостановлен — в терапевтических дозах он исторически используется для коррекции липидного профиля, но требует контроля печени/глюкозы; решение о возобновлении — с врачом, не самостоятельно."
+  category: lab_safety
+  source: "Ниацин в дозах ≥1-2 г/сут влияет на липидный профиль (снижает ЛПНП/повышает ЛПВП), но современные руководства уже не считают его терапией первой линии из-за побочных эффектов и неоднозначных исходов в комбинации со статинами."
+  evidence: B
+
+- code: lab_sodium_low_general_caution
+  rule_type: soft_warn
+  domain_a: labs
+  condition_a: {marker: "Натрий", value: {$lt: 130}}
+  domain_b: supplements
+  condition_b: {$exists: true}
+  severity: warn
+  message: "Натрий заметно ниже нормы (<130 ммоль/л) — это может быть значимым отклонением; пересмотреть все препараты/добавки вместе с врачом, а не только отдельные."
+  category: lab_safety
+  source: "Гипонатриемия такой степени клинически значима (риск отёка мозга, спутанности) и требует системного пересмотра медикаментов/добавок, а не точечной правки одного средства."
+  evidence: B
+
+- code: lab_hemoglobin_high_iron_caution
+  rule_type: soft_warn
+  domain_a: labs
+  condition_a: {marker: "Гемоглобин", value: {$gt: 170}}
+  domain_b: supplements
+  condition_b: {key: iron, active: true}
+  severity: warn
+  message: "Гемоглобин выше нормы — продолжать приём железа без клинической необходимости не имеет смысла и может маскировать другие причины эритроцитоза."
+  category: lab_safety
+  source: "Приём железа при уже высоком гемоглобине/гематокрите не обоснован патофизиологически и может отсрочить обследование истинной причины повышения (обезвоживание, эритроцитоз, апноэ сна)."
+  evidence: C
+
+- code: lab_vitamin_d_high_supplement_continue_caution
+  rule_type: soft_warn
+  domain_a: labs
+  condition_a: {marker: "25-ОН витамин D", value: {$gt: 100}}
+  domain_b: supplements
+  condition_b: {key: vitamin_d, active: true, dose_mg: {$gte: 0.1}}
+  severity: warn
+  message: "25(OH) витамин D уже выше нормы (>100 нг/мл) — продолжение приёма в текущей дозе повышает риск гиперкальциемии/токсичности витамина D."
+  category: lab_safety
+  source: "NIH ODS Vitamin D Fact Sheet: верхний допустимый уровень 25(OH)D обычно указывается около 100 нг/мл; значения выше требуют снижения дозы и контроля кальция."
+  evidence: A
+
+- code: lab_cortisol_low_ashwagandha_caution
+  rule_type: soft_warn
+  domain_a: labs
+  condition_a: {marker: "Кортизол", value: {$lt: 140}}
+  domain_b: supplements
+  condition_b: {key: ashwagandha, active: true}
+  severity: warn
+  message: "Кортизол уже ниже нормы — ашваганда снижает кортизол ещё сильнее; при симптомах усталости/гипотонии обсудить с врачом необходимость приёма."
+  category: lab_safety
+  source: "Клинические испытания ашваганды показывают статистически значимое снижение утреннего кортизола — при исходно низком уровне это направление нежелательно."
+  evidence: B
+
+- code: contra_garlic_warfarin_bleeding
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: garlic_extract, active: true}
+  domain_b: supplements
+  condition_b: {key: warfarin, active: true}
+  severity: warn
+  message: "Экстракт чеснока обладает антиагрегантным эффектом — на фоне варфарина повышает риск кровоточивости."
+  category: contraindication
+  source: "Клинические/фармакологические обзоры взаимодействий трав с антикоагулянтами относят чеснок к средствам, потенциально усиливающим эффект варфарина через антиагрегантное действие."
+  evidence: B
+
+- code: contra_garlic_aspirin_bleeding
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: garlic_extract, active: true}
+  domain_b: supplements
+  condition_b: {key: aspirin, active: true}
+  severity: warn
+  message: "Экстракт чеснока + аспirin — оба снижают агрегацию тромбоцитов, суммарный риск кровоточивости выше ожидаемого."
+  category: contraindication
+  source: "Оба независимо угнетают функцию тромбоцитов через разные механизмы; комбинация описана как повышающая риск кровотечений в обзорах травы-лекарство взаимодействий."
+  evidence: C
+
+- code: contra_ginseng_warfarin_inr
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: ginseng, active: true}
+  domain_b: supplements
+  condition_b: {key: warfarin, active: true}
+  severity: warn
+  message: "Женьшень описан как способный снижать эффективность варфарина (снижение МНО) — при совместном приёме контроль МНО особенно важен."
+  category: contraindication
+  source: "Опубликованные случаи и малые исследования показывают снижение МНО у пациентов на варфарине, начавших приём женьшеня — механизм точно не установлен, но эффект воспроизводим."
+  evidence: B
+
+- code: contra_glucosamine_warfarin_inr
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: glucosamine, active: true}
+  domain_b: supplements
+  condition_b: {key: warfarin, active: true}
+  severity: warn
+  message: "Глюкозамин (иногда в комбинации с хондроитином) описан как потенцирующий эффект варфарина — описаны случаи роста МНО и кровотечений."
+  category: contraindication
+  source: "Отдельные клинические случаи и фармаконадзорные отчёты (FDA MedWatch и аналоги) отмечали повышение МНО у пациентов на варфарине после начала приёма глюкозамина/хондроитина."
+  evidence: C
+
+- code: contra_vitamin_e_high_dose_warfarin
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: vitamin_e, active: true, dose_mg: {$gte: 400}}
+  domain_b: supplements
+  condition_b: {key: warfarin, active: true}
+  severity: warn
+  message: "Высокая доза витамина E (≥400 МЕ) на фоне варфарина может дополнительно повышать риск кровотечения — обсудить дозу с врачом."
+  category: contraindication
+  source: "Витамин E в высоких дозах обладает лёгким антикоагулянтным эффектом (влияние на функцию тромбоцитов/витамин K-зависимые факторы); в комбинации с варфарином описан повышенный риск кровотечений."
+  evidence: B
+
+- code: contra_bitter_orange_caffeine_stacking
+  rule_type: hard_block
+  domain_a: supplements
+  condition_a: {key: bitter_orange, active: true}
+  domain_b: supplements
+  condition_b: {key: caffeine, active: true}
+  severity: block
+  message: "Синефрин (горький померанец) + кофеин — комбинация стимуляторов, ассоциированная с описанными случаями гипертонических кризов, аритмий, инсультов."
+  category: contraindication
+  source: "FDA и клинические публикации отмечали серьёзные кардиоваскулярные события (гипертонический криз, инфаркт, инсульт) при использовании продуктов, комбинирующих синефрин и кофеин (типично 'жиросжигатели')."
+  evidence: B
+
+- code: abs_activated_charcoal_general_binding
+  rule_type: timing_separation
+  domain_a: supplements
+  condition_a: {key: activated_charcoal, active: true}
+  domain_b: supplements
+  condition_b: {active: true, key: {$nin: [activated_charcoal]}}
+  severity: warn
+  message: "Активированный уголь связывает и снижает всасывание практически всех одновременно принятых препаратов/добавок — разносить минимум на 2 часа."
+  params: {hours: 2}
+  category: absorption
+  source: "Активированный уголь — неселективный адсорбент; стандартная клиническая рекомендация — разносить его приём с любыми другими пероральными препаратами минимум на 2 часа."
+  evidence: A
+
+- code: abs_ashwagandha_levothyroxine_thyroid
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: ashwagandha, active: true}
+  domain_b: supplements
+  condition_b: {key: levothyroxine, active: true}
+  severity: warn
+  message: "Ашваганда может повышать уровень тиреоидных гормонов — на фоне левотироксина стоит контролировать ТТГ/Т4 чаще обычного."
+  category: absorption
+  source: "Рандомизированные исследования ашваганды у пациентов с субклиническим гипотиреозом показали значимое повышение T3/T4 — потенциально аддитивный эффект с заместительной терапией."
+  evidence: B
+
+- code: abs_ginseng_caffeine_stimulant_stacking
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: ginseng, active: true}
+  domain_b: supplements
+  condition_b: {key: caffeine, active: true}
+  severity: warn
+  message: "Женьшень + кофеин — оба обладают стимулирующим эффектом; суммарно может давать избыточную тревожность, бессонницу, скачки давления."
+  category: absorption
+  source: "Общая практика применения адаптогенов/стимуляторов: аддитивный стимулирующий эффект чаще проявляется как тревожность и нарушение сна, а не выраженная польза."
+  evidence: C
+
+- code: abs_rhodiola_ssri_serotonin_caution
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: rhodiola, active: true}
+  domain_b: supplements
+  condition_b: {key: ssri_antidepressant, active: true}
+  severity: warn
+  message: "Родиола имеет слабую серотонинергическую активность — на фоне СИОЗС теоретически повышает риск избыточной серотонинергической стимуляции."
+  category: contraindication
+  source: "Теоретическое взаимодействие на основании фармакологии адаптогенов; клинических случаев серотонинового синдрома от этой комбинации не описано, но осторожность обоснована механизмом."
+  evidence: C
+
+- code: pgx_flg_null_variant_skincare_caution
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: flg_null_variant}
+  domain_b: skincare
+  condition_b: {$any: [{peel: true}, {benzoyl_peroxide: true}]}
+  severity: warn
+  message: "Нулевой вариант филаггрина (FLG) — исходно ослабленный кожный барьер; агрессивные активы (пилинг, бензоилпероксид) стоит вводить осторожнее и постепеннее."
+  category: dermatology
+  source: "Нулевые мутации FLG нарушают формирование рогового слоя и повышают трансэпидермальную потерю воды — кожа с таким барьером хуже переносит агрессивные эксфолианты/окислители."
+  evidence: B
+
+- code: abs_nac_activated_charcoal_timing
+  rule_type: soft_warn
+  domain_a: supplements
+  condition_a: {key: nac, active: true}
+  domain_b: supplements
+  condition_b: {key: activated_charcoal, active: true}
+  severity: warn
+  message: "NAC (N-ацетилцистеин) и активированный уголь в одном приёме — уголь может связывать и снижать эффективность NAC; разнести приём."
+  params: {hours: 2}
+  category: absorption
+  source: "Общий принцип адсорбции активированным углём распространяется на серосодержащие соединения, включая NAC — разнесение приёма стандартно рекомендуется."
+  evidence: C

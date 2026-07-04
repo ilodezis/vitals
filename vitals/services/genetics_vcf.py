@@ -47,12 +47,13 @@ INTERPRETATIONS: dict[str, dict] = {
         "risk_alt": True,
     },
     # ── Folate / methylation / B-vitamins ────────────────────────────────────
-    "rs1801133": {  # MTHFR C677T
+    "rs1801133": {  # MTHFR C677T — ref=C, alt=T (confirmed dbSNP/ClinVar)
         "gene": "MTHFR",
         "impact": "Метаболизм фолата (C677T)",
         "impact_domain": "supplements",
         "interpretation": "T-аллель снижает активность MTHFR (CT ~65%, TT ~30%), хуже превращается фолиевая кислота в активную форму; может расти гомоцистеин.",
         "action_notes": "При T-аллеле предпочтительна метильная форма (L-метилфолат) вместо фолиевой кислоты; следить за B12/B6 и гомоцистеином.",
+        "marker_by_zygosity": {"het": "mthfr_heterozygous", "hom_alt": "mthfr_c677t_homozygous"},
     },
     "rs1801131": {  # MTHFR A1298C
         "gene": "MTHFR",
@@ -130,12 +131,14 @@ INTERPRETATIONS: dict[str, dict] = {
         "risk_alt": True,
     },
     # ── Caffeine / stimulants / sleep ─────────────────────────────────────────
-    "rs762551": {  # CYP1A2
+    "rs762551": {  # CYP1A2 — ref=A (fast/*1F), alt=C (slow/*1A) (confirmed SNPedia)
         "gene": "CYP1A2",
         "impact": "Скорость метаболизма кофеина",
         "impact_domain": "supplements",
         "interpretation": "AA — «быстрый» метаболизатор кофеина; носители C — «медленные», у них кофеин дольше действует и сильнее влияет на давление/сон.",
         "action_notes": "Медленным — ограничить кофеин, не пить во второй половине дня; следить за давлением.",
+        "marker": "cyp1a2_slow_metabolizer",
+        "risk_alt": True,
     },
     "rs5751876": {  # ADORA2A
         "gene": "ADORA2A",
@@ -204,12 +207,15 @@ INTERPRETATIONS: dict[str, dict] = {
         "action_notes": "Информативно для планирования кардио/выносливости.",
     },
     # ── Neuro / stress / mood ─────────────────────────────────────────────────
-    "rs4680": {  # COMT Val158Met
+    "rs4680": {  # COMT Val158Met — ref=G (Val, fast), alt=A (Met, slow) (confirmed)
         "gene": "COMT",
         "impact": "Дофамин, стресс-устойчивость, болевая чувствительность",
-        "impact_domain": "system",
+        "impact_domain": "supplements",
         "interpretation": "Val (быстрый клиренс дофамина) — «воин»: устойчивее к стрессу, но ниже базовый дофамин; Met (медленный) — «волнующийся»: выше когнитивный тонус, чувствительнее к стрессу/боли.",
-        "action_notes": "Информативно для управления стрессом/восстановлением.",
+        "action_notes": "Информативно для управления стрессом/восстановлением; при Met/Met — осторожнее со стимуляторами (кофеин, высокие дозы EGCG).",
+        # Only the homozygous-Met genotype gets a firm marker — heterozygotes are
+        # genuinely intermediate, not clearly "slow", so left informational-only.
+        "marker_by_zygosity": {"hom_alt": "comt_slow_metabolizer"},
     },
     "rs6265": {  # BDNF Val66Met
         "gene": "BDNF",
@@ -319,6 +325,21 @@ def parse_vcf_line(line: str) -> Optional[ParsedVariant]:
     return ParsedVariant(rsid=rsid, ref=ref, alt=",".join(alts) or ".", genotype=genotype)
 
 
+def _zygosity(genotype: str, ref: str) -> Optional[str]:
+    """Classify a two-allele genotype relative to the VCF's REF allele:
+    ``"hom_ref"`` (e.g. C/C), ``"het"`` (C/T), ``"hom_alt"`` (T/T), or ``None``
+    for anything else (missing/haploid/multi-allelic)."""
+    alleles = [a for a in genotype.split("/") if a and a != "."]
+    if len(alleles) != 2:
+        return None
+    ref_count = sum(1 for a in alleles if a == ref)
+    if ref_count == 2:
+        return "hom_ref"
+    if ref_count == 1:
+        return "het"
+    return "hom_alt"
+
+
 def interpret(variant: ParsedVariant) -> dict:
     """Build the genetic_variants field dict for a parsed variant, applying a
     curated interpretation/marker when the rsID is known and the risk allele is
@@ -341,11 +362,22 @@ def interpret(variant: ParsedVariant) -> dict:
     fields["impact_domain"] = info.get("impact_domain")
     fields["interpretation"] = info.get("interpretation")
     fields["action_notes"] = info.get("action_notes")
-    # Only stamp the conflict marker when the entry defines one AND the risk allele
-    # is actually present (carrier or homozygous).
-    marker = info.get("marker")
-    if marker and info.get("risk_alt") and has_alt:
-        fields["marker"] = marker
+
+    zygosity_markers = info.get("marker_by_zygosity")
+    if zygosity_markers:
+        # Zygosity-aware entries (e.g. MTHFR het vs hom) — a distinct marker per
+        # genotype, only for whichever zygosities the entry actually maps.
+        zyg = _zygosity(variant.genotype, variant.ref)
+        marker = zygosity_markers.get(zyg) if zyg else None
+        if marker:
+            fields["marker"] = marker
+    else:
+        # Only stamp the conflict marker when the entry defines one AND the risk
+        # allele is actually present (carrier or homozygous) — the simpler,
+        # zygosity-blind case (e.g. HFE, G6PD, CYP1A2).
+        marker = info.get("marker")
+        if marker and info.get("risk_alt") and has_alt:
+            fields["marker"] = marker
     return fields
 
 

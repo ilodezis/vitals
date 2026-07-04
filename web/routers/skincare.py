@@ -74,6 +74,8 @@ async def save_log(
     peel: bool = Form(False),
     niacinamide_spf: bool = Form(False),
     moisturizer: bool = Form(False),
+    vitamin_c: bool = Form(False),
+    benzoyl_peroxide: bool = Form(False),
     note: Optional[str] = Form(None),
     override: bool = Form(False),
     db: AsyncSession = Depends(get_session),
@@ -89,6 +91,8 @@ async def save_log(
             peel=peel,
             niacinamide_spf=niacinamide_spf,
             moisturizer=moisturizer,
+            vitamin_c=vitamin_c,
+            benzoyl_peroxide=benzoyl_peroxide,
             note=note,
             override=override,
         )
