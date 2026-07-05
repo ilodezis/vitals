@@ -82,7 +82,7 @@
 
             <!-- TAB: Injection -->
             <div x-show="activeTab === 'injection'" class="space-y-4">
-                <form @submit.prevent="submitForm($event)" action="/glp1/injection" id="form-injection" class="space-y-4">
+                <form @submit.prevent="submitForm($event)" action="/glp1/injection" id="form-injection" hx-boost="false" class="space-y-4">
                     <input type="hidden" name="override" x-model="overrideFlag">
                     <input type="hidden" name="site" :value="selectedSite || ''">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

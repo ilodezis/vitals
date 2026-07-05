@@ -95,7 +95,7 @@
 
         <!-- Form Panel -->
         <div x-show="showForm" class="lg:col-span-12 v-card p-6 space-y-4" x-cloak>
-            <form @submit.prevent="submitForm($event)" action="/nutrition/meal" id="form-meal" class="space-y-4">
+            <form @submit.prevent="submitForm($event)" action="/nutrition/meal" id="form-meal" hx-boost="false" class="space-y-4">
                 <input type="hidden" name="override" x-model="overrideFlag">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>

@@ -109,7 +109,7 @@
 
                 <!-- TAB 1: Weight Log -->
                 <div x-show="activeTab === 'log'" class="space-y-4">
-                    <form @submit.prevent="submitForm($event)" action="/weight/log" id="form-log" class="space-y-4">
+                    <form @submit.prevent="submitForm($event)" action="/weight/log" id="form-log" hx-boost="false" class="space-y-4">
                         <input type="hidden" name="override" x-model="overrideFlag">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
@@ -139,7 +139,7 @@
                 <!-- TAB 2: Measurements -->
                 <div x-show="activeTab === 'measure'" class="space-y-4">
                     <form @submit.prevent="submitForm($event)" action="/weight/measurement" id="form-measure"
-                        class="space-y-4">
+                        hx-boost="false" class="space-y-4">
                         <input type="hidden" name="override" x-model="overrideFlag">
                         <div>
                             <label class="v-label">{{ t("common.date") }}</label>

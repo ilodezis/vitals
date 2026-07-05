@@ -212,7 +212,7 @@
                 <span class="v-text-heading" x-text="isEditing ? '{{ t("skincare.modal_edit") }}' : '{{ t("skincare.modal_new") }}'"></span>
             </div>
 
-            <form @submit.prevent="submitForm($event)" action="/skincare/product/save" method="POST" id="form-skincare-product" class="space-y-4">
+            <form @submit.prevent="submitForm($event)" action="/skincare/product/save" method="POST" id="form-skincare-product" hx-boost="false" class="space-y-4">
                 <input type="hidden" name="override" x-model="overrideFlag">
                 <div>
                     <label class="v-label">{{ t("supplements.name") }}</label>

@@ -23,7 +23,7 @@
             <button @click="showFormModal = true; editRow('form-supplement', {id: {{ s.id }}, name: {{ s.name | tojson | forceescape }}, dose: {{ s.dose | tojson | forceescape }}, timing: {{ s.timing | tojson | forceescape }}, evidence: {{ s.evidence | tojson | forceescape }}, active: {{ s.active | tojson }}, contraindications: {{ s.contraindications | tojson | forceescape }}, note: {{ s.note | tojson | forceescape }}}, '{{ t("common.save") }}')" class="v-icon-btn" title="{{ t("common.edit") }}">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
             </button>
-            <form @submit.prevent="submitForm($event)" action="/supplements/{{ s.id }}/toggle" class="inline">
+            <form @submit.prevent="submitForm($event)" action="/supplements/{{ s.id }}/toggle" hx-boost="false" class="inline">
                 <input type="hidden" name="active" value="{{ 'true' if archived else 'false' }}">
                 <input type="hidden" name="override" x-model="overrideFlag">
                 <button type="submit" class="v-icon-btn" title="{{ t('supplements.restore') if archived else t('supplements.to_archive') }}">
@@ -179,7 +179,7 @@
                 <span class="v-text-heading" x-text="isEditing ? '{{ t("supplements.modal_edit") }}' : '{{ t("supplements.modal_new") }}'"></span>
             </div>
 
-            <form @submit.prevent="submitForm($event)" action="/supplements/save" id="form-supplement" class="space-y-4">
+            <form @submit.prevent="submitForm($event)" action="/supplements/save" id="form-supplement" hx-boost="false" class="space-y-4">
                 <input type="hidden" name="override" x-model="overrideFlag">
                 <div>
                     <label class="v-label">{{ t("supplements.name") }}</label>
