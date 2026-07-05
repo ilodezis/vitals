@@ -53,6 +53,7 @@ MODULE_REGISTRY: dict[str, ModuleSpec] = {
         ModuleSpec("garmin", "Организм", "core", "/garmin"),
         ModuleSpec("labs", "Анализы", "core", "/labs"),
         ModuleSpec("reports", "Отчёты", "core", "/reports"),
+        ModuleSpec("charts", "Графики", "core", "/charts"),
         # ── Optional — user-toggleable ───────────────────────────────────────
         ModuleSpec("glp1", "GLP-1", "optional", "/glp1"),
         ModuleSpec("hevy", "Тренировки", "optional", "/hevy"),
