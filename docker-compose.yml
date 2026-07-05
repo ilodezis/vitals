@@ -32,8 +32,13 @@ services:
         condition: service_started
     environment:
       TZ: Europe/Chisinau
-    env_file:
-      - .env
+    # No `env_file:` here on purpose: it would inject a snapshot of .env as
+    # container-level env vars at creation time, which then permanently shadows
+    # the live bind-mounted file below (python-dotenv's load_dotenv() never
+    # overrides an already-set var) — so Settings-page edits would survive a
+    # container restart only by luck, never actually applying until the next
+    # full recreate. The bind mount alone is enough: every process start reads
+    # the file fresh.
     volumes:
       - .env:/app/.env
       # Persist the Garmin (garth) OAuth token session across rebuilds/restarts so

@@ -8,6 +8,7 @@ import asyncio
 import os
 from logging.config import fileConfig
 
+from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -17,6 +18,11 @@ from alembic import context
 # Importing the package registers every model on Base.metadata.
 import vitals.models  # noqa: F401
 from vitals.models.base import Base
+
+# This runs as its own process (`alembic upgrade head`, before uvicorn starts),
+# so unlike the app it never imports vitals.config — load .env directly here too,
+# since the container no longer gets it pre-injected via docker-compose env_file.
+load_dotenv()
 
 config = context.config
 
