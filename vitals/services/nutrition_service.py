@@ -157,6 +157,25 @@ async def resolve_today(session: AsyncSession) -> list[dict]:
     return [_sum_macros(meals)]
 
 
+# ── Scheduler job ────────────────────────────────────────────────────────────
+
+async def day_end_job(session_factory, redis=None) -> None:
+    """Once-daily check (registered in vitals/scheduler/jobs.py, 23:00 local) for
+    nutrition rules that need a *complete* day's totals — e.g. the very-low-
+    calorie/protein GLP-1 warnings, which would false-positive off a partial
+    running total if evaluated live on every meal save (see log_meal's
+    ``enforce`` call, which never passes ``include_day_end``). By 23:00 the
+    day's logged totals are effectively final."""
+    async with session_factory() as session:
+        await conflict_engine.enforce(
+            session,
+            Domain.NUTRITION.value,
+            entity_ref=f"meal:{today_local().isoformat()}",
+            include_day_end=True,
+        )
+        await session.commit()
+
+
 def _on_track(totals: dict[str, float], goals: dict[str, Any]) -> dict[str, bool]:
     cal = totals["calories"]
     return {

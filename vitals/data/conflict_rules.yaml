@@ -1125,6 +1125,9 @@
   category: glp1
   source: "Клинические данные по агонистам GLP-1 и быстрой потере веса: значимая доля теряемой массы может приходиться на тощую массу без адекватного белка и силовой нагрузки; общие рекомендации — 1.2-1.6 г/кг массы тела."
   evidence: B
+  # A same-day running total — checked only by the once-daily day-end job
+  # (nutrition_service.day_end_job), never off a partial mid-day total.
+  params: {day_end_only: true}
 
 - code: glp1_very_low_calorie_extreme
   rule_type: soft_warn
@@ -1137,6 +1140,9 @@
   category: glp1
   source: "Клиническая практика ведения пациентов на GLP-1: сильно подавленный аппетит иногда приводит к непреднамеренному крайне низкому потреблению — навигатор должен подсвечивать это, а не только переедание."
   evidence: C
+  # Same reasoning: a partial day's calories are always "< 800" until the day
+  # is basically over, so this must not fire off a live/mid-day total either.
+  params: {day_end_only: true}
 
 - code: glp1_nsaid_dehydration_kidney_risk
   rule_type: soft_warn

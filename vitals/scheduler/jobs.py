@@ -21,6 +21,7 @@ def register_all_jobs() -> None:
     from vitals.services.hevy_service import sync_job as hevy_sync_job
     from vitals.services.garmin_service import sync_job as garmin_sync_job
     from vitals.services.digest_service import digest_job
+    from vitals.services.nutrition_service import day_end_job as nutrition_day_end_job
 
     # GLP-1 plateau check — once a day at 06:00 local. Cheap read; raises/clears a
     # passive warn alert so it's fresh even on days the dashboard isn't opened.
@@ -29,6 +30,17 @@ def register_all_jobs() -> None:
         plateau_job,
         trigger="cron",
         hour=6,
+        minute=0,
+    )
+
+    # Nutrition day-end check — once a day at 23:00 local, once today's logged
+    # totals are effectively final. Raises the very-low-calorie/protein GLP-1
+    # warnings, which must never fire off a partial mid-day total.
+    register_job(
+        "nutrition_day_end",
+        nutrition_day_end_job,
+        trigger="cron",
+        hour=23,
         minute=0,
     )
 

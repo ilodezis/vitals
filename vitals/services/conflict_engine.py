@@ -232,10 +232,21 @@ async def evaluate(
     session: AsyncSession,
     domain: str,
     proposed_state: Any = None,
+    *,
+    include_day_end: bool = False,
 ) -> list[Violation]:
     """Evaluate active rules touching ``domain`` against ``proposed_state`` and the
     current state of the other domains. Pure read — returns the firing violations,
-    writes nothing."""
+    writes nothing.
+
+    Rules whose ``params`` carry ``day_end_only: true`` are skipped unless
+    ``include_day_end`` is set. Those rules compare a same-day running total
+    against a lower-bound threshold (e.g. "today's calories < 800") which is
+    trivially true early in the day — they're only meaningful once the day is
+    essentially over, so a once-daily scheduled job (not the live save path)
+    passes ``include_day_end=True`` to evaluate them. Every other caller is
+    unaffected by default.
+    """
     proposed_items = _normalize_proposed(proposed_state)
 
     result = await session.execute(
@@ -248,6 +259,8 @@ async def evaluate(
 
     violations: list[Violation] = []
     for rule in rules:
+        if not include_day_end and (rule.params or {}).get("day_end_only"):
+            continue
         items_a = await _domain_items(session, rule.domain_a, domain, proposed_items)
         items_b = await _domain_items(session, rule.domain_b, domain, proposed_items)
 
@@ -288,15 +301,16 @@ async def enforce(
     *,
     override: bool = False,
     entity_ref: str = "",
+    include_day_end: bool = False,
 ) -> list[Violation]:
     """Evaluate + apply the override flow.
 
     Raises :class:`ConflictBlocked` when a ``block`` violation fires without
     ``override``. Otherwise writes an alert row per violation (stamping
     ``override_at`` on overridden blocks) and returns all violations so the caller
-    can surface the non-blocking ones.
+    can surface the non-blocking ones. See :func:`evaluate` for ``include_day_end``.
     """
-    violations = await evaluate(session, domain, proposed_state)
+    violations = await evaluate(session, domain, proposed_state, include_day_end=include_day_end)
     blocking = [v for v in violations if v.is_blocking]
 
     if blocking and not override:

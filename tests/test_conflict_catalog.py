@@ -91,6 +91,16 @@ def test_catalog_loads_and_validates():
     assert len(codes) == len(set(codes))  # no duplicates slipped through
 
 
+def test_glp1_low_intake_rules_are_day_end_only():
+    """Both rules compare a same-day running total against a lower-bound
+    threshold (calories < 800, protein < 60) — trivially true early in the
+    day. If this flag is ever dropped, they'll false-positive mid-day again
+    (see conflict_engine.evaluate's include_day_end)."""
+    by_code = {e["code"]: e for e in conflict_catalog.load_rule_catalog()}
+    for code in ("glp1_low_protein_lbm_risk", "glp1_very_low_calorie_extreme"):
+        assert (by_code[code].get("params") or {}).get("day_end_only") is True, code
+
+
 async def test_sync_catalog_inserts_everything_once(db_session):
     from vitals.models.conflict_rule import ConflictRule
     from sqlalchemy import select

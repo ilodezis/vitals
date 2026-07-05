@@ -186,6 +186,67 @@ async def test_nutrition_resolve_today_shape(db_session):
     assert items[0]["protein_g"] == 40
 
 
+# ── day_end_only rules: skipped live, evaluated only via include_day_end ────
+# A same-day running total (e.g. today's calories) compared with a lower-bound
+# threshold is trivially true early in the day — these rules must not fire off
+# the live/synchronous save path (see nutrition_service.log_meal's plain
+# ``enforce()`` call, which never passes include_day_end).
+
+async def test_day_end_only_rule_skipped_by_default(db_session):
+    conflict_registrations.register_all_resolvers()
+    db_session.add(
+        ConflictRule(
+            rule_type="soft_warn",
+            domain_a="supplements", condition_a={"key": "potassium", "active": True},
+            domain_b="labs", condition_b={"marker": "Калий", "value": {"$gt": 5.0}},
+            severity="warn",
+            message="test day-end rule",
+            params={"day_end_only": True},
+            active=True,
+        )
+    )
+    await labs_service.add_result(
+        db_session, on_date=today_local(), marker="Калий", value=5.5, ref_low=3.5, ref_high=5.1
+    )
+    await db_session.commit()
+
+    live = await conflict_engine.evaluate(db_session, "supplements", {"key": "potassium", "active": True})
+    assert live == []
+
+    day_end = await conflict_engine.evaluate(
+        db_session, "supplements", {"key": "potassium", "active": True}, include_day_end=True
+    )
+    assert len(day_end) == 1
+    assert day_end[0].message == "test day-end rule"
+
+
+async def test_glp1_low_intake_rules_skip_mid_day_but_fire_at_day_end(db_session):
+    """End-to-end against the real curated catalog — the exact bug reported:
+    a small breakfast while on GLP-1 must not raise the low-calorie/protein
+    warnings live, only once the day-end job re-checks with include_day_end."""
+    from vitals.services import conflict_catalog, glp1_service, nutrition_service
+
+    conflict_registrations.register_all_resolvers()
+    await conflict_catalog.sync_catalog(db_session)
+    await glp1_service.add_dose_phase(
+        db_session, start_date=today_local(), drug="semaglutide", dose_mg=1.0
+    )
+    await nutrition_service.log_meal(
+        db_session, on_date=today_local(), name="breakfast", calories=300, protein_g=20
+    )
+    await db_session.commit()
+
+    live = await conflict_engine.evaluate(db_session, "nutrition")
+    assert not any("низкое" in v.message.lower() for v in live), (
+        "a partial-day total must not raise the low-calorie/protein warnings"
+    )
+
+    day_end = await conflict_engine.evaluate(db_session, "nutrition", include_day_end=True)
+    messages = [v.message for v in day_end]
+    assert any("Очень низкое потребление калорий" in m for m in messages)
+    assert any("Низкое потребление белка" in m for m in messages)
+
+
 # ── Timing-separation slot gating (Phase 2.2), end to end via evaluate() ────
 
 async def _seed_iron_zinc_timing_rule(db_session):
