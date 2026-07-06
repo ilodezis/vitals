@@ -178,8 +178,18 @@ function chartBuilder(catalog) {
         // the loop's extended scope, not the root component, so `this.x = y`
         // would silently shadow-write a throwaway property instead of
         // reaching the reactive root — the actual UI state never budges.
-        toggleRowDropdown(row, field) {
-            row.open = row.open === field ? null : field;
+        toggleRowDropdown(row, field, triggerEl) {
+            const opening = row.open !== field;
+            row.open = opening ? field : null;
+            if (opening && triggerEl) {
+                // Flip the panel upward when there isn't room below (same
+                // idea as a native <select>'s popup), so it never runs off
+                // the bottom of the viewport/page.
+                const rect = triggerEl.getBoundingClientRect();
+                const panelMaxHeight = 240; // matches --dropdown panel max-height (15rem)
+                row.dropUp = window.innerHeight - rect.bottom < panelMaxHeight
+                    && rect.top > window.innerHeight - rect.bottom;
+            }
         },
         closeRowDropdown(row) {
             row.open = null;

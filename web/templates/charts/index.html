@@ -87,11 +87,11 @@
                                 <div class="v-dropdown" @click.outside="closeRowDropdownIfOpen(row, 'domain')">
                                     <button type="button" class="v-dropdown-trigger"
                                             :aria-expanded="row.open === 'domain'"
-                                            @click="toggleRowDropdown(row, 'domain')" @keydown.escape="closeRowDropdown(row)">
+                                            @click="toggleRowDropdown(row, 'domain', $el)" @keydown.escape="closeRowDropdown(row)">
                                         <span class="v-dropdown-value" :class="{ 'is-placeholder': !row.domain }" x-text="domainLabel(row) || '—'"></span>
                                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" /></svg>
                                     </button>
-                                    <div class="v-dropdown-panel" x-show="row.open === 'domain'" x-cloak>
+                                    <div class="v-dropdown-panel" :class="{ 'drop-up': row.dropUp }" x-show="row.open === 'domain'" x-cloak>
                                         <template x-for="d in domains()" :key="d">
                                             <button type="button" class="v-dropdown-option" :class="{ 'is-selected': row.domain === d }"
                                                     @click="row.domain = d; onDomainChange(row); closeRowDropdown(row)" x-text="catalog[d].label"></button>
@@ -105,11 +105,11 @@
                                 <div class="v-dropdown" @click.outside="closeRowDropdownIfOpen(row, 'metric')">
                                     <button type="button" class="v-dropdown-trigger" :disabled="!row.domain"
                                             :aria-expanded="row.open === 'metric'"
-                                            @click="toggleRowDropdown(row, 'metric')" @keydown.escape="closeRowDropdown(row)">
+                                            @click="toggleRowDropdown(row, 'metric', $el)" @keydown.escape="closeRowDropdown(row)">
                                         <span class="v-dropdown-value" :class="{ 'is-placeholder': !row.metricKey }" x-text="metricLabel(row) || '—'"></span>
                                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" /></svg>
                                     </button>
-                                    <div class="v-dropdown-panel" x-show="row.open === 'metric'" x-cloak>
+                                    <div class="v-dropdown-panel" :class="{ 'drop-up': row.dropUp }" x-show="row.open === 'metric'" x-cloak>
                                         <template x-for="m in metricsFor(row.domain)" :key="m.key">
                                             <button type="button" class="v-dropdown-option" :class="{ 'is-selected': row.metricKey === m.key }"
                                                     @click="row.metricKey = m.key; onMetricChange(row); closeRowDropdown(row)"
@@ -124,11 +124,11 @@
                                 <div class="v-dropdown" @click.outside="closeRowDropdownIfOpen(row, 'param')">
                                     <button type="button" class="v-dropdown-trigger"
                                             :aria-expanded="row.open === 'param'"
-                                            @click="toggleRowDropdown(row, 'param')" @keydown.escape="closeRowDropdown(row)">
+                                            @click="toggleRowDropdown(row, 'param', $el)" @keydown.escape="closeRowDropdown(row)">
                                         <span class="v-dropdown-value" :class="{ 'is-placeholder': !row.param }" x-text="paramLabel(row) || '—'"></span>
                                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" /></svg>
                                     </button>
-                                    <div class="v-dropdown-panel" x-show="row.open === 'param'" x-cloak>
+                                    <div class="v-dropdown-panel" :class="{ 'drop-up': row.dropUp }" x-show="row.open === 'param'" x-cloak>
                                         <template x-for="p in paramsFor(row.domain, row.metricKey)" :key="p.value">
                                             <button type="button" class="v-dropdown-option" :class="{ 'is-selected': row.param === p.value }"
                                                     @click="row.param = p.value; closeRowDropdown(row)" x-text="p.label"></button>

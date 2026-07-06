@@ -697,6 +697,13 @@ html {
     box-shadow: var(--shadow-lg);
 }
 
+/* Flipped upward (JS decides this at open-time) when there isn't room below
+   the trigger — otherwise the panel runs off the bottom of the viewport. */
+.v-dropdown-panel.drop-up {
+    top: auto;
+    bottom: calc(100% + 6px);
+}
+
 .v-dropdown-option {
     display: block;
     width: 100%;
