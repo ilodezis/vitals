@@ -8,7 +8,7 @@ from __future__ import annotations
 import pytest
 
 from vitals.models.conflict_rule import ConflictRule
-from vitals.services import conflict_engine, conflict_registrations, labs_service, supplements_service
+from vitals.services import alerts_service, conflict_engine, conflict_registrations, labs_service, supplements_service
 from vitals.services.conflict_engine import ConflictBlocked, _matches
 from vitals.utils.timeutils import today_local
 
@@ -245,6 +245,79 @@ async def test_glp1_low_intake_rules_skip_mid_day_but_fire_at_day_end(db_session
     messages = [v.message for v in day_end]
     assert any("Очень низкое потребление калорий" in m for m in messages)
     assert any("Низкое потребление белка" in m for m in messages)
+
+
+# ── enforce_day_end: raises AND auto-clears (unlike plain enforce()) ───────
+
+async def test_enforce_day_end_raises_the_alert_when_violated(db_session):
+    conflict_registrations.register_all_resolvers()
+    db_session.add(
+        ConflictRule(
+            rule_type="soft_warn",
+            domain_a="supplements", condition_a={"key": "potassium", "active": True},
+            domain_b="labs", condition_b={"marker": "Калий", "value": {"$gt": 5.0}},
+            severity="warn",
+            message="test day-end rule",
+            params={"day_end_only": True},
+            active=True,
+        )
+    )
+    await supplements_service.add_supplement(db_session, name="Potassium", key="potassium", active=True)
+    await labs_service.add_result(
+        db_session, on_date=today_local(), marker="Калий", value=5.5, ref_low=3.5, ref_high=5.1
+    )
+    await db_session.commit()
+
+    await conflict_engine.enforce_day_end(db_session, "supplements", entity_ref="day:1")
+    await db_session.commit()
+
+    active = await alerts_service.list_active(db_session, domain="supplements")
+    assert any(a.message == "test day-end rule" for a in active)
+
+
+async def test_enforce_day_end_auto_clears_once_no_longer_violated(db_session):
+    """Plain enforce() never resolves anything — it only raises. A day_end_only
+    rule that stops matching on a later day (a fresh entity_ref) must still get
+    its earlier alert cleared automatically, not left active forever."""
+    from datetime import timedelta
+
+    conflict_registrations.register_all_resolvers()
+    db_session.add(
+        ConflictRule(
+            rule_type="soft_warn",
+            domain_a="supplements", condition_a={"key": "potassium", "active": True},
+            domain_b="labs", condition_b={"marker": "Калий", "value": {"$gt": 5.0}},
+            severity="warn",
+            message="test day-end rule",
+            params={"day_end_only": True},
+            active=True,
+        )
+    )
+    await supplements_service.add_supplement(db_session, name="Potassium", key="potassium", active=True)
+    await labs_service.add_result(
+        db_session, on_date=today_local(), marker="Калий", value=5.5, ref_low=3.5, ref_high=5.1
+    )
+    await db_session.commit()
+    await conflict_engine.enforce_day_end(db_session, "supplements", entity_ref="day:1")
+    await db_session.commit()
+    assert any(
+        a.message == "test day-end rule"
+        for a in await alerts_service.list_active(db_session, domain="supplements")
+    )
+
+    # A later, in-range result becomes the latest for the marker — potassium is
+    # no longer flagged, so the day-end check must clear the earlier alert,
+    # even though it's keyed under yesterday's entity_ref, not today's.
+    await labs_service.add_result(
+        db_session, on_date=today_local() + timedelta(days=1), marker="Калий",
+        value=4.0, ref_low=3.5, ref_high=5.1,
+    )
+    await db_session.commit()
+    await conflict_engine.enforce_day_end(db_session, "supplements", entity_ref="day:2")
+    await db_session.commit()
+
+    active = await alerts_service.list_active(db_session, domain="supplements")
+    assert not any(a.message == "test day-end rule" for a in active)
 
 
 # ── Timing-separation slot gating (Phase 2.2), end to end via evaluate() ────

@@ -330,5 +330,54 @@ async def enforce(
     return violations
 
 
+async def enforce_day_end(
+    session: AsyncSession, domain: str, *, entity_ref: str = ""
+) -> list[Violation]:
+    """Like :func:`enforce`, but for ``day_end_only`` rules specifically —
+    call once daily (see ``nutrition_service.day_end_job``), never from a live
+    save path.
+
+    Unlike ``enforce()``, this also *resolves* the alert for any day_end_only
+    rule touching ``domain`` that is **not** currently violated. Plain
+    ``enforce()`` only ever raises — it has no notion of a rule "clearing" —
+    which is fine for rules re-evaluated on every save (an unrelated later
+    save naturally re-raises or leaves it alone), but wrong here: each day's
+    check uses a fresh ``entity_ref`` (today's date), so a rule that stops
+    matching would otherwise leave yesterday's alert active forever, needing
+    a manual dismiss even after the day's numbers are actually fine.
+    """
+    violations = await evaluate(session, domain, include_day_end=True)
+    fired = {v.rule_id: v for v in violations if (v.params or {}).get("day_end_only")}
+
+    result = await session.execute(
+        select(ConflictRule).where(
+            ConflictRule.active.is_(True),
+            (ConflictRule.domain_a == domain) | (ConflictRule.domain_b == domain),
+        )
+    )
+    day_end_rules = [r for r in result.scalars().all() if (r.params or {}).get("day_end_only")]
+
+    for rule in day_end_rules:
+        key = f"conflict:{rule.id}"
+        v = fired.get(rule.id)
+        if v is None:
+            # No longer violated — clear whatever entity_ref it was last
+            # raised under (could be an earlier day), not just today's.
+            await alerts_service.resolve_superseded(session, alert_key=key, keep_entity=None)
+            continue
+        # Still/newly violated — supersede a stale earlier-day row, then
+        # raise (or refresh) today's.
+        await alerts_service.resolve_superseded(session, alert_key=key, keep_entity=entity_ref)
+        await alerts_service.raise_alert(
+            session,
+            domain=domain,
+            severity=v.severity,
+            message=v.message,
+            alert_key=key,
+            entity_ref=entity_ref,
+        )
+    return violations
+
+
 def _is_timing_rule(rule_type: str) -> bool:
     return rule_type == RuleType.TIMING_SEPARATION.value

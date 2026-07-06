@@ -165,13 +165,16 @@ async def day_end_job(session_factory, redis=None) -> None:
     calorie/protein GLP-1 warnings, which would false-positive off a partial
     running total if evaluated live on every meal save (see log_meal's
     ``enforce`` call, which never passes ``include_day_end``). By 23:00 the
-    day's logged totals are effectively final."""
+    day's logged totals are effectively final.
+
+    Uses ``enforce_day_end`` (not plain ``enforce``) so a rule that stops
+    matching on a later, better day also gets its alert cleared automatically
+    — not just raised."""
     async with session_factory() as session:
-        await conflict_engine.enforce(
+        await conflict_engine.enforce_day_end(
             session,
             Domain.NUTRITION.value,
             entity_ref=f"meal:{today_local().isoformat()}",
-            include_day_end=True,
         )
         await session.commit()
 
