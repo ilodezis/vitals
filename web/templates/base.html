@@ -43,7 +43,16 @@
         window.__LANG__ = "{{ request.state.lang|default('en') }}";
         window.t = function (key) { return window.__STRINGS__[key] || key; };
     </script>
-    <!-- Alpine loads at end of body so page-specific scripts (protocol.js etc) run first -->
+    <!-- Alpine — lives in <head> (not a page script) with `defer` so it survives boosted
+         navigations: hx-boost only swaps <body> innerHTML, so anything inside <body> gets
+         torn down and re-run on every navigation. That re-execution used to start a brand
+         new, independent Alpine instance (with its own MutationObserver) on top of the
+         still-running previous one each time the user navigated, so every x-for in the app
+         re-rendered once per surviving instance — most visibly as the custom-chart builder's
+         metric dropdowns repeating their options once per past navigation. `defer` still
+         guarantees this runs after page-specific scripts (protocol.js etc.), since deferred
+         scripts execute in order only once the whole document has finished parsing. -->
+    <script id="alpine-script" defer src="{{ static_version('/static/vendor/alpine.min.js') }}"></script>
 
     <!-- Viewport/safe-area sync: iOS WebKit (standalone PWA) resolves dvh/env(safe-area-inset-*)
          unreliably on cold start/resume and doesn't always re-layout once real metrics settle.
@@ -583,8 +592,6 @@
         })();
     </script>
 
-    <!-- Alpine.js — loaded last so all page-specific component factories are defined first -->
-    <script id="alpine-script" hx-preserve="true" src="{{ static_version('/static/vendor/alpine.min.js') }}"></script>
 </body>
 
 </html>

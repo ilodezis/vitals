@@ -137,7 +137,7 @@ function chartBuilder(catalog) {
         catalog: catalog || {},
         name: '',
         normalize: false,
-        series: [{ domain: '', metricKey: '', param: '' }],
+        series: [{ domain: '', metricKey: '', param: '', open: null }],
         maxSeries: 8,
         domains() {
             return Object.keys(this.catalog);
@@ -158,7 +158,7 @@ function chartBuilder(catalog) {
         },
         addSeries() {
             if (this.series.length < this.maxSeries) {
-                this.series.push({ domain: '', metricKey: '', param: '' });
+                this.series.push({ domain: '', metricKey: '', param: '', open: null });
             }
         },
         removeSeries(index) {
@@ -170,6 +170,39 @@ function chartBuilder(catalog) {
         },
         onMetricChange(row) {
             row.param = '';
+        },
+        // Custom dropdown helpers — a themed replacement for native <select>
+        // popups (unstylable in most browsers). Open/closed state lives on the
+        // `row` object itself (like onDomainChange/onMetricChange already do)
+        // rather than on `this`: inside an x-for, `this` in a called method is
+        // the loop's extended scope, not the root component, so `this.x = y`
+        // would silently shadow-write a throwaway property instead of
+        // reaching the reactive root — the actual UI state never budges.
+        toggleRowDropdown(row, field) {
+            row.open = row.open === field ? null : field;
+        },
+        closeRowDropdown(row) {
+            row.open = null;
+        },
+        // A row has 3 sibling dropdowns (domain/metric/param) each with their
+        // own @click.outside. A click that opens dropdown A is "outside" B and
+        // C too, so their outside-handlers must only clear `row.open` when
+        // it's still THEIR field — otherwise B/C stomp the field A just set.
+        closeRowDropdownIfOpen(row, field) {
+            if (row.open === field) row.open = null;
+        },
+        domainLabel(row) {
+            const d = this.catalog[row.domain];
+            return d ? d.label : null;
+        },
+        metricLabel(row) {
+            const m = this.metricInfo(row.domain, row.metricKey);
+            if (!m) return null;
+            return m.label + (m.unit ? ` (${m.unit})` : '');
+        },
+        paramLabel(row) {
+            const p = this.paramsFor(row.domain, row.metricKey).find(p => p.value === row.param);
+            return p ? p.label : null;
         },
     };
 }
