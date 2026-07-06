@@ -23,7 +23,7 @@ from typing import Optional, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from vitals.enums import Domain, Severity, Source
+from vitals.enums import Domain, InjectionSite, Severity, Source
 from vitals.i18n import t
 from vitals.models.glp1 import DOMAIN, DosePhase, Injection, SideEffect
 from vitals.services import alerts_service, conflict_engine, weight_service
@@ -40,6 +40,31 @@ PLATEAU_MIN_DAYS = 14
 # of -0.1 means "losing less than 100 g/week" is treated as a plateau.
 PLATEAU_SLOPE_THRESHOLD = -0.1
 
+_INJECTION_SITES = frozenset(s.value for s in InjectionSite)
+
+
+def _validate_injection(
+    *, drug: str, dose_mg: float, site: Optional[str]
+) -> tuple[str, Optional[str]]:
+    """Sanitise write-path inputs before they touch the DB. The GLP-1 write tools
+    are reachable from MCP (an LLM), which bypasses the HTML form entirely — so a
+    hallucinated ``dose_mg=-5`` or a garbage ``site`` must be rejected here, not
+    left to surface as a raw DB IntegrityError or, worse, to land in the data lake.
+
+    ``drug`` stays free-text (real GLP-1 agonists are broader than the two-value
+    enum) but must be non-empty; ``site`` must be a known ``InjectionSite`` or null.
+    Returns the cleaned ``(drug, site)``.
+    """
+    clean_drug = (drug or "").strip()
+    if not clean_drug:
+        raise ValueError("drug is required")
+    if dose_mg is None or dose_mg <= 0:
+        raise ValueError("dose_mg must be a positive number")
+    clean_site = (site or "").strip() or None
+    if clean_site is not None and clean_site not in _INJECTION_SITES:
+        raise ValueError(f"unknown injection site: {site!r}")
+    return clean_drug, clean_site
+
 
 # ── Injections ────────────────────────────────────────────────────────────────
 async def log_injection(
@@ -52,6 +77,7 @@ async def log_injection(
     note: Optional[str] = None,
     override: bool = False,
 ) -> Injection:
+    drug, site = _validate_injection(drug=drug, dose_mg=dose_mg, site=site)
     await conflict_engine.enforce(
         session,
         Domain.GLP1.value,
@@ -96,10 +122,21 @@ async def update_injection(
     dose_mg: float,
     site: Optional[str] = None,
     note: Optional[str] = None,
+    override: bool = False,
 ) -> Optional[Injection]:
     row = await session.get(Injection, injection_id)
     if row is None:
         return None
+    drug, site = _validate_injection(drug=drug, dose_mg=dose_mg, site=site)
+    # Run the same conflict-engine gate as log_injection so editing a shot can't
+    # slip past a cross-domain block that a fresh log would have caught.
+    await conflict_engine.enforce(
+        session,
+        Domain.GLP1.value,
+        {"drug": drug, "dose_mg": dose_mg},
+        override=override,
+        entity_ref=f"injection:{on_date.isoformat()}",
+    )
     row.date = on_date
     row.drug = drug
     row.dose_mg = dose_mg

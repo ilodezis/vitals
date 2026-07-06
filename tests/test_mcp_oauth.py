@@ -393,3 +393,55 @@ async def test_mcp_read_only_tools_execution(db_session, session_factory):
     finally:
         # Restore original session factory
         mcp_router.get_session_factory = original_factory
+
+
+# ── Security hardening (post-review run 1) ────────────────────────────────────
+async def test_oauth_code_single_use_rejects_reuse(auth_client, redis):
+    """An authorization code is consumed atomically on first exchange; a second
+    exchange with the same code is rejected (invalid_grant)."""
+    approve = await auth_client.post(
+        "/oauth/authorize/approve",
+        data={"client_id": "vitals-claude-connector",
+              "redirect_uri": "https://claude.ai/callback"},
+    )
+    code = approve.headers["location"].split("code=")[1].split("&")[0]
+
+    body = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": "https://claude.ai/callback",
+        "client_id": "vitals-claude-connector",
+        "client_secret": "test-mcp-secret",
+    }
+    first = await auth_client.post("/oauth/token", data=body)
+    assert first.status_code == 200
+    second = await auth_client.post("/oauth/token", data=body)
+    assert second.status_code == 400
+    assert second.json()["error"] == "invalid_grant"
+
+
+async def test_mcp_query_string_token_rejected(client):
+    """A valid MCP token presented via ?token=/?access_token= (not the Authorization
+    header) is rejected — query-string tokens leak into proxy logs, so only the
+    Bearer header is accepted."""
+    token = _get_mcp_serializer().dumps({
+        "username": "tester",
+        "client_id": "vitals-claude-connector",
+        "type": "mcp_access_token",
+    })
+    assert (await client.get(f"/mcp/sse?token={token}")).status_code == 401
+    assert (await client.get(f"/mcp/sse?access_token={token}")).status_code == 401
+
+
+async def test_oauth_state_is_url_encoded(auth_client):
+    """A state value carrying reserved characters is percent-encoded in the redirect
+    so it can't break out and inject extra query parameters."""
+    r = await auth_client.post(
+        "/oauth/authorize/approve",
+        data={"client_id": "vitals-claude-connector",
+              "redirect_uri": "https://claude.ai/callback",
+              "state": "a b&evil=1"},
+    )
+    loc = r.headers["location"]
+    assert "state=a b&evil=1" not in loc          # raw reserved chars must not leak
+    assert "a+b%26evil%3D1" in loc                 # '&' and '=' are encoded

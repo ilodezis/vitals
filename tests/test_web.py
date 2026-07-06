@@ -989,3 +989,31 @@ async def test_modules_endpoint_rate_limited(auth_client):
 
     assert statuses[0] == 200          # first request allowed
     assert 429 in statuses             # limiter eventually trips
+
+
+# ── Security perimeter (post-review run 1) ────────────────────────────────────
+async def test_safe_next_rejects_offsite_targets():
+    """safe_next confines the post-login redirect to a same-site path, including
+    the backslash trick browsers normalise into a protocol-relative off-site URL."""
+    from web.auth import safe_next
+
+    assert safe_next("/weight") == "/weight"
+    assert safe_next("/glp1?tab=1") == "/glp1?tab=1"
+    # Open-redirect vectors all fall back to "/".
+    assert safe_next("//evil.com") == "/"
+    assert safe_next("/\\evil.com") == "/"          # \ is normalised to / by browsers
+    assert safe_next("https://evil.com") == "/"
+    assert safe_next("http://evil.com") == "/"
+    assert safe_next(None) == "/"
+    assert safe_next("") == "/"
+
+
+async def test_login_rate_limited_by_ip(client):
+    """Repeated login attempts from one IP are throttled (429) so password guessing
+    on the single pre-auth endpoint is bounded, not unlimited."""
+    last = None
+    for _ in range(11):  # limit=10 per window; the 11th trips the limiter
+        last = await client.post(
+            "/login", data={"username": "tester", "password": "wrong"}
+        )
+    assert last.status_code == 429

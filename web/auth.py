@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, Form, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from web.config import SESSION_COOKIE, get_web_config
+from web.ratelimit import login_rate_limit
 from web.security import verify_password, verify_password_dummy
 from web.templating import templates
 
@@ -38,13 +40,18 @@ def _get_mcp_serializer() -> URLSafeTimedSerializer:
 def safe_next(next: str | None) -> str:
     """Confine the post-login redirect to a local path (open-redirect guard).
 
-    Accept only a value beginning with a single ``/``; reject absolute URLs and
-    protocol-relative ``//host`` targets (which browsers resolve off-site).
+    Accept only a value that resolves to a same-site path: it must begin with a
+    single ``/`` and carry no scheme or host. Reject absolute URLs, protocol-
+    relative ``//host``, and backslash tricks like ``/\\host`` (browsers normalise
+    ``\\`` to ``/``, turning it into a protocol-relative off-site redirect).
     Anything else falls back to ``/``.
     """
-    if next and next.startswith("/") and not next.startswith("//"):
-        return next
-    return "/"
+    if not next or not next.startswith("/") or next.startswith("//") or "\\" in next:
+        return "/"
+    parsed = urlsplit(next)
+    if parsed.scheme or parsed.netloc:
+        return "/"
+    return next
 
 
 def read_session(token: str | None) -> Optional[str]:
@@ -123,6 +130,10 @@ async def login(
     username: str = Form(...),
     password: str = Form(...),
     next: Optional[str] = Form(None),
+    # Bound password-guessing by IP. `rate_limit` can't guard this route (it needs
+    # an authenticated username for its key), so `/login` gets a dedicated IP-based
+    # limiter — this is the only pre-auth entry point and the one that needs it most.
+    _rl: None = Depends(login_rate_limit(limit=10, window=300)),
 ):
     next_url = safe_next(next)
     if authenticate(username, password):

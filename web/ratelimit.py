@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from typing import Callable
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 
 from vitals.i18n import t
 from redis.asyncio import Redis
@@ -41,6 +41,41 @@ def rate_limit(bucket: str, *, limit: int, window: int) -> Callable:
             logger.warning(
                 "rate-limit backend unavailable for %s; allowing request",
                 bucket,
+                exc_info=True,
+            )
+            return
+        if count > limit:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=t("common.rate_limit"),
+            )
+
+    return _dep
+
+
+def login_rate_limit(*, limit: int, window: int) -> Callable:
+    """Build a dependency throttling repeated login attempts **by client IP**.
+
+    Unlike :func:`rate_limit`, this must NOT depend on ``require_auth`` — the whole
+    point is to guard the pre-auth ``/login`` endpoint, where there is no username
+    yet, so password-guessing there is otherwise completely unbounded. Keyed by the
+    caller's IP. Fail-open like ``rate_limit`` — a missing Redis must never lock the
+    owner out of their own app.
+    """
+
+    async def _dep(
+        request: Request,
+        redis: Redis = Depends(get_redis),
+    ) -> None:
+        ip = request.client.host if request.client else "unknown"
+        key = f"ratelimit:login:{ip}"
+        try:
+            count = await redis.incr(key)
+            if count == 1:
+                await redis.expire(key, window)
+        except Exception:
+            logger.warning(
+                "login rate-limit backend unavailable; allowing request",
                 exc_info=True,
             )
             return

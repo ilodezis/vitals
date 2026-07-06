@@ -588,10 +588,15 @@ async def log_glp1(
     parsed_date = date_type.fromisoformat(on_date) if on_date else today_local()
 
     async with session_factory() as session:
-        row = await glp1_service.log_injection(
-            session, on_date=parsed_date, drug=drug, dose_mg=dose_mg,
-            site=site, note=note,
-        )
+        try:
+            row = await glp1_service.log_injection(
+                session, on_date=parsed_date, drug=drug, dose_mg=dose_mg,
+                site=site, note=note,
+            )
+        except ValueError as e:
+            # An LLM bypasses the HTML form, so bad input (dose_mg<=0, garbage site)
+            # comes back as a clean error instead of an opaque DB failure.
+            return {"error": str(e)}
         await session.commit()
         return await serialize_written(session, row)
 
@@ -1040,17 +1045,13 @@ class MCPAuthMiddleware:
         headers = dict(scope.get("headers", []))
         auth_header = headers.get(b"authorization", b"").decode("utf-8")
 
+        # Bearer header ONLY. We deliberately do not accept the token via a query
+        # param (?token=/?access_token=): query strings leak into reverse-proxy
+        # access logs, browser history and Referer headers, and this token is
+        # long-lived. Claude.ai's connector sends the Authorization header.
         token = None
         if auth_header.lower().startswith("bearer "):
             token = auth_header[7:]
-        else:
-            # Fallback to query params
-            from urllib.parse import parse_qs
-            query_string = scope.get("query_string", b"").decode("utf-8")
-            params = parse_qs(query_string)
-            token_list = params.get("token") or params.get("access_token")
-            if token_list:
-                token = token_list[0]
 
         authenticated = False
         if token:

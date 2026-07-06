@@ -15,7 +15,6 @@ from fastapi import Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from web.auth import read_session
 from web.config import SESSION_COOKIE
 
 from vitals.i18n import current_lang
@@ -79,6 +78,11 @@ class NotAuthenticated(HTTPException):
 
 async def require_auth(request: Request) -> str:
     """Guard every protected route. Returns the authenticated username or raises."""
+    # Lazy import breaks the web.auth ↔ web.deps cycle: auth.py imports the login
+    # rate-limiter (web.ratelimit → web.deps), so deps must not import auth at
+    # module-load time.
+    from web.auth import read_session
+
     token = request.cookies.get(SESSION_COOKIE)
     username = read_session(token)
     if username is None:

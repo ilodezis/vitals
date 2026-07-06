@@ -181,3 +181,59 @@ async def test_weight_chart_series_includes_glp1_phases(db_session):
     assert series["phases"][0]["start"] == "2026-05-01"
     assert series["phases"][0]["drug"] == "semaglutide"
     assert series["phases"][0]["dose_mg"] == 0.25
+
+
+# ── Write-path input validation (post-review run 1) ───────────────────────────
+async def test_log_injection_rejects_nonpositive_dose(db_session):
+    """A hallucinated non-positive dose from an MCP call is rejected cleanly at the
+    service boundary, not left to surface as a raw DB IntegrityError."""
+    with pytest.raises(ValueError):
+        await glp1_service.log_injection(
+            db_session, on_date=date(2026, 6, 1),
+            drug=Drug.SEMAGLUTIDE.value, dose_mg=0,
+        )
+    with pytest.raises(ValueError):
+        await glp1_service.log_injection(
+            db_session, on_date=date(2026, 6, 1),
+            drug=Drug.SEMAGLUTIDE.value, dose_mg=-5,
+        )
+
+
+async def test_log_injection_rejects_unknown_site(db_session):
+    """A garbage injection site (not an InjectionSite) is rejected so it can't
+    pollute the body-map rotation data."""
+    with pytest.raises(ValueError):
+        await glp1_service.log_injection(
+            db_session, on_date=date(2026, 6, 1),
+            drug=Drug.SEMAGLUTIDE.value, dose_mg=0.25, site="left_earlobe",
+        )
+
+
+async def test_update_injection_runs_conflict_engine(db_session):
+    """Editing an injection is gated by the conflict engine just like logging one:
+    a block rule with no override raises ConflictBlocked (regression for the update
+    path that previously skipped enforce())."""
+    from vitals.enums import Domain, RuleType
+    from vitals.models.conflict_rule import ConflictRule
+    from vitals.services.conflict_engine import ConflictBlocked
+
+    inj = await glp1_service.log_injection(
+        db_session, on_date=date(2026, 6, 1),
+        drug=Drug.SEMAGLUTIDE.value, dose_mg=0.25,
+    )
+    await db_session.commit()
+
+    # A self-referential block rule on glp1: any proposed injection state fires it.
+    db_session.add(ConflictRule(
+        rule_type=RuleType.HARD_BLOCK.value,
+        domain_a=Domain.GLP1.value, condition_a={},
+        domain_b=Domain.GLP1.value, condition_b={},
+        severity=Severity.BLOCK.value, message="test block",
+    ))
+    await db_session.commit()
+
+    with pytest.raises(ConflictBlocked):
+        await glp1_service.update_injection(
+            db_session, inj.id, on_date=date(2026, 6, 2),
+            drug=Drug.TIRZEPATIDE.value, dose_mg=2.5,
+        )

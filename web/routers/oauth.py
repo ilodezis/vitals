@@ -27,12 +27,12 @@ router = APIRouter(tags=["oauth"])
 def verify_pkce(code_verifier: str, code_challenge: str, method: Optional[str]) -> bool:
     """Verifies the Proof Key for Code Exchange (PKCE) challenge."""
     if not method or method == "plain":
-        return code_verifier == code_challenge
+        return secrets.compare_digest(code_verifier, code_challenge)
     elif method == "S256":
         sha256_hash = hashlib.sha256(code_verifier.encode("utf-8")).digest()
         calculated_challenge = base64.urlsafe_b64encode(sha256_hash).decode("utf-8").rstrip("=")
         stripped_challenge = code_challenge.rstrip("=")
-        return calculated_challenge == stripped_challenge
+        return secrets.compare_digest(calculated_challenge, stripped_challenge)
     return False
 
 
@@ -158,12 +158,13 @@ async def oauth_approve(
     }
     await redis.setex(f"oauth_code:{code}", 300, json.dumps(code_payload))
 
-    # Redirect back to Claude's callback URL
-    target_url = redirect_uri
-    separator = "&" if "?" in redirect_uri else "?"
-    target_url += f"{separator}code={code}"
+    # Redirect back to Claude's callback URL. Params are urlencoded so a state
+    # value carrying '&'/'=' can't break out and inject extra query parameters.
+    params = {"code": code}
     if state:
-        target_url += f"&state={state}"
+        params["state"] = state
+    separator = "&" if "?" in redirect_uri else "?"
+    target_url = f"{redirect_uri}{separator}{urlencode(params)}"
 
     return RedirectResponse(url=target_url, status_code=status.HTTP_302_FOUND)
 
@@ -218,7 +219,7 @@ async def oauth_token(
             content={"error": "invalid_client", "error_description": "Client secret not configured"},
         )
 
-    if client_secret != cfg.mcp_client_secret:
+    if not secrets.compare_digest(client_secret or "", cfg.mcp_client_secret):
         return JSONResponse(
             status_code=400,
             content={"error": "invalid_client", "error_description": "Client secret mismatch"},
@@ -236,17 +237,16 @@ async def oauth_token(
             content={"error": "invalid_request", "error_description": "Missing code"},
         )
 
-    # Fetch code data from Redis
+    # Fetch + delete the code atomically (GETDEL, Redis 6.2+; prod runs redis:7) so
+    # two concurrent token requests can't both read it before it's removed — true
+    # single-use even under a race, not just sequentially.
     code_key = f"oauth_code:{code}"
-    code_raw = await redis.get(code_key)
+    code_raw = await redis.getdel(code_key)
     if not code_raw:
         return JSONResponse(
             status_code=400,
             content={"error": "invalid_grant", "error_description": "Code expired or invalid"},
         )
-
-    # Prevent code reuse
-    await redis.delete(code_key)
 
     code_data = json.loads(code_raw)
 

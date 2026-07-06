@@ -79,7 +79,8 @@ async def add_injection(
     try:
         if id is not None:
             await glp1_service.update_injection(
-                db, id, on_date=on_date, drug=drug, dose_mg=dose_mg, site=site, note=note
+                db, id, on_date=on_date, drug=drug, dose_mg=dose_mg,
+                site=site, note=note, override=override,
             )
         else:
             await glp1_service.log_injection(
