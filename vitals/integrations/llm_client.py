@@ -97,7 +97,17 @@ class LLMClient:
             temperature=temperature,
             max_tokens=max_tokens,
         )
-        return (resp.choices[0].message.content or "").strip()
+        choice = resp.choices[0]
+        content = (choice.message.content or "").strip()
+        if not content:
+            # A blank completion isn't an SDK-level error (no exception to catch),
+            # so without this the only trace is "content was empty" — log the one
+            # field (finish_reason) that hints at why: length/content_filter/stop.
+            logger.warning(
+                "LLM returned empty content (model=%s, finish_reason=%s)",
+                model or self.digest_model, choice.finish_reason,
+            )
+        return content
 
     async def extract_json(
         self,
