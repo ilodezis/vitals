@@ -298,6 +298,63 @@ async def assemble_context(
     else:
         ctx["nutrition"] = None
 
+    # Supplements / skincare / genetics / active alerts — enabled domains the
+    # digest used to ignore, so cross-domain reasoning it promises (e.g. "started
+    # ashwagandha → sleep/HRV shifted", "introduced a retinoid → skin reacted")
+    # had no data to work with. Each domain is read through its own service (lazy
+    # import); empty → null.
+    from vitals.services import supplements_service
+
+    active_supps = await supplements_service.list_supplements(session, active_only=True)
+    ctx["supplements"] = (
+        [
+            {"name": s.name, "dose": s.dose, "timing": s.timing, "evidence": s.evidence}
+            for s in active_supps
+        ]
+        if active_supps
+        else None
+    )
+
+    from vitals.services import skincare_service
+
+    skin_obs = [
+        o for o in await skincare_service.list_observations(session) if o.date >= since
+    ]
+    active_products = await skincare_service.list_products(session, active_only=True)
+    if skin_obs or active_products:
+        ctx["skincare"] = {
+            "recent_observations": [
+                {
+                    "date": o.date.isoformat(),
+                    "inflammation": o.inflammation,
+                    "pih": o.pih,
+                    "zone": o.zone,
+                    "note": o.note,
+                }
+                for o in skin_obs
+            ],
+            "active_products": len(active_products),
+        }
+    else:
+        ctx["skincare"] = None
+
+    from vitals.services import genetics_service
+
+    variants = await genetics_service.resolve_variants(session)
+    ctx["genetics"] = variants or None
+
+    from vitals.services import alerts_service
+
+    active_alerts = await alerts_service.list_active(session)
+    ctx["alerts"] = (
+        [
+            {"severity": a.severity, "domain": a.domain, "message": a.message}
+            for a in active_alerts
+        ]
+        if active_alerts
+        else None
+    )
+
     from vitals.services import milestones_service
 
     ctx["milestones"] = await milestones_service.dashboard_cards(session)

@@ -59,6 +59,11 @@ async def test_assemble_context_is_robust_when_empty(db_session):
     assert ctx["labs"]["out_of_range"] == []
     assert ctx["milestones"] == []
     assert ctx["body_comp"] is None
+    # Domains added so the digest reasons across them; null/empty when no data.
+    assert ctx["supplements"] is None
+    assert ctx["skincare"] is None
+    assert ctx["genetics"] is None
+    assert ctx["alerts"] is None
 
 
 async def test_assemble_context_pulls_each_domain(db_session):
@@ -81,6 +86,46 @@ async def test_assemble_context_pulls_each_domain(db_session):
     assert ctx["garmin"]["total_days_logged"] == 1
     assert ctx["labs"]["out_of_range"][0]["marker"] == "TSH"
     assert ctx["labs"]["out_of_range"][0]["date"] == (DAY - timedelta(days=10)).isoformat()
+
+
+async def test_assemble_context_includes_supplements_skincare_genetics_alerts(db_session):
+    """B5: the weekly digest must see supplements, skincare, genetics and active
+    alerts — previously these enabled domains were absent, so cross-domain
+    reasoning (e.g. 'started a supplement → sleep shifted', 'introduced a retinoid
+    → skin reacted') had no data to work with."""
+    from vitals.services import (
+        alerts_service,
+        genetics_service,
+        skincare_service,
+        supplements_service,
+    )
+
+    await supplements_service.add_supplement(
+        db_session, name="Creatine", dose="5 g", timing="morning", evidence="A"
+    )
+    await skincare_service.add_observation(
+        db_session, on_date=DAY, inflammation=3, pih=1, zone="cheeks", note="reacted"
+    )
+    await genetics_service.add_variant(
+        db_session, gene="HFE", rsid="rs1800562", genotype="GG", marker="hemochromatosis_carrier"
+    )
+    await alerts_service.raise_alert(
+        db_session, domain="labs", severity="warn", message="Ferritin high",
+        alert_key="ferritin_high", entity_ref="labs:ferritin",
+    )
+    await db_session.commit()
+
+    ctx = await digest_service.assemble_context(db_session, on_date=DAY)
+
+    assert ctx["supplements"] is not None
+    assert ctx["supplements"][0]["name"] == "Creatine"
+    assert ctx["skincare"] is not None
+    assert ctx["skincare"]["recent_observations"][0]["inflammation"] == 3
+    assert ctx["skincare"]["active_products"] == 0
+    assert ctx["genetics"] is not None
+    assert ctx["genetics"][0]["marker"] == "hemochromatosis_carrier"
+    assert ctx["alerts"] is not None
+    assert ctx["alerts"][0]["message"] == "Ferritin high"
 
 
 async def test_assemble_context_includes_body_comp(db_session):

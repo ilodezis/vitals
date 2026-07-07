@@ -1,6 +1,9 @@
 """Tests for the i18n translation system, plurals, digest prompts, and localized routing."""
 from __future__ import annotations
 
+import pathlib
+import re
+
 import pytest
 from sqlalchemy import select
 from vitals.i18n import t, plural, current_lang
@@ -86,12 +89,50 @@ async def test_oauth_page_renders_localized(auth_client, db_session, redis):
 
 def test_i18n_key_parity():
     from vitals.i18n import STRINGS
-    
+
     en_keys = set(STRINGS["en"].keys())
     ru_keys = set(STRINGS["ru"].keys())
-    
+
     missing_in_ru = en_keys - ru_keys
     missing_in_en = ru_keys - en_keys
-    
+
     assert not missing_in_ru, f"Translation keys missing in RU: {missing_in_ru}"
     assert not missing_in_en, f"Translation keys missing in EN: {missing_in_en}"
+
+
+# Only fully-literal keys: the string must be immediately followed by `,` or `)`,
+# so dynamic keys like t("nav." + spec.key) or t("enum.site." + s) are skipped
+# (they can't be statically resolved and aren't the bug this guards against).
+_TPL_KEY_RE = re.compile(r"""[^\w.]t\(\s*["']([a-z0-9_.]+)["']\s*[,)]""")
+_JS_KEY_RE = re.compile(r"""window\.t\(\s*["']([a-z0-9_.]+)["']\s*\)""")
+_REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+def test_referenced_keys_exist_in_dictionaries():
+    """Every literal key referenced by a Jinja ``t("…")`` or a JS ``window.t("…")``
+    must exist in the dictionary it resolves against — templates against the full
+    ``_EN`` map, JS against the ``js.*`` slice (which ``window.t`` sees). Guards the
+    class of bug where a template ships a raw key like ``glp1.no_records`` or JS
+    calls ``window.t("body.error.no_file")`` for a key that only lives in the
+    template namespace. Complements ``test_i18n_key_parity`` (EN⇄RU symmetry):
+    parity says both dicts agree, this says the code actually references real keys.
+    """
+    from vitals.i18n import _EN
+
+    en_keys = set(_EN.keys())
+    js_keys = {k[len("js."):] for k in en_keys if k.startswith("js.")}
+
+    missing_tpl: set[str] = set()
+    for path in (_REPO_ROOT / "web" / "templates").rglob("*.html"):
+        for key in _TPL_KEY_RE.findall(path.read_text(encoding="utf-8")):
+            if key not in en_keys:
+                missing_tpl.add(key)
+
+    missing_js: set[str] = set()
+    for path in (_REPO_ROOT / "web" / "static").glob("*.js"):
+        for key in _JS_KEY_RE.findall(path.read_text(encoding="utf-8")):
+            if key not in js_keys:
+                missing_js.add(key)
+
+    assert not missing_tpl, f"Template t() keys missing from dictionary: {sorted(missing_tpl)}"
+    assert not missing_js, f"JS window.t() keys missing from js.* namespace: {sorted(missing_js)}"

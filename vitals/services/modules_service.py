@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 from redis.asyncio import Redis
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.models.app_settings import AppSetting
@@ -155,7 +156,19 @@ async def set_module_enabled(
     if key in CORE_KEYS:
         raise ModuleToggleError(f"module '{key}' is core and cannot be disabled")
 
-    row = await session.get(AppSetting, SETTINGS_KEY)
+    # Lock the settings row FOR UPDATE so concurrent toggles serialize on it.
+    # This is a read-modify-write (read the JSON map, flip one key, write it back);
+    # without the row lock two near-simultaneous toggles both read the old map and
+    # the second write silently drops the first one's change (lost update). On
+    # SQLite (fast test path) with_for_update is a no-op, but there is no real
+    # concurrency there; the guarantee that matters is on Postgres in prod.
+    row = (
+        await session.execute(
+            select(AppSetting)
+            .where(AppSetting.key == SETTINGS_KEY)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
     if row is None:
         state = dict(DEFAULT_STATE)
         state[key] = bool(enabled)

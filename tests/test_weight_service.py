@@ -55,13 +55,35 @@ async def test_garmin_does_not_override_existing_manual(db_session):
     assert active.weight_kg == 88.0
 
 
-async def test_same_source_updates_in_place(db_session):
+async def test_same_source_reentry_supersedes_not_overwrites(db_session):
+    """A second manual entry for the same date must NOT silently overwrite the
+    first: the old row is kept (flagged superseded), a new active row carries the
+    new value. Data-lake principle — never destroy a prior reading (a correction
+    or a re-entry stays recoverable)."""
+    from sqlalchemy import select
+
+    from vitals.models.weight import WeightLog
+
     d = date(2026, 6, 4)
     a = await weight_service.log_weight(db_session, on_date=d, weight_kg=88.0)
     b = await weight_service.log_weight(db_session, on_date=d, weight_kg=87.5)
     await db_session.commit()
-    assert a.id == b.id
-    assert b.weight_kg == 87.5
+
+    # A new row was created — the old one was not mutated in place.
+    assert a.id != b.id
+    assert b.superseded is False and b.weight_kg == 87.5
+
+    # Exactly one active row, and it holds the new value.
+    active = await weight_service.get_active_weight(db_session, d)
+    assert active.id == b.id and active.weight_kg == 87.5
+
+    # The previous reading survives in the data lake (superseded, value intact).
+    rows = (
+        await db_session.execute(select(WeightLog).where(WeightLog.date == d))
+    ).scalars().all()
+    assert len(rows) == 2
+    old = next(r for r in rows if r.id == a.id)
+    assert old.superseded is True and old.weight_kg == 88.0
 
 
 async def test_body_measurement_computes_navy_and_lbm(db_session):

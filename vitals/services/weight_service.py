@@ -108,21 +108,14 @@ async def log_weight(
 
     existing = await get_active_weight(session, on_date)
 
-    if existing is not None and existing.source == source:
-        # Same source, same date → latest reading replaces the previous in place.
-        existing.weight_kg = weight_kg
-        existing.raw_payload_id = raw_payload_id
-        if note is not None:
-            existing.note = note
-        await session.flush()
-        await _recompute_lbm_for_date(session, on_date, weight_kg)
-        return existing
-
     insert_as_active = True
     if existing is not None:
         if _source_priority(source) >= _source_priority(existing.source):
-            # New row outranks (or ties differently-sourced) the active one →
-            # supersede it first to keep the partial-unique invariant.
+            # New row outranks (or ties — same source, same date) the active one →
+            # supersede it first to keep the partial-unique invariant. The old row
+            # is kept (flagged superseded), never overwritten: a re-entry or a
+            # correction must not silently destroy the previous reading
+            # (data-lake principle — never delete).
             existing.superseded = True
             await session.flush()
         else:
