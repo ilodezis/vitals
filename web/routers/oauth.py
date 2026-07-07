@@ -271,16 +271,21 @@ async def oauth_token(
                 content={"error": "invalid_grant", "error_description": "PKCE verification failed"},
             )
 
-    # Sign the access token payload (30-day expiration or long-lived).
-    # Uses a dedicated salt — see web.auth._get_mcp_serializer — so this token
-    # can never be replayed as a session cookie or vice versa.
+    # Sign the access token. Lifetime is 1 year (see expires_in below), enforced
+    # on every request via max_age in the MCP auth middleware. Uses a dedicated
+    # salt — see web.auth._get_mcp_serializer — so this token can never be replayed
+    # as a session cookie or vice versa.
+    #
+    # Revocation: tokens are stateless (no server-side store), so to revoke an
+    # issued token before it expires, rotate VITALS_SESSION_SECRET — that
+    # invalidates every signature at once (all MCP tokens AND session cookies →
+    # re-login + re-connect the Claude.ai connector). There is no per-token revoke.
     serializer = _get_mcp_serializer()
     token_payload = {
         "username": code_data["username"],
         "client_id": client_id,
         "type": "mcp_access_token",
     }
-    # Timed signature is safe and verified on incoming requests using max_age
     access_token = serializer.dumps(token_payload)
 
     return {

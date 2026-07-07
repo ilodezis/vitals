@@ -13,7 +13,9 @@ Routers pass their own allowlist (images, docs, json, vcf) and size cap.
 """
 from __future__ import annotations
 
+import codecs
 import os
+from typing import AsyncIterator
 
 from fastapi import HTTPException, UploadFile, status
 
@@ -46,6 +48,15 @@ def validate_extension(filename: str | None, allowed: frozenset[str]) -> str:
     return ext
 
 
+def _too_large(max_bytes: int) -> HTTPException:
+    # 413 Content Too Large (literal to stay version-agnostic across the Starlette
+    # constant rename).
+    return HTTPException(
+        status_code=413,
+        detail=f"File too large (max {max_bytes // (1024 * 1024)} MB)",
+    )
+
+
 async def read_capped(file: UploadFile, *, max_bytes: int = DEFAULT_MAX_BYTES) -> bytes:
     """Read the upload in chunks, raising HTTP 413 once it exceeds ``max_bytes``
     (so a multi-GB body can't OOM the worker)."""
@@ -57,11 +68,36 @@ async def read_capped(file: UploadFile, *, max_bytes: int = DEFAULT_MAX_BYTES) -
             break
         total += len(chunk)
         if total > max_bytes:
-            # 413 Content Too Large (literal to stay version-agnostic across the
-            # Starlette constant rename).
-            raise HTTPException(
-                status_code=413,
-                detail=f"File too large (max {max_bytes // (1024 * 1024)} MB)",
-            )
+            raise HTTPException(status_code=413, detail=f"File too large (max {max_bytes // (1024 * 1024)} MB)")
         chunks.append(chunk)
     return b"".join(chunks)
+
+
+async def iter_lines_capped(
+    file: UploadFile, *, max_bytes: int = DEFAULT_MAX_BYTES, encoding: str = "utf-8"
+) -> AsyncIterator[str]:
+    """Yield decoded text lines from an upload without buffering the whole body.
+
+    Reads in chunks, decodes incrementally (UTF-8-safe across chunk boundaries),
+    and emits complete lines as they arrive — so a 100 MB VCF never holds more
+    than one chunk plus a partial line in memory, instead of ~3 full copies
+    (bytes + decoded str + StringIO). Raises HTTP 413 once the raw bytes exceed
+    ``max_bytes``. Lines are yielded without their trailing newline."""
+    decoder = codecs.getincrementaldecoder(encoding)(errors="replace")
+    total = 0
+    pending = ""
+    while True:
+        chunk = await file.read(_CHUNK)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise _too_large(max_bytes)
+        pending += decoder.decode(chunk)
+        if "\n" in pending:
+            *lines, pending = pending.split("\n")
+            for line in lines:
+                yield line
+    pending += decoder.decode(b"", final=True)
+    if pending:
+        yield pending

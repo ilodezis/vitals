@@ -97,19 +97,19 @@ async def get_weight_logs(
 ) -> dict:
     """Retrieves active weight logs, body measurements, and noise markers for a
     date range (YYYY-MM-DD). Weights/measurements default to the most recent 100."""
+    from vitals.services import weight_service
+
     session_factory = get_session_factory()
     start = date_type.fromisoformat(start_date) if start_date else None
     end = date_type.fromisoformat(end_date) if end_date else None
 
     async with session_factory() as session:
-        # Weight logs
-        w_stmt = select(WeightLog).where(WeightLog.superseded.is_(False))
-        if start:
-            w_stmt = w_stmt.where(WeightLog.date >= start)
-        if end:
-            w_stmt = w_stmt.where(WeightLog.date <= end)
-        w_stmt = w_stmt.order_by(WeightLog.date.desc()).limit(limit)
-        weights = (await session.execute(w_stmt)).scalars().all()
+        # Weight logs — the "active weight" invariant (superseded filter, source
+        # priority) lives in weight_service; call it instead of re-encoding the
+        # rule here, then apply this tool's newest-first, most-recent-`limit`
+        # contract on top (the service returns all matching rows, ascending).
+        weights = await weight_service.list_active_weights(session, start=start, end=end)
+        weights = sorted(weights, key=lambda w: w.date, reverse=True)[:limit]
 
         # Body measurements
         m_stmt = select(BodyMeasurement)
@@ -687,6 +687,20 @@ async def get_measurements(
 
 # ── Notes tools ─────────────────────────────────────────────────────────────
 
+# Domains whose per-row ``note`` field the note tools can read/write, mapped to
+# their model. Single source of truth for both log_note and get_notes so the two
+# never drift out of sync.
+_NOTE_MODELS = {
+    "weight": WeightLog,
+    "nutrition": MealLog,
+    "glp1": Injection,
+    "skincare": SkincareLog,
+    "measurement": BodyMeasurement,
+    "body_comp": BodyScan,
+    "labs": LabResult,
+}
+
+
 @mcp.tool()
 async def log_note(
     domain: str,
@@ -696,21 +710,9 @@ async def log_note(
     """Adds or updates the note field on any domain record by its ID.
     Supported domains: weight, nutrition, glp1, skincare, measurement, body_comp, labs.
     WRITE tool — saved immediately."""
-    from vitals.models.glp1 import Injection
-    from vitals.models.skincare import SkincareLog
-
-    model_map = {
-        "weight": WeightLog,
-        "nutrition": MealLog,
-        "glp1": Injection,
-        "skincare": SkincareLog,
-        "measurement": BodyMeasurement,
-        "body_comp": BodyScan,
-        "labs": LabResult,
-    }
-    model = model_map.get(domain)
+    model = _NOTE_MODELS.get(domain)
     if model is None:
-        return {"error": f"Unknown domain '{domain}'. Use: {', '.join(model_map)}"}
+        return {"error": f"Unknown domain '{domain}'. Use: {', '.join(_NOTE_MODELS)}"}
 
     session_factory = get_session_factory()
     async with session_factory() as session:
@@ -733,23 +735,10 @@ async def get_notes(
     """Retrieves records that have non-empty notes, optionally filtered by domain
     and date range. Returns records from: weight, nutrition, glp1, skincare,
     measurement, body_comp, labs."""
-    from vitals.models.glp1 import Injection
-    from vitals.models.skincare import SkincareLog
+    if domain and domain not in _NOTE_MODELS:
+        return [{"error": f"Unknown domain '{domain}'. Use: {', '.join(_NOTE_MODELS)}"}]
 
-    model_map = {
-        "weight": WeightLog,
-        "nutrition": MealLog,
-        "glp1": Injection,
-        "skincare": SkincareLog,
-        "measurement": BodyMeasurement,
-        "body_comp": BodyScan,
-        "labs": LabResult,
-    }
-
-    if domain and domain not in model_map:
-        return [{"error": f"Unknown domain '{domain}'. Use: {', '.join(model_map)}"}]
-
-    targets = {domain: model_map[domain]} if domain else model_map
+    targets = {domain: _NOTE_MODELS[domain]} if domain else _NOTE_MODELS
     session_factory = get_session_factory()
     start = date_type.fromisoformat(start_date) if start_date else None
     end = date_type.fromisoformat(end_date) if end_date else None

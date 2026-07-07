@@ -35,6 +35,29 @@ def _pos_int(env_name: str, default: int) -> int:
     return int(raw) if raw.isdigit() and int(raw) > 0 else default
 
 
+def _env_int(env_name: str, default: int) -> int:
+    """Parse an int env var, falling back to ``default`` when unset or malformed
+    (unlike :func:`_pos_int`, negatives/zero are accepted where they're valid)."""
+    raw = (os.getenv(env_name) or "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+def _env_float(env_name: str, default: float) -> float:
+    """Parse a float env var, falling back to ``default`` when unset or malformed."""
+    raw = (os.getenv(env_name) or "").strip()
+    if not raw:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
 @dataclass(frozen=True)
 class Config:
     database_url: str
@@ -99,11 +122,7 @@ def load_config() -> Config:
 
     redis_url = os.getenv("VITALS_REDIS_URL", "redis://vitals_redis:6379/0")
 
-    height_raw = (os.getenv("VITALS_HEIGHT_CM") or "").strip()
-    try:
-        height_cm = float(height_raw) if height_raw else 190.0
-    except ValueError:
-        height_cm = 190.0
+    height_cm = _env_float("VITALS_HEIGHT_CM", 190.0)
 
     sex = (os.getenv("VITALS_SEX") or "male").strip().lower()
     if sex not in ("male", "female"):
@@ -113,11 +132,7 @@ def load_config() -> Config:
     if body_fat_source not in ("latest", "navy", "bia"):
         body_fat_source = "latest"
 
-    age_raw = (os.getenv("VITALS_USER_AGE") or "").strip()
-    try:
-        user_age = int(age_raw) if age_raw else 18
-    except ValueError:
-        user_age = 18
+    user_age = _env_int("VITALS_USER_AGE", 18)
 
     user_program = (os.getenv("VITALS_USER_PROGRAM") or "рекомпозиция тела (снижение жира, сохраняя мышцы) на протоколе GLP-1, с силовыми тренировками и отслеживанием восстановления").strip()
 
@@ -127,23 +142,9 @@ def load_config() -> Config:
     else:
         user_goals = ["снижение жира", "сохранение мышц"]
 
-    protein_raw = (os.getenv("VITALS_NUTRITION_PROTEIN_TARGET_G") or "").strip()
-    try:
-        nutrition_protein_target_g = float(protein_raw) if protein_raw else 150.0
-    except ValueError:
-        nutrition_protein_target_g = 150.0
-
-    cal_min_raw = (os.getenv("VITALS_NUTRITION_CALORIES_MIN") or "").strip()
-    try:
-        nutrition_calories_min = int(cal_min_raw) if cal_min_raw else 1300
-    except ValueError:
-        nutrition_calories_min = 1300
-
-    cal_max_raw = (os.getenv("VITALS_NUTRITION_CALORIES_MAX") or "").strip()
-    try:
-        nutrition_calories_max = int(cal_max_raw) if cal_max_raw else 1700
-    except ValueError:
-        nutrition_calories_max = 1700
+    nutrition_protein_target_g = _env_float("VITALS_NUTRITION_PROTEIN_TARGET_G", 150.0)
+    nutrition_calories_min = _env_int("VITALS_NUTRITION_CALORIES_MIN", 1300)
+    nutrition_calories_max = _env_int("VITALS_NUTRITION_CALORIES_MAX", 1700)
 
     return Config(
         database_url=database_url,

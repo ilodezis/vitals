@@ -7,14 +7,12 @@ from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import io
-
 from vitals.services.genetics_vcf import INTERPRETATIONS, interpret, parse_vcf_line
 from vitals.enums import Domain, Source
 from vitals.services import alerts_service, genetics_service
 from web.deps import get_session, require_auth
 from web.templating import templates
-from web.uploads import VCF_EXTS, VCF_MAX_BYTES, read_capped, validate_extension
+from web.uploads import VCF_EXTS, VCF_MAX_BYTES, iter_lines_capped, validate_extension
 
 router = APIRouter(prefix="/genetics", tags=["genetics"])
 
@@ -63,14 +61,13 @@ async def import_vcf(
     (~dozens). ``only_interpreted`` narrows further to marker-bearing variants.
 
     Lines are membership-checked before any DB work, so even a large file does at
-    most a few dozen upserts; the size cap bounds the in-memory read."""
+    most a few dozen upserts; the streaming read bounds memory to one chunk at a
+    time (a consumer genome is ~600k lines / tens of MB)."""
     validate_extension(file.filename, VCF_EXTS)
-    raw = await read_capped(file, max_bytes=VCF_MAX_BYTES)
-    text = raw.decode("utf-8", errors="replace")
 
     imported = 0
     markers = 0
-    for line in io.StringIO(text):
+    async for line in iter_lines_capped(file, max_bytes=VCF_MAX_BYTES):
         # Cheap rsID gate before the (relatively costly) full parse + DB upsert.
         variant = parse_vcf_line(line)
         if variant is None or variant.rsid not in INTERPRETATIONS:
