@@ -39,8 +39,10 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy import Date, DateTime, Time, func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from vitals.models.base import Base
+from vitals.models.body_scan import BodyScan
 from vitals.models.garmin import GarminActivity, GarminDaily
 from vitals.models.genetics import GeneticVariant
 from vitals.models.glp1 import DosePhase, Injection, SideEffect
@@ -332,6 +334,37 @@ async def export_llm(session: AsyncSession) -> dict[str, Any]:
             }
         )
         for m in measurements
+    ]
+
+    # Body composition — BIA/InBody scans with every captured metric per scan
+    # (the body_comp domain; complements the Navy body_fat_pct/lbm above).
+    scans = (
+        await session.execute(
+            select(BodyScan)
+            .options(selectinload(BodyScan.metrics))
+            .order_by(BodyScan.date, BodyScan.id)
+        )
+    ).scalars().all()
+    out["body_scans"] = [
+        _compact(
+            {
+                "date": s.date.isoformat(),
+                "device": s.device,
+                "note": s.note,
+                "metrics": [
+                    _compact(
+                        {
+                            "metric": m.metric_key,
+                            "value": m.value,
+                            "unit": m.unit,
+                            "segment": m.segment,
+                        }
+                    )
+                    for m in s.metrics
+                ],
+            }
+        )
+        for s in scans
     ]
 
     noise = (

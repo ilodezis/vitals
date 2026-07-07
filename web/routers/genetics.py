@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import io
 
 from vitals.services.genetics_vcf import INTERPRETATIONS, interpret, parse_vcf_line
-from vitals.enums import Domain
+from vitals.enums import Domain, Source
 from vitals.services import alerts_service, genetics_service
 from web.deps import get_session, require_auth
 from web.templating import templates
@@ -104,17 +104,35 @@ async def save_variant(
     db: AsyncSession = Depends(get_session),
     username: str = Depends(require_auth),
 ):
-    await genetics_service.add_variant(
-        db,
-        gene=gene,
-        rsid=rsid or None,
-        genotype=genotype or None,
-        marker=marker or None,
-        impact=impact or None,
-        impact_domain=impact_domain or None,
-        interpretation=interpretation or None,
-        action_notes=action_notes or None,
-    )
+    if rsid:
+        # An rsID is a globally-unique dbSNP id (uq_genetic_variant_rsid): re-saving
+        # the same one refreshes it in place instead of hitting the constraint —
+        # same semantics as the VCF importer. A blank rsID falls through to a plain
+        # insert (many manual, rsID-less rows may coexist).
+        await genetics_service.upsert_by_rsid(
+            db,
+            gene=gene,
+            rsid=rsid,
+            genotype=genotype or None,
+            marker=marker or None,
+            impact=impact or None,
+            impact_domain=impact_domain or None,
+            interpretation=interpretation or None,
+            action_notes=action_notes or None,
+            source=Source.MANUAL.value,
+        )
+    else:
+        await genetics_service.add_variant(
+            db,
+            gene=gene,
+            rsid=None,
+            genotype=genotype or None,
+            marker=marker or None,
+            impact=impact or None,
+            impact_domain=impact_domain or None,
+            interpretation=interpretation or None,
+            action_notes=action_notes or None,
+        )
     await db.commit()
     return _redirect(request)
 

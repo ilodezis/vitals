@@ -38,6 +38,7 @@ DIGEST_SYSTEM = """\
 - weight: последний замер, скользящее среднее (ma7_kg) + дата последней MA-точки (ma7_date), тренд (kg_per_week), noise_markers
   ВАЖНО: если активен noise_marker, то ma7_date — это последний чистый день ДО начала шума, а не сегодня. Не сравнивай latest_kg и ma7_kg как если бы они были одновременными. Разрыв между ними объясняется давностью MA, а не текущим шумом.
 - glp1: препарат, доза, plateau
+- body_comp: последний BIA/InBody-скан (date, device, metrics: % жира, скелетно-мышечная масса, безжировая масса, висцеральный жир, фазовый угол, балл). Может быть null (скана нет). Это отдельный источник состава тела (BIA); сосуществует с оценкой по замерам (Navy) в weight — не смешивай и не суммируй их.
 - garmin: sleep_score, resting_hr, hrv_avg, body_battery_high, training_readiness, total_days_logged
 - hevy: тренировок за период, дата последней
 - labs: маркеры вне нормы (marker, value, flag, date)
@@ -86,6 +87,7 @@ Any domain can be null (no data). Don't invent what isn't there.
 - weight: latest reading, moving average (ma7_kg) + date of last MA point (ma7_date), trend (kg_per_week), noise_markers
   IMPORTANT: if a noise_marker is active, ma7_date is the last clean day BEFORE the noise started — not today. Do NOT compare latest_kg and ma7_kg as if they are simultaneous. Any gap between them reflects how stale the MA is, not current noise.
 - glp1: drug, dose, plateau flag
+- body_comp: latest BIA/InBody scan (date, device, metrics: body-fat %, skeletal muscle mass, lean body mass, visceral fat, phase angle, score). Can be null (no scan taken). This is a separate BIA body-composition source; it coexists with the tape/Navy estimate in weight — don't conflate or sum them.
 - garmin: sleep_score, resting_hr, hrv_avg, body_battery_high, training_readiness, total_days_logged
 - hevy: workouts in period, last workout date
 - labs: out-of-range markers (marker, value, flag, date)
@@ -195,6 +197,39 @@ async def assemble_context(
         "dose_mg": phase.dose_mg if phase else None,
         "plateau": await glp1_service.evaluate_plateau(session, on_date=today),
     }
+
+    from vitals.services import body_scan_service
+    from vitals.services.analytics.body_metrics import (
+        HEADLINE_KEYS,
+        METRIC_REGISTRY,
+        lbm_from_scan,
+    )
+
+    # Body composition (BIA/InBody). Latest scan only — the headline metrics that
+    # matter for recomp. Separate source from the Navy tape estimate in `weight`;
+    # coexist, never summed. Null when the owner has taken no scan.
+    scan = await body_scan_service.latest_scan(session)
+    if scan is not None:
+        by_key = {m.metric_key: m for m in scan.metrics}
+        comp_metrics: dict[str, Any] = {}
+        for k in HEADLINE_KEYS:
+            m = by_key.get(k)
+            if m is not None:
+                spec = METRIC_REGISTRY.get(k)
+                comp_metrics[k] = {
+                    "value": m.value,
+                    "unit": m.unit or (spec.unit if spec else None),
+                }
+        lbm = lbm_from_scan(scan.metrics)
+        if lbm is not None:
+            comp_metrics["lean_body_mass"] = {"value": lbm, "unit": "кг"}
+        ctx["body_comp"] = {
+            "date": scan.date.isoformat(),
+            "device": scan.device,
+            "metrics": comp_metrics,
+        }
+    else:
+        ctx["body_comp"] = None
 
     from vitals.services import garmin_service
 

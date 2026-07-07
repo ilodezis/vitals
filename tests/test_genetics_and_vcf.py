@@ -36,6 +36,27 @@ async def test_upsert_by_rsid_updates(db_session):
     assert rows[0].genotype == "A/G"
 
 
+async def test_duplicate_rsid_rejected(db_session):
+    """D2: the partial-unique index forbids two rows sharing a non-null rsID, so a
+    re-import/re-add can't silently duplicate a variant."""
+    from sqlalchemy.exc import IntegrityError
+
+    await genetics_service.add_variant(db_session, gene="HFE", rsid="rs1800562")
+    with pytest.raises(IntegrityError):
+        # add_variant flushes, so the constraint fires here.
+        await genetics_service.add_variant(db_session, gene="HFE", rsid="rs1800562")
+
+
+async def test_null_rsid_rows_coexist(db_session):
+    """D2: the uniqueness is partial (WHERE rsid IS NOT NULL), so multiple manual
+    rows without an rsID are still allowed."""
+    await genetics_service.add_variant(db_session, gene="GeneA", rsid=None)
+    await genetics_service.add_variant(db_session, gene="GeneB", rsid=None)
+    await db_session.commit()
+    rows = await genetics_service.list_variants(db_session)
+    assert len(rows) == 2
+
+
 # ── VCF parsing (pure) ────────────────────────────────────────────────────────
 def test_parse_vcf_line_basic():
     line = "6\t26093141\trs1800562\tG\tA\t.\tPASS\t.\tGT\t0/1"

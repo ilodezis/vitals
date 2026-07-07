@@ -216,6 +216,41 @@ async def test_llm_export_is_clean(db_session):
     assert out["biomarkers"][0]["marker"] == "glucose"
     assert out["workouts"][0]["exercises"][0]["title"] == "Bench Press"
     assert out["workouts"][0]["exercises"][0]["sets"][0]["weight_kg"] == 80.0
+    # body_comp key always present (empty here — the seed has no scan).
+    assert out["body_scans"] == []
+
+
+async def test_llm_export_includes_body_scans(db_session):
+    """D3: the body_comp domain (BIA/InBody scans + every captured metric) must
+    appear in the curated LLM export — previously it was dropped entirely."""
+    from vitals.models.body_scan import BodyScan, BodyScanMetric
+
+    scan = BodyScan(
+        date=date(2026, 4, 20), domain="body_comp", source="body_scan", device="InBody 770"
+    )
+    db_session.add(scan)
+    await db_session.flush()
+    db_session.add_all(
+        [
+            BodyScanMetric(
+                scan_id=scan.id, metric_key="body_fat_pct", label="Percent Body Fat",
+                value=18.5, unit="%", category="composition",
+            ),
+            BodyScanMetric(
+                scan_id=scan.id, metric_key="skeletal_muscle_mass", label="SMM",
+                value=42.0, unit="кг", category="composition",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    out = await export_llm(db_session)
+    assert len(out["body_scans"]) == 1
+    block = out["body_scans"][0]
+    assert block["date"] == "2026-04-20"
+    assert block["device"] == "InBody 770"
+    metrics = {m["metric"]: m["value"] for m in block["metrics"]}
+    assert metrics == {"body_fat_pct": 18.5, "skeletal_muscle_mass": 42.0}
 
 
 # ── Postgres sequence reset (real DB only) ─────────────────────────────────────

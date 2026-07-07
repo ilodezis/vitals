@@ -344,6 +344,25 @@ async def test_genetics_vcf_upload(auth_client, db_session):
     assert rows[0].marker == "hemochromatosis_carrier"
 
 
+async def test_genetics_save_dedupes_by_rsid(auth_client, db_session):
+    """D2: saving the same rsID twice from the manual form updates in place — never
+    a duplicate row or a 500 from the uq_genetic_variant_rsid constraint."""
+    from vitals.models.genetics import GeneticVariant
+
+    r1 = await auth_client.post(
+        "/genetics/save", data={"gene": "HFE", "rsid": "rs1800562", "genotype": "G/G"}
+    )
+    assert r1.status_code == 303
+    r2 = await auth_client.post(
+        "/genetics/save", data={"gene": "HFE", "rsid": "rs1800562", "genotype": "A/G"}
+    )
+    assert r2.status_code == 303
+
+    rows = (await db_session.execute(select(GeneticVariant))).scalars().all()
+    assert len(rows) == 1
+    assert rows[0].genotype == "A/G"
+
+
 async def test_edit_weight_entry(auth_client, db_session):
     from datetime import date
     from vitals.services import weight_service
@@ -668,13 +687,19 @@ async def test_mobile_navigation_rendering_auth(auth_client):
     assert "mobileMenuOpen" in response.text
 
 
-async def test_alert_deduplication_and_resolve_all(auth_client, db_session):
-    """Test that duplicate alerts (e.g. differing only by ё/о or case) are deduplicated,
-    resolving one resolves its duplicates, and resolve-all endpoint resolves active alerts."""
+async def test_alerts_with_same_text_are_distinct_and_resolve_all(auth_client, db_session):
+    """Regression (B1): alerts are identified by (alert_key, entity_ref), NOT by
+    message text. Two alerts for different entities that happen to share wording
+    are both kept, and resolving one must not silently resolve the other. The
+    old fuzzy message-text dedup collapsed them (and could even resolve an
+    unrelated alert in another domain that read the same). resolve-all still
+    clears everything."""
     from vitals.models.system_alert import SystemAlert
     from vitals.services import alerts_service
 
-    # Create duplicate alerts
+    # alert1 and alert2 are DIFFERENT alerts (different entity_ref = different lab
+    # markers/rows); their message text differs only by ё/о + case. They must
+    # NOT be treated as duplicates.
     alert1 = SystemAlert(
         domain="labs",
         severity="info",
@@ -706,40 +731,32 @@ async def test_alert_deduplication_and_resolve_all(auth_client, db_session):
     db_session.add_all([alert1, alert2, alert3, alert4])
     await db_session.commit()
 
-    # 1. Test deduplication in list_active
+    # 1. list_active returns every distinct (key, entity) — all three labs alerts,
+    #    including the two that share normalized text.
     active_labs = await alerts_service.list_active(db_session, domain="labs")
-    # alert1 and alert2 are duplicates (ё vs о, capitalization aside).
-    # So we should get alert3 and either alert1 or alert2. Total: 2 alerts.
-    assert len(active_labs) == 2
-    # Ensure messages are the distinct ones
-    messages = {a.message for a in active_labs}
-    assert len(messages) == 2
+    assert len(active_labs) == 3
+    assert {a.entity_ref for a in active_labs} == {"marker_1", "marker_2", "marker_3"}
 
-    # 2. Test that resolving one resolves its duplicates too
+    # 2. Resolving one alert resolves ONLY that alert — the text-twin stays active.
     await auth_client.post(f"/alerts/{alert1.id}/resolve")
-    # Verify both alert1 and alert2 are now resolved in database
     await db_session.refresh(alert1)
     await db_session.refresh(alert2)
-    assert alert1.resolved_at is not None
-    assert alert2.resolved_at is not None
-    # alert3 should still be unresolved
     await db_session.refresh(alert3)
+    assert alert1.resolved_at is not None
+    assert alert2.resolved_at is None, "text-twin in the same domain must stay active"
     assert alert3.resolved_at is None
 
-    # 3. Test resolve-all endpoint
-    # First, let's resolve all labs alerts
+    # 3. resolve-all by domain clears the rest of labs but leaves other domains.
     response = await auth_client.post("/alerts/resolve-all?domain=labs")
     assert response.status_code == 303
-    
-    # Verify alert3 is now resolved
+    await db_session.refresh(alert2)
     await db_session.refresh(alert3)
+    assert alert2.resolved_at is not None
     assert alert3.resolved_at is not None
-
-    # alert4 (domain weight) should still be unresolved
     await db_session.refresh(alert4)
     assert alert4.resolved_at is None
 
-    # Resolve all without domain
+    # 4. resolve-all without a domain clears everything.
     response = await auth_client.post("/alerts/resolve-all")
     assert response.status_code == 303
     await db_session.refresh(alert4)

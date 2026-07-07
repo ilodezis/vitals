@@ -163,30 +163,21 @@ async def raise_alert(
 
 
 async def resolve_alert(session: AsyncSession, alert_id: int) -> Optional[SystemAlert]:
-    """Mark a single alert (and any of its duplicates with the same normalized message)
-    resolved. Returns the target row, or None if it doesn't exist."""
+    """Mark exactly the one alert identified by ``alert_id`` resolved. Returns the
+    target row, or None if it doesn't exist.
+
+    Alert identity is ``(alert_key, entity_ref)`` — two rows that merely share
+    message text (e.g. the same templated message for two different lab markers,
+    or two conflict rules with identical wording) are distinct alerts and must
+    NOT be collapsed. Stale per-row duplicates from a re-imported source are
+    cleaned up structurally by :func:`resolve_superseded`, never by fuzzy text
+    matching (which previously could resolve an unrelated alert — even in another
+    domain — that happened to read the same)."""
     alert = await session.get(SystemAlert, alert_id)
     if alert is None:
         return None
     if alert.resolved_at is None:
-        now = now_local()
-        alert.resolved_at = now
-
-        # Also resolve active duplicates (same normalized message)
-        import re
-        target_norm = re.sub(r'\s+', ' ', alert.message.lower().replace("ё", "е")).strip()
-
-        stmt = select(SystemAlert).where(SystemAlert.resolved_at.is_(None))
-        result = await session.execute(stmt)
-        active_alerts = result.scalars().all()
-
-        for other in active_alerts:
-            if other.id == alert.id:
-                continue
-            other_norm = re.sub(r'\s+', ' ', other.message.lower().replace("ё", "е")).strip()
-            if other_norm == target_norm:
-                other.resolved_at = now
-
+        alert.resolved_at = now_local()
         await session.flush()
     return alert
 
@@ -231,24 +222,19 @@ async def resolve_all(session: AsyncSession, *, domain: Optional[str] = None) ->
 async def list_active(
     session: AsyncSession, *, domain: Optional[str] = None
 ) -> Sequence[SystemAlert]:
-    """Active (unresolved) alerts, newest first, optionally filtered by domain,
-    with duplicates (by normalized message) filtered out."""
+    """Active (unresolved) alerts, newest first, optionally filtered by domain.
+
+    The ``uq_active_alert_per_key_entity`` partial-unique index already guarantees
+    one active row per ``(alert_key, entity_ref)``, so there are no true duplicates
+    to filter — every active row is a distinct alert and is returned as-is. (The
+    old normalized-message dedup hid legitimately different alerts that shared
+    templated wording and made the result nondeterministic.)"""
     stmt = select(SystemAlert).where(SystemAlert.resolved_at.is_(None))
     if domain is not None:
         stmt = stmt.where(SystemAlert.domain == domain)
     stmt = stmt.order_by(SystemAlert.created_at.desc(), SystemAlert.id.desc())
     result = await session.execute(stmt)
-    alerts = result.scalars().all()
-
-    import re
-    seen = set()
-    deduped = []
-    for alert in alerts:
-        norm = re.sub(r'\s+', ' ', alert.message.lower().replace("ё", "е")).strip()
-        if norm not in seen:
-            seen.add(norm)
-            deduped.append(alert)
-    return deduped
+    return result.scalars().all()
 
 
 

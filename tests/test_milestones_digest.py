@@ -58,6 +58,7 @@ async def test_assemble_context_is_robust_when_empty(db_session):
     assert ctx["hevy"]["total_workouts"] == 0
     assert ctx["labs"]["out_of_range"] == []
     assert ctx["milestones"] == []
+    assert ctx["body_comp"] is None
 
 
 async def test_assemble_context_pulls_each_domain(db_session):
@@ -80,6 +81,47 @@ async def test_assemble_context_pulls_each_domain(db_session):
     assert ctx["garmin"]["total_days_logged"] == 1
     assert ctx["labs"]["out_of_range"][0]["marker"] == "TSH"
     assert ctx["labs"]["out_of_range"][0]["date"] == (DAY - timedelta(days=10)).isoformat()
+
+
+async def test_assemble_context_includes_body_comp(db_session):
+    """B3: the weekly digest must see the latest BIA/InBody scan (headline metrics
+    + derived LBM) — previously body composition was absent from the analysis."""
+    from vitals.models.body_scan import BodyScan, BodyScanMetric
+
+    scan = BodyScan(
+        date=DAY - timedelta(days=2), domain="body_comp", source="body_scan", device="InBody 770"
+    )
+    db_session.add(scan)
+    await db_session.flush()
+    db_session.add_all(
+        [
+            BodyScanMetric(
+                scan_id=scan.id, metric_key="body_fat_pct", label="PBF",
+                value=18.0, unit="%", category="composition",
+            ),
+            BodyScanMetric(
+                scan_id=scan.id, metric_key="skeletal_muscle_mass", label="SMM",
+                value=41.5, unit="кг", category="composition",
+            ),
+            BodyScanMetric(
+                scan_id=scan.id, metric_key="phase_angle", label="Phase Angle",
+                value=6.2, unit="", category="score",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    ctx = await digest_service.assemble_context(db_session, on_date=DAY)
+    bc = ctx["body_comp"]
+    assert bc is not None
+    assert bc["date"] == (DAY - timedelta(days=2)).isoformat()
+    assert bc["device"] == "InBody 770"
+    assert bc["metrics"]["body_fat_pct"]["value"] == 18.0
+    assert bc["metrics"]["skeletal_muscle_mass"]["value"] == 41.5
+    assert bc["metrics"]["phase_angle"]["value"] == 6.2
+    # LBM is derived from weight+bf% when no explicit lean metric is present; here
+    # there's no weight metric on the scan, so it's simply absent (not invented).
+    assert "lean_body_mass" not in bc["metrics"]
 
 
 async def test_assemble_context_with_custom_period_days(db_session):
