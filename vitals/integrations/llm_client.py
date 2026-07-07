@@ -33,6 +33,12 @@ class LLMNotConfigured(RuntimeError):
     """Raised when a call is attempted without ``VITALS_OPENROUTER_API_KEY``."""
 
 
+class LLMEmptyResponse(RuntimeError):
+    """Raised when the upstream returns a 200 with a blank completion — no
+    exception, just nothing to show (observed as an intermittent OpenRouter/
+    provider hiccup, not tied to any one model)."""
+
+
 class LLMClient:
     def __init__(self, config: Optional[Config] = None):
         self._config = config or load_config()

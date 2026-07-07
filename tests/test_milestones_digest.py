@@ -186,6 +186,58 @@ async def test_generate_digest_persists_narrative_and_context(db_session):
     assert len(stored) == 1
 
 
+class FakeBlankLLM:
+    """Always returns a blank completion — mirrors the observed prod failure
+    (200 OK, no exception, just an empty message)."""
+
+    digest_model = "fake/model"
+
+    def __init__(self):
+        self.calls = 0
+
+    async def complete_text(self, prompt, *, system=None, max_tokens=None, **kw):
+        self.calls += 1
+        return ""
+
+
+class FakeFlakyLLM:
+    """Blank on the first call, real content on the second — the one-retry-clears-it
+    case."""
+
+    digest_model = "fake/model"
+
+    def __init__(self):
+        self.calls = 0
+
+    async def complete_text(self, prompt, *, system=None, max_tokens=None, **kw):
+        self.calls += 1
+        if self.calls == 1:
+            return ""
+        return "Восстановилось со второй попытки."
+
+
+async def test_generate_digest_raises_and_persists_nothing_when_llm_stays_blank(db_session):
+    from vitals.integrations.llm_client import LLMEmptyResponse
+    import pytest
+
+    llm = FakeBlankLLM()
+    with pytest.raises(LLMEmptyResponse):
+        await digest_service.generate_digest(db_session, llm, on_date=DAY)
+
+    assert llm.calls == 2  # one retry, then give up
+    stored = (await db_session.execute(select(WeeklyDigest))).scalars().all()
+    assert len(stored) == 0
+
+
+async def test_generate_digest_retries_once_and_recovers_from_a_blank_response(db_session):
+    llm = FakeFlakyLLM()
+    row = await digest_service.generate_digest(db_session, llm, on_date=DAY)
+    await db_session.commit()
+
+    assert llm.calls == 2
+    assert row.content == "Восстановилось со второй попытки."
+
+
 async def test_assemble_context_includes_intersecting_noise_markers(db_session):
     # Add noise markers: some overlapping, some not.
     # DAY is 2026-06-10. 7-day period is [2026-06-04, 2026-06-10]

@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.enums import Source
+from vitals.integrations.llm_client import LLMEmptyResponse
 from vitals.models.milestones import DOMAIN, WeeklyDigest
 from vitals.utils.timeutils import today_local
 
@@ -331,14 +332,23 @@ async def generate_digest(
     source: str = Source.MANUAL.value,
 ) -> WeeklyDigest:
     """Assemble context, get the narrative from the LLM, and persist the digest.
-    Raises whatever the LLM client raises (e.g. ``LLMNotConfigured``). No commit."""
+    Raises whatever the LLM client raises (e.g. ``LLMNotConfigured``), or
+    ``LLMEmptyResponse`` if the model comes back blank twice in a row. No commit."""
     from vitals.i18n import current_lang
     lang = current_lang.get()
 
     context = await assemble_context(session, on_date=on_date, period_days=period_days)
     prompt = build_prompt(context, lang=lang)
     system = DIGEST_SYSTEM_EN if lang == "en" else DIGEST_SYSTEM
+
     content = await llm.complete_text(prompt, system=system, max_tokens=3000)
+    if not content:
+        # Seen in prod: the upstream occasionally returns a blank message with no
+        # error at all. One retry clears it in practice; if it's still empty,
+        # fail loudly instead of silently persisting nothing.
+        content = await llm.complete_text(prompt, system=system, max_tokens=3000)
+    if not content:
+        raise LLMEmptyResponse("LLM returned an empty digest narrative twice in a row")
 
     row = WeeklyDigest(
         date=on_date or today_local(),
