@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from urllib.parse import urlencode
 
 from fastapi import Depends, FastAPI, Request, status
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
@@ -28,7 +29,7 @@ from web.deps import (
     load_ui_version,
     require_module,
 )
-from web.templating import STATIC_DIR
+from web.templating import STATIC_DIR, templates
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +123,39 @@ async def auth_exception_handler(request: Request, exc: NotAuthenticated):
         return RedirectResponse(url=login_url, status_code=status.HTTP_302_FOUND)
 
     return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Not authenticated"})
+
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Render a branded 404 page for browser navigations and keep JSON 404s for API/HTMX."""
+    if exc.status_code != status.HTTP_404_NOT_FOUND:
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+    accept = request.headers.get("accept", "")
+    is_html = "text/html" in accept
+    is_htmx = request.headers.get("hx-request", "").lower() == "true"
+    if request.method == "GET" and is_html and not is_htmx:
+        username = None
+        try:
+            from web.auth import read_session
+            from web.config import SESSION_COOKIE
+
+            username = read_session(request.cookies.get(SESSION_COOKIE))
+        except Exception:
+            logger.exception("Could not resolve user for 404 page")
+        return templates.TemplateResponse(
+            "404.html",
+            {
+                "request": request,
+                "username": username,
+                "alerts": [],
+                "requested_path": request.url.path,
+            },
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+    return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"detail": exc.detail})
 
 
 @app.exception_handler(ModuleDisabled)
