@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vitals-os-v4';
+const CACHE_NAME = 'vitals-os-v6';
 
 const OFFLINE_PAGE = '/static/offline.html';
 

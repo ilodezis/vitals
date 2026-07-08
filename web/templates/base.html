@@ -20,7 +20,13 @@
     <meta name="theme-color" content="#1D1A21">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- "black" (not "black-translucent"): with translucent, iOS standalone sizes the
+         webview as screen-minus-status-bar (812 of 874 on iPhone 16 Pro) yet renders it
+         from the very top, so the missing 62px surface as an unpaintable OS-drawn black
+         band BELOW the bottom nav. Opaque "black" puts the webview under the status bar
+         and flush with the physical bottom edge; env(safe-area-inset-*) paddings adapt
+         on their own (top inset becomes 0, bottom home-indicator inset stays). -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Vitals">
     <link rel="manifest" href="/static/manifest.webmanifest">
     <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">

@@ -301,24 +301,24 @@ html {
        scrolling the WHOLE page up when the keyboard opens over a focused input.
        On iOS, overflow:hidden on body/html does NOT prevent that root-level
        focus-scroll; pinning the shell removes any scrollable document for the
-       browser to move, so only the inner <main> scrolls (native-app feel) and the
-       header/bottom-nav never drift. This does NOT trap the modal overlays' own
-       position:fixed — a plain fixed ancestor isn't a containing block for fixed
-       descendants (only transform/filter/will-change/contain are), so .v-backdrop
-       still resolves against the viewport.
+       browser to move, so only the inner <main> scrolls (native-app feel). This
+       does NOT trap the modal overlays' own position:fixed — a plain fixed ancestor
+       isn't a containing block for fixed descendants (only transform/filter/
+       will-change/contain are), so .v-backdrop still resolves against the viewport.
 
-       Pinned with top/right/bottom/left:0 (i.e. inset:0), NOT height:innerHeight.
-       Sizing the shell to a JS-measured window.innerHeight left it SHORTER than the
-       real layout viewport (innerHeight lags the true visible height in an iOS PWA),
-       so the in-flow bottom nav ended up floating above the screen bottom with a gap
-       beneath it. Anchoring both edges to the viewport removes the guesswork: the
-       nav sits on the true bottom, its own safe-area padding clearing the home
-       indicator. */
+       Sized with 100dvh + overflow:hidden so the shell tracks the visible viewport
+       and the in-flow bottom nav sits at its foot. NOTE: the "bottom nav floats
+       ~62px above the physical screen bottom" bug in the iOS standalone PWA was NOT
+       a shell-sizing problem — do not chase it here. It was the status-bar style:
+       with apple-mobile-web-app-status-bar-style "black-translucent" iOS pinned the
+       812px webview to the top and drew a 62px band below it; switching to "black"
+       (see base.html) seats the webview flush with the physical bottom. */
     position: fixed;
     top: 0;
-    right: 0;
-    bottom: 0;
     left: 0;
+    right: 0;
+    height: 100dvh;
+    overflow: hidden;
     overscroll-behavior: none;
 }
 
@@ -1821,10 +1821,10 @@ sup {
     transform: translateY(0);
 }
 
-/* ── Mobile bottom nav — in-flow flex child (PWA safe, no fixed positioning) ──
-   Using position:fixed caused the nav to drift in iOS PWA mode when body has
-   overflow:hidden. As a flex-shrink:0 child of the flex-col body it always sits
-   at the true viewport bottom without relying on fixed positioning. */
+/* ── Mobile bottom nav — in-flow flex child at the foot of the app shell ──
+   A plain flex-shrink:0 child (not position:fixed): as the last child of the
+   100dvh shell it sits at the true viewport bottom without fixed-positioning
+   tricks. Its inline safe-area padding-bottom clears the home indicator. */
 .v-bottom-nav {
     flex-shrink: 0;
     z-index: 40;
