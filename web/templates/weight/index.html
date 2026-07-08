@@ -79,7 +79,22 @@
             {% endif %}
         </div>
         <div class="h-[320px] w-full relative">
+            {% if weights %}
             <canvas id="weightChart"></canvas>
+            {% else %}
+            <!-- Empty state with a CTA (U8) — parity with Garmin/Hevy; jumps to the
+                 log form that already lives lower on this page. -->
+            <div class="v-empty-state h-full">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+                </svg>
+                <p>{{ t("weight.empty_hint") }}</p>
+                <button type="button" class="v-btn"
+                    @click="activeTab = 'log'; $nextTick(() => document.getElementById('form-log').scrollIntoView({ behavior: 'smooth', block: 'center' }))">
+                    {{ t("weight.empty_cta") }}
+                </button>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -299,7 +314,7 @@
                         {% endif %}
                     </li>
                     {% else %}
-                    <li class="text-center pt-2" style="color: var(--faint)">{{ t("weight.no_exclusions") }}</li>
+                    <li class="text-center pt-2" style="color: var(--muted)">{{ t("weight.no_exclusions") }}</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -318,7 +333,7 @@
                         <div class="v-text-micro v-num">{{ p.date | format_date }}</div>
                     </div>
                     {% else %}
-                    <div class="text-xs text-center w-full pt-4" style="color: var(--faint)">{{ t("weight.no_photos") }}
+                    <div class="text-xs text-center w-full pt-4" style="color: var(--muted)">{{ t("weight.no_photos") }}
                     </div>
                     {% endfor %}
                 </div>
@@ -419,7 +434,7 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="5" class="text-center" style="color: var(--faint)">{{
+                                    <td colspan="5" class="text-center" style="color: var(--muted)">{{
                                         t("common.no_records") }}</td>
                                 </tr>
                                 {% endfor %}
@@ -571,7 +586,7 @@
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="7" class="text-center" style="color: var(--faint)">{{ t("common.no_data")
+                                <td colspan="7" class="text-center" style="color: var(--muted)">{{ t("common.no_data")
                                     }}</td>
                             </tr>
                             {% endfor %}

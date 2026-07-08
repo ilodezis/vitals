@@ -104,7 +104,7 @@
                 {% if latest and latest.training_readiness is not none %}
                 <span class="v-metric-value">{{ latest.training_readiness }}</span>
                 {% else %}
-                <span class="v-metric-value" style="color: var(--faint)">—</span>
+                <span class="v-metric-value" style="color: var(--muted)">—</span>
                 {% endif %}
             </div>
             {% if not latest or latest.training_readiness is none %}<span class="v-text-micro">{{ t("garmin.no_readiness") }}</span>{% endif %}
@@ -170,7 +170,7 @@
                             <td class="v-num text-right">{{ d.steps | format_number if d.steps is not none else '—' }}</td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="7" class="text-center" style="color: var(--faint)">{{ t("garmin.no_history") }}</td></tr>
+                        <tr><td colspan="7" class="text-center" style="color: var(--muted)">{{ t("garmin.no_history") }}</td></tr>
                         {% endfor %}
                     </tbody>
                     </table>
@@ -199,7 +199,7 @@
                         </div>
                     </li>
                     {% else %}
-                    <li class="text-center pt-2" style="color: var(--faint)">{{ t("garmin.no_activities") }}</li>
+                    <li class="text-center pt-2" style="color: var(--muted)">{{ t("garmin.no_activities") }}</li>
                     {% endfor %}
                 </ul>
             </div>

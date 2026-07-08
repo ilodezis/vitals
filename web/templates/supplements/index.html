@@ -51,7 +51,7 @@
         {% endif %}
         {% if s.note %}
         <div class="v-text-body flex items-start gap-2.5 px-1 leading-relaxed" style="color: var(--muted)">
-            <svg class="h-4 w-4 shrink-0 mt-0.5" style="color: var(--faint)" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            <svg class="h-4 w-4 shrink-0 mt-0.5" style="color: var(--muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             <span>{{ s.note }}</span>
         </div>
         {% endif %}
@@ -114,7 +114,7 @@
                     {{ supplement_card(s) }}
                 {% endfor %}
                 {% if count.value == 0 %}
-                    <div class="md:col-span-2 lg:col-span-3 rounded-xl py-5 text-center v-text-label" style="border: 1px dashed var(--line); color: var(--faint)">
+                    <div class="md:col-span-2 lg:col-span-3 rounded-xl py-5 text-center v-text-label" style="border: 1px dashed var(--line); color: var(--muted)">
                         {{ t("supplements.no_active") }}
                     </div>
                 {% endif %}

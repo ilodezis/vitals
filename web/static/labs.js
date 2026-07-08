@@ -7,6 +7,7 @@ function initLabChart() {
     const canvas = document.getElementById('labChart');
     if (!canvas) return;
 
+    const C = (window.vitalsChartTheme && window.vitalsChartTheme()) || {};
     const data = (window.labChartData && window.labChartData.points) || [];
     const labels = data.map(p => p.date);
     const values = data.map(p => p.value);
@@ -17,7 +18,7 @@ function initLabChart() {
     const pointColors = data.map(p => {
         const lo = p.ref_low, hi = p.ref_high;
         const bad = (lo != null && p.value < lo) || (hi != null && p.value > hi);
-        return bad ? '#E5484D' : '#FBB54C';
+        return bad ? C.bad : C.accent2;
     });
 
     if (window.labsChartInstance) {
@@ -31,8 +32,8 @@ function initLabChart() {
                 {
                     label: window.t('chart.value'),
                     data: values,
-                    borderColor: '#F5A623',
-                    backgroundColor: 'rgba(245, 166, 35, 0.08)',
+                    borderColor: C.accent,
+                    backgroundColor: C.accentSoft,
                     borderWidth: 2,
                     pointRadius: 4,
                     pointHoverRadius: 6,
@@ -69,29 +70,29 @@ function initLabChart() {
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: { color: '#A39AB0', font: { family: 'Inter', size: 10 }, boxWidth: 12 }
+                    labels: { color: C.muted, font: { family: 'Inter', size: 10 }, boxWidth: 12 }
                 },
                 tooltip: {
-                    backgroundColor: '#2C2933',
-                    borderColor: '#4B4555',
+                    backgroundColor: C.surface,
+                    borderColor: C.line2,
                     borderWidth: 1,
-                    titleColor: '#FBB54C',
+                    titleColor: C.accent2,
                     titleFont: { family: 'Inter', size: 11 },
-                    bodyColor: '#F3F0F6',
+                    bodyColor: C.fg,
                     bodyFont: { family: 'Inter', size: 10 },
                     padding: 8
                 }
             },
             scales: {
                 x: {
-                    grid: { color: 'rgba(163, 154, 176, 0.08)', drawTicks: false },
-                    border: { color: 'rgba(163, 154, 176, 0.16)' },
-                    ticks: { color: '#A39AB0', maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { family: 'Inter', size: 9 } }
+                    grid: { color: C.grid, drawTicks: false },
+                    border: { color: C.axisLine },
+                    ticks: { color: C.muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { family: 'Inter', size: 9 } }
                 },
                 y: {
-                    grid: { color: 'rgba(163, 154, 176, 0.08)', drawTicks: false },
-                    border: { color: 'rgba(163, 154, 176, 0.16)' },
-                    ticks: { color: '#A39AB0', font: { family: 'Inter', size: 9 } }
+                    grid: { color: C.grid, drawTicks: false },
+                    border: { color: C.axisLine },
+                    ticks: { color: C.muted, font: { family: 'Inter', size: 9 } }
                 }
             }
         }

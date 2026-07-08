@@ -52,7 +52,7 @@
     </form>
 
     {% if not ordered_categories %}
-    <div class="v-card p-8 text-center v-text-body" style="color: var(--faint)">{{ t("interactions.no_rules") }}</div>
+    <div class="v-card p-8 text-center v-text-body" style="color: var(--muted)">{{ t("interactions.no_rules") }}</div>
     {% endif %}
 
     {% for category in ordered_categories %}
@@ -98,7 +98,7 @@
                 </div>
 
                 {% if r.source %}
-                <p class="v-text-micro" style="color: var(--faint)"><span class="font-semibold">{{ t("interactions.source_label") }}:</span> {{ r.source }}</p>
+                <p class="v-text-micro" style="color: var(--muted)"><span class="font-semibold">{{ t("interactions.source_label") }}:</span> {{ r.source }}</p>
                 {% endif %}
             </div>
             {% endfor %}

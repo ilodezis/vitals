@@ -21,6 +21,8 @@ function initHevyChart() {
     const data = (window.hevyChartData && window.hevyChartData.points) || [];
     if (data.length < 2) return;
 
+    const C = (window.vitalsChartTheme && window.vitalsChartTheme()) || {};
+
     const labels = data.map(p => formatDateStr(p.date));
     const weights = data.map(p => p.weight_kg);
     const reps = data.map(p => p.top_reps);
@@ -35,12 +37,12 @@ function initHevyChart() {
             datasets: [{
                 label: window.t('chart.working_weight'),
                 data: weights,
-                borderColor: '#F5A623',
-                backgroundColor: 'rgba(245, 166, 35, 0.08)',
+                borderColor: C.accent,
+                backgroundColor: C.accentSoft,
                 borderWidth: 2,
                 pointRadius: 4,
                 pointHoverRadius: 6,
-                pointBackgroundColor: '#FBB54C',
+                pointBackgroundColor: C.accent2,
                 tension: 0.15,
                 fill: true,
                 spanGaps: true
@@ -54,15 +56,15 @@ function initHevyChart() {
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: { color: '#A39AB0', font: { family: 'Inter', size: 10 }, boxWidth: 12 }
+                    labels: { color: C.muted, font: { family: 'Inter', size: 10 }, boxWidth: 12 }
                 },
                 tooltip: {
-                    backgroundColor: '#2C2933',
-                    borderColor: '#4B4555',
+                    backgroundColor: C.surface,
+                    borderColor: C.line2,
                     borderWidth: 1,
-                    titleColor: '#FBB54C',
+                    titleColor: C.accent2,
                     titleFont: { family: 'Inter', size: 11 },
-                    bodyColor: '#F3F0F6',
+                    bodyColor: C.fg,
                     bodyFont: { family: 'Inter', size: 10 },
                     padding: 8,
                     callbacks: {
@@ -75,14 +77,14 @@ function initHevyChart() {
             },
             scales: {
                 x: {
-                    grid: { color: 'rgba(163, 154, 176, 0.08)', drawTicks: false },
-                    border: { color: 'rgba(163, 154, 176, 0.16)' },
-                    ticks: { color: '#A39AB0', maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { family: 'Inter', size: 9 } }
+                    grid: { color: C.grid, drawTicks: false },
+                    border: { color: C.axisLine },
+                    ticks: { color: C.muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { family: 'Inter', size: 9 } }
                 },
                 y: {
-                    grid: { color: 'rgba(163, 154, 176, 0.08)', drawTicks: false },
-                    border: { color: 'rgba(163, 154, 176, 0.16)' },
-                    ticks: { color: '#A39AB0', font: { family: 'Inter', size: 9 } }
+                    grid: { color: C.grid, drawTicks: false },
+                    border: { color: C.axisLine },
+                    ticks: { color: C.muted, font: { family: 'Inter', size: 9 } }
                 }
             }
         }

@@ -13,11 +13,11 @@
                     <li class="pl-3 py-1.5 rounded-r-lg" style="border-left: 2px solid var(--bad); background: var(--bad-soft)">
                         <p class="v-text-body" style="color: var(--bad)" x-text="v.message"></p>
                         <div class="flex flex-wrap items-center gap-x-2">
-                            <span class="v-text-micro font-semibold" style="color: var(--faint)" x-text="'{{ t("conflict.domains_prefix") }}' + v.domain_a + ' ↔ ' + v.domain_b"></span>
-                            <template x-if="v.category"><span class="v-text-micro" style="color: var(--faint)" x-text="v.category"></span></template>
-                            <template x-if="v.evidence"><span class="v-text-micro font-semibold" style="color: var(--faint)" x-text="'{{ t("interactions.evidence_label") }}' + ' ' + v.evidence"></span></template>
+                            <span class="v-text-micro font-semibold" style="color: var(--muted)" x-text="'{{ t("conflict.domains_prefix") }}' + v.domain_a + ' ↔ ' + v.domain_b"></span>
+                            <template x-if="v.category"><span class="v-text-micro" style="color: var(--muted)" x-text="v.category"></span></template>
+                            <template x-if="v.evidence"><span class="v-text-micro font-semibold" style="color: var(--muted)" x-text="'{{ t("interactions.evidence_label") }}' + ' ' + v.evidence"></span></template>
                         </div>
-                        <template x-if="v.source"><p class="v-text-micro mt-0.5" style="color: var(--faint)" x-text="v.source"></p></template>
+                        <template x-if="v.source"><p class="v-text-micro mt-0.5" style="color: var(--muted)" x-text="v.source"></p></template>
                     </li>
                 </template>
             </ul>

@@ -279,6 +279,7 @@ function initWeightChart() {
     const canvas = document.getElementById('weightChart');
     if (!canvas) return;
 
+    const C = (window.vitalsChartTheme && window.vitalsChartTheme()) || {};
     const data = window.vitalsChartData || { raw: [], trend_ma: [], lbm: [], noise: [], phases: [], bia: null };
 
     // BIA (InBody/МедАсс) overlay — a second LBM source shown alongside Navy.
@@ -405,8 +406,11 @@ function initWeightChart() {
                     display: true,
                     content: content,
                     position: { x: 'center', y: 'start' },
+                    // The first band hugs the left edge; nudge its label inward so a
+                    // narrow first phase doesn't clip the drug name (U15).
+                    xAdjust: idx === 0 ? 22 : 0,
                     yAdjust: 6,
-                    color: '#F5A623',
+                    color: C.accent,
                     backgroundColor: 'rgba(27, 25, 32, 0.85)',
                     padding: 3,
                     font: { family: 'Inter', size: 9, weight: 'bold' }
@@ -426,7 +430,7 @@ function initWeightChart() {
                 {
                     label: window.t('chart.trend_ma'),
                     data: trendData,
-                    borderColor: '#F5A623',
+                    borderColor: C.accent,
                     backgroundColor: 'transparent',
                     borderWidth: 2,
                     pointRadius: 0,
@@ -447,7 +451,7 @@ function initWeightChart() {
                 {
                     label: window.t('chart.lbm'),
                     data: lbmData,
-                    borderColor: '#A39AB0',
+                    borderColor: C.muted,
                     borderDash: [4, 4],
                     backgroundColor: 'transparent',
                     borderWidth: 1.5,
@@ -460,8 +464,8 @@ function initWeightChart() {
                 {
                     label: window.t('chart.bia_lbm'),
                     data: biaLbmData,
-                    borderColor: '#5BC8B8',
-                    backgroundColor: '#5BC8B8',
+                    borderColor: C.cool,
+                    backgroundColor: C.cool,
                     borderWidth: 1.5,
                     pointRadius: 3,
                     pointHoverRadius: 5,
@@ -479,7 +483,9 @@ function initWeightChart() {
             maintainAspectRatio: false,
             devicePixelRatio: window.devicePixelRatio || 2,
             layout: {
-                padding: { top: 18, bottom: 14, right: 8 }
+                // Symmetric left/right padding (U15): gives the first GLP-1 phase
+                // label room so a multi-word drug name isn't clipped at the left edge.
+                padding: { top: 18, bottom: 14, left: 8, right: 8 }
             },
             interaction: {
                 mode: 'index',
@@ -489,7 +495,7 @@ function initWeightChart() {
                 legend: {
                     position: 'bottom',
                     labels: {
-                        color: '#A39AB0',
+                        color: C.muted,
                         font: {
                             family: 'Inter',
                             size: 10
@@ -498,15 +504,15 @@ function initWeightChart() {
                     }
                 },
                 tooltip: {
-                    backgroundColor: '#332F3C',
-                    borderColor: '#564E63',
+                    backgroundColor: C.surface,
+                    borderColor: C.line2,
                     borderWidth: 1,
-                    titleColor: '#FBB54C',
+                    titleColor: C.accent2,
                     titleFont: {
                         family: 'Inter',
                         size: 11
                     },
-                    bodyColor: '#F3F0F6',
+                    bodyColor: C.fg,
                     bodyFont: {
                         family: 'Inter',
                         size: 10
@@ -521,14 +527,14 @@ function initWeightChart() {
             scales: {
                 x: {
                     grid: {
-                        color: 'rgba(163, 154, 176, 0.08)',
+                        color: C.grid,
                         drawTicks: false
                     },
                     border: {
-                        color: 'rgba(163, 154, 176, 0.16)'
+                        color: C.axisLine
                     },
                     ticks: {
-                        color: '#A39AB0',
+                        color: C.muted,
                         maxRotation: 0,
                         autoSkip: true,
                         maxTicksLimit: 8,
@@ -540,14 +546,14 @@ function initWeightChart() {
                 },
                 y: {
                     grid: {
-                        color: 'rgba(163, 154, 176, 0.08)',
+                        color: C.grid,
                         drawTicks: false
                     },
                     border: {
-                        color: 'rgba(163, 154, 176, 0.16)'
+                        color: C.axisLine
                     },
                     ticks: {
-                        color: '#A39AB0',
+                        color: C.muted,
                         font: {
                             family: 'Inter',
                             size: 9

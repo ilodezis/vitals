@@ -1262,17 +1262,17 @@ html {
     }
 
     .v-metric-label {
-        font-size: 11px;
+        font-size: var(--text-micro);
     }
 
     .v-metric-unit {
-        font-size: 10px;
+        font-size: var(--text-micro);
     }
 
     /* ── Tables — tighter cells ── */
     .v-table thead th {
         padding: var(--space-1) var(--space-2);
-        font-size: 11px;
+        font-size: var(--text-micro);
     }
 
     .v-table tbody td {
@@ -1584,7 +1584,9 @@ html {
     justify-content: center;
     gap: 0.6rem;
     padding: 2rem 1rem;
-    color: var(--faint);
+    /* --muted, not --faint: faint (#8C829C) on a --surface card is ~3.6:1, below
+       WCAG AA. muted clears 4.5:1 on every app surface (U13). */
+    color: var(--muted);
     text-align: center;
     width: 100%;
 }
@@ -1841,7 +1843,7 @@ sup {
     }
 
     .v-metric-label {
-        font-size: 10px;
+        font-size: var(--text-micro);
     }
 
     .v-seg {
@@ -1851,7 +1853,7 @@ sup {
 
     .v-seg-btn {
         padding: 0.5rem 0.5rem;
-        font-size: 11px;
+        font-size: var(--text-micro);
     }
 
     .v-text-heading {

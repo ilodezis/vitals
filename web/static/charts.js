@@ -12,11 +12,6 @@
  * own first value (100 = start) and shares one axis instead — a more honest
  * comparison than stacking independently-scaled axes.
  */
-const VITALS_CHART_PALETTE = [
-    '#3987e5', '#199e70', '#c98500', '#008300',
-    '#9085e9', '#e66767', '#d55181', '#d95926',
-];
-
 function vitalsFormatDateStr(dateStr) {
     if (!dateStr) return '';
     const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -27,6 +22,12 @@ function vitalsFormatDateStr(dateStr) {
 function renderCustomChart(canvasId, config) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
+
+    const C = (window.vitalsChartTheme && window.vitalsChartTheme()) || {};
+    // Multi-series categorical palette, drawn from the design tokens. Ordered so
+    // consecutive series land on well-separated hues (amber → teal → green →
+    // violet …) before the warmer tones repeat.
+    const palette = [C.accent, C.cool, C.good, C.violet, C.bad, C.warn, C.accent2, C.muted];
 
     const series = (config && config.series) || [];
     const normalize = !!(config && config.normalize);
@@ -51,7 +52,7 @@ function renderCustomChart(canvasId, config) {
             const base = data.find(v => v != null && v !== 0);
             data = base == null ? data : data.map(v => (v == null ? null : (100 * v) / base));
         }
-        const color = VITALS_CHART_PALETTE[(s.color_slot || 0) % VITALS_CHART_PALETTE.length];
+        const color = palette[(s.color_slot || 0) % palette.length];
         return {
             label: s.label,
             data,
@@ -66,21 +67,21 @@ function renderCustomChart(canvasId, config) {
         };
     });
 
-    const axisTick = { color: '#A39AB0', font: { family: 'Inter', size: 9 } };
+    const axisTick = { color: C.muted, font: { family: 'Inter', size: 9 } };
     const scales = {
         x: {
-            grid: { color: 'rgba(163, 154, 176, 0.08)', drawTicks: false },
-            border: { color: 'rgba(163, 154, 176, 0.16)' },
-            ticks: { color: '#A39AB0', maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { family: 'Inter', size: 9 } },
+            grid: { color: C.grid, drawTicks: false },
+            border: { color: C.axisLine },
+            ticks: { color: C.muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { family: 'Inter', size: 9 } },
         },
     };
     if (normalize) {
         scales.y_norm = {
             position: 'left',
-            grid: { color: 'rgba(163, 154, 176, 0.08)', drawTicks: false },
-            border: { color: 'rgba(163, 154, 176, 0.16)' },
+            grid: { color: C.grid, drawTicks: false },
+            border: { color: C.axisLine },
             ticks: axisTick,
-            title: { display: true, text: (window.t ? window.t('chart.normalized_axis') : '= 100 at start'), color: '#A39AB0', font: { family: 'Inter', size: 9 } },
+            title: { display: true, text: (window.t ? window.t('chart.normalized_axis') : '= 100 at start'), color: C.muted, font: { family: 'Inter', size: 9 } },
         };
     } else {
         let idx = 0;
@@ -88,10 +89,10 @@ function renderCustomChart(canvasId, config) {
             scales[axisId] = {
                 position: idx % 2 === 0 ? 'left' : 'right',
                 display: idx < 2,
-                grid: { display: idx === 0, color: 'rgba(163, 154, 176, 0.08)', drawTicks: false },
-                border: { color: 'rgba(163, 154, 176, 0.16)' },
+                grid: { display: idx === 0, color: C.grid, drawTicks: false },
+                border: { color: C.axisLine },
                 ticks: axisTick,
-                title: { display: idx < 2, text: unit, color: '#A39AB0', font: { family: 'Inter', size: 9 } },
+                title: { display: idx < 2, text: unit, color: C.muted, font: { family: 'Inter', size: 9 } },
             };
             idx += 1;
         });
@@ -107,11 +108,11 @@ function renderCustomChart(canvasId, config) {
             devicePixelRatio: window.devicePixelRatio || 2,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { position: 'bottom', labels: { color: '#A39AB0', font: { family: 'Inter', size: 10 }, boxWidth: 12 } },
+                legend: { position: 'bottom', labels: { color: C.muted, font: { family: 'Inter', size: 10 }, boxWidth: 12 } },
                 tooltip: {
-                    backgroundColor: '#2C2933', borderColor: '#4B4555', borderWidth: 1,
-                    titleColor: '#FBB54C', titleFont: { family: 'Inter', size: 11 },
-                    bodyColor: '#F3F0F6', bodyFont: { family: 'Inter', size: 10 }, padding: 8,
+                    backgroundColor: C.surface, borderColor: C.line2, borderWidth: 1,
+                    titleColor: C.accent2, titleFont: { family: 'Inter', size: 11 },
+                    bodyColor: C.fg, bodyFont: { family: 'Inter', size: 10 }, padding: 8,
                 },
             },
             scales,

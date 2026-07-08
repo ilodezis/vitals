@@ -16,7 +16,6 @@
         <div class="flex items-start gap-3.5">
             <span class="v-bar mt-1"></span>
             <div class="space-y-2">
-                <span class="v-tag muted">{{ t("charts.page_title") }}</span>
                 <h1 class="v-text-heading">{{ t("charts.page_title") }}</h1>
             </div>
         </div>
@@ -56,7 +55,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="v-card p-6 text-center" style="color: var(--faint)">{{ t("charts.no_charts") }}</div>
+    <div class="v-card p-6 text-center" style="color: var(--muted)">{{ t("charts.no_charts") }}</div>
     {% endif %}
 
     <!-- Builder -->

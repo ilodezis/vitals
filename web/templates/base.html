@@ -55,6 +55,37 @@
         window.__LANG__ = "{{ request.state.lang|default('en') }}";
         window.t = function (key) { return window.__STRINGS__[key] || key; };
     </script>
+    <!-- Chart palette bridge (U7): a <canvas> can't resolve CSS var(), so expose the
+         design-system tokens — read from :root at call time, after the stylesheet is
+         applied — as resolved values every chart script shares. One source of truth,
+         so app.js / labs.js / hevy.js / charts.js never drift from the palette. -->
+    <script>
+        window.vitalsChartTheme = function () {
+            var cs = getComputedStyle(document.documentElement);
+            var v = function (name, fallback) {
+                var val = cs.getPropertyValue(name);
+                return (val && val.trim()) || fallback;
+            };
+            return {
+                accent: v('--accent', '#F5A623'),
+                accent2: v('--accent-2', '#FFC25A'),
+                good: v('--good', '#6FC58E'),
+                bad: v('--bad', '#E87056'),
+                cool: v('--cool', '#6FB6C9'),
+                violet: v('--violet', '#B093D6'),
+                warn: v('--warn', '#F0B24A'),
+                fg: v('--fg', '#F3F0F6'),
+                muted: v('--muted', '#A39AB0'),
+                surface: v('--surface', '#332F3C'),
+                line2: v('--line-2', '#564E63'),
+                // Alpha-derived fills/gridlines have no exact token; shared here so
+                // every chart uses the same subtle values.
+                accentSoft: 'rgba(245, 166, 35, 0.08)',
+                grid: 'rgba(163, 154, 176, 0.08)',
+                axisLine: 'rgba(163, 154, 176, 0.16)'
+            };
+        };
+    </script>
     <!-- Alpine — lives in <head> (not a page script) with `defer` so it survives boosted
          navigations: hx-boost only swaps <body> innerHTML, so anything inside <body> gets
          torn down and re-run on every navigation. That re-execution used to start a brand
@@ -284,9 +315,12 @@
     {% endif %}
 
     {% if username %}
-    <!-- Mobile Bottom Navigation -->
-    <nav class="md:hidden v-bottom-nav bg-[rgba(28,25,32,0.95)] backdrop-blur-md border-t border-[var(--line)] grid grid-cols-5 items-center px-1"
-        style="padding-bottom: max(env(safe-area-inset-bottom), var(--sab, 0px)); min-height: calc(3.5rem + max(env(safe-area-inset-bottom), var(--sab, 0px)))">
+    <!-- Mobile Bottom Navigation — columns follow the enabled modules so optional
+         slots (Workouts, Supplements) never leave empty cells in a fixed grid.
+         Fixed slots: Weight, Organism, More (3) + whichever optionals are on. -->
+    {% set bottom_count = 3 + (1 if em.get('hevy') else 0) + (1 if em.get('supplements') else 0) %}
+    <nav class="md:hidden v-bottom-nav bg-[rgba(28,25,32,0.95)] backdrop-blur-md border-t border-[var(--line)] grid items-center px-1"
+        style="grid-template-columns: repeat({{ bottom_count }}, minmax(0, 1fr)); padding-bottom: max(env(safe-area-inset-bottom), var(--sab, 0px)); min-height: calc(3.5rem + max(env(safe-area-inset-bottom), var(--sab, 0px)))">
         <!-- Weight -->
         <a href="/weight"
             class="flex flex-col items-center justify-center gap-1 h-full py-1 text-center {% if current_path.startswith('/weight') %}text-[var(--accent)]{% else %}text-[var(--muted)] hover:text-[var(--fg-2)]{% endif %}">
@@ -470,8 +504,7 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/static/sw.js')
-                    .then(reg => console.log('ServiceWorker registered'))
-                    .catch(err => console.log('ServiceWorker registration failed', err));
+                    .catch(err => console.warn('ServiceWorker registration failed', err));
             });
         }
     </script>

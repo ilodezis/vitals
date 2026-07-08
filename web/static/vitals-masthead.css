@@ -52,8 +52,8 @@ body.ui-masthead .mh-rail {
 }
 
 body.ui-masthead .mh-rail-logo {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     flex: none;
     border-radius: 50%;
     background: var(--bg);
@@ -93,10 +93,10 @@ body.ui-masthead .mh-rail-nav {
     gap: 8px;
 }
 
-/* Section buttons — 40×40, rounded, muted → accent when active. */
+/* Section buttons — 44×44 (touch target), rounded, muted → accent when active. */
 body.ui-masthead .mh-rail-btn {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     flex: none;
     border-radius: 10px;
     display: flex;
@@ -136,7 +136,12 @@ body.ui-masthead .mh-rail-foot {
 
 body.ui-masthead .mh-rail-settings {
     color: var(--faint);
+    /* 44×44 touch target around the 18px gear (U12). */
+    width: 44px;
+    height: 44px;
     display: flex;
+    align-items: center;
+    justify-content: center;
     transition: color .15s ease;
 }
 
@@ -151,6 +156,7 @@ body.ui-masthead .mh-rail-settings svg {
 }
 
 body.ui-masthead .mh-rail-avatar {
+    position: relative;
     width: 26px;
     height: 26px;
     border-radius: 50%;
@@ -161,6 +167,14 @@ body.ui-masthead .mh-rail-avatar {
     font: 600 11px 'Inter', sans-serif;
     color: var(--fg-2);
     text-decoration: none;
+}
+
+/* Keep the 26px circle but expand the clickable area to 44px (U12). */
+body.ui-masthead .mh-rail-avatar::before {
+    content: '';
+    position: absolute;
+    inset: -9px;
+    border-radius: 50%;
 }
 
 /* ── Mobile top bar (replaces the classic <header> under md) ──────────────── */

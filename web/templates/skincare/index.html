@@ -77,7 +77,7 @@
                                 <span class="v-chip">{{ p.name }}</span>
                                 {% set has_morning.value = true %}
                             {% endfor %}
-                            {% if not has_morning.value %}<span class="v-text-body" style="color: var(--faint)">—</span>{% endif %}
+                            {% if not has_morning.value %}<span class="v-text-body" style="color: var(--muted)">—</span>{% endif %}
                         </div>
                     </div>
 
@@ -90,7 +90,7 @@
                                 <span class="v-chip">{{ p.name }}</span>
                                 {% set has_evening.value = true %}
                             {% endfor %}
-                            {% if not has_evening.value %}<span class="v-text-body" style="color: var(--faint)">—</span>{% endif %}
+                            {% if not has_evening.value %}<span class="v-text-body" style="color: var(--muted)">—</span>{% endif %}
                         </div>
                     </div>
                 </div>
@@ -120,7 +120,7 @@
                             <div class="space-y-1 min-w-0">
                                 <span class="block v-text-card">{{ p.name }}</span>
                                 {% if p.active_ingredient %}
-                                <p class="v-text-micro"><span style="color: var(--faint)">{{ t("skincare.active_ingredient") }}</span> {{ p.active_ingredient }}</p>
+                                <p class="v-text-micro"><span style="color: var(--muted)">{{ t("skincare.active_ingredient") }}</span> {{ p.active_ingredient }}</p>
                                 {% endif %}
                             </div>
                             <span class="v-icon-actions shrink-0">
@@ -148,7 +148,7 @@
                             {% endif %}
                             {% if p.usage_instructions %}
                             <div class="v-text-micro italic pt-3 flex items-start gap-2 leading-normal" style="border-top: 1px solid var(--line)">
-                                <svg class="h-4 w-4 shrink-0 mt-0.5" style="color: var(--faint)" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                                <svg class="h-4 w-4 shrink-0 mt-0.5" style="color: var(--muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                                 <span>{{ p.usage_instructions }}</span>
                             </div>
                             {% endif %}
@@ -156,7 +156,7 @@
                     </div>
                 </div>
                 {% else %}
-                <div class="md:col-span-2 rounded-xl p-8 text-center v-text-label" style="border: 1px dashed var(--line); color: var(--faint)">
+                <div class="md:col-span-2 rounded-xl p-8 text-center v-text-label" style="border: 1px dashed var(--line); color: var(--muted)">
                     {{ t("skincare.no_products") }}
                 </div>
                 {% endfor %}
@@ -183,7 +183,7 @@
                     <p class="v-text-body leading-relaxed font-medium" style="color: var(--fg-2)">{{ r.message }}</p>
                 </div>
                 {% else %}
-                <div class="rounded-xl p-6 text-center v-text-label" style="border: 1px solid var(--line); color: var(--faint)">
+                <div class="rounded-xl p-6 text-center v-text-label" style="border: 1px solid var(--line); color: var(--muted)">
                     {{ t("skincare.no_rules") }}
                 </div>
                 {% endfor %}

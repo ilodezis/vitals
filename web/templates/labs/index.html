@@ -188,7 +188,7 @@
                                 <td class="v-num v-text-micro">{{ r.date | format_date }}</td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="5" class="text-center" style="color: var(--faint)">{{ t("labs.no_data") }}</td></tr>
+                            <tr><td colspan="5" class="text-center" style="color: var(--muted)">{{ t("labs.no_data") }}</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -213,7 +213,7 @@
                         </span>
                     </li>
                     {% else %}
-                    <li class="text-center pt-2" style="color: var(--faint)">{{ t("labs.catalog_empty") }}</li>
+                    <li class="text-center pt-2" style="color: var(--muted)">{{ t("labs.catalog_empty") }}</li>
                     {% endfor %}
                 </ul>
             </div>

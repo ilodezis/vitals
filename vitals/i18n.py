@@ -154,6 +154,8 @@ _EN: dict[str, str] = {
     "weight.excluded_periods": "Excluded periods",
     "weight.active_marker": "(active)",
     "weight.confirm_delete_noise": "Delete this noise period?",
+    "weight.empty_hint": "No weight logged yet — add your first entry to start tracking trends.",
+    "weight.empty_cta": "Log your first weight",
     "weight.no_exclusions": "No exclusions.",
     "weight.gallery_title": "Progress gallery",
     "weight.no_photos": "No photos.",
@@ -1021,6 +1023,8 @@ _RU: dict[str, str] = {
     "weight.excluded_periods": "Исключённые периоды",
     "weight.active_marker": "(активен)",
     "weight.confirm_delete_noise": "Удалить этот период шума?",
+    "weight.empty_hint": "Записей веса пока нет — добавьте первую, чтобы видеть тренды.",
+    "weight.empty_cta": "Записать первый вес",
     "weight.no_exclusions": "Нет исключений.",
     "weight.gallery_title": "Галерея прогресса",
     "weight.no_photos": "Нет фотографий.",
@@ -1457,10 +1461,10 @@ _RU: dict[str, str] = {
     # ── Переключатель интерфейса (классика | масштхед) ─────────────────────
     "settings.saved.ui_version": "Интерфейс переключён.",
     "settings.ui_version_title": "Интерфейс",
-    "settings.ui_version_description": "Попробуйте новый вид «Масштхед» — боковая навигация и крупная типографика вместо верхнего меню и карточек-статов. Вернуться к классике можно в любой момент, данные не меняются.",
+    "settings.ui_version_description": "Попробуйте новый вид «Мастхед» — боковая навигация и крупная типографика вместо верхнего меню и карточек-статов. Вернуться к классике можно в любой момент, данные не меняются.",
     "settings.ui_version_classic": "Классика",
-    "settings.ui_version_masthead": "Масштхед",
-    # ── Каркас «Масштхед» ─────────────────────────────────────────────────
+    "settings.ui_version_masthead": "Мастхед",
+    # ── Каркас «Мастхед» ─────────────────────────────────────────────────
     "masthead.section_word": "Раздел",
     "masthead.rubric.health": "Здоровье",
     "masthead.rubric.digest": "AI-дайджест",

@@ -7,6 +7,7 @@ from datetime import date, timedelta
 
 from sqlalchemy import select
 
+from vitals.i18n import t
 from vitals.models.labs import LabMarker, LabResult
 from vitals.models.raw_payload import RawPayload
 from vitals.services import alerts_service, labs_service
@@ -96,6 +97,21 @@ async def test_refresh_alerts_raises_and_resolves(db_session):
     await db_session.commit()
     active = await alerts_service.list_active(db_session, domain="labs")
     assert not any(a.alert_key == labs_service.OUT_OF_RANGE_KEY for a in active)
+
+
+async def test_out_of_range_alert_message_uses_localized_flag(db_session):
+    """Regression: the raw ``critical_high`` enum must not leak into the alert
+    copy — the localized flag label is shown instead (U19)."""
+    # 700 in a [30, 400] range → critical_high (see compute_flag tests above).
+    await labs_service.add_result(db_session, on_date=DAY, marker="Ferritin", value=700, ref_low=30, ref_high=400)
+    await db_session.commit()
+    await labs_service.refresh_alerts(db_session, on_date=DAY)
+    await db_session.commit()
+
+    active = await alerts_service.list_active(db_session, domain="labs")
+    alert = next(a for a in active if a.alert_key == labs_service.OUT_OF_RANGE_KEY)
+    assert "critical_high" not in alert.message
+    assert t("enum.flag.critical_high") in alert.message
 
 
 async def test_overdue_retest_alert_and_defer(db_session):

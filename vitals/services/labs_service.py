@@ -399,7 +399,8 @@ async def refresh_alerts(
                     marker=r.marker,
                     value=r.value,
                     unit=(' ' + r.unit) if r.unit else '',
-                    flag=r.flag,
+                    # Localized flag label ("crit. high"), not the raw enum value.
+                    flag=t(f"enum.flag.{r.flag}"),
                 ),
                 alert_key=key,
                 entity_ref=entity,
