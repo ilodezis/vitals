@@ -62,13 +62,20 @@
          registers once and survives boosted navigations. The probe hangs off <html> for the
          same reason.
 
-         --app-height/--vv-top double as the on-screen-keyboard fix: neither vh nor dvh ever
-         shrinks for the keyboard (by spec only the visual viewport does), so --app-height now
-         prefers visualViewport.height — the app shell shrinks to the space actually visible
-         above the keyboard instead of leaving the browser to pan the page to reveal a focused
-         input. --vv-top tracks visualViewport.offsetTop, the distance of that pan; fixed-position
-         elements (anchored to the layout viewport, which the visual viewport can scroll
-         independently of) read it to stay put instead of shooting off the top of the screen. -->
+         --vv-height/--vv-top feed the on-screen-keyboard fix for fixed-position overlays
+         (.v-backdrop in vitals.css): position:fixed is anchored to the layout viewport, which
+         the browser pans/shrinks independently of (the visual viewport) once a focused input
+         forces it to clear the keyboard — without tracking that, a fixed modal stays in its old
+         layout-viewport coordinates and visibly shoots off the top of the screen.
+
+         --app-height deliberately keeps reading window.innerHeight, NOT visualViewport.height,
+         even though that means the app shell doesn't shrink for the keyboard: an earlier version
+         of this fix sized the shell (a normal in-flow element, not a fixed overlay) to
+         visualViewport.height, which made it shorter than the unchanged layout viewport — and
+         that extra room was enough for iOS to start scrolling the whole document to reveal the
+         focused input, dragging the bottom nav up to the top of the screen. Pinning --app-height
+         to the full, keyboard-independent viewport keeps the document itself permanently
+         unscrollable, which is what the rest of the layout (a single scrolling <main>) assumes. -->
     <script>
         (function () {
             var root = document.documentElement, probe = null;
@@ -85,7 +92,8 @@
             }
             function setHeight() {
                 var vv = window.visualViewport;
-                root.style.setProperty('--app-height', (vv ? vv.height : window.innerHeight) + 'px');
+                root.style.setProperty('--app-height', window.innerHeight + 'px');
+                root.style.setProperty('--vv-height', (vv ? vv.height : window.innerHeight) + 'px');
                 root.style.setProperty('--vv-top', (vv ? vv.offsetTop : 0) + 'px');
             }
             function sync() {

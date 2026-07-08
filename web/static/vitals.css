@@ -295,14 +295,15 @@ html {
 .v-app-shell {
     height: 100vh;
     height: 100dvh;
-    /* iOS standalone PWA resolves dvh unreliably across cold starts/resumes, and
-       neither dvh nor vh ever shrinks for the on-screen keyboard (by spec, only
-       the visual viewport does). base.html's viewport-sync script caches a live
-       visualViewport.height reading in --app-height instead, so the shell itself
-       shrinks to the space actually visible above the keyboard — otherwise the
-       browser has to pan the page to bring a focused input into view, which is
-       what made the interface appear to jump/fly off-screen. Falls back to dvh
-       until the script's first sync() runs. */
+    /* iOS standalone PWA resolves dvh unreliably across cold starts/resumes.
+       base.html's viewport-sync script caches a live window.innerHeight reading
+       in --app-height; prefer it over dvh once available, falling back to dvh
+       until the script's first sync() runs. Deliberately window.innerHeight, NOT
+       visualViewport.height: this element must stay pinned to the full,
+       keyboard-independent viewport so the document itself never gains scroll
+       room (see the on-screen-keyboard note on base.html's viewport-sync script
+       for why that matters). Fixed-position overlays track the keyboard instead,
+       via --vv-height/--vv-top. */
     height: var(--app-height, 100dvh);
 }
 
@@ -1096,12 +1097,15 @@ html {
        input inside the modal makes the browser pan the visual viewport to clear
        the keyboard, an inset:0 backdrop stays put in layout-viewport coordinates
        and visibly shoots up off the top of the screen; reading the live
-       --vv-top/--app-height that base.html's viewport-sync script maintains
-       keeps it pinned to what's actually on screen instead. */
+       --vv-top/--vv-height that base.html's viewport-sync script maintains keeps
+       it pinned to what's actually on screen instead. Uses --vv-height, NOT
+       --app-height: unlike the shell, a fixed overlay tracking the keyboard
+       can't create document scroll room, since fixed elements never
+       participate in document flow/height in the first place. */
     top: var(--vv-top, 0px);
     left: 0;
     right: 0;
-    height: var(--app-height, 100dvh);
+    height: var(--vv-height, 100dvh);
     z-index: 50;
     background: rgba(15, 13, 18, 0.7);
     backdrop-filter: blur(6px);
@@ -1303,7 +1307,7 @@ html {
         border-radius: var(--radius-lg) var(--radius-lg) 0 0;
         /* Capped to the real visible height too (not just 92vh) so the sheet
            never claims more room than is left above an open keyboard. */
-        max-height: min(92vh, calc(var(--app-height, 100dvh) - 1.5rem));
+        max-height: min(92vh, calc(var(--vv-height, 100dvh) - 1.5rem));
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
     }
