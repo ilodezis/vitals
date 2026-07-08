@@ -6,3 +6,4 @@ coverage>=7.0
 aiosqlite>=0.20.0
 fakeredis>=2.26
 freezegun>=1.5
+Pillow>=10.0

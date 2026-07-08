@@ -74,6 +74,7 @@ document.addEventListener('alpine:init', () => {
                     restoreBtn();
                 } else if (response.ok) {
                     const redirectUrl = response.headers.get('HX-Redirect') || '/nutrition';
+                    if (window.vitalsStashRestore) window.vitalsStashRestore({});
                     window.location.href = redirectUrl;
                 } else {
                     restoreBtn();

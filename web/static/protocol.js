@@ -49,6 +49,7 @@ window.protocolForm = function() {
                     restoreBtn();
                 } else if (response.ok) {
                     const redirectUrl = response.headers.get('HX-Redirect') || window.location.pathname;
+                    if (window.vitalsStashRestore) window.vitalsStashRestore({});
                     window.location.href = redirectUrl;
                 } else {
                     restoreBtn();

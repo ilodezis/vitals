@@ -17,6 +17,16 @@ document.addEventListener('alpine:init', () => {
         // Pre-select the last-used site so rotation away from it is one tap.
         selectedSite: lastSite || null,
 
+        // U9: restore the tab a save redirected away from (see vitalsStashRestore
+        // in base.html <head> — must read this in init(), not later, since
+        // window.load fires after Alpine has already built this component).
+        init() {
+            if (window.__vitalsRestoreTab) {
+                this.activeTab = window.__vitalsRestoreTab;
+                window.__vitalsRestoreTab = null;
+            }
+        },
+
         editInjection(inj) {
             this.activeTab = 'injection';
             this.isEditing = true;
@@ -77,6 +87,7 @@ document.addEventListener('alpine:init', () => {
                     restoreBtn();
                 } else if (response.ok) {
                     const redirectUrl = response.headers.get('HX-Redirect') || '/glp1';
+                    if (window.vitalsStashRestore) window.vitalsStashRestore({ tab: this.activeTab });
                     window.location.href = redirectUrl;
                 } else {
                     restoreBtn();

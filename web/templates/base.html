@@ -55,6 +55,52 @@
         window.__LANG__ = "{{ request.state.lang|default('en') }}";
         window.t = function (key) { return window.__STRINGS__[key] || key; };
     </script>
+    <!-- Save→restore scroll/tab (U9): submitForm() in app/glp1/nutrition/protocol.js
+         redirects via window.location.href after a successful save — a full
+         navigation that reloads the page from scratch, always landing scrolled to
+         top on whichever tab is Alpine's default. vitalsStashRestore(extra) saves
+         the scroll position (and anything else the caller passes, e.g. the active
+         tab) to sessionStorage right before that redirect; this restores it here.
+         The tab must be exposed (window.__vitalsRestoreTab) synchronously, in
+         <head>, before Alpine — its own script is deferred, so by the time
+         window.load fires a dashboard component's init() has already run with the
+         default tab. Keyed by location.pathname on both ends: a redirect back to
+         the same page (the common case) restores; a redirect elsewhere doesn't try
+         to reapply a stale position to a different page, which is correct.
+         <main>, not window/body, is the actual scroll container (.v-app-shell
+         pins the document itself so it can never scroll — see vitals.css), so the
+         scroll restore waits for window.load/htmx:load, once <main> has its real
+         content laid out, rather than running synchronously like the tab read. -->
+    <script>
+        window.vitalsStashRestore = function (extra) {
+            try {
+                const main = document.querySelector('main');
+                const data = Object.assign({ y: main ? main.scrollTop : 0 }, extra);
+                sessionStorage.setItem('vitals_restore:' + location.pathname, JSON.stringify(data));
+            } catch (e) { /* sessionStorage unavailable — nothing to restore, not fatal */ }
+        };
+
+        (function () {
+            let restoreData = null;
+            try {
+                const key = 'vitals_restore:' + location.pathname;
+                const raw = sessionStorage.getItem(key);
+                if (raw) {
+                    sessionStorage.removeItem(key);
+                    restoreData = JSON.parse(raw);
+                    window.__vitalsRestoreTab = restoreData.tab || null;
+                }
+            } catch (e) { /* ignore — nothing to restore */ }
+
+            function restoreScroll() {
+                if (!restoreData || typeof restoreData.y !== 'number') return;
+                const main = document.querySelector('main');
+                if (main) main.scrollTop = restoreData.y;
+            }
+            window.addEventListener('load', restoreScroll);
+            document.addEventListener('htmx:load', restoreScroll);
+        })();
+    </script>
     <!-- Chart palette bridge (U7): a <canvas> can't resolve CSS var(), so expose the
          design-system tokens — read from :root at call time, after the stylesheet is
          applied — as resolved values every chart script shares. One source of truth,

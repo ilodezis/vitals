@@ -16,6 +16,16 @@ document.addEventListener('alpine:init', () => {
         isEditingLog: false,
         isEditingMeasure: false,
 
+        // U9: restore the tab a save redirected away from (see vitalsStashRestore
+        // in base.html <head> — must read this in init(), not later, since
+        // window.load fires after Alpine has already built this component).
+        init() {
+            if (window.__vitalsRestoreTab) {
+                this.activeTab = window.__vitalsRestoreTab;
+                window.__vitalsRestoreTab = null;
+            }
+        },
+
         editWeight(w) {
             this.activeTab = 'log';
             this.isEditingLog = true;
@@ -126,6 +136,7 @@ document.addEventListener('alpine:init', () => {
                 } else if (response.ok) {
                     // Check if there is a redirection header (HTMX pattern)
                     const redirectUrl = response.headers.get('HX-Redirect') || '/weight';
+                    if (window.vitalsStashRestore) window.vitalsStashRestore({ tab: this.activeTab });
                     window.location.href = redirectUrl;
                 } else {
                     restoreBtn();
@@ -251,6 +262,7 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
                 if (resp.ok) {
+                    if (window.vitalsStashRestore) window.vitalsStashRestore({ tab: this.activeTab });
                     window.location.href = '/weight';
                 } else if (window.vitalsToast) {
                     window.vitalsToast(window.t('save_error'));
