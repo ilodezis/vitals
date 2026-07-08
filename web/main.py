@@ -126,6 +126,48 @@ async def auth_exception_handler(request: Request, exc: NotAuthenticated):
 
 
 
+async def _populate_state_for_error_page(request: Request) -> None:
+    """Fill ``request.state`` with lang / enabled_modules / ui_version for an error
+    page rendered through ``base.html``.
+
+    An unmatched route (404) never runs the global ``load_language`` /
+    ``load_enabled_modules`` / ``load_ui_version`` dependencies, because those are
+    attached to the API router and only fire once a route matches. base.html reads
+    all three off ``request.state`` (e.g. ``get_js_strings(request.state.lang)``),
+    so without this the 404 template itself raises → 500. Resolve them here with a
+    fresh session/redis, mirroring each dependency's fail-safe default so the page
+    renders no matter what.
+    """
+    from vitals.i18n import current_lang
+    from vitals.services import language_service, modules_service, ui_version_service
+
+    lang = "en"
+    enabled = dict(modules_service.DEFAULT_STATE)
+    ui = "classic"
+    try:
+        redis = get_redis_client()
+        async with get_session_factory()() as db:
+            try:
+                lang = await language_service.get_language(db, redis)
+            except Exception:
+                logger.exception("404 page: language load failed; defaulting to 'en'")
+            try:
+                enabled = await modules_service.get_enabled_modules(db, redis)
+            except Exception:
+                logger.exception("404 page: module-state load failed; using defaults")
+            try:
+                ui = await ui_version_service.get_ui_version(db, redis)
+            except Exception:
+                logger.exception("404 page: ui_version load failed; defaulting to 'classic'")
+    except Exception:
+        logger.exception("404 page: could not open db/redis; using all defaults")
+
+    current_lang.set(lang)
+    request.state.lang = lang
+    request.state.enabled_modules = enabled
+    request.state.ui_version = ui
+
+
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     """Render a branded 404 page for browser navigations and keep JSON 404s for API/HTMX."""
@@ -144,10 +186,14 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
             username = read_session(request.cookies.get(SESSION_COOKIE))
         except Exception:
             logger.exception("Could not resolve user for 404 page")
+        # Unmatched routes skip the global load_* dependencies, so base.html's
+        # request.state.{lang,enabled_modules,ui_version} are unset — populate them
+        # or the template render 500s instead of showing the branded 404.
+        await _populate_state_for_error_page(request)
         return templates.TemplateResponse(
+            request,
             "404.html",
             {
-                "request": request,
                 "username": username,
                 "alerts": [],
                 "requested_path": request.url.path,
