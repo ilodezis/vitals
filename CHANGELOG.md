@@ -6,6 +6,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.0] — 2026-07-09
+
+### Added — Timeline
+
+- **Timeline** (13th module) — cross-domain event feed: manual annotations (life events, illness, travel, protocol changes) merged with events derived live from other domains' own rows (GLP-1 dose changes, lab draws, BIA scans, achieved milestones, noisy weight periods)
+- Manual annotation flags rendered as Chart.js overlays on the weight chart and any custom chart whose series touch an annotated domain
+- MCP: `get_timeline` (read) and `log_event` (write) — 37 tools total (22 read + 15 write)
+- Optional module (`timeline`), toggleable in Settings; migration `0018_timeline_annotations` seeds it ON
+- `export_llm` gained a `timeline_annotations` block; full backup/restore picks up the new `annotations` table automatically
+
+---
+
 ## [1.0.0] — 2026-06-27
 
 ### Initial public release

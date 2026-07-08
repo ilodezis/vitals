@@ -51,6 +51,7 @@ class Domain(StrEnum):
     LABS = "labs"
     NUTRITION = "nutrition"
     MILESTONES = "milestones"
+    TIMELINE = "timeline"  # global annotations shown across every domain's chart
     SYSTEM = "system"
 
 
@@ -108,6 +109,18 @@ class NoiseDirection(StrEnum):
     UP = "up"
     DOWN = "down"
     NEUTRAL = "neutral"
+
+
+class AnnotationKind(StrEnum):
+    """Timeline annotation categories — flags the owner drops on the calendar
+    (trip, illness, protocol change) that have no natural home in any single
+    domain table."""
+
+    LIFE_EVENT = "life_event"
+    ILLNESS = "illness"
+    TRAVEL = "travel"
+    PROTOCOL_CHANGE = "protocol_change"
+    NOTE = "note"
 
 
 class MilestoneStatus(StrEnum):

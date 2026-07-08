@@ -998,6 +998,73 @@ async def delete_lab_result(result_id: int) -> dict:
         return {"deleted": ok, "result_id": result_id}
 
 
+# ── Timeline tools ───────────────────────────────────────────────────────────
+@mcp.tool()
+async def get_timeline(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    domain: Optional[str] = None,
+    limit: int = 100,
+) -> list[dict]:
+    """Retrieves the cross-domain event feed — manual annotations (trips,
+    illness, protocol changes) plus derived events (GLP-1 dose changes, lab
+    draws, BIA scans, achieved milestones, noisy weight periods), newest first.
+    Optionally filtered by date range (YYYY-MM-DD) and/or domain (weight, glp1,
+    garmin, workouts, labs, nutrition, skincare, supplements, genetics,
+    body_comp, or "timeline" for global flags)."""
+    from vitals.services import timeline_service
+
+    session_factory = get_session_factory()
+    start = date_type.fromisoformat(start_date) if start_date else None
+    end = date_type.fromisoformat(end_date) if end_date else None
+    domains = [domain] if domain else None
+
+    async with session_factory() as session:
+        events = await timeline_service.list_events(
+            session, domains=domains, start=start, end=end, limit=limit
+        )
+        return [e.to_dict() for e in events]
+
+
+@mcp.tool()
+async def log_event(
+    title: str,
+    on_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    kind: str = "note",
+    domain: str = "timeline",
+    note: Optional[str] = None,
+) -> dict:
+    """Records a manual Timeline annotation — a flag shown on every chart and
+    in the event feed (a trip, an illness, a protocol change, a free-form
+    note). ``kind`` is one of: life_event, illness, travel, protocol_change,
+    note. ``domain`` scopes the flag to one chart (weight, glp1, ...) or
+    "timeline" (default) to show it on every chart. ``end_date`` makes it a
+    range (e.g. a week-long trip); omit it for a single-day event. WRITE tool —
+    saved immediately. No-op with an error if the timeline module is disabled."""
+    from vitals.services import timeline_service
+    from vitals.utils.timeutils import today_local
+
+    session_factory = get_session_factory()
+    parsed_date = date_type.fromisoformat(on_date) if on_date else today_local()
+    parsed_end = date_type.fromisoformat(end_date) if end_date else None
+
+    async with session_factory() as session:
+        if not await _module_enabled(session, "timeline"):
+            return {"error": "module 'timeline' is disabled"}
+        row = await timeline_service.create_annotation(
+            session,
+            title=title,
+            on_date=parsed_date,
+            end_date=parsed_end,
+            kind=kind,
+            domain=domain,
+            note=note,
+        )
+        await session.commit()
+        return await serialize_written(session, row)
+
+
 class MCPAuthMiddleware:
     """ASGI middleware that intercepts all requests to the MCP application
 

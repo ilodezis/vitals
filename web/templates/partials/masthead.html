@@ -16,7 +16,7 @@
    Core, always shown), mirroring nav_primary.html exactly. `cat` overrides the
    rubric's eyebrow category for one section (reports → "AI digest"). #}
 {% set MH_RUBRICS = [
-    {'id': 'main',      'cat': 'masthead.rubric.health',    'members': ['weight', 'garmin', 'hevy', 'nutrition', 'reports', 'charts']},
+    {'id': 'main',      'cat': 'masthead.rubric.health',    'members': ['weight', 'garmin', 'hevy', 'nutrition', 'timeline', 'reports', 'charts']},
     {'id': 'markers',   'cat': 'masthead.rubric.markers',   'members': ['glp1', 'labs', 'genetics']},
     {'id': 'lifestyle', 'cat': 'masthead.rubric.lifestyle', 'members': ['supplements', 'skincare', 'interactions']},
 ] %}
@@ -26,6 +26,7 @@
     'garmin':      {'href': '/garmin',      'label': 'nav.organism',    'gate': none,          'cat': none},
     'hevy':        {'href': '/hevy',        'label': 'nav.workouts',    'gate': 'hevy',        'cat': none},
     'nutrition':   {'href': '/nutrition',   'label': 'nav.nutrition',   'gate': 'nutrition',   'cat': none},
+    'timeline':    {'href': '/timeline',    'label': 'nav.timeline',    'gate': 'timeline',    'cat': none},
     'reports':     {'href': '/reports',     'label': 'nav.reports',     'gate': none,          'cat': 'masthead.rubric.digest'},
     'charts':      {'href': '/charts',      'label': 'nav.charts',      'gate': none,          'cat': none},
     'glp1':        {'href': '/glp1',        'label': 'nav.glp1',        'gate': 'glp1',        'cat': none},
@@ -60,6 +61,8 @@
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.435 5.565a6.002 6.002 0 00-8.485 0L3.586 11.93a6.002 6.002 0 008.485 8.485l6.364-6.364a6.002 6.002 0 000-8.485z M8 16l8-8" /></svg>
 {%- elif key == 'skincare' -%}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+{%- elif key == 'timeline' -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21V5a2 2 0 012-2h4l1 2h8a1 1 0 011 1v9a1 1 0 01-1 1h-8l-1-2H5a2 2 0 00-2 2z" /></svg>
 {%- elif key == 'interactions' -%}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
 {%- endif -%}

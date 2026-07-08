@@ -43,6 +43,7 @@ async def weight_dashboard(
     # overlay, and the scan section — disabled behaves as if it isn't there.
     em = getattr(request.state, "enabled_modules", None) or {}
     body_comp_enabled = bool(em.get("body_comp"))
+    timeline_enabled = bool(em.get("timeline"))
 
     # Refresh noise alerts for today (+ body-scan alerts when the module is on)
     await weight_service.refresh_noise_alert(db)
@@ -56,7 +57,9 @@ async def weight_dashboard(
     noise_markers = await weight_service.list_noise_markers(db)
     photos = await weight_service.list_progress_photos(db)
     alerts = await alerts_service.list_active(db, domain=Domain.WEIGHT.value)
-    series = await weight_service.chart_series(db, include_bia=body_comp_enabled)
+    series = await weight_service.chart_series(
+        db, include_bia=body_comp_enabled, include_timeline=timeline_enabled
+    )
 
     # Body-composition scans + the compact summary chips for the latest one.
     bc_scans = await body_scan_service.list_scans(db) if body_comp_enabled else []

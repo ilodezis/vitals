@@ -56,6 +56,7 @@ MODULE_REGISTRY: dict[str, ModuleSpec] = {
         ModuleSpec("reports", "Отчёты", "core", "/reports"),
         ModuleSpec("charts", "Графики", "core", "/charts"),
         # ── Optional — user-toggleable ───────────────────────────────────────
+        ModuleSpec("timeline", "Хронология", "optional", "/timeline"),
         ModuleSpec("glp1", "GLP-1", "optional", "/glp1"),
         ModuleSpec("hevy", "Тренировки", "optional", "/hevy"),
         ModuleSpec("supplements", "Добавки", "optional", "/supplements"),

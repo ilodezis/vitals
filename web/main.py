@@ -282,6 +282,7 @@ from web.routers.nutrition import router as nutrition_router  # noqa: E402
 from web.routers.interactions import router as interactions_router  # noqa: E402
 from web.routers.settings import router as settings_router  # noqa: E402
 from web.routers.charts import router as charts_router  # noqa: E402
+from web.routers.timeline import router as timeline_router  # noqa: E402
 
 # Core modules — always reachable.
 app.include_router(alerts_router)
@@ -300,6 +301,7 @@ app.include_router(genetics_router, dependencies=[Depends(require_module("geneti
 app.include_router(skincare_router, dependencies=[Depends(require_module("skincare"))])
 app.include_router(nutrition_router, dependencies=[Depends(require_module("nutrition"))])
 app.include_router(interactions_router, dependencies=[Depends(require_module("interactions"))])
+app.include_router(timeline_router, dependencies=[Depends(require_module("timeline"))])
 
 # ── OAuth & MCP Integration ──────────────────────────────────────────────────
 try:

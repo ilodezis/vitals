@@ -36,6 +36,9 @@ async def charts_dashboard(
         c["id"]: await chart_data_service.resolve_chart_series(db, c, lang=lang)
         for c in charts
     }
+    overlays = (
+        await _overlays_by_chart(db, charts) if enabled.get("timeline") else {}
+    )
 
     return templates.TemplateResponse(
         request,
@@ -45,9 +48,31 @@ async def charts_dashboard(
             "catalog": catalog,
             "charts": charts,
             "resolved": resolved,
+            "overlays": overlays,
             "error": request.query_params.get("error"),
         },
     )
+
+
+async def _overlays_by_chart(db: AsyncSession, charts: list[dict]) -> dict[str, list[dict]]:
+    """Manual Timeline flags for each saved chart — the union of its series'
+    domains, deduped (a global flag would otherwise repeat once per domain)."""
+    from vitals.services import timeline_service
+
+    result: dict[str, list[dict]] = {}
+    for c in charts:
+        domains = {s.get("domain") for s in c["series"] if s.get("domain")}
+        seen: set[tuple] = set()
+        merged: list[dict] = []
+        for d in domains:
+            for o in await timeline_service.overlays_for(db, domain=d):
+                key = (o["start"], o["end"], o["label"])
+                if key in seen:
+                    continue
+                seen.add(key)
+                merged.append(o)
+        result[c["id"]] = merged
+    return result
 
 
 @router.post("")

@@ -132,6 +132,66 @@
             };
         };
     </script>
+    <!-- Shared Chart.js annotation builder for Timeline flags (manual annotations
+         from timeline_service.overlays_for) — used by app.js (weight chart) and
+         charts.js (custom charts) so both draw the same flags the same way. A
+         point event (no `end`) is a dashed vertical line; a ranged one (trip,
+         illness) is a shaded box, same family as the existing noise/phase boxes
+         but tone-colored instead of hardcoded to one color. -->
+    <script>
+        window.vitalsBuildAnnotations = function (overlays, sortedLabels) {
+            var out = {};
+            if (!overlays || !overlays.length || !sortedLabels || !sortedLabels.length) return out;
+            var C = (window.vitalsChartTheme && window.vitalsChartTheme()) || {};
+            var LABEL_COLOR = { good: C.good, bad: C.bad, warn: C.bad, '': C.violet };
+            var BOX_BG = { good: 'rgba(111, 197, 142, 0.07)', bad: 'rgba(232, 112, 86, 0.07)', warn: 'rgba(232, 112, 86, 0.07)', '': 'rgba(176, 147, 214, 0.07)' };
+            var BOX_BORDER = { good: 'rgba(111, 197, 142, 0.3)', bad: 'rgba(232, 112, 86, 0.3)', warn: 'rgba(232, 112, 86, 0.3)', '': 'rgba(176, 147, 214, 0.3)' };
+            overlays.forEach(function (o, idx) {
+                var color = LABEL_COLOR[o.tone] || LABEL_COLOR[''];
+                if (o.end) {
+                    var startIdx = sortedLabels.indexOf(o.start);
+                    var endIdx = sortedLabels.indexOf(o.end);
+                    if (startIdx === -1 && endIdx === -1) return;
+                    out['vt_' + idx] = {
+                        type: 'box',
+                        xMin: (startIdx !== -1 ? startIdx : 0) - 0.2,
+                        xMax: (endIdx !== -1 ? endIdx : sortedLabels.length - 1) + 0.2,
+                        backgroundColor: BOX_BG[o.tone] || BOX_BG[''],
+                        borderColor: BOX_BORDER[o.tone] || BOX_BORDER[''],
+                        borderWidth: 1,
+                        label: {
+                            display: true, content: o.label, position: 'center', rotation: -90,
+                            color: color, font: { family: 'Inter', size: 9, weight: 'bold' }
+                        }
+                    };
+                } else {
+                    var pointIdx = sortedLabels.indexOf(o.start);
+                    if (pointIdx === -1) {
+                        // No plotted point lands exactly on this date (e.g. no
+                        // weight logged that day) — snap to the nearest later
+                        // label so the flag still shows near its real date
+                        // instead of silently vanishing.
+                        pointIdx = sortedLabels.findIndex(function (d) { return d >= o.start; });
+                        if (pointIdx === -1) pointIdx = sortedLabels.length - 1;
+                    }
+                    out['vt_' + idx] = {
+                        type: 'line',
+                        xMin: pointIdx,
+                        xMax: pointIdx,
+                        borderColor: color,
+                        borderWidth: 1.5,
+                        borderDash: [3, 3],
+                        label: {
+                            display: true, content: o.label, position: 'start', rotation: -90,
+                            xAdjust: 8, color: color, backgroundColor: 'rgba(27, 25, 32, 0.85)',
+                            padding: 3, font: { family: 'Inter', size: 9, weight: 'bold' }
+                        }
+                    };
+                }
+            });
+            return out;
+        };
+    </script>
     <!-- Alpine — lives in <head> (not a page script) with `defer` so it survives boosted
          navigations: hx-boost only swaps <body> innerHTML, so anything inside <body> gets
          torn down and re-run on every navigation. That re-execution used to start a brand
@@ -464,6 +524,16 @@
                             d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
                     </svg>
                     <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.nutrition") }}</span>
+                </a>
+                {% endif %}
+                {% if em.get('timeline') %}
+                <a href="/timeline" @click="mobileMenuOpen = false"
+                    class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
+                    <svg class="h-6 w-6 text-[var(--fg-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 21V5a2 2 0 012-2h4l1 2h8a1 1 0 011 1v9a1 1 0 01-1 1h-8l-1-2H5a2 2 0 00-2 2z" />
+                    </svg>
+                    <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.timeline") }}</span>
                 </a>
                 {% endif %}
                 <a href="/reports" @click="mobileMenuOpen = false"

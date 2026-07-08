@@ -49,7 +49,8 @@
             window.vitalsCustomCharts = window.vitalsCustomCharts || {};
             window.vitalsCustomCharts["{{ chart.id }}"] = {
                 normalize: {{ chart.normalize | tojson }},
-                series: {{ resolved[chart.id] | tojson | safe }}
+                series: {{ resolved[chart.id] | tojson | safe }},
+                annotations: {{ overlays.get(chart.id, []) | tojson | safe }}
             };
         </script>
         {% endfor %}

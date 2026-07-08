@@ -52,6 +52,7 @@ from vitals.models.milestones import Milestone, WeeklyDigest
 from vitals.models.nutrition import MealLog
 from vitals.models.skincare import SkincareLog, SkincareObservation
 from vitals.models.supplements import Supplement
+from vitals.models.timeline import Annotation
 from vitals.models.weight import BodyMeasurement, NoiseMarker, WeightLog
 from vitals.i18n import t
 from vitals.utils.timeutils import now_local
@@ -69,7 +70,7 @@ _LABELED_TABLES = (
     "weight_logs", "body_measurements", "progress_photos", "hevy_workouts",
     "garmin_daily", "garmin_activities", "lab_results", "glp1_injections",
     "glp1_side_effects", "meal_logs", "supplements", "genetic_variants",
-    "skincare_logs", "weekly_digests",
+    "skincare_logs", "weekly_digests", "annotations",
 )
 
 
@@ -584,6 +585,25 @@ async def export_llm(session: AsyncSession) -> dict[str, Any]:
     ).scalars().all()
     out["weekly_digests"] = [
         _compact({"date": d.date.isoformat(), "content": d.content}) for d in digests
+    ]
+
+    # Timeline — manual annotations (derived events already surface through
+    # their own domain's block above, so they aren't repeated here).
+    annotations = (
+        await session.execute(select(Annotation).order_by(Annotation.date))
+    ).scalars().all()
+    out["timeline_annotations"] = [
+        _compact(
+            {
+                "date": a.date.isoformat(),
+                "end_date": a.end_date.isoformat() if a.end_date else None,
+                "domain": a.domain,
+                "kind": a.kind,
+                "title": a.title,
+                "note": a.note,
+            }
+        )
+        for a in annotations
     ]
 
     return out

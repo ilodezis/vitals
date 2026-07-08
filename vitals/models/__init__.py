@@ -47,6 +47,9 @@ from vitals.models.nutrition import MealLog
 # Module 10 — Milestones & weekly reporting.
 from vitals.models.milestones import Milestone, WeeklyDigest
 
+# Timeline — cross-domain event feed + chart annotations.
+from vitals.models.timeline import Annotation
+
 __all__ = [
     "Base",
     "TimestampMixin",
@@ -80,4 +83,5 @@ __all__ = [
     "MealLog",
     "Milestone",
     "WeeklyDigest",
+    "Annotation",
 ]

@@ -98,6 +98,11 @@ function renderCustomChart(canvasId, config) {
         });
     }
 
+    // Timeline flags (manual annotations) — same shared builder as app.js.
+    const annotations = window.vitalsBuildAnnotations
+        ? window.vitalsBuildAnnotations(config && config.annotations, labels)
+        : {};
+
     if (canvas._vitalsChart) canvas._vitalsChart.destroy();
     canvas._vitalsChart = new Chart(canvas, {
         type: 'line',
@@ -114,6 +119,7 @@ function renderCustomChart(canvasId, config) {
                     titleColor: C.accent2, titleFont: { family: 'Inter', size: 11 },
                     bodyColor: C.fg, bodyFont: { family: 'Inter', size: 10 }, padding: 8,
                 },
+                annotation: { annotations },
             },
             scales,
         },

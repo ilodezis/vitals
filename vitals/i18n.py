@@ -788,6 +788,7 @@ _EN: dict[str, str] = {
     "import.label.genetic_variants": "genetic markers",
     "import.label.skincare_logs": "skincare entries",
     "import.label.weekly_digests": "AI digests",
+    "import.label.annotations": "timeline events",
 
     # ── Body composition (InBody / МедАсс — BIA) ──────────────────────────
     "nav.body_comp": "Body composition",
@@ -892,6 +893,38 @@ _EN: dict[str, str] = {
     "interactions.category.contraindication": "Contraindication",
     "interactions.category.other": "Other",
     "modules.interactions_hint": "Browse and toggle the cross-domain conflict-rule catalog.",
+
+    # ── Timeline (cross-domain event feed + chart annotations) ────────────
+    "nav.timeline": "Timeline",
+    "timeline.page_title": "Timeline",
+    "timeline.heading": "Cross-domain timeline",
+    "timeline.tag": "Timeline",
+    "timeline.description": "Every notable event — logged automatically or added by hand — in one feed, and as flags on your charts.",
+    "timeline.add_button": "Add event",
+    "timeline.metric_total": "Events",
+    "timeline.metric_manual": "Manual",
+    "timeline.title_label": "Title",
+    "timeline.title_placeholder": "e.g. Trip to Georgia",
+    "timeline.end_date_label": "End date",
+    "timeline.end_date_hint": "Leave empty for a single-day event.",
+    "timeline.kind_label": "Kind",
+    "timeline.domain_label": "Applies to",
+    "timeline.save": "Save event",
+    "timeline.no_events": "No events yet.",
+    "timeline.confirm_delete": "Delete this event?",
+    "enum.annotation_kind.life_event": "Life event",
+    "enum.annotation_kind.illness": "Illness",
+    "enum.annotation_kind.travel": "Travel",
+    "enum.annotation_kind.protocol_change": "Protocol change",
+    "enum.annotation_kind.note": "Note",
+    "timeline.derived.dose_phase_start": "GLP-1 dose change: {drug} {dose:g} mg",
+    "timeline.derived.labs_batch": "Labs: {n} markers",
+    "timeline.derived.body_scan": "BIA scan ({device})",
+    "timeline.derived.device_unknown": "unknown analyzer",
+    "timeline.derived.milestone_achieved": "Goal achieved: {name}",
+    "timeline.derived.noise_period": "Noisy period: {reason}",
+    "enum.domain.timeline": "All charts",
+    "enum.domain.body_comp": "Body composition",
 }
 
 _RU: dict[str, str] = {
@@ -1657,6 +1690,7 @@ _RU: dict[str, str] = {
     "import.label.genetic_variants": "генетических маркеров",
     "import.label.skincare_logs": "записей ухода",
     "import.label.weekly_digests": "AI-дайджестов",
+    "import.label.annotations": "событий хронологии",
 
     # ── Состав тела (InBody / МедАсс — BIA) ───────────────────────────────
     "nav.body_comp": "Состав тела",
@@ -1761,6 +1795,38 @@ _RU: dict[str, str] = {
     "interactions.category.contraindication": "Противопоказание",
     "interactions.category.other": "Прочее",
     "modules.interactions_hint": "Каталог кросс-доменных правил — просмотр и включение/выключение.",
+
+    # ── Хронология (кросс-доменная лента + аннотации на графиках) ─────────
+    "nav.timeline": "Хронология",
+    "timeline.page_title": "Хронология",
+    "timeline.heading": "Кросс-доменная хронология",
+    "timeline.tag": "Хронология",
+    "timeline.description": "Все заметные события — залогированные автоматически или добавленные вручную — в одной ленте, и флажками на графиках.",
+    "timeline.add_button": "Добавить событие",
+    "timeline.metric_total": "Событий",
+    "timeline.metric_manual": "Вручную",
+    "timeline.title_label": "Название",
+    "timeline.title_placeholder": "например, поездка в Грузию",
+    "timeline.end_date_label": "Дата окончания",
+    "timeline.end_date_hint": "Оставьте пустым для события в один день.",
+    "timeline.kind_label": "Тип",
+    "timeline.domain_label": "Относится к",
+    "timeline.save": "Сохранить событие",
+    "timeline.no_events": "Пока нет событий.",
+    "timeline.confirm_delete": "Удалить это событие?",
+    "enum.annotation_kind.life_event": "Событие",
+    "enum.annotation_kind.illness": "Болезнь",
+    "enum.annotation_kind.travel": "Поездка",
+    "enum.annotation_kind.protocol_change": "Смена протокола",
+    "enum.annotation_kind.note": "Заметка",
+    "timeline.derived.dose_phase_start": "Смена дозы GLP-1: {drug} {dose:g} мг",
+    "timeline.derived.labs_batch": "Анализы: {n} маркеров",
+    "timeline.derived.body_scan": "BIA-скан ({device})",
+    "timeline.derived.device_unknown": "неизвестный анализатор",
+    "timeline.derived.milestone_achieved": "Цель достигнута: {name}",
+    "timeline.derived.noise_period": "Шумный период: {reason}",
+    "enum.domain.timeline": "Все графики",
+    "enum.domain.body_comp": "Состав тела",
 }
 
 STRINGS: dict[str, dict[str, str]] = {"en": _EN, "ru": _RU}

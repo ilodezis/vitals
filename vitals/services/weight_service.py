@@ -341,7 +341,11 @@ async def refresh_noise_alert(
 
 # ── Chart series ──────────────────────────────────────────────────────────────
 async def chart_series(
-    session: AsyncSession, *, goal_kg: Optional[float] = None, include_bia: bool = False
+    session: AsyncSession,
+    *,
+    goal_kg: Optional[float] = None,
+    include_bia: bool = False,
+    include_timeline: bool = False,
 ) -> dict:
     """Assemble everything the weight dashboard chart needs.
 
@@ -355,6 +359,9 @@ async def chart_series(
       * ``bia``        — {bf:[{date,value}], lbm:[{date,value}]} from BIA scans,
                          only when ``include_bia`` (the body_comp module is on).
                          Coexists with the Navy ``lbm`` series — both are shown.
+      * ``annotations`` — [{start, end?, label, tone, kind}] manual Timeline
+                         flags for this domain (+ global ones), only when
+                         ``include_timeline`` (the timeline module is on).
     """
     weights = await list_active_weights(session)
     raw_points = [(w.date, w.weight_kg) for w in weights]
@@ -391,6 +398,14 @@ async def chart_series(
 
         bia = await body_scan_service.bia_chart_points(session)
 
+    # Timeline flags (manual annotations) — lazy import, only when the
+    # optional timeline module is on (a disabled module behaves as absent).
+    annotations = None
+    if include_timeline:
+        from vitals.services import timeline_service
+
+        annotations = await timeline_service.overlays_for(session, domain=DOMAIN)
+
     return {
         "raw": [{"date": d.isoformat(), "weight_kg": v} for (d, v) in raw_points],
         "trend_ma": [{"date": d.isoformat(), "weight_kg": v} for (d, v) in ma],
@@ -405,6 +420,7 @@ async def chart_series(
             {"slope_per_week": round(trend.slope_per_week, 3)} if trend else None
         ),
         "bia": bia,
+        "annotations": annotations,
     }
 
 

@@ -431,6 +431,11 @@ function initWeightChart() {
         });
     }
 
+    // Timeline flags (manual annotations) — shared builder also used by charts.js.
+    if (window.vitalsBuildAnnotations) {
+        Object.assign(annotations, window.vitalsBuildAnnotations(data.annotations, sortedLabels));
+    }
+
     if (window.vitalsChartInstance) {
         window.vitalsChartInstance.destroy();
     }
