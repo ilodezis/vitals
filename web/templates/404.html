@@ -1,93 +1,49 @@
 {% extends "base.html" %}
 {% block title %}404 · Vitals{% endblock %}
 
+{# Deliberately built only from design-system classes (.v-card / .v-btn / .v-btn-ghost
+   / .v-text-*) and utilities already present in the compiled tailwind.css. The first
+   version leaned on a pile of arbitrary Tailwind classes (blur-3xl, grid-cols-[…],
+   min-h-full, off-brand fuchsia/emerald gradients) that were never in the prebuilt
+   bundle, so the page rendered unstyled. Warm dim, single amber CTA — per DESIGN_SYSTEM.md. #}
 {% block content %}
 {% set is_ru = request.state.lang == 'ru' %}
-<section class="relative isolate flex min-h-full items-center justify-center overflow-hidden px-4 py-10 sm:px-6 lg:px-8">
-    <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div class="absolute left-1/2 top-10 h-72 w-72 -translate-x-1/2 rounded-full bg-[var(--accent)]/20 blur-3xl"></div>
-        <div class="absolute bottom-10 right-0 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl"></div>
-        <div class="absolute bottom-24 left-0 h-56 w-56 rounded-full bg-fuchsia-400/10 blur-3xl"></div>
-    </div>
-
-    <div class="w-full max-w-5xl">
-        <div class="v-card relative overflow-hidden border-[var(--accent-line)] p-0 shadow-2xl">
-            <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[var(--accent)] via-emerald-300 to-fuchsia-300"></div>
-            <div class="grid gap-0 lg:grid-cols-[1.05fr_.95fr]">
-                <div class="space-y-7 p-7 sm:p-10 lg:p-12">
-                    <div class="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--bg-inset)] px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-[var(--muted)]">
-                        <span class="h-2 w-2 rounded-full bg-[var(--accent)] shadow-[0_0_18px_var(--accent)]"></span>
-                        {{ 'Маршрут не найден' if is_ru else 'Route not found' }}
-                    </div>
-
-                    <div class="space-y-4">
-                        <p class="font-black leading-none tracking-[-0.08em] text-[7rem] text-[var(--fg)] sm:text-[9rem] lg:text-[10rem]">
-                            404
-                        </p>
-                        <div class="space-y-3">
-                            <h1 class="max-w-2xl font-display text-3xl font-extrabold tracking-tight text-[var(--fg)] sm:text-5xl">
-                                {{ 'Эта страница ушла на внеплановый чекап.' if is_ru else 'This page went in for an unscheduled checkup.' }}
-                            </h1>
-                            <p class="max-w-xl text-base leading-7 text-[var(--muted)] sm:text-lg">
-                                {{ 'Ссылка может быть устаревшей, модуль выключен или адрес набран с ошибкой. Вернитесь в Vitals и продолжайте отслеживать важное.' if is_ru else 'The link may be outdated, a module may be disabled, or the address may be mistyped. Head back to Vitals and keep tracking what matters.' }}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col gap-3 sm:flex-row">
-                        <a href="/weight" class="v-btn justify-center text-sm">
-                            {{ 'На главную панель' if is_ru else 'Go to dashboard' }}
-                        </a>
-                        <button type="button" onclick="history.length > 1 ? history.back() : location.assign('/weight')" class="v-btn-ghost justify-center text-sm">
-                            {{ 'Вернуться назад' if is_ru else 'Go back' }}
-                        </button>
-                    </div>
-                </div>
-
-                <div class="relative flex min-h-[360px] items-center justify-center border-t border-[var(--line)] bg-[var(--bg-inset)] p-7 lg:border-l lg:border-t-0 lg:p-10">
-                    <div class="absolute inset-0 opacity-40" style="background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 34px 34px;"></div>
-                    <div class="relative w-full max-w-sm rounded-[2rem] border border-[var(--line-2)] bg-[rgba(18,16,22,.82)] p-5 shadow-2xl backdrop-blur">
-                        <div class="mb-5 flex items-center justify-between">
-                            <div>
-                                <p class="v-text-micro text-[var(--muted)]">Vitals monitor</p>
-                                <p class="text-sm font-bold text-[var(--fg)]">{{ 'Статус маршрута' if is_ru else 'Route status' }}</p>
-                            </div>
-                            <div class="rounded-full border border-rose-400/30 bg-rose-400/10 px-3 py-1 text-xs font-black text-rose-200">404</div>
-                        </div>
-                        <div class="relative h-40 overflow-hidden rounded-2xl border border-[var(--line)] bg-black/20 p-4">
-                            <svg class="absolute inset-0 h-full w-full" viewBox="0 0 360 160" preserveAspectRatio="none" aria-hidden="true">
-                                <defs>
-                                    <linearGradient id="not-found-pulse" x1="0" x2="1" y1="0" y2="0">
-                                        <stop offset="0%" stop-color="#8b5cf6" />
-                                        <stop offset="52%" stop-color="#34d399" />
-                                        <stop offset="100%" stop-color="#f472b6" />
-                                    </linearGradient>
-                                </defs>
-                                <path d="M0 92 H54 L70 92 L84 44 L103 124 L121 92 H168 L185 92 L199 62 L214 92 H360" fill="none" stroke="url(#not-found-pulse)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-                            <div class="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs font-semibold text-[var(--muted)]">
-                                <span>{{ 'сигнал потерян' if is_ru else 'signal lost' }}</span>
-                                <span>{{ requested_path }}</span>
-                            </div>
-                        </div>
-                        <div class="mt-5 grid grid-cols-3 gap-3 text-center">
-                            <div class="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3">
-                                <p class="text-lg font-black text-[var(--fg)]">0</p>
-                                <p class="v-text-micro text-[var(--muted)]">{{ 'страниц' if is_ru else 'pages' }}</p>
-                            </div>
-                            <div class="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3">
-                                <p class="text-lg font-black text-emerald-200">1</p>
-                                <p class="v-text-micro text-[var(--muted)]">{{ 'выход' if is_ru else 'way out' }}</p>
-                            </div>
-                            <div class="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3">
-                                <p class="text-lg font-black text-[var(--accent)]">∞</p>
-                                <p class="v-text-micro text-[var(--muted)]">{{ 'данных' if is_ru else 'data' }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<div class="px-6 py-7 w-full" style="min-height: 72vh; display: flex; align-items: center; justify-content: center;">
+    <div class="v-card p-6 w-full text-center" style="max-width: 30rem;">
+        <div class="flex justify-center" style="margin-bottom: 1.25rem;">
+            <svg style="width: 2.4rem; height: 2.4rem; color: var(--accent);" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h2.5l2.5-6 3.5 12 2.5-9 1.5 3h3" />
+            </svg>
         </div>
+
+        <p class="v-text-micro"
+            style="color: var(--muted); letter-spacing: .2em; text-transform: uppercase; margin-bottom: .85rem;">
+            {{ '404 · Маршрут не найден' if is_ru else '404 · Route not found' }}
+        </p>
+
+        <h1 class="v-text-title" style="color: var(--fg); margin-bottom: .75rem;">
+            {{ 'Эта страница ушла на внеплановый чекап.' if is_ru else 'This page went in for an unscheduled checkup.' }}
+        </h1>
+
+        <p class="v-text-card"
+            style="color: var(--muted); font-weight: 400; max-width: 26rem; margin: 0 auto 1.75rem;">
+            {{ 'Ссылка может быть устаревшей, модуль выключен или адрес набран с ошибкой.' if is_ru else 'The link may be outdated, a module may be disabled, or the address may be mistyped.' }}
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <a href="/weight" class="v-btn justify-center">{{ 'На главную' if is_ru else 'Go to dashboard' }}</a>
+            <button type="button" onclick="history.length > 1 ? history.back() : location.assign('/weight')"
+                class="v-btn-ghost justify-center">
+                {{ 'Назад' if is_ru else 'Go back' }}
+            </button>
+        </div>
+
+        {% if requested_path %}
+        <p class="v-text-micro" style="color: var(--muted); opacity: .6; margin-top: 1.5rem; word-break: break-all;">
+            {{ requested_path }}
+        </p>
+        {% endif %}
     </div>
-</section>
+</div>
 {% endblock %}
