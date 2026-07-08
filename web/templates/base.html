@@ -128,36 +128,11 @@
         })();
     </script>
 
-    <!-- On-screen-keyboard focus keeper. The position:fixed app shell (vitals.css)
-         already stops iOS from scrolling the whole page under the keyboard, so the
-         only scroller left is the inner <main>. But iOS won't reliably scroll a
-         nested container to reveal a field low on the screen, and any stray
-         document scroll it does introduce must be undone. On focusin of a form
-         field we therefore: (1) reset the document scroll iOS may have applied, and
-         (2) once the keyboard has settled, nudge the field to the centre of the
-         space still visible above it. Delegated on <document> so it survives
-         hx-boost body swaps. -->
-    <script>
-        (function () {
-            function keepVisible(el) {
-                try { window.scrollTo(0, 0); } catch (e) { }
-                var vv = window.visualViewport;
-                var rect = el.getBoundingClientRect();
-                var visibleBottom = vv ? (vv.offsetTop + vv.height) : window.innerHeight;
-                // Only intervene if the field sits below the fold above the keyboard.
-                if (rect.bottom <= visibleBottom - 8 && rect.top >= (vv ? vv.offsetTop : 0)) return;
-                if (typeof el.scrollIntoView === 'function') {
-                    el.scrollIntoView({ block: 'center', inline: 'nearest' });
-                }
-            }
-            document.addEventListener('focusin', function (e) {
-                var el = e.target;
-                if (!el || !el.matches || !el.matches('input, textarea, select')) return;
-                // Let the keyboard animate in and the visual viewport settle first.
-                setTimeout(function () { keepVisible(el); }, 300);
-            });
-        })();
-    </script>
+    <!-- No JS keyboard "focus keeper" here on purpose. An earlier version reset the
+         document scroll and scrollIntoView()'d the focused field on focusin; on iOS it
+         fought the browser's own focus-scroll and made the page jerk up and snap back.
+         The position:fixed app shell (vitals.css) already removes the scrollable
+         document, so iOS simply scrolls the inner <main> natively — no JS needed. -->
 
     <!-- Render diagnostics (B2): a lightweight ring buffer of htmx lifecycle +
          page-render state, kept in <head> so it survives hx-boost body swaps.

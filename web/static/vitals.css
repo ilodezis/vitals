@@ -294,36 +294,32 @@ html {
 }
 
 /* App shell fills the visible screen exactly so the in-flow bottom nav sits at
-   the true viewport bottom. 100dvh (iOS 15.4+) accounts for PWA chrome; the
-   100vh line is a fallback for older engines. A class (not the bare `body`
-   selector) so it beats Tailwind's `.h-full`/utility specificity. */
+   the true viewport bottom. A class (not the bare `body` selector) so it beats
+   Tailwind's `.h-full`/utility specificity. */
 .v-app-shell {
     /* position:fixed (not just overflow:hidden) is what actually stops iOS from
        scrolling the WHOLE page up when the keyboard opens over a focused input.
        On iOS, overflow:hidden on body/html does NOT prevent that root-level
-       focus-scroll; pinning the shell to the layout viewport removes any
-       scrollable document for the browser to move, so only the inner <main>
-       scrolls (native-app feel) and the header/bottom-nav never drift. This does
-       NOT trap the modal overlays' own position:fixed — a plain fixed ancestor
-       isn't a containing block for fixed descendants (only transform/filter/
-       will-change/contain are), so .v-backdrop still resolves against the
-       viewport. */
+       focus-scroll; pinning the shell removes any scrollable document for the
+       browser to move, so only the inner <main> scrolls (native-app feel) and the
+       header/bottom-nav never drift. This does NOT trap the modal overlays' own
+       position:fixed — a plain fixed ancestor isn't a containing block for fixed
+       descendants (only transform/filter/will-change/contain are), so .v-backdrop
+       still resolves against the viewport.
+
+       Pinned with top/right/bottom/left:0 (i.e. inset:0), NOT height:innerHeight.
+       Sizing the shell to a JS-measured window.innerHeight left it SHORTER than the
+       real layout viewport (innerHeight lags the true visible height in an iOS PWA),
+       so the in-flow bottom nav ended up floating above the screen bottom with a gap
+       beneath it. Anchoring both edges to the viewport removes the guesswork: the
+       nav sits on the true bottom, its own safe-area padding clearing the home
+       indicator. */
     position: fixed;
     top: 0;
-    left: 0;
     right: 0;
+    bottom: 0;
+    left: 0;
     overscroll-behavior: none;
-    height: 100vh;
-    height: 100dvh;
-    /* iOS standalone PWA resolves dvh unreliably across cold starts/resumes.
-       base.html's viewport-sync script caches a live window.innerHeight reading
-       in --app-height; prefer it over dvh once available, falling back to dvh
-       until the script's first sync() runs. Deliberately window.innerHeight, NOT
-       visualViewport.height: this element must stay pinned to the full,
-       keyboard-independent viewport (see the on-screen-keyboard note on
-       base.html's viewport-sync script). Fixed-position overlays track the
-       keyboard instead, via --vv-height/--vv-top. */
-    height: var(--app-height, 100dvh);
 }
 
 /* ── App shell ─────────────────────────────────────────────────────────── */
