@@ -282,8 +282,13 @@ input[type="date"].v-input {
 
 /* ── Safe-area envelope ───────────────────────────────────────────────── */
 /* Left/right insets stay on html for landscape notch.
-   Top inset is handled by .v-header so body height stays 100dvh exactly. */
+   Top inset is handled by .v-header so body height stays 100dvh exactly.
+   overflow:hidden + height:100% keep the document root itself non-scrollable —
+   a prerequisite for the position:fixed app shell below to fully suppress the
+   iOS "scroll the page to reveal a focused input" behaviour under the keyboard. */
 html {
+    height: 100%;
+    overflow: hidden;
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
 }
@@ -293,6 +298,21 @@ html {
    100vh line is a fallback for older engines. A class (not the bare `body`
    selector) so it beats Tailwind's `.h-full`/utility specificity. */
 .v-app-shell {
+    /* position:fixed (not just overflow:hidden) is what actually stops iOS from
+       scrolling the WHOLE page up when the keyboard opens over a focused input.
+       On iOS, overflow:hidden on body/html does NOT prevent that root-level
+       focus-scroll; pinning the shell to the layout viewport removes any
+       scrollable document for the browser to move, so only the inner <main>
+       scrolls (native-app feel) and the header/bottom-nav never drift. This does
+       NOT trap the modal overlays' own position:fixed — a plain fixed ancestor
+       isn't a containing block for fixed descendants (only transform/filter/
+       will-change/contain are), so .v-backdrop still resolves against the
+       viewport. */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    overscroll-behavior: none;
     height: 100vh;
     height: 100dvh;
     /* iOS standalone PWA resolves dvh unreliably across cold starts/resumes.
@@ -300,10 +320,9 @@ html {
        in --app-height; prefer it over dvh once available, falling back to dvh
        until the script's first sync() runs. Deliberately window.innerHeight, NOT
        visualViewport.height: this element must stay pinned to the full,
-       keyboard-independent viewport so the document itself never gains scroll
-       room (see the on-screen-keyboard note on base.html's viewport-sync script
-       for why that matters). Fixed-position overlays track the keyboard instead,
-       via --vv-height/--vv-top. */
+       keyboard-independent viewport (see the on-screen-keyboard note on
+       base.html's viewport-sync script). Fixed-position overlays track the
+       keyboard instead, via --vv-height/--vv-top. */
     height: var(--app-height, 100dvh);
 }
 

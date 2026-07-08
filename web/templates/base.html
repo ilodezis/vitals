@@ -3,7 +3,13 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!-- interactive-widget=resizes-content: on Chrome/Android the on-screen keyboard
+         shrinks the layout viewport (dvh/innerHeight) instead of overlaying, so the
+         position:fixed app shell shrinks to fit above it and <main> scrolls normally.
+         iOS ignores this key; there the position:fixed shell + focusin handler below
+         do the work. -->
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
     <title>{% block title %}Vitals{% endblock %}</title>
 
     <!-- Favicon -->
@@ -119,6 +125,37 @@
                 sync(); requestAnimationFrame(sync); setTimeout(sync, 300);
             });
             document.addEventListener('htmx:load', sync);
+        })();
+    </script>
+
+    <!-- On-screen-keyboard focus keeper. The position:fixed app shell (vitals.css)
+         already stops iOS from scrolling the whole page under the keyboard, so the
+         only scroller left is the inner <main>. But iOS won't reliably scroll a
+         nested container to reveal a field low on the screen, and any stray
+         document scroll it does introduce must be undone. On focusin of a form
+         field we therefore: (1) reset the document scroll iOS may have applied, and
+         (2) once the keyboard has settled, nudge the field to the centre of the
+         space still visible above it. Delegated on <document> so it survives
+         hx-boost body swaps. -->
+    <script>
+        (function () {
+            function keepVisible(el) {
+                try { window.scrollTo(0, 0); } catch (e) { }
+                var vv = window.visualViewport;
+                var rect = el.getBoundingClientRect();
+                var visibleBottom = vv ? (vv.offsetTop + vv.height) : window.innerHeight;
+                // Only intervene if the field sits below the fold above the keyboard.
+                if (rect.bottom <= visibleBottom - 8 && rect.top >= (vv ? vv.offsetTop : 0)) return;
+                if (typeof el.scrollIntoView === 'function') {
+                    el.scrollIntoView({ block: 'center', inline: 'nearest' });
+                }
+            }
+            document.addEventListener('focusin', function (e) {
+                var el = e.target;
+                if (!el || !el.matches || !el.matches('input, textarea, select')) return;
+                // Let the keyboard animate in and the visual viewport settle first.
+                setTimeout(function () { keepVisible(el); }, 300);
+            });
         })();
     </script>
 
