@@ -294,7 +294,7 @@
                             <span>{{ n.start_date | format_date }} {% if n.end_date %}— {{ n.end_date | format_date }}{%
                                 else %}{{ t("weight.active_marker") }}{% endif %}</span>
                             <form action="/weight/noise/{{ n.id }}/delete" method="POST" class="inline"
-                                onsubmit="return confirm('{{ t("weight.confirm_delete_noise") }}')">
+                                data-confirm="{{ t("weight.confirm_delete_noise") }}">
                                 <button type="submit" class="v-icon-btn danger" style="width:1.5rem;height:1.5rem"
                                     title="{{ t("common.delete") }}">
                                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -418,7 +418,7 @@
                                             </button>
                                             {% endif %}
                                             <form action="/weight/log/{{ w.id }}/delete" method="POST" class="inline"
-                                                onsubmit="return confirm('{{ t("weight.confirm_delete") }}')">
+                                                data-confirm="{{ t("weight.confirm_delete") }}">
                                                 <button type="submit" class="v-icon-btn danger" title="{{ t("
                                                     common.delete") }}">
                                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -482,7 +482,7 @@
                             </a>
                             {% endif %}
                             <form action="/weight/body-scan/{{ s.id }}/delete" method="POST" class="inline"
-                                onsubmit="return confirm('{{ t("body.delete_scan") }}?')">
+                                data-confirm="{{ t("body.delete_scan") }}?">
                                 <button type="submit" class="v-icon-btn danger" title="{{ t('common.delete') }}">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -569,8 +569,7 @@
                                             </svg>
                                         </button>
                                         <form action="/weight/measurement/{{ m.id }}/delete" method="POST"
-                                            class="inline" onsubmit="return confirm('{{ t("
-                                            weight.confirm_delete_measure") }}')">
+                                            class="inline" data-confirm="{{ t("weight.confirm_delete_measure") }}">
                                             <button type="submit" class="v-icon-btn danger" title="{{ t("
                                                 common.delete") }}">
                                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -666,8 +665,8 @@
                 </div>
                 <div class="flex items-center justify-between w-full max-w-full px-2">
                     <div class="v-text-label" x-text="'{{ t("weight.photo_label") }} ' + largePhotoDate"></div>
-                <form action="/weight/photo/delete" method="POST" onsubmit="return confirm(' {{
-                        t("weight.confirm_delete_photo") }}')">
+                <form action="/weight/photo/delete" method="POST"
+                        data-confirm="{{ t("weight.confirm_delete_photo") }}">
                         <input type="hidden" name="id" :value="largePhotoId">
                         <button type="submit"
                             class="v-btn-danger py-2 px-4 text-xs font-bold flex items-center gap-1.5">

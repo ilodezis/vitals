@@ -434,8 +434,8 @@
 </div>
 
 <script>
-function triggerRestart() {
-    if (!confirm('{{ t("settings.restart_confirm") }}')) {
+async function triggerRestart() {
+    if (!(await window.vitalsConfirm({{ t("settings.restart_confirm") | tojson | safe }}, {{ t("settings.restart_btn") | tojson | safe }}))) {
         return;
     }
 

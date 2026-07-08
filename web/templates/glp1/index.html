@@ -219,7 +219,7 @@
                                     <button @click="editInjection({id: {{ inj.id }}, date: '{{ inj.date }}', drug: '{{ inj.drug }}', dose_mg: {{ inj.dose_mg }}, site: {{ (inj.site | tojson if inj.site else 'null') | forceescape }}, note: {{ (inj.note or '') | tojson | forceescape }}})" class="v-icon-btn" title="{{ t('common.edit') }}">
                                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                     </button>
-                                    <form action="/glp1/injection/{{ inj.id }}/delete" method="POST" class="inline" onsubmit="return confirm('{{ t("glp1.confirm_delete_injection") }}')">
+                                    <form action="/glp1/injection/{{ inj.id }}/delete" method="POST" class="inline" data-confirm="{{ t("glp1.confirm_delete_injection") }}">
                                         <button type="submit" class="v-icon-btn danger" title="{{ t('common.delete') }}">
                                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         </button>
@@ -245,7 +245,7 @@
                     <li class="pb-2" style="border-bottom: 1px solid var(--line)">
                         <div class="flex justify-between items-center v-text-micro v-num">
                             <span>{{ p.start_date | format_date }} {% if p.end_date %}— {{ p.end_date | format_date }}{% else %}{{ t("glp1.current_phase") }}{% endif %}</span>
-                            <form action="/glp1/phase/{{ p.id }}/delete" method="POST" class="inline" onsubmit="return confirm('{{ t("glp1.confirm_delete_phase") }}')">
+                            <form action="/glp1/phase/{{ p.id }}/delete" method="POST" class="inline" data-confirm="{{ t("glp1.confirm_delete_phase") }}">
                                 <button type="submit" class="v-icon-btn danger" style="width:1.5rem;height:1.5rem" title="{{ t('common.delete') }}">
                                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                 </button>
@@ -275,7 +275,7 @@
                                 <span class="ml-1 v-num font-semibold" style="color: {% if se.severity >= 4 %}var(--bad){% elif se.severity == 3 %}var(--warn){% else %}var(--muted){% endif %}">[{{ se.severity }}/5]</span>
                             </span>
                         </div>
-                        <form action="/glp1/side-effect/{{ se.id }}/delete" method="POST" class="inline" onsubmit="return confirm('{{ t("glp1.confirm_delete_side") }}')">
+                        <form action="/glp1/side-effect/{{ se.id }}/delete" method="POST" class="inline" data-confirm="{{ t("glp1.confirm_delete_side") }}">
                             <button type="submit" class="v-icon-btn danger" style="width:1.5rem;height:1.5rem" title="{{ t('common.delete') }}">
                                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>

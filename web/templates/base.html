@@ -553,6 +553,81 @@
             }, 5000);
         };
 
+        // Themed replacement for the native confirm() dialog (U11) — reuses the
+        // .v-backdrop/.v-modal/.v-btn-danger/.v-btn-ghost shell from
+        // partials/conflict_modal.html so destructive confirms stay in the design
+        // system. Modelled on vitalsToast above: look the element up fresh by id
+        // on every call instead of caching it in a closure, because hx-boost tears
+        // down and re-renders everything inside <body> on each navigation — a
+        // cached reference would go stale and the dialog would silently stop
+        // appearing after the first boosted nav.
+        function ensureConfirmModal() {
+            let modal = document.getElementById('vitals-confirm-modal');
+            if (modal) return modal;
+            modal = document.createElement('div');
+            modal.id = 'vitals-confirm-modal';
+            modal.className = 'v-backdrop';
+            modal.style.display = 'none';
+            modal.innerHTML =
+                '<div class="v-modal p-6 space-y-5">' +
+                '<p class="v-text-body" id="vitals-confirm-message"></p>' +
+                '<div class="flex gap-3">' +
+                '<button type="button" class="v-btn-danger flex-1 text-xs py-2.5" id="vitals-confirm-ok"></button>' +
+                '<button type="button" class="v-btn-ghost flex-1 text-xs py-2.5" id="vitals-confirm-cancel"></button>' +
+                '</div></div>';
+            document.body.appendChild(modal);
+            modal.querySelector('#vitals-confirm-ok').addEventListener('click', () => settleVitalsConfirm(true));
+            modal.querySelector('#vitals-confirm-cancel').addEventListener('click', () => settleVitalsConfirm(false));
+            modal.addEventListener('click', (e) => { if (e.target === modal) settleVitalsConfirm(false); });
+            return modal;
+        }
+
+        function settleVitalsConfirm(result) {
+            const modal = document.getElementById('vitals-confirm-modal');
+            if (modal) modal.style.display = 'none';
+            const resolveFn = window.__vitalsConfirmResolve;
+            window.__vitalsConfirmResolve = null;
+            if (resolveFn) resolveFn(result);
+        }
+
+        // message: string shown in the dialog. confirmLabel: text for the
+        // affirmative button (defaults to "Delete" — the vast majority of callers
+        // are delete forms; settings' restart action passes its own label).
+        window.vitalsConfirm = function (message, confirmLabel) {
+            const modal = ensureConfirmModal();
+            modal.querySelector('#vitals-confirm-message').textContent = message;
+            // common.delete/common.cancel are template-namespace keys, not js.* —
+            // window.t() can't see them (it only resolves the js.* slice), so
+            // render them server-side here instead of at call time.
+            modal.querySelector('#vitals-confirm-ok').textContent = confirmLabel || {{ t("common.delete") | tojson | safe }};
+            modal.querySelector('#vitals-confirm-cancel').textContent = {{ t("common.cancel") | tojson | safe }};
+            modal.style.display = 'flex';
+            return new Promise((resolve) => { window.__vitalsConfirmResolve = resolve; });
+        };
+
+        // All 15 delete forms inherit hx-boost="true" from <body>, so htmx (not
+        // the browser) owns their submission — a raw document-level 'submit'
+        // listener runs too late, after htmx has already read the form and
+        // fired its fetch. htmx's own extension point for this is the
+        // cancelable htmx:confirm event (fired for every request it's about to
+        // issue, boosted or not): preventDefault() pauses it, and calling
+        // evt.detail.issueRequest(true) later resumes the exact same request.
+        // This is the documented hook for swapping in a custom confirm UI.
+        // Guard registration since this whole <script> re-runs on every
+        // hx-boost swap (same pattern as the chart-init listeners below).
+        if (!window.__vitalsConfirmBound) {
+            window.__vitalsConfirmBound = true;
+            document.addEventListener('htmx:confirm', function (e) {
+                const el = e.detail && e.detail.elt;
+                const message = el && el.getAttribute ? el.getAttribute('data-confirm') : null;
+                if (!message) return;
+                e.preventDefault();
+                window.vitalsConfirm(message).then((ok) => {
+                    if (ok) e.detail.issueRequest(true);
+                });
+            });
+        }
+
         // Enable view transitions globally for HTMX boosted requests
         document.addEventListener("DOMContentLoaded", () => {
             if (window.htmx) {

@@ -37,7 +37,7 @@
                     <span class="v-text-card">{{ chart.name }}</span>
                 </div>
                 <form action="/charts/{{ chart.id }}/delete" method="POST"
-                      onsubmit="return confirm('{{ t("charts.delete_confirm") }}')">
+                      data-confirm="{{ t("charts.delete_confirm") }}">
                     <button type="submit" class="v-btn-ghost text-xs">{{ t("charts.delete") }}</button>
                 </form>
             </div>
