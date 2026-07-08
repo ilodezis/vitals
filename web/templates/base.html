@@ -60,7 +60,15 @@
          change its mind, caching them as CSS vars that vitals.css reads via max(env, var). Lives
          in <head> (not a page script) because hx-boost only swaps <body> innerHTML, so this
          registers once and survives boosted navigations. The probe hangs off <html> for the
-         same reason. -->
+         same reason.
+
+         --app-height/--vv-top double as the on-screen-keyboard fix: neither vh nor dvh ever
+         shrinks for the keyboard (by spec only the visual viewport does), so --app-height now
+         prefers visualViewport.height — the app shell shrinks to the space actually visible
+         above the keyboard instead of leaving the browser to pan the page to reveal a focused
+         input. --vv-top tracks visualViewport.offsetTop, the distance of that pan; fixed-position
+         elements (anchored to the layout viewport, which the visual viewport can scroll
+         independently of) read it to stay put instead of shooting off the top of the screen. -->
     <script>
         (function () {
             var root = document.documentElement, probe = null;
@@ -75,7 +83,11 @@
                 root.appendChild(probe);
                 return probe;
             }
-            function setHeight() { root.style.setProperty('--app-height', window.innerHeight + 'px'); }
+            function setHeight() {
+                var vv = window.visualViewport;
+                root.style.setProperty('--app-height', (vv ? vv.height : window.innerHeight) + 'px');
+                root.style.setProperty('--vv-top', (vv ? vv.offsetTop : 0) + 'px');
+            }
             function sync() {
                 setHeight();
                 if (!document.body) return;
@@ -91,7 +103,10 @@
                 window.addEventListener(e, sync, { passive: true });
             });
             document.addEventListener('visibilitychange', function () { if (!document.hidden) sync(); });
-            if (window.visualViewport) window.visualViewport.addEventListener('resize', sync, { passive: true });
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', sync, { passive: true });
+                window.visualViewport.addEventListener('scroll', sync, { passive: true });
+            }
             window.addEventListener('load', function () {
                 sync(); requestAnimationFrame(sync); setTimeout(sync, 300);
             });
