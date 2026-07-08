@@ -98,6 +98,42 @@
             document.addEventListener('htmx:load', sync);
         })();
     </script>
+
+    <!-- Render diagnostics (B2): a lightweight ring buffer of htmx lifecycle +
+         page-render state, kept in <head> so it survives hx-boost body swaps.
+         The "tables/charts sometimes don't load, only a reload helps" bug could
+         not be reproduced locally; this captures the real case in prod. When it
+         happens, run vitalsDiag() in the console (or read localStorage key
+         'vitals_diag') to see whether it stalled on an invisible <main>, a chart
+         that never warmed, or an unfinished swap. Inert otherwise — records only,
+         no console noise unless window.__VITALS_DIAG_LOG is set. -->
+    <script>
+        (function () {
+            var KEY = 'vitals_diag', CAP = 60, buf = [];
+            try { buf = JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { buf = []; }
+            function snap(ev) {
+                var main = document.querySelector('main');
+                var rec = {
+                    t: new Date().toISOString(), ev: ev, url: location.pathname,
+                    mainOpacity: main ? getComputedStyle(main).opacity : null,
+                    mainVisible: main ? getComputedStyle(main).visibility : null,
+                    htmlCls: document.documentElement.className,
+                    rows: document.querySelectorAll('table tbody tr').length,
+                    canvases: document.querySelectorAll('canvas').length
+                };
+                buf.push(rec);
+                if (buf.length > CAP) buf = buf.slice(-CAP);
+                try { localStorage.setItem(KEY, JSON.stringify(buf)); } catch (e) { }
+                if (window.__VITALS_DIAG_LOG) console.debug('[vitals-diag]', rec);
+            }
+            ['htmx:beforeSwap', 'htmx:afterSwap', 'htmx:afterSettle', 'htmx:load',
+                'htmx:historyRestore', 'htmx:responseError', 'htmx:swapError'
+            ].forEach(function (e) { document.addEventListener(e, function () { snap(e); }); });
+            window.addEventListener('error', function (e) { snap('js-error:' + (e && e.message)); });
+            window.addEventListener('pageshow', function () { snap('pageshow'); });
+            window.vitalsDiag = function () { try { console.table(buf); } catch (e) { } return buf; };
+        })();
+    </script>
 </head>
 
 <body class="v-app-shell flex flex-col overflow-hidden select-none {% if request.state.ui_version == 'masthead' %}ui-masthead{% endif %}" x-data="{ mobileMenuOpen: false }" hx-boost="true">
@@ -125,8 +161,8 @@
     <!-- Header -->
     <header class="v-header flex-none h-16 flex items-center justify-between px-6">
         <!-- Left: brand + navigation -->
-        <div class="flex items-center gap-8">
-            <a href="/" class="flex items-center gap-2">
+        <div class="flex items-center gap-8 min-w-0">
+            <a href="/" class="flex items-center gap-2 flex-none">
                 <svg class="v-brand-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h2.5l2.5-6 3.5 12 2.5-9 1.5 3h3" />
                 </svg>
@@ -140,7 +176,7 @@
         </div>
 
         <!-- Right: settings + user + logout -->
-        <div class="flex items-center justify-end gap-2">
+        <div class="flex items-center justify-end gap-2 flex-none">
             {% if username %}
             <span class="hidden sm:inline text-xs" style="color: var(--muted)">
                 {{ username }}
@@ -162,7 +198,9 @@
     </header>
     {% endif %}
 
-    <!-- Main Workspace -->
+    <!-- Main Workspace — content is selectable (see `main` rule in vitals.css):
+         <body> carries select-none for app-like chrome, but lab values, rsIDs and
+         the AI digest must be copyable. -->
     <main class="flex-1 min-w-0 w-full overflow-y-auto">
         <!-- System Alerts Container -->
         {% if alerts %}
@@ -364,6 +402,19 @@
                 </a>
                 {% endif %}
             </div>
+
+            <!-- Settings inside Drawer — the masthead rail (which carries the gear)
+                 is hidden on mobile and the mobile top bar has no gear, so without
+                 this there is no way to reach Settings on a phone in masthead mode. -->
+            <a href="/settings" @click="mobileMenuOpen = false"
+                class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition text-xs font-bold text-[var(--fg-2)]">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {{ t("nav.settings_title") }}
+            </a>
 
             <!-- Logout inside Drawer -->
             <form action="/logout" method="POST" class="w-full" hx-boost="false">

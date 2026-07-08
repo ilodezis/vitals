@@ -4,7 +4,7 @@
    shown. Pass `oob=true` to emit the hx-swap-oob marker. #}
 {% set current_path = request.url.path if request else '' %}
 {% set em = request.state.enabled_modules or {} %}
-<nav id="primary-nav" {% if oob %}hx-swap-oob="true"{% endif %} class="hidden md:flex items-center gap-1">
+<nav id="primary-nav" {% if oob %}hx-swap-oob="true"{% endif %} class="hidden md:flex items-center gap-1 v-nav-scroll">
     <!-- Group 1: Core Metrics -->
     <div class="flex items-center gap-1">
         <a href="/weight" class="v-nav-link whitespace-nowrap {% if current_path.startswith('/weight') %}is-active{% endif %}">

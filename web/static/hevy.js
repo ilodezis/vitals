@@ -88,9 +88,18 @@ function initHevyChart() {
         }
     });
 }
-if (document.readyState !== 'loading') {
-    initHevyChart();
-} else {
-    document.addEventListener('DOMContentLoaded', initHevyChart);
+function initHevyChartSafe() {
+    try { initHevyChart(); } catch (e) { console.error('hevyChart init failed', e); }
 }
-document.addEventListener('htmx:afterSettle', initHevyChart);
+if (document.readyState !== 'loading') {
+    initHevyChartSafe();
+} else {
+    document.addEventListener('DOMContentLoaded', initHevyChartSafe);
+}
+// Register boosted-navigation hooks once (this script re-runs on every hx-boost
+// swap into /hevy); historyRestore re-draws the chart after browser back/forward.
+if (!window.__hevyChartBound) {
+    window.__hevyChartBound = true;
+    document.addEventListener('htmx:afterSettle', initHevyChartSafe);
+    document.addEventListener('htmx:historyRestore', initHevyChartSafe);
+}

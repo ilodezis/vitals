@@ -124,12 +124,21 @@ function initCustomCharts() {
         renderCustomChart(`customChart-${id}`, config);
     });
 }
-if (document.readyState !== 'loading') {
-    initCustomCharts();
-} else {
-    document.addEventListener('DOMContentLoaded', initCustomCharts);
+function initCustomChartsSafe() {
+    try { initCustomCharts(); } catch (e) { console.error('customCharts init failed', e); }
 }
-document.addEventListener('htmx:afterSettle', initCustomCharts);
+if (document.readyState !== 'loading') {
+    initCustomChartsSafe();
+} else {
+    document.addEventListener('DOMContentLoaded', initCustomChartsSafe);
+}
+// Register boosted-navigation hooks once (this script re-runs on every hx-boost
+// swap into /charts); historyRestore re-draws after browser back/forward.
+if (!window.__customChartsBound) {
+    window.__customChartsBound = true;
+    document.addEventListener('htmx:afterSettle', initCustomChartsSafe);
+    document.addEventListener('htmx:historyRestore', initCustomChartsSafe);
+}
 
 /** Alpine component backing the "new chart" builder form. */
 function chartBuilder(catalog) {

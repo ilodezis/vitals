@@ -584,9 +584,25 @@ function initWeightChart() {
     };
     window.addEventListener('resize', window._vitalsChartResizeHandler);
 }
-if (document.readyState !== 'loading') {
-    initWeightChart();
-} else {
-    document.addEventListener('DOMContentLoaded', initWeightChart);
+function initWeightChartSafe() {
+    // A throw here must not bubble out of an htmx:afterSettle / view-transition
+    // callback — that can leave the swap unfinished and <main> stuck invisible.
+    try { initWeightChart(); } catch (e) { console.error('weightChart init failed', e); }
 }
-document.addEventListener('htmx:afterSettle', initWeightChart);
+
+if (document.readyState !== 'loading') {
+    initWeightChartSafe();
+} else {
+    document.addEventListener('DOMContentLoaded', initWeightChartSafe);
+}
+
+// Register boosted-navigation hooks ONCE. This page's <script src> re-executes on
+// every hx-boost swap into it, so an unguarded addEventListener stacked another
+// afterSettle listener per visit (N visits → N redundant re-inits). historyRestore
+// covers browser back/forward, where htmx restores a snapshot whose <canvas> is
+// blank until the chart is re-drawn.
+if (!window.__weightChartBound) {
+    window.__weightChartBound = true;
+    document.addEventListener('htmx:afterSettle', initWeightChartSafe);
+    document.addEventListener('htmx:historyRestore', initWeightChartSafe);
+}

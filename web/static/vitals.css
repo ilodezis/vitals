@@ -102,6 +102,15 @@ body {
     font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
+/* <body> carries Tailwind's select-none for app-like chrome (nav, header,
+   bottom bar). The content area must stay copyable — lab values, rsIDs, the AI
+   digest — so re-enable selection on <main> and its subtree. */
+main,
+main * {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
 body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -120,9 +129,9 @@ body {
 
 /* ── Typography scale ─────────────────────────────────────────────────────
    Six sizes, no others. Apply one of these classes instead of ad-hoc
-   text-*/
-text-[...] utilities so every label,
-heading and value in the app resolves to the same scale. */ .v-text-metric {
+   text-[...] utilities so every label, heading and value in the app resolves
+   to the same scale. */
+.v-text-metric {
     font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
     font-size: var(--text-metric);
     font-weight: 650;
@@ -394,6 +403,22 @@ html {
     height: 0.9rem;
     background-color: var(--line);
     margin: 0 0.4rem;
+    flex: none;
+}
+
+/* Desktop primary nav can outgrow the header once many optional modules are on.
+   Let it scroll horizontally inside its own space instead of pushing the brand
+   and the settings/logout controls off-screen (which forced a whole-page
+   horizontal scroll and put those controls out of reach). Scrollbar hidden —
+   the row still scrolls by wheel/trackpad/touch. */
+.v-nav-scroll {
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.v-nav-scroll::-webkit-scrollbar {
+    display: none;
 }
 
 /* The active nav tab is one of only two places amber appears at rest —
@@ -1326,15 +1351,18 @@ html {
     height: 3px;
     background: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 50%, var(--accent) 100%);
     background-size: 200% 100%;
-    animation: progress-bar-loading 1.5s infinite linear;
     z-index: 9999;
     opacity: 0;
     transition: opacity 0.2s ease-in-out;
     pointer-events: none;
 }
 
+/* Only animate while actually loading. Running the keyframes on the (invisible)
+   idle bar repaints on the compositor every frame forever — pure battery drain
+   in an installed PWA. */
 .v-progress-bar.is-active {
     opacity: 1;
+    animation: progress-bar-loading 1.5s infinite linear;
 }
 
 @keyframes progress-bar-loading {
@@ -1356,19 +1384,25 @@ html {
     animation: 210ms cubic-bezier(0, 0, 0.2, 1) 90ms both fade-in;
 }
 
-/* Fallback for browsers that don't support View Transitions */
-.htmx-swapping main {
-    opacity: 0;
-    transition: opacity 150ms ease-out;
-}
+/* Opacity fade fallback — ONLY for browsers without the View Transitions API.
+   When View Transitions are supported (Chrome/desktop) htmx drives the fade via
+   startViewTransition() and the ::view-transition-* rules above, so applying these
+   manual opacity classes on top was redundant AND risky: if a swap/settle was
+   interrupted (rapid navigation, a throw in an afterSettle handler) the transient
+   `.htmx-swapping main { opacity: 0 }` could stick and leave <main> invisible with
+   the content present in the DOM — a blank page that only a full reload cleared.
+   Guarding on @supports keeps a graceful fade for old browsers without ever
+   pinning main to opacity:0 on the ones that use View Transitions. */
+@supports not (view-transition-name: none) {
+    .htmx-swapping main {
+        opacity: 0;
+        transition: opacity 150ms ease-out;
+    }
 
-.htmx-settling main {
-    opacity: 0;
-}
-
-.htmx-settling main {
-    opacity: 1;
-    transition: opacity 200ms ease-in;
+    .htmx-settling main {
+        opacity: 1;
+        transition: opacity 200ms ease-in;
+    }
 }
 
 @keyframes fade-out {
@@ -1416,10 +1450,16 @@ html {
 }
 
 .v-loading-spinner {
-    animation: spin 1s linear infinite;
     height: 2.5rem;
     width: 2.5rem;
     color: var(--accent);
+}
+
+/* Spin only while the overlay is actually shown. The overlay is always mounted
+   (just visibility:hidden when idle), and a hidden element still runs its
+   animation — an endless compositor repaint for nothing. */
+.v-loading-overlay.is-active .v-loading-spinner {
+    animation: spin 1s linear infinite;
 }
 
 @keyframes spin {

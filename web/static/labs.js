@@ -97,9 +97,18 @@ function initLabChart() {
         }
     });
 }
-if (document.readyState !== 'loading') {
-    initLabChart();
-} else {
-    document.addEventListener('DOMContentLoaded', initLabChart);
+function initLabChartSafe() {
+    try { initLabChart(); } catch (e) { console.error('labChart init failed', e); }
 }
-document.addEventListener('htmx:afterSettle', initLabChart);
+if (document.readyState !== 'loading') {
+    initLabChartSafe();
+} else {
+    document.addEventListener('DOMContentLoaded', initLabChartSafe);
+}
+// Register boosted-navigation hooks once (this script re-runs on every hx-boost
+// swap into /labs); historyRestore re-draws the chart after browser back/forward.
+if (!window.__labChartBound) {
+    window.__labChartBound = true;
+    document.addEventListener('htmx:afterSettle', initLabChartSafe);
+    document.addEventListener('htmx:historyRestore', initLabChartSafe);
+}
