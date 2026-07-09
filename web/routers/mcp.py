@@ -2,8 +2,19 @@
 
 Exposes access to all health domains using FastMCP and standard SQLAlchemy
 preloading patterns. Read tools cover every domain; write tools let Claude
-record meals, weight, GLP-1 injections, skincare logs, body measurements,
-lab results, and notes directly from the conversation.
+record and edit meals, weight, GLP-1, skincare, supplements, measurements,
+body scans, labs, goals, timeline events and notes directly from the
+conversation. Two resources (``vitals://profile``, ``vitals://digest/latest``)
+and a ``weekly_review`` prompt round out the surface.
+
+Response conventions (a stable contract the model can rely on):
+  * Success — the tool's normal payload (a dict, or a list of dicts).
+  * A recoverable problem (bad id, unknown key, missing dependency) — a dict
+    ``{"error": "<human message>"}`` (list-returning tools wrap it: ``[{"error": ...}]``).
+  * A hard conflict block on a write — a dict ``{"blocked": true, "violations":
+    [...], "message": ..., "hint": ...}`` (see ``_conflict_payload``); the model
+    can retry the same call with ``override=True``.
+  * A delete — ``{"deleted": <bool>, "<entity>_id": <id>}``.
 """
 from __future__ import annotations
 
@@ -304,7 +315,7 @@ async def get_skincare_logs(
 
 @mcp.tool()
 async def get_genetics_snps(limit: int = 100) -> list[dict]:
-    """Retrieves oцифрованные SNPs (генетические варианты) с описанием их влияния.
+    """Retrieves digitized SNPs (genetic variants) with a description of their effect.
     Defaults to the first 100 variants (gene, rsid order)."""
     session_factory = get_session_factory()
     async with session_factory() as session:
@@ -1787,6 +1798,43 @@ async def get_trend(
                 "date": crossing.isoformat() if crossing else None,
             }
         return result
+
+
+# ── Resources & prompts ───────────────────────────────────────────────────────
+@mcp.resource("vitals://profile")
+async def profile_resource() -> dict:
+    """The user's physical profile, goals, and program — attachable as lightweight
+    context without spending a tool call."""
+    return await get_user_profile()
+
+
+@mcp.resource("vitals://digest/latest")
+async def latest_digest_resource() -> dict:
+    """The most recent weekly AI digest (narrative + date) for conversation
+    continuity."""
+    from vitals.services import digest_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        row = await digest_service.latest_digest(session)
+        if row is None:
+            return {"error": "No digests yet"}
+        return {"date": row.date.isoformat(), "content": row.content, "model": row.model}
+
+
+@mcp.prompt()
+async def weekly_review() -> str:
+    """A ready-made prompt that drives a full cross-domain weekly review."""
+    return (
+        "Review my last 7 days across every domain. First call get_full_snapshot "
+        "for the aligned cross-domain picture (weight trend, GLP-1 state, recent "
+        "labs, activity/recovery, workouts, nutrition, skincare, goals). Then pull "
+        "get_trend for weight and any lab marker that looks off. Summarize what "
+        "changed, call out cross-domain correlations (e.g. sleep vs training load, "
+        "dose changes vs side effects), surface anything from get_active_alerts, and "
+        "give at most three concrete, non-alarmist suggestions. This is decision "
+        "support, not medical advice."
+    )
 
 
 class MCPAuthMiddleware:
