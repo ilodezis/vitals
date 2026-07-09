@@ -116,14 +116,17 @@ LABEL_ALIASES: dict[str, str] = {
     # skeletal muscle
     "скелетно-мышечная масса": "skeletal_muscle_mass",
     "скелетная мышечная масса": "skeletal_muscle_mass",
+    "масса скелетной мускулатуры": "skeletal_muscle_mass",
     "смм": "skeletal_muscle_mass", "skeletal muscle mass": "skeletal_muscle_mass",
     "smm": "skeletal_muscle_mass",
     # fat
     "жировая масса": "body_fat_mass", "масса жира": "body_fat_mass",
     "body fat mass": "body_fat_mass", "bfm": "body_fat_mass",
+    "содержание жира в теле": "body_fat_mass",
     "процент жира": "body_fat_pct", "процент жировой массы": "body_fat_pct",
     "содержание жира": "body_fat_pct", "percent body fat": "body_fat_pct",
     "pbf": "body_fat_pct", "body fat percentage": "body_fat_pct", "% жира": "body_fat_pct",
+    "процентное содержание жира": "body_fat_pct",
     # МедАсс prints this as a combined "value + classification" row rather than a
     # bare "% жира" label — same metric, different phrasing on this device.
     "классификация по проценту жировой массы": "body_fat_pct",
@@ -136,12 +139,13 @@ LABEL_ALIASES: dict[str, str] = {
     "тощая масса": "fat_free_mass", "fat free mass": "fat_free_mass", "ffm": "fat_free_mass",
     "сухая мышечная масса": "soft_lean_mass", "soft lean mass": "soft_lean_mass", "slm": "soft_lean_mass",
     # protein / minerals / bone
-    "белок": "protein", "protein": "protein",
+    "белок": "protein", "protein": "protein", "протеин": "protein",
     "минералы": "minerals", "минеральные вещества": "minerals", "minerals": "minerals", "mineral": "minerals",
     "костная масса": "bone_mineral_content", "минералы костей": "bone_mineral_content",
     "bone mineral content": "bone_mineral_content", "bmc": "bone_mineral_content",
     # cell mass
     "активная клеточная масса": "active_cell_mass", "active cell mass": "active_cell_mass", "акм": "active_cell_mass",
+    "активная масса клеток": "active_cell_mass",
     "доля активной клеточной массы": "active_cell_mass_pct", "% акм": "active_cell_mass_pct",
     "доля скелетно-мышечной массы": "skeletal_muscle_mass_pct",
     # anthropometrics
@@ -159,21 +163,29 @@ LABEL_ALIASES: dict[str, str] = {
     # water
     "общая жидкость организма": "total_body_water", "общая вода организма": "total_body_water",
     "общая жидкость": "total_body_water", "total body water": "total_body_water", "tbw": "total_body_water",
+    "общее количество воды в организме": "total_body_water",
     "внутриклеточная жидкость": "intracellular_water", "клеточная жидкость": "intracellular_water",
     "intracellular water": "intracellular_water", "icw": "intracellular_water",
+    "внутриклеточная вода": "intracellular_water",
     "внеклеточная жидкость": "extracellular_water", "extracellular water": "extracellular_water", "ecw": "extracellular_water",
+    "внеклеточная вода": "extracellular_water",
     "отношение внекж/ово": "ecw_tbw_ratio", "ecw/tbw": "ecw_tbw_ratio", "внекж/ово": "ecw_tbw_ratio",
+    "соотношение вкж/окж": "ecw_tbw_ratio",
     # score / quality
     "фазовый угол": "phase_angle", "phase angle": "phase_angle",
+    "полный фазовый угол тела": "phase_angle",
     "балл inbody": "inbody_score", "балл": "inbody_score", "inbody score": "inbody_score", "score": "inbody_score",
+    "оценка inbody": "inbody_score",
     # derived
     "индекс массы тела": "bmi", "имт": "bmi", "bmi": "bmi", "body mass index": "bmi",
     "основной обмен": "bmr", "базовый обмен": "bmr", "basal metabolic rate": "bmr", "bmr": "bmr",
+    "уровень базального метаболизма": "bmr",
     "удельный основной обмен": "bmr_per_m2",
     "индекс скелетной мускулатуры": "skeletal_muscle_index", "skeletal muscle index": "skeletal_muscle_index", "smi": "skeletal_muscle_index",
     "отношение талия/бедра": "waist_hip_ratio", "waist-hip ratio": "waist_hip_ratio", "whr": "waist_hip_ratio", "от/об": "waist_hip_ratio",
+    "индекс соотношения талия-бедра": "waist_hip_ratio",
     "степень ожирения": "obesity_degree", "obesity degree": "obesity_degree",
-    "целевой вес": "target_weight", "target weight": "target_weight",
+    "целевой вес": "target_weight", "target weight": "target_weight", "идеальный вес": "target_weight",
     "контроль веса": "weight_control", "weight control": "weight_control",
     "контроль жира": "fat_control", "fat control": "fat_control",
     "контроль мышц": "muscle_control", "muscle control": "muscle_control",

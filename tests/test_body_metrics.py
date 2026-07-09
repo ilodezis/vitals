@@ -144,3 +144,21 @@ def test_medass_device_specific_aliases_documented_by_pr2():
     """
     assert bm.normalize_metric("Классификация по проценту жировой массы")[0] == "body_fat_pct"
     assert bm.normalize_metric("Жировая масса (кг), нормированная по росту")[0] == "body_fat_mass"
+
+
+def test_new_inbody_russian_aliases():
+    """Verify newly added Russian InBody translation aliases map correctly."""
+    assert bm.normalize_metric("Масса скелетной мускулатуры")[0] == "skeletal_muscle_mass"
+    assert bm.normalize_metric("Процентное содержание жира")[0] == "body_fat_pct"
+    assert bm.normalize_metric("Содержание жира в теле")[0] == "body_fat_mass"
+    assert bm.normalize_metric("Протеин")[0] == "protein"
+    assert bm.normalize_metric("Полный фазовый угол тела")[0] == "phase_angle"
+    assert bm.normalize_metric("Оценка InBody")[0] == "inbody_score"
+    assert bm.normalize_metric("Общее количество воды в организме")[0] == "total_body_water"
+    assert bm.normalize_metric("Внутриклеточная вода")[0] == "intracellular_water"
+    assert bm.normalize_metric("Внеклеточная вода")[0] == "extracellular_water"
+    assert bm.normalize_metric("Уровень базального метаболизма")[0] == "bmr"
+    assert bm.normalize_metric("Индекс соотношения талия-бедра")[0] == "waist_hip_ratio"
+    assert bm.normalize_metric("Активная масса клеток")[0] == "active_cell_mass"
+    assert bm.normalize_metric("Соотношение ВКЖ/ОКЖ")[0] == "ecw_tbw_ratio"
+    assert bm.normalize_metric("Идеальный вес")[0] == "target_weight"
