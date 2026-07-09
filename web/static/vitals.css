@@ -1410,34 +1410,24 @@ html {
     }
 }
 
-/* ── Page View Transitions (View Transitions API & CSS Fallbacks) ── */
+/* ── Page transitions ── */
+/* View Transitions are intentionally OFF (htmx.config.globalViewTransitions = false
+   in base.html) — see the "blank page until reload" bug. Boosted swaps are instant
+   now. The ::view-transition-* fade below only ever animated while htmx drove
+   startViewTransition(); with the flag off it is inert, kept here only so a future
+   re-enable already has the animation ready.
+
+   The old `.htmx-swapping main { opacity: 0 }` fallback fade was REMOVED outright:
+   on an interrupted swap that transient rule could stick and leave <main> invisible
+   with its content present in the DOM — the exact blank-page-until-reload symptom
+   we are killing. No opacity is ever pinned on <main> for a swap anymore; the swap
+   watchdog in base.html also strips any lingering .htmx-swapping class as insurance. */
 ::view-transition-old(root) {
     animation: 90ms cubic-bezier(0.4, 0, 1, 1) both fade-out;
 }
 
 ::view-transition-new(root) {
     animation: 210ms cubic-bezier(0, 0, 0.2, 1) 90ms both fade-in;
-}
-
-/* Opacity fade fallback — ONLY for browsers without the View Transitions API.
-   When View Transitions are supported (Chrome/desktop) htmx drives the fade via
-   startViewTransition() and the ::view-transition-* rules above, so applying these
-   manual opacity classes on top was redundant AND risky: if a swap/settle was
-   interrupted (rapid navigation, a throw in an afterSettle handler) the transient
-   `.htmx-swapping main { opacity: 0 }` could stick and leave <main> invisible with
-   the content present in the DOM — a blank page that only a full reload cleared.
-   Guarding on @supports keeps a graceful fade for old browsers without ever
-   pinning main to opacity:0 on the ones that use View Transitions. */
-@supports not (view-transition-name: none) {
-    .htmx-swapping main {
-        opacity: 0;
-        transition: opacity 150ms ease-out;
-    }
-
-    .htmx-settling main {
-        opacity: 1;
-        transition: opacity 200ms ease-in;
-    }
 }
 
 @keyframes fade-out {

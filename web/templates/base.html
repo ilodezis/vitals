@@ -291,10 +291,16 @@
             try { buf = JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { buf = []; }
             function snap(ev) {
                 var main = document.querySelector('main');
+                // Did Alpine actually wire up the swapped-in content? A root that
+                // renders but has no _x_dataStack means the inputs/tabs are dead —
+                // the "inputs don't work until reload" fingerprint. null = no x-data
+                // root on this page (nothing to check).
+                var xroot = main ? main.querySelector('[x-data]') : null;
                 var rec = {
                     t: new Date().toISOString(), ev: ev, url: location.pathname,
                     mainOpacity: main ? getComputedStyle(main).opacity : null,
                     mainVisible: main ? getComputedStyle(main).visibility : null,
+                    alpineInit: xroot ? !!xroot._x_dataStack : null,
                     htmlCls: document.documentElement.className,
                     rows: document.querySelectorAll('table tbody tr').length,
                     canvases: document.querySelectorAll('canvas').length
@@ -310,6 +316,64 @@
             window.addEventListener('error', function (e) { snap('js-error:' + (e && e.message)); });
             window.addEventListener('pageshow', function () { snap('pageshow'); });
             window.vitalsDiag = function () { try { console.table(buf); } catch (e) { } return buf; };
+        })();
+    </script>
+
+    <!-- Swap watchdog + self-heal (B2 follow-up): the belt-and-suspenders half of
+         the "blank page until reload" fix. Turning off globalViewTransitions removes
+         the main trigger, but a boosted swap can still be interrupted by other means
+         (a JS error mid-settle, the tab going hidden). htmx:afterSwap is the earliest
+         reliable signal that new <body> content has landed; a short deferred pass then
+         guarantees the page is actually usable:
+           1. un-stick <main> if a transient .htmx-swapping opacity rule lingered;
+           2. wire up any Alpine x-data root the global MutationObserver missed —
+              guarded by Alpine's own _x_dataStack marker, so an already-initialised
+              root is NEVER double-initialised (that is the old duplicate-component
+              trap that put Alpine in <head> in the first place);
+           3. if the natural htmx:afterSettle/htmx:load never fired, replay them so the
+              chart + date-input initialisers (which hang off those events) still run.
+         Registered once in <head> so it survives hx-boost body swaps. Inert on a
+         healthy swap — step 3 only fires when the settle events were actually dropped. -->
+    <script>
+        (function () {
+            var settleSeen = false;
+            document.addEventListener('htmx:afterSettle', function () { settleSeen = true; });
+            document.addEventListener('htmx:load', function () { settleSeen = true; });
+            document.addEventListener('htmx:afterSwap', function (evt) {
+                settleSeen = false;
+                var target = (evt && evt.detail && evt.detail.target) || document.body;
+                // 90ms > htmx's 20ms default settle delay, so a healthy swap has
+                // already fired afterSettle by the time this runs and step 3 is skipped.
+                setTimeout(function () {
+                    // 1) Never leave the workspace faded out or hidden.
+                    document.querySelectorAll('.htmx-swapping').forEach(function (el) {
+                        el.classList.remove('htmx-swapping');
+                    });
+                    var main = document.querySelector('main');
+                    if (main) { main.style.opacity = ''; main.style.visibility = ''; }
+
+                    // 2) Alpine safety net — init ONLY roots the observer missed.
+                    if (window.Alpine && Alpine.initTree) {
+                        try {
+                            var roots = [];
+                            if (target.matches && target.matches('[x-data]')) roots.push(target);
+                            if (target.querySelectorAll) {
+                                target.querySelectorAll('[x-data]').forEach(function (el) { roots.push(el); });
+                            }
+                            roots.forEach(function (el) {
+                                if (el && !el._x_dataStack) Alpine.initTree(el);
+                            });
+                        } catch (e) { console.error('[vitals] alpine repair failed', e); }
+                    }
+
+                    // 3) Replay the post-swap initialisers if their events were dropped.
+                    if (!settleSeen) {
+                        if (window.__VITALS_DIAG_LOG) console.debug('[vitals] swap watchdog: replaying settle/load');
+                        try { document.dispatchEvent(new CustomEvent('htmx:afterSettle')); } catch (e) { }
+                        try { document.dispatchEvent(new CustomEvent('htmx:load', { detail: { elt: main || document.body } })); } catch (e) { }
+                    }
+                }, 90);
+            });
         })();
     </script>
 </head>
@@ -744,10 +808,18 @@
             });
         }
 
-        // Enable view transitions globally for HTMX boosted requests
+        // View Transitions are DISABLED on purpose (root cause of the "graphs/tables/
+        // inputs randomly don't load until reload" bug). With globalViewTransitions
+        // = true, htmx 1.9.12 wraps every boosted body swap in
+        // document.startViewTransition(); if that transition is interrupted (rapid
+        // navigation, tab hidden mid-animation, a throw in a settle handler) the
+        // browser can abort the callback, leaving the swap half-finished: the new
+        // <script>s never run so charts never draw, Alpine never wires up the new
+        // inputs/tabs, and only a full reload clears it. Instant swaps remove that
+        // whole failure mode; the cosmetic fade isn't worth an occasionally-dead page.
         document.addEventListener("DOMContentLoaded", () => {
             if (window.htmx) {
-                htmx.config.globalViewTransitions = true;
+                htmx.config.globalViewTransitions = false;
             }
         });
 

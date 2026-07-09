@@ -112,6 +112,23 @@ async def test_dashboard_renders(auth_client):
     assert "История взвешиваний" in response.text
 
 
+async def test_boosted_swap_reliability_guards(auth_client):
+    """Regression lock for the "graphs/tables/inputs randomly don't load until
+    reload" bug. The fix has two halves that must both stay in the served frame:
+      1. View Transitions OFF — the interrupt-prone startViewTransition wrapper
+         around boosted swaps is what left pages half-rendered.
+      2. The swap watchdog — replays dropped settle/load events and re-inits any
+         Alpine root the observer missed, so a stalled swap self-heals."""
+    html = (await auth_client.get("/weight", headers={"Accept": "text/html"})).text
+    # 1) Transitions disabled, and never silently re-enabled.
+    assert "htmx.config.globalViewTransitions = false" in html
+    assert "htmx.config.globalViewTransitions = true" not in html
+    # 2) Watchdog present and doing all three repair steps.
+    assert "htmx:afterSwap" in html
+    assert "Alpine.initTree" in html
+    assert "_x_dataStack" in html  # guard against Alpine double-init
+
+
 async def test_log_weight_success(auth_client, db_session):
     """POST /weight/log inserts weight logs into the database."""
     response = await auth_client.post(
