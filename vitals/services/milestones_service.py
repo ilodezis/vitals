@@ -80,6 +80,61 @@ async def _current_weight(session: AsyncSession) -> Optional[float]:
     return weights[-1].weight_kg if weights else None
 
 
+async def _current_body_fat(session: AsyncSession) -> Optional[float]:
+    """Latest active body fat percentage, either Navy or InBody (BIA) based on preference."""
+    from vitals.config import load_config
+    from vitals.services import weight_service
+    from vitals.services.modules_service import get_enabled_modules
+
+    config = load_config()
+    source_pref = config.body_fat_source or "latest"
+
+    enabled = await get_enabled_modules(session)
+    body_comp_enabled = enabled.get("body_comp", False)
+
+    # 1. Fetch Navy measurements if not pinned to bia
+    navy_val = None
+    navy_date = None
+    if source_pref in ("latest", "navy"):
+        measurements = await weight_service.list_body_measurements(session)
+        # Find the latest measurement with body_fat_pct
+        for m in reversed(measurements):
+            if m.body_fat_pct is not None:
+                navy_val = m.body_fat_pct
+                navy_date = m.date
+                break
+
+    # 2. Fetch BIA scans if body_comp is enabled and not pinned to navy
+    bia_val = None
+    bia_date = None
+    if body_comp_enabled and source_pref in ("latest", "bia"):
+        from vitals.services import body_scan_service
+        from vitals.services.analytics import body_metrics
+
+        scans = await body_scan_service.list_scans(session)
+        for s in scans:
+            bf_val = body_metrics.body_fat_pct_from_scan(s.metrics)
+            if bf_val is not None:
+                bia_val = bf_val
+                bia_date = s.date
+                break
+
+    # 3. Resolve based on preference
+    if source_pref == "navy":
+        return navy_val
+    if source_pref == "bia":
+        return bia_val
+
+    # "latest" or fallback: choose whichever is newer
+    if navy_date is not None and bia_date is not None:
+        if bia_date >= navy_date:
+            return bia_val
+        return navy_val
+    if navy_date is not None:
+        return navy_val
+    return bia_val
+
+
 async def progress(session: AsyncSession, milestone: Milestone) -> dict:
     """Live progress for a goal. Weight goals get current/remaining/pct vs target;
     others just echo status + days-to-deadline."""
@@ -101,6 +156,11 @@ async def progress(session: AsyncSession, milestone: Milestone) -> dict:
 
     if milestone.domain == Domain.WEIGHT.value and milestone.target_value is not None:
         current = await _current_weight(session)
+        if current is not None:
+            out["current"] = round(current, 2)
+            out["remaining"] = round(current - milestone.target_value, 2)
+    elif milestone.domain == Domain.BODY_COMPOSITION.value and milestone.target_value is not None:
+        current = await _current_body_fat(session)
         if current is not None:
             out["current"] = round(current, 2)
             out["remaining"] = round(current - milestone.target_value, 2)

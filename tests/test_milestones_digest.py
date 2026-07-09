@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
+import pytest
 from sqlalchemy import select
 
 from vitals.models.milestones import WeeklyDigest
@@ -41,6 +42,61 @@ async def test_create_and_progress_weight_goal(db_session):
     assert await milestones_service.delete_milestone(db_session, m.id)
     await db_session.commit()
     assert len(await milestones_service.list_milestones(db_session)) == 0
+
+
+async def test_create_and_progress_body_fat_goal(db_session, monkeypatch):
+    # 1. Log Navy body fat (approx 14.52% for height=190, neck=38, waist=85, weight=88)
+    await weight_service.log_weight(db_session, on_date=DAY, weight_kg=88.0)
+    await weight_service.upsert_body_measurement(
+        db_session, on_date=DAY, neck_cm=38, waist_cm=85
+    )
+    
+    m = await milestones_service.create_milestone(
+        db_session, name="Снизить жир до 12%", domain="body_comp", target_value=12.0,
+        target_unit="%", deadline=DAY + timedelta(days=60),
+    )
+    await db_session.commit()
+
+    cards = await milestones_service.dashboard_cards(db_session)
+    assert len(cards) == 1
+    card = cards[0]
+    # Verify Navy body fat is retrieved and progress is computed
+    assert card["current"] is not None
+    assert card["current"] == pytest.approx(14.52, abs=0.1)
+    assert card["remaining"] == pytest.approx(14.52 - 12.0, abs=0.1)
+
+    # 2. Enable body_comp module and save a scan with 15.5% fat on DAY + 1 day
+    from vitals.services.modules_service import set_module_enabled
+    await set_module_enabled(db_session, key="body_comp", enabled=True)
+    
+    from vitals.services import body_scan_service
+    await body_scan_service.save_scan(
+        db_session,
+        on_date=DAY + timedelta(days=1),
+        device="InBody 770",
+        metrics=[
+            {"label": "Процент жира", "value": 15.5, "unit": "%"},
+        ],
+    )
+    await db_session.commit()
+
+    # Get cards - BIA scan is newer, so it should be picked by "latest"
+    cards = await milestones_service.dashboard_cards(db_session)
+    card = cards[0]
+    assert card["current"] == 15.5
+    assert card["remaining"] == pytest.approx(15.5 - 12.0, abs=0.1)
+
+    # 3. Test body_fat_source preference - force "navy"
+    monkeypatch.setenv("VITALS_BODY_FAT_SOURCE", "navy")
+    cards = await milestones_service.dashboard_cards(db_session)
+    card = cards[0]
+    assert card["current"] == pytest.approx(14.52, abs=0.1)
+
+    # 4. Force "bia"
+    monkeypatch.setenv("VITALS_BODY_FAT_SOURCE", "bia")
+    cards = await milestones_service.dashboard_cards(db_session)
+    card = cards[0]
+    assert card["current"] == 15.5
 
 
 # ── Digest context ────────────────────────────────────────────────────────────

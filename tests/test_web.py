@@ -665,6 +665,24 @@ async def test_reports_create_milestone(auth_client, db_session):
     assert row.name == "Дойти до 82" and row.target_value == 82.0
 
 
+async def test_reports_create_body_comp_milestone(auth_client, db_session):
+    """POST /reports/milestone creates a body composition goal card."""
+    from vitals.models.milestones import Milestone
+
+    r = await auth_client.post(
+        "/reports/milestone",
+        data={"name": "Снизить процент жира до 15%", "domain": "body_comp", "target_value": 15.0,
+              "target_unit": "%", "deadline": "2026-09-01"},
+    )
+    assert r.status_code == 303
+
+    rows = (await db_session.execute(select(Milestone))).scalars().all()
+    row = next((x for x in rows if x.domain == "body_comp"), None)
+    assert row is not None
+    assert row.name == "Снизить процент жира до 15%"
+    assert row.target_value == 15.0
+
+
 async def test_reports_generate_digest_without_llm_redirects(auth_client):
     """Generating a digest with no OpenRouter key surfaces a status flag."""
     r = await auth_client.post("/reports/digest")

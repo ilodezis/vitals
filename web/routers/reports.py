@@ -23,7 +23,7 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 
 # Domains a goal can relate to (for the create form select).
 GOAL_DOMAINS = [
-    Domain.WEIGHT.value, Domain.GLP1.value, Domain.WORKOUTS.value,
+    Domain.WEIGHT.value, Domain.BODY_COMPOSITION.value, Domain.GLP1.value, Domain.WORKOUTS.value,
     Domain.GARMIN.value, Domain.LABS.value, Domain.SKINCARE.value,
 ]
 
