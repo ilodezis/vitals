@@ -355,14 +355,13 @@
                         bc_latest.device %} · {{ bc_latest.device }}{% endif %}</span>{% endif %}
                 </div>
                 {% if bc_headline %}
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div class="flex flex-wrap gap-3">
                     {% for h in bc_headline %}
-                    <div class="v-metric">
+                    <div class="v-metric" style="flex: 1 1 160px; max-width: 240px; min-width: 140px;">
                         <span class="v-metric-label">{{ h.name }}</span>
-                        <div class="flex items-baseline">
+                        <div class="flex items-baseline gap-1">
                             <span class="v-metric-value">{{ h.value | format_number }}</span>
-                            {% if h.unit and h.key != 'phase_angle' and h.name != 'Фазовый угол' and h.name != 'Phase
-                            Angle' %}<span class="v-metric-unit">{{ h.unit }}</span>{% endif %}
+                            {% if h.unit and h.key != 'phase_angle' %}<span class="v-metric-unit">{{ h.unit }}</span>{% endif %}
                         </div>
                     </div>
                     {% endfor %}

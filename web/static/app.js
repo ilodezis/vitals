@@ -2,6 +2,26 @@
  * Vitals OS Dashboard - Alpine.js & Chart.js client controller.
  */
 
+// ── vitalsLoader: wrapper around the global-loader overlay in base.html ──────
+// The overlay HTML element exists in base.html; HTMX hooks show it for slow
+// form-POST routes. For fetch()-based flows (body-scan upload) we expose the
+// same element via this object so app.js can control it programmatically.
+window.vitalsLoader = {
+    show(title, text) {
+        const el = document.getElementById('global-loader');
+        if (!el) return;
+        const titleEl = document.getElementById('loader-title');
+        const textEl  = document.getElementById('loader-text');
+        if (title && titleEl) titleEl.textContent = title;
+        if (text  && textEl)  textEl.textContent  = text;
+        el.classList.add('is-active');
+    },
+    hide() {
+        const el = document.getElementById('global-loader');
+        if (el) el.classList.remove('is-active');
+    }
+};
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('weightOSDashboard', () => ({
         activeTab: 'log',
