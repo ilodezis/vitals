@@ -172,7 +172,7 @@
                 const rawText = el.textContent || el.innerText;
                 const target = el.nextElementSibling;
                 if (target && target.classList.contains('v-text-body') && !target.innerHTML) {
-                    target.innerHTML = sanitizeLinks(marked.parse(escapeHtml(rawText)));
+                    target.innerHTML = sanitizeLinks(marked.parse(rawText));
                 }
             });
         }

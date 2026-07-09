@@ -398,12 +398,12 @@ async def generate_digest(
     prompt = build_prompt(context, lang=lang)
     system = DIGEST_SYSTEM_EN if lang == "en" else DIGEST_SYSTEM
 
-    content = await llm.complete_text(prompt, system=system, max_tokens=3000)
+    content = await llm.complete_text(prompt, system=system, max_tokens=6000)
     if not content:
         # Seen in prod: the upstream occasionally returns a blank message with no
         # error at all. One retry clears it in practice; if it's still empty,
         # fail loudly instead of silently persisting nothing.
-        content = await llm.complete_text(prompt, system=system, max_tokens=3000)
+        content = await llm.complete_text(prompt, system=system, max_tokens=6000)
     if not content:
         raise LLMEmptyResponse("LLM returned an empty digest narrative twice in a row")
 
