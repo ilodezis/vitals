@@ -63,6 +63,44 @@ async def set_status(session: AsyncSession, milestone_id: int, status: str) -> O
     return row
 
 
+# Sentinel so a caller can patch a single field to ``None`` (e.g. clear a
+# deadline) without every other field being wiped — only args that differ from
+# ``_UNSET`` are applied.
+_UNSET: object = object()
+
+
+async def update_milestone(
+    session: AsyncSession,
+    milestone_id: int,
+    *,
+    name: object = _UNSET,
+    domain: object = _UNSET,
+    target_value: object = _UNSET,
+    target_unit: object = _UNSET,
+    deadline: object = _UNSET,
+    status: object = _UNSET,
+    note: object = _UNSET,
+) -> Optional[Milestone]:
+    """Partial-update a goal card. Only fields explicitly passed are changed;
+    the rest keep their current value (pass ``None`` to clear an optional field)."""
+    row = await session.get(Milestone, milestone_id)
+    if row is None:
+        return None
+    for attr, value in (
+        ("name", name),
+        ("domain", domain),
+        ("target_value", target_value),
+        ("target_unit", target_unit),
+        ("deadline", deadline),
+        ("status", status),
+        ("note", note),
+    ):
+        if value is not _UNSET:
+            setattr(row, attr, value)
+    await session.flush()
+    return row
+
+
 async def delete_milestone(session: AsyncSession, milestone_id: int) -> bool:
     row = await session.get(Milestone, milestone_id)
     if row is None:

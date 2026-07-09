@@ -13,12 +13,13 @@ from datetime import date as date_type
 from typing import Optional
 
 from fastmcp import FastMCP
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from vitals.config import load_config
-from vitals.enums import Domain, Source
+from vitals.enums import Domain, MilestoneStatus, Source
 from vitals.models import (
+    Annotation,
     BodyMeasurement,
     BodyScan,
     DosePhase,
@@ -30,6 +31,7 @@ from vitals.models import (
     Injection,
     LabResult,
     MealLog,
+    Milestone,
     NoiseMarker,
     SideEffect,
     SkincareLog,
@@ -40,6 +42,7 @@ from vitals.models import (
     WeeklyDigest,
 )
 from vitals.services import conflict_engine
+from vitals.services.conflict_engine import ConflictBlocked
 from web.deps import get_session_factory
 
 logger = logging.getLogger(__name__)
@@ -73,6 +76,22 @@ async def serialize_written(session, row) -> dict:
         return {}
     await session.refresh(row)
     return serialize_row(row)
+
+
+def _conflict_payload(exc: ConflictBlocked) -> dict:
+    """Structured result for a write blocked by a hard conflict rule.
+
+    The HTML UI gets a 409 + violations and renders "Save anyway (Override)".
+    A tool call has no HTTP status the model can act on, so we return the same
+    violation list as a plain dict instead of letting the exception escape as an
+    opaque 500 — the model can inspect the block and retry the call with
+    ``override=True`` (the MCP equivalent of the override button)."""
+    return {
+        "blocked": True,
+        "message": str(exc),
+        "violations": [v.to_dict() for v in exc.violations],
+        "hint": "Retry the same call with override=True to save anyway.",
+    }
 
 
 # ── Tool Definitions ─────────────────────────────────────────────────────────
@@ -393,11 +412,14 @@ async def log_meal(
     eaten_at: Optional[str] = None,
     note: Optional[str] = None,
     on_date: Optional[str] = None,
+    override: bool = False,
 ) -> dict:
     """Records a meal or snack with optional macros (KCAL, protein, fat, carbs).
 
     This is a WRITE tool — the meal is saved to the database immediately.
-    Defaults: on_date = today, eaten_at = current time.
+    Defaults: on_date = today, eaten_at = current time. If a hard conflict rule
+    blocks the save, returns ``{"blocked": true, "violations": [...]}`` instead
+    of saving; call again with ``override=True`` to save anyway.
     """
     from datetime import time as time_type
     from vitals.services import nutrition_service
@@ -408,17 +430,21 @@ async def log_meal(
     parsed_time = time_type.fromisoformat(eaten_at) if eaten_at else None
 
     async with session_factory() as session:
-        row = await nutrition_service.log_meal(
-            session,
-            on_date=parsed_date,
-            name=name,
-            eaten_at=parsed_time,
-            calories=calories,
-            protein_g=protein_g,
-            fat_g=fat_g,
-            carbs_g=carbs_g,
-            note=note,
-        )
+        try:
+            row = await nutrition_service.log_meal(
+                session,
+                on_date=parsed_date,
+                name=name,
+                eaten_at=parsed_time,
+                calories=calories,
+                protein_g=protein_g,
+                fat_g=fat_g,
+                carbs_g=carbs_g,
+                note=note,
+                override=override,
+            )
+        except ConflictBlocked as e:
+            return _conflict_payload(e)
         await session.commit()
         return await serialize_written(session, row)
 
@@ -539,9 +565,12 @@ async def log_weight(
     weight_kg: float,
     on_date: Optional[str] = None,
     note: Optional[str] = None,
+    override: bool = False,
 ) -> dict:
     """Records a manual weight entry (kg). One active weight per date — manual
-    entries override Garmin imports. WRITE tool — saved immediately."""
+    entries override Garmin imports. WRITE tool — saved immediately. If a hard
+    conflict rule blocks the save, returns ``{"blocked": true, ...}``; call again
+    with ``override=True`` to save anyway."""
     from vitals.services import weight_service
     from vitals.utils.timeutils import today_local
 
@@ -549,9 +578,13 @@ async def log_weight(
     parsed_date = date_type.fromisoformat(on_date) if on_date else today_local()
 
     async with session_factory() as session:
-        row = await weight_service.log_weight(
-            session, on_date=parsed_date, weight_kg=weight_kg, note=note,
-        )
+        try:
+            row = await weight_service.log_weight(
+                session, on_date=parsed_date, weight_kg=weight_kg, note=note,
+                override=override,
+            )
+        except ConflictBlocked as e:
+            return _conflict_payload(e)
         await session.commit()
         return await serialize_written(session, row)
 
@@ -578,9 +611,12 @@ async def log_glp1(
     on_date: Optional[str] = None,
     site: Optional[str] = None,
     note: Optional[str] = None,
+    override: bool = False,
 ) -> dict:
     """Records a GLP-1 injection (drug name, dose in mg, optional injection site).
-    WRITE tool — saved immediately."""
+    WRITE tool — saved immediately. If a hard conflict rule blocks the save,
+    returns ``{"blocked": true, ...}``; call again with ``override=True`` to save
+    anyway."""
     from vitals.services import glp1_service
     from vitals.utils.timeutils import today_local
 
@@ -591,8 +627,10 @@ async def log_glp1(
         try:
             row = await glp1_service.log_injection(
                 session, on_date=parsed_date, drug=drug, dose_mg=dose_mg,
-                site=site, note=note,
+                site=site, note=note, override=override,
             )
+        except ConflictBlocked as e:
+            return _conflict_payload(e)
         except ValueError as e:
             # An LLM bypasses the HTML form, so bad input (dose_mg<=0, garbage site)
             # comes back as a clean error instead of an opaque DB failure.
@@ -614,9 +652,12 @@ async def log_skincare(
     vitamin_c: bool = False,
     benzoyl_peroxide: bool = False,
     note: Optional[str] = None,
+    override: bool = False,
 ) -> dict:
     """Records or updates the daily skincare routine checklist (one per day, upsert).
-    Boolean flags indicate which products were applied. WRITE tool — saved immediately."""
+    Boolean flags indicate which products were applied. WRITE tool — saved
+    immediately. If a hard conflict rule blocks the save, returns
+    ``{"blocked": true, ...}``; call again with ``override=True`` to save anyway."""
     from vitals.services import skincare_service
     from vitals.utils.timeutils import today_local
 
@@ -624,12 +665,15 @@ async def log_skincare(
     parsed_date = date_type.fromisoformat(on_date) if on_date else today_local()
 
     async with session_factory() as session:
-        row = await skincare_service.upsert_log(
-            session, on_date=parsed_date, retinoid=retinoid, azelaic=azelaic,
-            peel=peel, niacinamide_spf=niacinamide_spf, moisturizer=moisturizer,
-            vitamin_c=vitamin_c, benzoyl_peroxide=benzoyl_peroxide,
-            note=note,
-        )
+        try:
+            row = await skincare_service.upsert_log(
+                session, on_date=parsed_date, retinoid=retinoid, azelaic=azelaic,
+                peel=peel, niacinamide_spf=niacinamide_spf, moisturizer=moisturizer,
+                vitamin_c=vitamin_c, benzoyl_peroxide=benzoyl_peroxide,
+                note=note, override=override,
+            )
+        except ConflictBlocked as e:
+            return _conflict_payload(e)
         await session.commit()
         return await serialize_written(session, row)
 
@@ -643,10 +687,12 @@ async def log_measurement(
     waist_cm: Optional[float] = None,
     hips_cm: Optional[float] = None,
     note: Optional[str] = None,
+    override: bool = False,
 ) -> dict:
     """Records body circumference measurements (neck, waist, hips in cm). Upserts
     per date. Auto-computes Navy body-fat % and LBM if weight exists for the date.
-    WRITE tool — saved immediately."""
+    WRITE tool — saved immediately. If a hard conflict rule blocks the save,
+    returns ``{"blocked": true, ...}``; call again with ``override=True``."""
     from vitals.services import weight_service
     from vitals.utils.timeutils import today_local
 
@@ -654,10 +700,13 @@ async def log_measurement(
     parsed_date = date_type.fromisoformat(on_date) if on_date else today_local()
 
     async with session_factory() as session:
-        row = await weight_service.upsert_body_measurement(
-            session, on_date=parsed_date, neck_cm=neck_cm, waist_cm=waist_cm,
-            hips_cm=hips_cm, note=note,
-        )
+        try:
+            row = await weight_service.upsert_body_measurement(
+                session, on_date=parsed_date, neck_cm=neck_cm, waist_cm=waist_cm,
+                hips_cm=hips_cm, note=note, override=override,
+            )
+        except ConflictBlocked as e:
+            return _conflict_payload(e)
         await session.commit()
         return await serialize_written(session, row)
 
@@ -839,13 +888,16 @@ async def log_body_scan(
     on_date: Optional[str] = None,
     device: Optional[str] = None,
     note: Optional[str] = None,
+    override: bool = False,
 ) -> dict:
     """Records a body-composition scan from structured metrics (no photo needed).
 
     Each metric is ``{"label" or "metric_key": str, "value": number, "unit": str?,
     "ref_low": number?, "ref_high": number?, "segment": str?}``. The scan's weight /
     body-fat% / LBM are bridged into the weight domain. WRITE tool — saved
-    immediately. No-op with an error if the body_comp module is disabled."""
+    immediately. No-op with an error if the body_comp module is disabled. If a hard
+    conflict rule blocks the save, returns ``{"blocked": true, ...}``; call again
+    with ``override=True``."""
     from vitals.services import body_scan_service
     from vitals.utils.timeutils import today_local
 
@@ -855,14 +907,18 @@ async def log_body_scan(
     async with session_factory() as session:
         if not await _module_enabled(session, "body_comp"):
             return {"error": "module 'body_comp' is disabled"}
-        scan = await body_scan_service.save_scan(
-            session,
-            on_date=parsed_date,
-            device=device,
-            metrics=metrics,
-            note=note,
-            source=Source.BODY_SCAN.value,
-        )
+        try:
+            scan = await body_scan_service.save_scan(
+                session,
+                on_date=parsed_date,
+                device=device,
+                metrics=metrics,
+                note=note,
+                source=Source.BODY_SCAN.value,
+                override=override,
+            )
+        except ConflictBlocked as e:
+            return _conflict_payload(e)
         await session.commit()
         full = await body_scan_service.get_scan(session, scan.id)
         return _serialize_scan(full) if full else {"scan_id": scan.id}
@@ -1063,6 +1119,195 @@ async def log_event(
         )
         await session.commit()
         return await serialize_written(session, row)
+
+
+# ── Cross-domain + whole-lake tools ──────────────────────────────────────────
+@mcp.tool()
+async def get_full_snapshot(
+    on_date: Optional[str] = None,
+    period_days: int = 7,
+) -> dict:
+    """Returns one structured cross-domain snapshot for a point in time — the same
+    context the weekly digest is built from: profile, weight trend (noise-excluded
+    MA7 + slope), GLP-1 state, recent labs, activity/recovery, workouts, nutrition,
+    skincare and active goals, all aligned to ``on_date`` (default today) over a
+    ``period_days`` window. Use this instead of calling each per-domain read tool
+    separately when you want the whole picture / cross-domain correlations."""
+    from vitals.services import digest_service
+
+    session_factory = get_session_factory()
+    parsed_date = date_type.fromisoformat(on_date) if on_date else None
+    async with session_factory() as session:
+        return await digest_service.assemble_context(
+            session, on_date=parsed_date, period_days=period_days
+        )
+
+
+@mcp.tool()
+async def export_everything() -> dict:
+    """Returns the entire health history as one compact, secret-free, LLM-ready
+    export grouped by domain (weight, measurements, body scans, GLP-1, labs,
+    Garmin, workouts, nutrition, skincare, supplements, genetics, milestones,
+    timeline). This is the way to read the full long-term history in a single
+    call rather than paging each domain's newest-100 read tool. Read-only."""
+    from vitals.services import data_portability_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        return await data_portability_service.export_llm(session)
+
+
+@mcp.tool()
+async def get_data_overview() -> dict:
+    """Returns a per-domain map of what data exists: row count, earliest and latest
+    date, and last-updated timestamp for each domain. Call this first to orient —
+    it tells you the real date coverage and density before you query a domain, so
+    you don't page blindly through empty or out-of-range windows. Read-only."""
+    # Dated log/metric tables: report count + min/max of their date column.
+    dated = [
+        ("weight", WeightLog, WeightLog.date),
+        ("measurements", BodyMeasurement, BodyMeasurement.date),
+        ("body_scans", BodyScan, BodyScan.date),
+        ("glp1_injections", Injection, Injection.date),
+        ("side_effects", SideEffect, SideEffect.date),
+        ("garmin_daily", GarminDaily, GarminDaily.date),
+        ("garmin_activities", GarminActivity, GarminActivity.date),
+        ("workouts", HevyWorkout, HevyWorkout.date),
+        ("labs", LabResult, LabResult.date),
+        ("nutrition", MealLog, MealLog.date),
+        ("skincare_logs", SkincareLog, SkincareLog.date),
+        ("skincare_observations", SkincareObservation, SkincareObservation.date),
+        ("weekly_digests", WeeklyDigest, WeeklyDigest.date),
+        ("timeline", Annotation, Annotation.date),
+        ("noise_markers", NoiseMarker, NoiseMarker.start_date),
+    ]
+    # Config/catalog tables have no per-day date — report count only.
+    count_only = [
+        ("supplements", Supplement),
+        ("genetics", GeneticVariant),
+        ("milestones", Milestone),
+        ("dose_phases", DosePhase),
+    ]
+
+    session_factory = get_session_factory()
+    overview: dict = {}
+    async with session_factory() as session:
+        for name, model, date_col in dated:
+            cols = [func.count(), func.min(date_col), func.max(date_col)]
+            updated_col = getattr(model, "updated_at", None)
+            if updated_col is not None:
+                cols.append(func.max(updated_col))
+            row = (await session.execute(select(*cols))).one()
+            entry = {
+                "count": row[0],
+                "earliest": row[1].isoformat() if row[1] else None,
+                "latest": row[2].isoformat() if row[2] else None,
+            }
+            if updated_col is not None:
+                entry["last_updated"] = row[3].isoformat() if row[3] else None
+            overview[name] = entry
+
+        for name, model in count_only:
+            count = (await session.execute(select(func.count()).select_from(model))).scalar_one()
+            overview[name] = {"count": count}
+
+    return overview
+
+
+# ── Milestones / goals tools ──────────────────────────────────────────────────
+_MILESTONE_STATUSES = {s.value for s in MilestoneStatus}
+
+
+@mcp.tool()
+async def get_milestones(status: Optional[str] = None) -> list[dict]:
+    """Returns goal cards with live progress (current value, remaining, days left)
+    computed for weight/body-comp goals. Optionally filtered by ``status`` (active,
+    achieved, missed, paused). Read-only."""
+    from vitals.services import milestones_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        rows = await milestones_service.list_milestones(session, status=status)
+        return [await milestones_service.progress(session, m) for m in rows]
+
+
+@mcp.tool()
+async def create_milestone(
+    name: str,
+    domain: str = Domain.WEIGHT.value,
+    target_value: Optional[float] = None,
+    target_unit: Optional[str] = None,
+    deadline: Optional[str] = None,
+    note: Optional[str] = None,
+) -> dict:
+    """Creates a goal card (e.g. "reach 85 kg by 2026-12-31"). ``domain`` is the
+    related health area (weight, glp1, labs, body_comp, ...); ``deadline`` is
+    YYYY-MM-DD. WRITE tool — saved immediately."""
+    from vitals.services import milestones_service
+
+    session_factory = get_session_factory()
+    parsed_deadline = date_type.fromisoformat(deadline) if deadline else None
+    async with session_factory() as session:
+        row = await milestones_service.create_milestone(
+            session, name=name, domain=domain, target_value=target_value,
+            target_unit=target_unit, deadline=parsed_deadline, note=note,
+        )
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def update_milestone(
+    milestone_id: int,
+    name: Optional[str] = None,
+    domain: Optional[str] = None,
+    target_value: Optional[float] = None,
+    target_unit: Optional[str] = None,
+    deadline: Optional[str] = None,
+    status: Optional[str] = None,
+    note: Optional[str] = None,
+) -> dict:
+    """Updates a goal card by ID. Only the fields you pass are changed. Use
+    ``status`` to mark a goal achieved/missed/paused/active. WRITE tool."""
+    from vitals.services import milestones_service
+
+    if status is not None and status not in _MILESTONE_STATUSES:
+        return {"error": f"Unknown status '{status}'. Use: {', '.join(sorted(_MILESTONE_STATUSES))}"}
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        kwargs: dict = {}
+        if name is not None:
+            kwargs["name"] = name
+        if domain is not None:
+            kwargs["domain"] = domain
+        if target_value is not None:
+            kwargs["target_value"] = target_value
+        if target_unit is not None:
+            kwargs["target_unit"] = target_unit
+        if deadline is not None:
+            kwargs["deadline"] = date_type.fromisoformat(deadline)
+        if status is not None:
+            kwargs["status"] = status
+        if note is not None:
+            kwargs["note"] = note
+        row = await milestones_service.update_milestone(session, milestone_id, **kwargs)
+        if row is None:
+            return {"error": f"Milestone {milestone_id} not found"}
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def delete_milestone(milestone_id: int) -> dict:
+    """Deletes a goal card by ID. WRITE tool — deletion is immediate."""
+    from vitals.services import milestones_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        ok = await milestones_service.delete_milestone(session, milestone_id)
+        await session.commit()
+        return {"deleted": ok, "milestone_id": milestone_id}
 
 
 class MCPAuthMiddleware:
