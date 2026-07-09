@@ -1310,6 +1310,485 @@ async def delete_milestone(milestone_id: int) -> dict:
         return {"deleted": ok, "milestone_id": milestone_id}
 
 
+# ── GLP-1 write completeness (edit/delete injection, side effects, phases) ────
+@mcp.tool()
+async def update_glp1(
+    injection_id: int,
+    drug: str,
+    dose_mg: float,
+    on_date: Optional[str] = None,
+    site: Optional[str] = None,
+    note: Optional[str] = None,
+    override: bool = False,
+) -> dict:
+    """Edits an existing GLP-1 injection by ID. Runs the same conflict gate as a
+    fresh log — on a hard block returns ``{"blocked": true, ...}``; retry with
+    ``override=True``. WRITE tool."""
+    from vitals.services import glp1_service
+    from vitals.utils.timeutils import today_local
+
+    session_factory = get_session_factory()
+    parsed_date = date_type.fromisoformat(on_date) if on_date else today_local()
+    async with session_factory() as session:
+        try:
+            row = await glp1_service.update_injection(
+                session, injection_id, on_date=parsed_date, drug=drug,
+                dose_mg=dose_mg, site=site, note=note, override=override,
+            )
+        except ConflictBlocked as e:
+            return _conflict_payload(e)
+        except ValueError as e:
+            return {"error": str(e)}
+        if row is None:
+            return {"error": f"Injection {injection_id} not found"}
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def delete_glp1(injection_id: int) -> dict:
+    """Deletes a GLP-1 injection by ID. WRITE tool — deletion is immediate."""
+    from vitals.services import glp1_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        ok = await glp1_service.delete_injection(session, injection_id)
+        await session.commit()
+        return {"deleted": ok, "injection_id": injection_id}
+
+
+@mcp.tool()
+async def log_side_effect(
+    effect_type: str,
+    severity: int,
+    on_date: Optional[str] = None,
+    note: Optional[str] = None,
+) -> dict:
+    """Records a GLP-1 side effect (e.g. "nausea") with a severity 1–5 for a date
+    (default today). WRITE tool — saved immediately."""
+    from vitals.services import glp1_service
+    from vitals.utils.timeutils import today_local
+
+    session_factory = get_session_factory()
+    parsed_date = date_type.fromisoformat(on_date) if on_date else today_local()
+    async with session_factory() as session:
+        row = await glp1_service.log_side_effect(
+            session, on_date=parsed_date, effect_type=effect_type,
+            severity=severity, note=note,
+        )
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def delete_side_effect(effect_id: int) -> dict:
+    """Deletes a GLP-1 side-effect entry by ID. WRITE tool."""
+    from vitals.services import glp1_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        ok = await glp1_service.delete_side_effect(session, effect_id)
+        await session.commit()
+        return {"deleted": ok, "effect_id": effect_id}
+
+
+@mcp.tool()
+async def add_dose_phase(
+    start_date: str,
+    drug: str,
+    dose_mg: float,
+    end_date: Optional[str] = None,
+    note: Optional[str] = None,
+) -> dict:
+    """Adds a GLP-1 dose phase (a period on a given drug + dose, overlaid on the
+    weight chart). An open-ended phase (no ``end_date``) auto-closes any other
+    still-open phase the day before it starts. WRITE tool."""
+    from vitals.services import glp1_service
+
+    session_factory = get_session_factory()
+    parsed_start = date_type.fromisoformat(start_date)
+    parsed_end = date_type.fromisoformat(end_date) if end_date else None
+    async with session_factory() as session:
+        row = await glp1_service.add_dose_phase(
+            session, start_date=parsed_start, drug=drug, dose_mg=dose_mg,
+            end_date=parsed_end, note=note,
+        )
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def delete_dose_phase(phase_id: int) -> dict:
+    """Deletes a GLP-1 dose phase by ID. WRITE tool."""
+    from vitals.services import glp1_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        ok = await glp1_service.delete_dose_phase(session, phase_id)
+        await session.commit()
+        return {"deleted": ok, "phase_id": phase_id}
+
+
+# ── Skincare observations ─────────────────────────────────────────────────────
+@mcp.tool()
+async def log_skincare_observation(
+    on_date: Optional[str] = None,
+    inflammation: Optional[int] = None,
+    pih: Optional[int] = None,
+    zone: Optional[str] = None,
+    note: Optional[str] = None,
+) -> dict:
+    """Records a skin-status observation — inflammation and PIH (post-inflammatory
+    hyperpigmentation) scores, an optional face ``zone``, and a note. Distinct from
+    the daily routine checklist (log_skincare). WRITE tool — saved immediately."""
+    from vitals.services import skincare_service
+    from vitals.utils.timeutils import today_local
+
+    session_factory = get_session_factory()
+    parsed_date = date_type.fromisoformat(on_date) if on_date else today_local()
+    async with session_factory() as session:
+        row = await skincare_service.add_observation(
+            session, on_date=parsed_date, inflammation=inflammation,
+            pih=pih, zone=zone, note=note,
+        )
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def delete_skincare_observation(observation_id: int) -> dict:
+    """Deletes a skin-status observation by ID. WRITE tool."""
+    from vitals.services import skincare_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        ok = await skincare_service.delete_observation(session, observation_id)
+        await session.commit()
+        return {"deleted": ok, "observation_id": observation_id}
+
+
+# ── Supplements catalog CRUD ──────────────────────────────────────────────────
+@mcp.tool()
+async def add_supplement(
+    name: str,
+    key: Optional[str] = None,
+    dose: Optional[str] = None,
+    timing: Optional[str] = None,
+    evidence: Optional[str] = None,
+    active: bool = True,
+    contraindications: Optional[str] = None,
+    note: Optional[str] = None,
+    override: bool = False,
+) -> dict:
+    """Adds a supplement to the catalog (reference, not a daily log). ``key`` is the
+    stable conflict-matching slug — omit it and it's derived from ``name`` (RU/EN
+    aware). ``evidence`` is tier A/B/C. Activating a contraindicated supplement can
+    hard-block → ``{"blocked": true, ...}``; retry with ``override=True``. WRITE tool."""
+    from vitals.services import supplements_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        try:
+            row = await supplements_service.add_supplement(
+                session, name=name, key=key, dose=dose, timing=timing,
+                evidence=evidence, active=active,
+                contraindications=contraindications, note=note, override=override,
+            )
+        except ConflictBlocked as e:
+            return _conflict_payload(e)
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def update_supplement(
+    supplement_id: int,
+    name: str,
+    key: Optional[str] = None,
+    dose: Optional[str] = None,
+    timing: Optional[str] = None,
+    evidence: Optional[str] = None,
+    active: bool = True,
+    contraindications: Optional[str] = None,
+    note: Optional[str] = None,
+    override: bool = False,
+) -> dict:
+    """Updates a catalog supplement by ID (full replace of its fields). Same
+    conflict gate as add — a hard block returns ``{"blocked": true, ...}``; retry
+    with ``override=True``. WRITE tool."""
+    from vitals.services import supplements_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        try:
+            row = await supplements_service.update_supplement(
+                session, supplement_id, name=name, key=key, dose=dose,
+                timing=timing, evidence=evidence, active=active,
+                contraindications=contraindications, note=note, override=override,
+            )
+        except ConflictBlocked as e:
+            return _conflict_payload(e)
+        if row is None:
+            return {"error": f"Supplement {supplement_id} not found"}
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def set_supplement_active(
+    supplement_id: int, active: bool, override: bool = False
+) -> dict:
+    """Toggles a supplement's active flag. Activating a contraindicated one runs the
+    conflict check → ``{"blocked": true, ...}`` unless ``override=True``. WRITE tool."""
+    from vitals.services import supplements_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        try:
+            row = await supplements_service.set_active(
+                session, supplement_id, active, override=override
+            )
+        except ConflictBlocked as e:
+            return _conflict_payload(e)
+        if row is None:
+            return {"error": f"Supplement {supplement_id} not found"}
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def delete_supplement(supplement_id: int) -> dict:
+    """Deletes a supplement from the catalog by ID. WRITE tool."""
+    from vitals.services import supplements_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        ok = await supplements_service.delete_supplement(session, supplement_id)
+        await session.commit()
+        return {"deleted": ok, "supplement_id": supplement_id}
+
+
+# ── Body measurement edit/delete + noise markers ──────────────────────────────
+@mcp.tool()
+async def update_measurement(
+    measurement_id: int,
+    on_date: str,
+    neck_cm: Optional[float] = None,
+    waist_cm: Optional[float] = None,
+    hips_cm: Optional[float] = None,
+    note: Optional[str] = None,
+    override: bool = False,
+) -> dict:
+    """Edits a body-measurement row by ID (recomputes Navy body-fat % / LBM). On a
+    hard block returns ``{"blocked": true, ...}``; retry with ``override=True``.
+    WRITE tool."""
+    from vitals.services import weight_service
+
+    session_factory = get_session_factory()
+    parsed_date = date_type.fromisoformat(on_date)
+    async with session_factory() as session:
+        try:
+            row = await weight_service.update_body_measurement(
+                session, measurement_id, on_date=parsed_date, neck_cm=neck_cm,
+                waist_cm=waist_cm, hips_cm=hips_cm, note=note, override=override,
+            )
+        except ConflictBlocked as e:
+            return _conflict_payload(e)
+        if row is None:
+            return {"error": f"Measurement {measurement_id} not found"}
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def delete_measurement(measurement_id: int) -> dict:
+    """Deletes a body-measurement row by ID. WRITE tool."""
+    from vitals.services import weight_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        ok = await weight_service.delete_body_measurement(session, measurement_id)
+        await session.commit()
+        return {"deleted": ok, "measurement_id": measurement_id}
+
+
+@mcp.tool()
+async def add_noise_marker(
+    start_date: str,
+    reason: str,
+    end_date: Optional[str] = None,
+    direction: Optional[str] = None,
+) -> dict:
+    """Marks a date range as noisy so it's excluded from the weight moving average
+    and trend (e.g. "sick week", "creatine loading"). ``direction`` is up (scale
+    inflated), down (scale deflated), or neutral. Omit ``end_date`` for a single
+    day. WRITE tool — the weight trend recomputes without this range."""
+    from vitals.services import weight_service
+
+    session_factory = get_session_factory()
+    parsed_start = date_type.fromisoformat(start_date)
+    parsed_end = date_type.fromisoformat(end_date) if end_date else None
+    async with session_factory() as session:
+        row = await weight_service.add_noise_marker(
+            session, start_date=parsed_start, end_date=parsed_end,
+            reason=reason, direction=direction,
+        )
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def delete_noise_marker(marker_id: int) -> dict:
+    """Deletes a noise marker by ID — its date range re-enters the weight trend.
+    WRITE tool."""
+    from vitals.services import weight_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        ok = await weight_service.delete_noise_marker(session, marker_id)
+        await session.commit()
+        return {"deleted": ok, "marker_id": marker_id}
+
+
+# ── Modules (optional-domain toggles) ─────────────────────────────────────────
+@mcp.tool()
+async def get_modules() -> dict:
+    """Returns which optional domains are enabled, plus which module keys are core
+    (always-on, locked) vs optional (toggleable). Check this before calling a
+    module-gated write tool (log_body_scan, log_event) so you know if it's on."""
+    from vitals.services import modules_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        enabled = await modules_service.get_enabled_modules(session)
+    return {
+        "enabled": enabled,
+        "core": sorted(modules_service.CORE_KEYS),
+        "optional": sorted(modules_service.OPTIONAL_KEYS),
+    }
+
+
+@mcp.tool()
+async def set_module(key: str, enabled: bool) -> dict:
+    """Enables or disables an optional module (e.g. body_comp, timeline, glp1,
+    nutrition). Core modules are locked and return an error. WRITE tool — returns
+    the new enabled-module map."""
+    from vitals.services import modules_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        try:
+            state = await modules_service.set_module_enabled(
+                session, key=key, enabled=enabled
+            )
+        except modules_service.ModuleToggleError as e:
+            return {"error": str(e)}
+        await session.commit()
+        return {"enabled": state}
+
+
+# ── Weekly digest generation ──────────────────────────────────────────────────
+@mcp.tool()
+async def generate_digest_now(period_days: int = 7) -> dict:
+    """Generates a fresh weekly AI digest right now (assembles the cross-domain
+    context, asks the configured LLM for the narrative, saves it) and returns it.
+    Errors cleanly if no OpenRouter key is configured. WRITE tool."""
+    from vitals.integrations.llm_client import LLMClient, LLMNotConfigured
+    from vitals.services import digest_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        try:
+            row = await digest_service.generate_digest(
+                session, LLMClient(), period_days=period_days
+            )
+        except LLMNotConfigured:
+            return {"error": "LLM not configured — set VITALS_OPENROUTER_API_KEY"}
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+# ── Trend analytics ───────────────────────────────────────────────────────────
+@mcp.tool()
+async def get_trend(
+    metric_key: str,
+    param: Optional[str] = None,
+    target: Optional[float] = None,
+    rolling_window_days: int = 7,
+    exclude_noise: bool = True,
+) -> dict:
+    """Computes the trend for one metric instead of returning raw rows: linear slope
+    (per day and per week), the latest rolling-mean value, and — if ``target`` is
+    given — the projected date the trend reaches it. For weight metrics, noise-marked
+    ranges are excluded (``exclude_noise``).
+
+    ``metric_key`` is a registry key such as ``weight.weight_kg``,
+    ``weight.body_fat_pct``, ``garmin.hrv_avg``, ``nutrition.calories``, or a
+    parametrized one: ``labs.marker`` (``param`` = marker name),
+    ``hevy.working_weight`` (``param`` = exercise id), ``body_comp.metric``
+    (``param`` = ``metric_key`` or ``metric_key:segment``). Read-only."""
+    from vitals.services import chart_data_service, weight_service
+    from vitals.services.analytics import exclude_ranges
+    from vitals.services.analytics.regression import fit_trend, project_date_for_value
+    from vitals.services.analytics.rolling import rolling_mean_by_date
+    from vitals.services.analytics.chart_registry import get as get_metric
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        try:
+            field = get_metric(metric_key)
+        except KeyError:
+            return {"error": f"Unknown metric '{metric_key}'"}
+        try:
+            raw = await chart_data_service.series_for(
+                session, metric_key=metric_key, param=param
+            )
+        except ValueError as e:
+            return {"error": str(e)}
+
+        points = [(date_type.fromisoformat(p["date"]), float(p["value"])) for p in raw]
+
+        noise_applied = False
+        if exclude_noise and field.domain == "weight":
+            markers = await weight_service.list_noise_markers(session)
+            ranges = [(m.start_date, m.end_date) for m in markers]
+            if ranges:
+                points = exclude_ranges(points, ranges)
+                noise_applied = True
+
+        points = sorted(points, key=lambda p: p[0])
+        if not points:
+            return {"metric_key": metric_key, "param": param, "unit": field.unit, "points": 0}
+
+        trend = fit_trend(points)
+        rolling = rolling_mean_by_date(points, window_days=rolling_window_days)
+        result: dict = {
+            "metric_key": metric_key,
+            "param": param,
+            "unit": field.unit,
+            "points": len(points),
+            "first": {"date": points[0][0].isoformat(), "value": points[0][1]},
+            "last": {"date": points[-1][0].isoformat(), "value": points[-1][1]},
+            "rolling_mean": {
+                "window_days": rolling_window_days,
+                "last": {"date": rolling[-1][0].isoformat(), "value": rolling[-1][1]},
+            },
+            "trend": None if trend is None else {
+                "slope_per_day": round(trend.slope_per_day, 5),
+                "slope_per_week": round(trend.slope_per_week, 4),
+                "n": trend.n,
+            },
+            "noise_excluded": noise_applied,
+        }
+        if target is not None:
+            crossing = project_date_for_value(points, target)
+            result["projection"] = {
+                "target": target,
+                "date": crossing.isoformat() if crossing else None,
+            }
+        return result
+
+
 class MCPAuthMiddleware:
     """ASGI middleware that intercepts all requests to the MCP application
 
