@@ -82,17 +82,54 @@ async def weight_dashboard(
 
     # Reverse logs list for table view (newest first)
     sorted_weights = sorted(weights, key=lambda w: w.date, reverse=True)
-    sorted_measurements = sorted(measurements, key=lambda m: m.date, reverse=True)
+    # Build a unified list of body composition measurements (Navy + InBody scans)
+    unified_measures = []
+    # Add Navy entries
+    for m in measurements:
+        unified_measures.append({
+            "date": m.date,
+            "neck_cm": m.neck_cm,
+            "waist_cm": m.waist_cm,
+            "hips_cm": m.hips_cm,
+            "body_fat_pct": m.body_fat_pct,
+            "lbm_kg": m.lbm_kg,
+            "source": "navy",
+            "source_label": "Navy",
+            "note": getattr(m, "note", "") or "",
+            "id": m.id
+        })
+
+    # Add InBody scan entries if enabled
+    if body_comp_enabled:
+        for s in bc_scans:
+            bf_val = body_metrics.body_fat_pct_from_scan(s.metrics)
+            lbm_val = body_metrics.lbm_from_scan(s.metrics)
+            if bf_val is not None or lbm_val is not None:
+                unified_measures.append({
+                    "date": s.date,
+                    "neck_cm": None,
+                    "waist_cm": None,
+                    "hips_cm": None,
+                    "body_fat_pct": bf_val,
+                    "lbm_kg": lbm_val,
+                    "source": "scan",
+                    "source_label": s.device or "InBody",
+                    "note": getattr(s, "note", "") or "",
+                    "id": s.id
+                })
+
+    # Sort unified measurements (newest first)
+    sorted_measurements = sorted(unified_measures, key=lambda x: x["date"], reverse=True)
 
     # Top "body fat %" card must reflect the most recent measurement that
-    # actually carries a Navy body-fat value (neck+waist were entered), not just
+    # actually carries a body-fat value (either Navy or InBody), not just
     # the newest measurement row — which may only hold a partial entry.
     latest_bf = next(
-        (m.body_fat_pct for m in sorted_measurements if m.body_fat_pct is not None),
+        (m["body_fat_pct"] for m in sorted_measurements if m["body_fat_pct"] is not None),
         None,
     )
     latest_lbm = next(
-        (m.lbm_kg for m in sorted_measurements if m.lbm_kg is not None),
+        (m["lbm_kg"] for m in sorted_measurements if m["lbm_kg"] is not None),
         None,
     )
 
