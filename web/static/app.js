@@ -22,8 +22,15 @@ window.vitalsLoader = {
     }
 };
 
-document.addEventListener('alpine:init', () => {
-    Alpine.data('weightOSDashboard', () => ({
+// Plain global function (not Alpine.data()/alpine:init) — x-data="weightOSDashboard()"
+// calls this directly, so it works the instant this script runs. alpine:init fires
+// exactly once, on Alpine's initial boot; a boosted hx-boost navigation re-executes
+// this <script> (it lives in <body>) long after that event already fired, so a
+// listener registered here would silently never run, leaving weightOSDashboard()
+// undefined and throwing "ReferenceError: weightOSDashboard is not defined" the
+// first time this page is reached via SPA navigation instead of a hard reload.
+window.weightOSDashboard = function () {
+    return {
         activeTab: 'log',
         overrideFlag: false,
         showConfirm: false,
@@ -293,8 +300,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         bsToggleDetail(id) { this.bsExpanded[id] = !this.bsExpanded[id]; }
-    }));
-});
+    };
+};
 
 function formatDateStr(dateStr) {
     if (!dateStr) return '';

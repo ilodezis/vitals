@@ -4,8 +4,14 @@
  * Same override flow as GLP-1/weight: 409 → confirm → re-POST with override=true.
  */
 
-document.addEventListener('alpine:init', () => {
-    Alpine.data('nutritionDashboard', () => ({
+// Plain global function (not Alpine.data()/alpine:init) — x-data="nutritionDashboard()"
+// calls this directly, so it works the instant this script runs. alpine:init fires
+// once, on Alpine's initial boot; a boosted hx-boost navigation re-executes this
+// <script> (it lives in <body>) long after that event already fired, so a listener
+// registered here would silently never run, leaving nutritionDashboard undefined the
+// first time this page is reached via SPA navigation instead of a hard reload.
+window.nutritionDashboard = function () {
+    return {
         overrideFlag: false,
         showConfirm: false,
         violations: [],
@@ -98,5 +104,5 @@ document.addEventListener('alpine:init', () => {
             this.violations = [];
             this.lastFormEvent = null;
         }
-    }));
-});
+    };
+};

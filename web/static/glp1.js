@@ -5,8 +5,14 @@
  * override=true) and adds body-map site selection + injection edit.
  */
 
-document.addEventListener('alpine:init', () => {
-    Alpine.data('glp1Dashboard', (lastSite) => ({
+// Plain global function (not Alpine.data()/alpine:init) — x-data="glp1Dashboard(...)"
+// calls this directly, so it works the instant this script runs. alpine:init fires
+// once, on Alpine's initial boot; a boosted hx-boost navigation re-executes this
+// <script> (it lives in <body>) long after that event already fired, so a listener
+// registered here would silently never run, leaving glp1Dashboard undefined the
+// first time this page is reached via SPA navigation instead of a hard reload.
+window.glp1Dashboard = function (lastSite) {
+    return {
         activeTab: 'injection',
         overrideFlag: false,
         showConfirm: false,
@@ -113,5 +119,5 @@ document.addEventListener('alpine:init', () => {
             this.violations = [];
             this.lastFormEvent = null;
         }
-    }));
-});
+    };
+};

@@ -1,6 +1,7 @@
 """Integration tests for the Vitals FastAPI web panel and router endpoints."""
 from __future__ import annotations
 
+from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -127,6 +128,47 @@ async def test_boosted_swap_reliability_guards(auth_client):
     assert "htmx:afterSwap" in html
     assert "Alpine.initTree" in html
     assert "_x_dataStack" in html  # guard against Alpine double-init
+
+
+def test_body_script_const_is_iife_scoped():
+    """Regression lock for a second, sharper cause of the same "randomly dead
+    until reload" bug: the <script> in base.html's <body> (toast/confirm/loader/
+    slowRoutes helpers) re-runs on every hx-boost swap. A bare top-level `const
+    slowRoutes` there collided with itself on the second boosted navigation —
+    inline <script> declarations share one global lexical scope across separate
+    executions, so redeclaring a `const` throws a SyntaxError from inside htmx's
+    own script-execution step, aborting the rest of that swap's script processing
+    (including any page-specific <script> further down, e.g. nutrition.js). The
+    const must stay wrapped in an IIFE so each re-execution gets a fresh scope."""
+    base_html = (
+        Path(__file__).resolve().parent.parent / "web" / "templates" / "base.html"
+    ).read_text(encoding="utf-8")
+    iife_start = base_html.index("(function () {\n        // Transient toast")
+    const_pos = base_html.index("const slowRoutes = {", iife_start)
+    iife_end = base_html.index("})();\n    </script>", iife_start)
+    assert iife_start < const_pos < iife_end
+
+
+def test_page_dashboards_register_as_plain_globals():
+    """Regression lock: weightOSDashboard/glp1Dashboard/nutritionDashboard must be
+    plain `window.X = function ...` assignments, not Alpine.data() factories wired
+    up via a `document.addEventListener('alpine:init', ...)` listener. alpine:init
+    fires exactly once, at Alpine's initial boot; these scripts live in <body> and
+    re-run on every hx-boost swap, so a listener registered on a later boosted
+    navigation is dead on arrival — the component factory never registers, and
+    Alpine throws "X is not defined" the first time that page is reached via SPA
+    navigation instead of a hard reload (hit in production for nutritionDashboard,
+    2026-07-10)."""
+    static_dir = Path(__file__).resolve().parent.parent / "web" / "static"
+    checks = {
+        "app.js": "weightOSDashboard",
+        "glp1.js": "glp1Dashboard",
+        "nutrition.js": "nutritionDashboard",
+    }
+    for filename, name in checks.items():
+        src = (static_dir / filename).read_text(encoding="utf-8")
+        assert f"window.{name} = function" in src
+        assert f"Alpine.data('{name}'" not in src
 
 
 async def test_log_weight_success(auth_client, db_session):

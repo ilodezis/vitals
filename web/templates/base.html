@@ -710,6 +710,22 @@
     </div>
 
     <script>
+        // Wrapped in an IIFE because this whole block re-runs on every hx-boost
+        // swap (it lives in <body>, torn down and re-executed each navigation —
+        // see the comment on ensureConfirmModal below). Without the IIFE, the
+        // top-level `const slowRoutes` below collided with itself on the SECOND
+        // boosted navigation: inline <script> declarations share one global
+        // lexical scope across separate executions, so redeclaring a `const`
+        // threw "Identifier 'slowRoutes' has already been declared" — a
+        // SyntaxError raised from inside htmx's own script-execution step,
+        // which aborted the rest of that swap's script processing. That's what
+        // actually caused the "charts/tables/inputs randomly dead until reload"
+        // bug: any page-specific <script> further down (e.g. nutrition.js's
+        // nutritionDashboard()) never got to run, then Alpine tried to
+        // initialise x-data roots pointing at functions that were never
+        // defined. Function declarations don't have this problem (redeclaring
+        // `function foo(){}` is legal), only top-level let/const.
+        (function () {
         // Transient toast for client-side feedback (form errors, network failures).
         // type: 'error' (default) | 'warn' | 'success'.
         window.vitalsToast = function (message, type) {
@@ -936,6 +952,7 @@
                 progressBar.classList.add('is-active');
             }
         });
+        })();
     </script>
 
     <!-- Fix iOS date input centering: iOS renders the date via a system component
