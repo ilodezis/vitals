@@ -171,6 +171,47 @@ def test_page_dashboards_register_as_plain_globals():
         assert f"Alpine.data('{name}'" not in src
 
 
+def test_page_controller_scripts_load_once_from_head():
+    """Regression lock for the race the plain-globals fix above didn't cover:
+    window.X = function stopped the *permanent* "never registers after the first
+    boost" failure, but each controller was still loaded via <script src> inside
+    its own page's swapped <body> content — a brand-new DOM node (and thus a fresh
+    async fetch) on every hx-boost navigation. Alpine's MutationObserver reacts to
+    that DOM insertion within a microtask, almost always before the network fetch
+    resolves, so x-data="nutritionDashboard()" evaluates while the function is
+    still undefined. Alpine then silently falls back to x-data="{}" instead of
+    throwing, so the swap watchdog's `!_x_dataStack` "did the observer miss this
+    root" check never fires for it either (hit in production for
+    nutritionDashboard, 2026-07-10, despite the plain-globals fix already being
+    live). Fix: load these once from <head> with defer, exactly like Alpine
+    itself, so they're always ready before Alpine ever touches a swapped page."""
+    templates_dir = Path(__file__).resolve().parent.parent / "web" / "templates"
+    base_html = (templates_dir / "base.html").read_text(encoding="utf-8")
+
+    scripts = ["app.js", "glp1.js", "nutrition.js", "protocol.js", "charts.js"]
+    alpine_pos = base_html.index('id="alpine-script"')
+    for filename in scripts:
+        tag = f"<script defer src=\"{{{{ static_version('/static/{filename}') }}}}\">"
+        pos = base_html.index(tag)
+        assert pos < alpine_pos, f"{filename} must load (and be deferred) before Alpine boots"
+
+    # None of the pages that use these controllers may still load them a second
+    # time from within the swapped <body> content — that would reintroduce the
+    # exact per-navigation re-fetch race this test guards against.
+    page_templates = [
+        "nutrition/index.html",
+        "glp1/index.html",
+        "weight/index.html",
+        "skincare/index.html",
+        "supplements/index.html",
+        "charts/index.html",
+    ]
+    for rel_path in page_templates:
+        html = (templates_dir / rel_path).read_text(encoding="utf-8")
+        for filename in scripts:
+            assert f"'/static/{filename}'" not in html, f"{rel_path} must not also load {filename}"
+
+
 async def test_log_weight_success(auth_client, db_session):
     """POST /weight/log inserts weight logs into the database."""
     response = await auth_client.post(

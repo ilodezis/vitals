@@ -192,6 +192,32 @@
             return out;
         };
     </script>
+    <!-- Page-controller scripts (weightOSDashboard, glp1Dashboard, nutritionDashboard,
+         protocolForm, chartBuilder) — live in <head>, not in each page's own template,
+         and for the exact same reason as Alpine below: hx-boost only swaps <body>
+         innerHTML, so a <script src> sitting inside the swapped content is a brand-new
+         DOM node on every boosted navigation, which means a brand-new async network
+         fetch every time. Alpine's MutationObserver reacts to the DOM insertion (a
+         microtask) long before that fetch resolves, so it evaluates e.g.
+         x-data="nutritionDashboard()" while the function is still undefined.
+         window.X = function (already fixed, see git blame) stopped the *permanent*
+         "never registers after the first boost" failure, but not this *intermittent*
+         load-order race — and Alpine swallows the ReferenceError by silently falling
+         back to x-data="{}" , so the swap watchdog's "did the observer miss this root"
+         check (_x_dataStack) never sees it as missed and never retries. Loading these
+         once, up front, exactly like Alpine/htmx/Chart.js already do, removes the race
+         instead of trying to win it. Each file is a pure `window.X = function(){...}`
+         factory (or, for protocol.js/charts.js, factories + guarded htmx:afterSettle
+         listeners) with no top-level DOM access, so loading it on every page — not just
+         the one that uses it — is inert elsewhere and safe. Placed before alpine-script
+         so protocol.js's alpine:init listener (a secondary Alpine.data() registration,
+         kept for named-component syntax) is attached before Alpine dispatches that event. -->
+    <script defer src="{{ static_version('/static/app.js') }}"></script>
+    <script defer src="{{ static_version('/static/glp1.js') }}"></script>
+    <script defer src="{{ static_version('/static/nutrition.js') }}"></script>
+    <script defer src="{{ static_version('/static/protocol.js') }}"></script>
+    <script defer src="{{ static_version('/static/charts.js') }}"></script>
+
     <!-- Alpine — lives in <head> (not a page script) with `defer` so it survives boosted
          navigations: hx-boost only swaps <body> innerHTML, so anything inside <body> gets
          torn down and re-run on every navigation. That re-execution used to start a brand
