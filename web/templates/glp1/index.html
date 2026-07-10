@@ -4,7 +4,7 @@
 
 {% block content %}
 {% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
-<div class="px-6 py-7 max-w-4xl mx-auto space-y-8"
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8"
      x-data="glp1Dashboard({{ (last_injection.site | tojson if last_injection and last_injection.site else 'null') | forceescape }})">
 
     {% if request.state.ui_version == 'masthead' %}

@@ -9,7 +9,7 @@
 'supplements': 'supplements', 'genetics': 'genetics', 'body_comp': 'weight'} %}
 {% set KIND_TAG = {'life_event': 'good', 'illness': 'bad', 'travel': 'cool', 'protocol_change': 'violet', 'note':
 'muted'} %}
-<div class="px-6 py-7 max-w-4xl mx-auto space-y-8" x-data="{ showForm: false }">
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showForm: false }">
 
     {% if request.state.ui_version == 'masthead' %}
     {% call masthead_header('timeline', t('nav.timeline'), [
@@ -36,6 +36,7 @@
     </div>
     {% endif %}
 
+    <div class="max-w-4xl space-y-8">
     <!-- Add annotation form -->
     <div x-show=" showForm" x-cloak class="v-card p-6 space-y-4">
                     <form action="/timeline" method="POST" class="space-y-4">
@@ -129,6 +130,7 @@
         <p>{{ t("timeline.no_events") }}</p>
     </div>
     {% endfor %}
+</div>
 </div>
 </div>
 {% endblock %}

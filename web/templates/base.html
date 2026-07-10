@@ -472,7 +472,7 @@
     <main class="flex-1 min-w-0 w-full overflow-y-auto">
         <!-- System Alerts Container -->
         {% if alerts %}
-        <div id="alerts-container" class="flex-none px-6 pt-5 max-w-4xl mx-auto w-full space-y-2">
+        <div id="alerts-container" class="flex-none px-6 pt-5 max-w-6xl mx-auto w-full space-y-2">
             {% if alerts|length > 1 %}
             <div class="flex justify-end pb-1">
                 <button hx-post="/alerts/resolve-all?domain={{ alerts[0].domain }}" hx-target="#alerts-container"

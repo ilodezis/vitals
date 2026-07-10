@@ -4,7 +4,7 @@
 
 {% block content %}
 {% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
-<div class="px-6 py-7 max-w-4xl mx-auto space-y-8" x-data="{ showAdminPanels: {% if variants %}false{% else %}true{% endif %}, activeTab: 'all' }">
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showAdminPanels: {% if variants %}false{% else %}true{% endif %}, activeTab: 'all' }">
 
     {% if request.state.ui_version == 'masthead' %}
     {% call masthead_header('genetics', t('nav.genetics'), [
