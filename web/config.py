@@ -29,6 +29,11 @@ class WebConfig:
     mcp_client_id: str = "vitals-claude-connector"
     mcp_client_secret: str = ""
     mcp_redirect_uris: tuple[str, ...] = DEFAULT_MCP_REDIRECT_URIS
+    # Shared secret for the read-only /external JSON API (a separate personal
+    # dashboard app reads a few health glance cards from here server-to-server).
+    # Empty = feature off: the endpoint fails closed with 503, never a
+    # wildcard-open door.
+    external_api_token: str = ""
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -74,5 +79,6 @@ def get_web_config() -> WebConfig:
         mcp_client_id=os.getenv("VITALS_MCP_CLIENT_ID", "vitals-claude-connector"),
         mcp_client_secret=os.getenv("VITALS_MCP_CLIENT_SECRET", ""),
         mcp_redirect_uris=_env_csv("VITALS_MCP_REDIRECT_URIS", DEFAULT_MCP_REDIRECT_URIS),
+        external_api_token=os.getenv("VITALS_EXTERNAL_API_TOKEN", ""),
     )
 

@@ -283,6 +283,7 @@ from web.routers.interactions import router as interactions_router  # noqa: E402
 from web.routers.settings import router as settings_router  # noqa: E402
 from web.routers.charts import router as charts_router  # noqa: E402
 from web.routers.timeline import router as timeline_router  # noqa: E402
+from web.routers.external_api import router as external_api_router  # noqa: E402
 
 # Core modules — always reachable.
 app.include_router(alerts_router)
@@ -292,6 +293,8 @@ app.include_router(labs_router)
 app.include_router(reports_router)
 app.include_router(settings_router)
 app.include_router(charts_router)
+# Read-only JSON API for an external personal dashboard (Bearer-token guarded, not session auth).
+app.include_router(external_api_router)
 
 # Optional modules — guarded: a disabled module's routes 404 → redirect to /weight.
 app.include_router(glp1_router, dependencies=[Depends(require_module("glp1"))])
