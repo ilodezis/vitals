@@ -119,3 +119,14 @@ async def test_settings_card_and_banner_present(auth_client):
     assert r.status_code == 200
     # RU is the seeded test language.
     assert "Интерфейс переключён." in r.text
+
+
+async def test_consistent_layout_max_width(auth_client):
+    """Timeline, Settings, and Weight pages must have the same max-w-4xl wrapper class."""
+    for path in ("/weight", "/timeline", "/settings"):
+        r = await auth_client.get(path, headers={"Accept": "text/html"})
+        assert r.status_code == 200
+        assert "max-w-4xl" in r.text
+        assert "max-w-6xl" not in r.text
+
+

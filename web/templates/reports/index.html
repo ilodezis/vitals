@@ -4,7 +4,7 @@
 
 {% block content %}
 {% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showGoalForm: false }">
+<div class="px-6 py-7 max-w-4xl mx-auto space-y-8" x-data="{ showGoalForm: false }">
 
     {% if request.state.ui_version == 'masthead' %}
     {{ masthead_header('reports', t('nav.reports'), [

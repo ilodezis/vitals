@@ -239,9 +239,10 @@ body.ui-masthead .mh-head {
 
 body.ui-masthead .mh-eyebrow-row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 16px;
+    min-height: 38px;
 }
 
 body.ui-masthead .mh-eyebrow {
