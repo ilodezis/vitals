@@ -107,7 +107,7 @@
             <!-- Input Card -->
             <div class="v-card p-6 space-y-4">
                 <!-- Tabs -->
-                <div class="v-seg">
+                <div class="v-seg v-seg-wrap">
                     <button @click="activeTab = 'log'" :class="activeTab === 'log'     ? 'is-active' : ''"
                         class="v-seg-btn">{{ t("weight.tab_weight") }}</button>
                     <button @click="activeTab = 'measure'" :class="activeTab === 'measure' ? 'is-active' : ''"
