@@ -72,7 +72,11 @@
                     btn.classList.toggle('is-active', pinned);
                     btn.setAttribute('aria-pressed', pinned ? 'true' : 'false');
                     var label = pinned ? btn.dataset.labelUnpin : btn.dataset.labelPin;
-                    if (label) btn.title = label;
+                    if (label) {
+                        btn.title = label;
+                        var span = btn.querySelector('.mh-rail-label');
+                        if (span) span.textContent = label;
+                    }
                 });
             }
             document.addEventListener('DOMContentLoaded', syncPinButtons);

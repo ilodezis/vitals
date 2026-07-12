@@ -52,8 +52,7 @@ body.ui-masthead .mh-rail {
     align-items: center;
     padding: 20px 0;
     gap: 18px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
     z-index: 35;
     transition: width .18s ease, box-shadow .18s ease;
 }
@@ -133,8 +132,16 @@ body.ui-masthead .mh-rail-nav {
     flex-direction: column;
     align-self: stretch;
     align-items: stretch;
+    min-height: 0;
     gap: 8px;
     padding: 0 16px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+}
+
+body.ui-masthead .mh-rail-nav::-webkit-scrollbar {
+    display: none;
 }
 
 /* Section buttons — 44px tall (touch target), rounded, muted → accent when
@@ -193,79 +200,40 @@ html.mh-rail-pinned body.ui-masthead .mh-rail-label {
     max-width: 160px;
 }
 
-/* Bottom cluster: pin toggle, settings, avatar. */
+/* Bottom cluster: pin toggle, settings, avatar. Always visible — never part of
+   .mh-rail-nav's own scroll region (see above) — and laid out with the same
+   align-self:stretch + 16px side padding as the nav so its icons line up with
+   the nav's icons exactly, collapsed or expanded. */
 body.ui-masthead .mh-rail-foot {
-    margin-top: auto;
+    flex: none;
+    align-self: stretch;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     gap: 14px;
-    padding-top: 12px;
+    padding: 12px 16px 0;
+    border-top: 1px solid var(--line);
 }
 
-/* Pin toggle — locks the hover-preview expansion open (state lives on <html>,
-   see the pinned rules above and the script in base.html <head>). Same visual
-   recipe as .mh-rail-btn.is-active; the pin glyph itself rotates -45° when
-   active as a small "tacked down" cue. */
+/* Pin toggle and settings share .mh-rail-btn (added in the HTML) for their box
+   model and color states, so they always match the nav buttons pixel-for-pixel
+   instead of drifting independently. Only the pin-specific "tacked down" glyph
+   rotation lives here. */
 body.ui-masthead .mh-rail-pin {
-    width: 44px;
-    height: 44px;
-    flex: none;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--faint);
-    background: transparent;
-    border: 1px solid transparent;
     cursor: pointer;
-    transition: background .15s ease, color .15s ease, border-color .15s ease;
 }
 
 body.ui-masthead .mh-rail-pin svg {
-    width: 18px;
-    height: 18px;
     transition: transform .15s ease;
-}
-
-body.ui-masthead .mh-rail-pin:hover {
-    color: var(--fg-2);
-    background: var(--surface);
-}
-
-body.ui-masthead .mh-rail-pin.is-active {
-    color: var(--accent-2);
-    background: var(--accent-soft);
-    border-color: var(--accent-line);
 }
 
 body.ui-masthead .mh-rail-pin.is-active svg {
     transform: rotate(-45deg);
 }
 
-body.ui-masthead .mh-rail-settings {
-    color: var(--faint);
-    /* 44×44 touch target around the 18px gear (U12). */
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: color .15s ease;
-}
-
-body.ui-masthead .mh-rail-settings:hover,
-body.ui-masthead .mh-rail-settings.is-active {
-    color: var(--accent-2);
-}
-
-body.ui-masthead .mh-rail-settings svg {
-    width: 18px;
-    height: 18px;
-}
-
 body.ui-masthead .mh-rail-avatar {
     position: relative;
+    align-self: center;
     width: 26px;
     height: 26px;
     border-radius: 50%;

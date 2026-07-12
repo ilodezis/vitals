@@ -233,6 +233,17 @@ h1.v-text-heading {
     background-clip: content-box;
 }
 
+/* Main content scroll — hidden thumb, same reasoning as .v-nav-scroll above:
+   scrolling still works fine by wheel/trackpad/touch/keys, it just doesn't
+   need a visible bar riding the page's right edge. */
+main {
+    scrollbar-width: none;
+}
+
+main::-webkit-scrollbar {
+    display: none;
+}
+
 /* Date-picker / file indicators legible on dark */
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="file"]::-webkit-file-upload-button {
