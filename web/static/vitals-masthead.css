@@ -13,6 +13,7 @@ body.ui-masthead {
     /* Display face for titles/tabs only; body text stays on Inter. */
     --mh-display: 'Bricolage Grotesque', 'Outfit', ui-sans-serif, system-ui, sans-serif;
     --mh-rail-w: 76px;
+    --mh-rail-w-expanded: 232px;
 }
 
 /* ── Desktop layout row ──────────────────────────────────────────────────
@@ -29,11 +30,21 @@ body.ui-masthead .mh-shell {
 /* ── The rail ──────────────────────────────────────────────────────────────
    Responsive display is owned here (not via Tailwind's hidden/md:flex): these
    rules are more specific than the utilities, so they would always win — the
-   rail is hidden below md and shown from md up via the media query below. */
+   rail is hidden below md and shown from md up via the media query below.
+
+   position:fixed on purpose: a hover-preview expansion (below) then only ever
+   grows this overlay, never the flex layout, so <main> and its charts/tables
+   never reflow just because the pointer passed over the rail. .mh-rail-spacer
+   is the plain in-flow box that actually reserves the column width in
+   .mh-shell — pinning (also below) is the one deliberate case that resizes
+   both the rail and the spacer together, which is the only time <main> is
+   meant to move. */
 body.ui-masthead .mh-rail {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
     width: var(--mh-rail-w);
-    flex: none;
-    height: 100%;
     background: var(--bg-inset);
     border-right: 1px solid var(--line);
     display: none;
@@ -43,12 +54,43 @@ body.ui-masthead .mh-rail {
     gap: 18px;
     overflow-y: auto;
     overflow-x: hidden;
+    z-index: 35;
+    transition: width .18s ease, box-shadow .18s ease;
 }
 
 @media (min-width: 768px) {
     body.ui-masthead .mh-rail {
         display: flex;
     }
+}
+
+body.ui-masthead .mh-rail-spacer {
+    display: none;
+    flex: none;
+    width: var(--mh-rail-w);
+}
+
+@media (min-width: 768px) {
+    body.ui-masthead .mh-rail-spacer {
+        display: block;
+    }
+}
+
+/* Hover / keyboard-focus preview — overlay only, spacer untouched. */
+body.ui-masthead .mh-rail:hover,
+body.ui-masthead .mh-rail:focus-within {
+    width: var(--mh-rail-w-expanded);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Pinned (toggled by .mh-rail-pin, state kept on <html> — see base.html):
+   the one case where the spacer widens too, so <main> genuinely resizes. */
+html.mh-rail-pinned body.ui-masthead .mh-rail {
+    width: var(--mh-rail-w-expanded);
+}
+
+html.mh-rail-pinned body.ui-masthead .mh-rail-spacer {
+    width: var(--mh-rail-w-expanded);
 }
 
 body.ui-masthead .mh-rail-logo {
@@ -89,28 +131,36 @@ body.ui-masthead .mh-rail-div {
 body.ui-masthead .mh-rail-nav {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-self: stretch;
+    align-items: stretch;
     gap: 8px;
+    padding: 0 16px;
 }
 
-/* Section buttons — 44×44 (touch target), rounded, muted → accent when active. */
+/* Section buttons — 44px tall (touch target), rounded, muted → accent when
+   active. Width fills the row instead of a fixed 44px square: collapsed, nav's
+   own 16px side padding leaves exactly 44px of content width (matching the
+   rail's own centering math), so it still reads as a square icon button;
+   expanded, the same row just has room for the label to reveal beside it. */
 body.ui-masthead .mh-rail-btn {
-    width: 44px;
     height: 44px;
     flex: none;
     border-radius: 10px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    padding: 0 13px;
     color: var(--muted);
     background: transparent;
     border: 1px solid transparent;
+    overflow: hidden;
     transition: background .15s ease, color .15s ease, border-color .15s ease;
 }
 
 body.ui-masthead .mh-rail-btn svg {
     width: 18px;
     height: 18px;
+    flex: none;
 }
 
 body.ui-masthead .mh-rail-btn:hover {
@@ -124,7 +174,26 @@ body.ui-masthead .mh-rail-btn.is-active {
     border-color: var(--accent-line);
 }
 
-/* Bottom cluster: interface toggle, settings, avatar. */
+/* Label — collapsed to zero width by default; revealed under the same three
+   conditions (hover / keyboard-focus / pinned) as the rail's own width. */
+body.ui-masthead .mh-rail-label {
+    margin-left: 12px;
+    font: 600 13px 'Inter', sans-serif;
+    white-space: nowrap;
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    transition: opacity .15s ease, max-width .18s ease;
+}
+
+body.ui-masthead .mh-rail:hover .mh-rail-label,
+body.ui-masthead .mh-rail:focus-within .mh-rail-label,
+html.mh-rail-pinned body.ui-masthead .mh-rail-label {
+    opacity: 1;
+    max-width: 160px;
+}
+
+/* Bottom cluster: pin toggle, settings, avatar. */
 body.ui-masthead .mh-rail-foot {
     margin-top: auto;
     display: flex;
@@ -132,6 +201,46 @@ body.ui-masthead .mh-rail-foot {
     align-items: center;
     gap: 14px;
     padding-top: 12px;
+}
+
+/* Pin toggle — locks the hover-preview expansion open (state lives on <html>,
+   see the pinned rules above and the script in base.html <head>). Same visual
+   recipe as .mh-rail-btn.is-active; the pin glyph itself rotates -45° when
+   active as a small "tacked down" cue. */
+body.ui-masthead .mh-rail-pin {
+    width: 44px;
+    height: 44px;
+    flex: none;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--faint);
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+
+body.ui-masthead .mh-rail-pin svg {
+    width: 18px;
+    height: 18px;
+    transition: transform .15s ease;
+}
+
+body.ui-masthead .mh-rail-pin:hover {
+    color: var(--fg-2);
+    background: var(--surface);
+}
+
+body.ui-masthead .mh-rail-pin.is-active {
+    color: var(--accent-2);
+    background: var(--accent-soft);
+    border-color: var(--accent-line);
+}
+
+body.ui-masthead .mh-rail-pin.is-active svg {
+    transform: rotate(-45deg);
 }
 
 body.ui-masthead .mh-rail-settings {

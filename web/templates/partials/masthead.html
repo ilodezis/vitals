@@ -40,29 +40,29 @@
 {# ── Section icons (same <path> data as nav_primary.html / base.html) ──────── #}
 {% macro mh_icon(key) %}
 {%- if key == 'weight' -%}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 16a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 12.5l2-2" /></svg>
 {%- elif key == 'garmin' -%}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
 {%- elif key == 'hevy' -%}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
 {%- elif key == 'nutrition' -%}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" /></svg>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.5c-1.5-2-4.5-2-6 0-2 2.7-1.5 8 1.5 11 1.2 1.2 2.7 1.5 4.5 1.5s3.3-.3 4.5-1.5c3-3 3.5-8.3 1.5-11-1.5-2-4.5-2-6 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 8.5V6c0-1.1.9-2.5 2.5-3" /></svg>
 {%- elif key == 'reports' -%}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
 {%- elif key == 'charts' -%}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6m4 6V9m4 10v-4M5 19h14M5 19V9a2 2 0 012-2h1m8-2h4v4" /></svg>
 {%- elif key == 'glp1' -%}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3h6M12 3v3M8 6h8v6a2 2 0 01-2 2h-4a2 2 0 01-2-2V6z M12 14v7M10 9h4" /></svg>
 {%- elif key == 'labs' -%}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
 {%- elif key == 'genetics' -%}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 3C12 3 12 7 17 7C12 7 12 11 7 11C12 11 12 15 17 15C12 15 12 19 7 19" /><path stroke-linecap="round" stroke-linejoin="round" d="M17 3C12 3 12 7 7 7C12 7 12 11 17 11C12 11 12 15 7 15C12 15 12 19 17 19" /></svg>
 {%- elif key == 'supplements' -%}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.435 5.565a6.002 6.002 0 00-8.485 0L3.586 11.93a6.002 6.002 0 008.485 8.485l6.364-6.364a6.002 6.002 0 000-8.485z M8 16l8-8" /></svg>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.5 17.5a5 5 0 010-7.07l4-4a5 5 0 017.07 7.07l-4 4a5 5 0 01-7.07 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M10 8l6 6" /></svg>
 {%- elif key == 'skincare' -%}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3c3.5 4 6 7.5 6 10.5a6 6 0 11-12 0C6 10.5 8.5 7 12 3z" /></svg>
 {%- elif key == 'timeline' -%}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21V5a2 2 0 012-2h4l1 2h8a1 1 0 011 1v9a1 1 0 01-1 1h-8l-1-2H5a2 2 0 00-2 2z" /></svg>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3.5 2" /></svg>
 {%- elif key == 'interactions' -%}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
 {%- endif -%}
@@ -81,10 +81,15 @@
     <div class="mh-rail-div"></div>
     <nav class="mh-rail-nav">
         {% for r in MH_RUBRICS %}{% for key in r.members %}{% set meta = MH_SECTIONS[key] %}{% if meta.gate is none or em.get(meta.gate) %}
-        <a href="{{ meta.href }}" title="{{ t(meta.label) }}" class="mh-rail-btn {% if current_path.startswith(meta.href) %}is-active{% endif %}">{{ mh_icon(key) }}</a>
+        <a href="{{ meta.href }}" title="{{ t(meta.label) }}" class="mh-rail-btn {% if current_path.startswith(meta.href) %}is-active{% endif %}">{{ mh_icon(key) }}<span class="mh-rail-label">{{ t(meta.label) }}</span></a>
         {% endif %}{% endfor %}{% endfor %}
     </nav>
     <div class="mh-rail-foot">
+        <button type="button" class="mh-rail-pin" data-mh-pin aria-pressed="false"
+            data-label-pin="{{ t('nav.pin_sidebar') }}" data-label-unpin="{{ t('nav.unpin_sidebar') }}"
+            title="{{ t('nav.pin_sidebar') }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+        </button>
         <a href="/settings" class="mh-rail-settings {% if current_path.startswith('/settings') %}is-active{% endif %}" title="{{ t('nav.settings_title') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
         </a>

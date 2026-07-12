@@ -45,6 +45,8 @@ _EN: dict[str, str] = {
     "nav.genetics": "Genetics",
     "nav.settings": "Settings",
     "nav.charts": "Charts",
+    "nav.pin_sidebar": "Pin sidebar",
+    "nav.unpin_sidebar": "Unpin sidebar",
 
     # ── Common ────────────────────────────────────────────────────────────
     "common.save": "Save",
@@ -961,6 +963,8 @@ _RU: dict[str, str] = {
     "nav.genetics": "Генетика",
     "nav.settings": "Настройки",
     "nav.charts": "Графики",
+    "nav.pin_sidebar": "Закрепить панель",
+    "nav.unpin_sidebar": "Открепить панель",
 
     # ── Common ────────────────────────────────────────────────────────────
     "common.save": "Сохранить",

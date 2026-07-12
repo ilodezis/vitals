@@ -44,6 +44,51 @@
     <!-- "Masthead" interface skin — inert unless <body> carries .ui-masthead -->
     <link rel="stylesheet" href="{{ static_version('/static/vitals-masthead.css') }}">
 
+    <!-- Masthead rail pin state: a client-only preference (no server concept of
+         it), so it lives entirely in localStorage and on <html> — never touched
+         by hx-boost, which only swaps <body> innerHTML (see the many comments
+         below on why head vs body matters for scripts here). Setting the class
+         this early, before <body> even parses, avoids a flash of the collapsed
+         rail on a hard load; and because <html> survives every boosted
+         navigation, the expanded-rail CSS (vitals-masthead.css) just keeps
+         applying with no JS re-sync needed for the rail's own width. Only the
+         pin BUTTON's own is-active/aria-pressed/title need re-syncing after
+         each swap, since the button itself lives inside <body> and is torn
+         down and rebuilt fresh (always aria-pressed="false") on every
+         navigation. Registered once, here — unlike htmx:confirm in the body
+         script further down, this click listener needs no rebind guard,
+         because head scripts never re-execute on a boosted nav. -->
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('vitals_rail_pinned') === '1') {
+                    document.documentElement.classList.add('mh-rail-pinned');
+                }
+            } catch (e) { /* localStorage unavailable — rail just starts collapsed */ }
+
+            function syncPinButtons() {
+                var pinned = document.documentElement.classList.contains('mh-rail-pinned');
+                document.querySelectorAll('.mh-rail-pin').forEach(function (btn) {
+                    btn.classList.toggle('is-active', pinned);
+                    btn.setAttribute('aria-pressed', pinned ? 'true' : 'false');
+                    var label = pinned ? btn.dataset.labelUnpin : btn.dataset.labelPin;
+                    if (label) btn.title = label;
+                });
+            }
+            document.addEventListener('DOMContentLoaded', syncPinButtons);
+            document.addEventListener('htmx:load', syncPinButtons);
+
+            document.addEventListener('click', function (e) {
+                var btn = e.target.closest ? e.target.closest('.mh-rail-pin') : null;
+                if (!btn) return;
+                var pinned = !document.documentElement.classList.contains('mh-rail-pinned');
+                document.documentElement.classList.toggle('mh-rail-pinned', pinned);
+                try { localStorage.setItem('vitals_rail_pinned', pinned ? '1' : '0'); } catch (e2) { /* ignore */ }
+                syncPinButtons();
+            });
+        })();
+    </script>
+
     <!-- Core JS libraries — vendored locally (no CDN) -->
     <script src="{{ static_version('/static/vendor/htmx.min.js') }}"></script>
     <script src="{{ static_version('/static/vendor/chart.umd.min.js') }}"></script>
@@ -424,7 +469,13 @@
     </header>
     {% endif %}
     <div class="mh-shell">
-        {% if username %}{% include "partials/nav_masthead.html" %}{% endif %}
+        {% if username %}
+        <!-- The rail itself is position:fixed (so hover-expanding it never reflows
+             <main> — see vitals-masthead.css); this spacer is the plain in-flow
+             box that actually reserves its column width in .mh-shell. -->
+        <div class="mh-rail-spacer" aria-hidden="true"></div>
+        {% include "partials/nav_masthead.html" %}
+        {% endif %}
     {% else %}
     <!-- Header -->
     <header class="v-header flex-none h-16 flex items-center justify-between px-6">
@@ -521,8 +572,9 @@
         <a href="/weight"
             class="flex flex-col items-center justify-center gap-1 h-full py-1 text-center {% if current_path.startswith('/weight') %}text-[var(--accent)]{% else %}text-[var(--muted)] hover:text-[var(--fg-2)]{% endif %}">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+                <rect x="3" y="4" width="18" height="16" rx="3" stroke-width="2" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 12.5l2-2" />
             </svg>
             <span class="text-[0.62rem] font-bold">{{ t("nav.weight") }}</span>
         </a>
@@ -553,8 +605,8 @@
         <a href="/supplements"
             class="flex flex-col items-center justify-center gap-1 h-full py-1 text-center {% if current_path.startswith('/supplements') %}text-[var(--accent)]{% else %}text-[var(--muted)] hover:text-[var(--fg-2)]{% endif %}">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M18.435 5.565a6.002 6.002 0 00-8.485 0L3.586 11.93a6.002 6.002 0 008.485 8.485l6.364-6.364a6.002 6.002 0 000-8.485z M8 16l8-8" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.5 17.5a5 5 0 010-7.07l4-4a5 5 0 017.07 7.07l-4 4a5 5 0 01-7.07 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 8l6 6" />
             </svg>
             <span class="text-[0.62rem] font-bold">{{ t("nav.supplements") }}</span>
         </a>
@@ -600,8 +652,7 @@
                 <a href="/skincare" @click="mobileMenuOpen = false"
                     class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
                     <svg class="h-6 w-6 text-[var(--fg-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3c3.5 4 6 7.5 6 10.5a6 6 0 11-12 0C6 10.5 8.5 7 12 3z" />
                     </svg>
                     <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.skincare") }}</span>
                 </a>
@@ -610,8 +661,8 @@
                 <a href="/nutrition" @click="mobileMenuOpen = false"
                     class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
                     <svg class="h-6 w-6 text-[var(--fg-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8.5c-1.5-2-4.5-2-6 0-2 2.7-1.5 8 1.5 11 1.2 1.2 2.7 1.5 4.5 1.5s3.3-.3 4.5-1.5c3-3 3.5-8.3 1.5-11-1.5-2-4.5-2-6 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8.5V6c0-1.1.9-2.5 2.5-3" />
                     </svg>
                     <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.nutrition") }}</span>
                 </a>
@@ -620,8 +671,8 @@
                 <a href="/timeline" @click="mobileMenuOpen = false"
                     class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
                     <svg class="h-6 w-6 text-[var(--fg-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M3 21V5a2 2 0 012-2h4l1 2h8a1 1 0 011 1v9a1 1 0 01-1 1h-8l-1-2H5a2 2 0 00-2 2z" />
+                        <circle cx="12" cy="12" r="9" stroke-width="2" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 7v5l3.5 2" />
                     </svg>
                     <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.timeline") }}</span>
                 </a>
@@ -646,8 +697,7 @@
                 <a href="/glp1" @click="mobileMenuOpen = false"
                     class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
                     <svg class="h-6 w-6 text-[var(--fg-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3h6M12 3v3M8 6h8v6a2 2 0 01-2 2h-4a2 2 0 01-2-2V6z M12 14v7M10 9h4" />
                     </svg>
                     <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.glp1") }}</span>
                 </a>
