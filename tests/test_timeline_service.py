@@ -2,16 +2,19 @@
 derived), and per-domain chart overlays."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
 from vitals.enums import AnnotationKind, Domain, MilestoneStatus
 from vitals.models.body_scan import DOMAIN as BODY_DOMAIN, BodyScan
-from vitals.models.glp1 import DOMAIN as GLP1_DOMAIN, DosePhase
+from vitals.models.genetics import DOMAIN as GENETICS_DOMAIN, GeneticVariant
+from vitals.models.glp1 import DOMAIN as GLP1_DOMAIN, DosePhase, SideEffect
 from vitals.models.labs import LabResult
 from vitals.models.milestones import Milestone
-from vitals.models.weight import DOMAIN as WEIGHT_DOMAIN, NoiseMarker
+from vitals.models.skincare import DOMAIN as SKINCARE_DOMAIN, SkincareProduct
+from vitals.models.supplements import DOMAIN as SUPP_DOMAIN, Supplement
+from vitals.models.weight import DOMAIN as WEIGHT_DOMAIN, NoiseMarker, ProgressPhoto
 from vitals.services import timeline_service
 
 pytestmark = pytest.mark.asyncio
@@ -161,3 +164,153 @@ async def test_overlays_for_domain_includes_own_and_global_only(db_session):
 
     point = next(o for o in overlays if o["label"] == "Global flag")
     assert point["end"] is None
+
+
+async def test_derived_events_supplements_started_and_stopped(db_session):
+    db_session.add(Supplement(
+        name="Creatine", key="creatine", domain=SUPP_DOMAIN, source="manual",
+        active=True, created_at=datetime(2026, 5, 1),
+    ))
+    db_session.add(Supplement(
+        name="Iron", key="iron", domain=SUPP_DOMAIN, source="manual",
+        active=False, created_at=datetime(2026, 4, 1), updated_at=datetime(2026, 6, 1),
+    ))
+    await db_session.commit()
+
+    events = await timeline_service.list_events(db_session)
+    started = [e for e in events if e.ref.startswith("supplement_started:")]
+    stopped = [e for e in events if e.ref.startswith("supplement_stopped:")]
+
+    assert any("Creatine" in e.title for e in started)
+    assert any("Iron" in e.title for e in started)
+    assert len(stopped) == 1 and "Iron" in stopped[0].title
+    assert stopped[0].date == date(2026, 6, 1)
+    assert all(e.kind == "protocol_change" for e in started + stopped)
+
+
+async def test_derived_events_skincare_added_and_removed(db_session):
+    db_session.add(SkincareProduct(
+        name="Adapalene", type="retinoid", active=True, created_at=datetime(2026, 3, 1),
+    ))
+    db_session.add(SkincareProduct(
+        name="Benzoyl Peroxide", type="bpo", active=False,
+        created_at=datetime(2026, 2, 1), updated_at=datetime(2026, 5, 1),
+    ))
+    await db_session.commit()
+
+    events = await timeline_service.list_events(db_session)
+    added = [e for e in events if e.ref.startswith("skincare_added:")]
+    removed = [e for e in events if e.ref.startswith("skincare_removed:")]
+
+    assert any("Adapalene" in e.title for e in added)
+    assert any("Benzoyl Peroxide" in e.title for e in added)
+    assert len(removed) == 1 and "Benzoyl Peroxide" in removed[0].title
+    assert removed[0].date == date(2026, 5, 1)
+    assert all(e.domain == SKINCARE_DOMAIN for e in added + removed)
+
+
+async def test_derived_events_glp1_side_effect_severity_threshold(db_session):
+    db_session.add(SideEffect(
+        date=date(2026, 6, 1), domain=GLP1_DOMAIN, source="manual",
+        effect_type="nausea", severity=2,
+    ))
+    db_session.add(SideEffect(
+        date=date(2026, 6, 2), domain=GLP1_DOMAIN, source="manual",
+        effect_type="fatigue", severity=3,
+    ))
+    db_session.add(SideEffect(
+        date=date(2026, 6, 3), domain=GLP1_DOMAIN, source="manual",
+        effect_type="injection site reaction", severity=5,
+    ))
+    await db_session.commit()
+
+    events = await timeline_service.list_events(db_session)
+    side_effects = [e for e in events if e.kind == "side_effect"]
+    assert len(side_effects) == 2  # severity 2 excluded — too mild to surface
+
+    by_type = {e.title.split(" [")[0]: e for e in side_effects}
+    assert by_type["fatigue"].tone == "warn"
+    assert by_type["injection site reaction"].tone == "bad"
+
+
+async def test_derived_events_milestone_created_achieved_missed(db_session):
+    db_session.add(Milestone(
+        name="Reach 85 kg", status=MilestoneStatus.ACHIEVED.value,
+        created_at=datetime(2026, 1, 1), updated_at=datetime(2026, 3, 1),
+    ))
+    db_session.add(Milestone(
+        name="Bench 100 kg", status=MilestoneStatus.MISSED.value,
+        created_at=datetime(2026, 1, 15), updated_at=datetime(2026, 4, 1),
+    ))
+    await db_session.commit()
+
+    events = await timeline_service.list_events(db_session)
+    created = [e for e in events if e.ref.startswith("milestone_created:")]
+    achieved = [e for e in events if e.ref.startswith("milestone_achieved:")]
+    missed = [e for e in events if e.ref.startswith("milestone_missed:")]
+
+    assert len(created) == 2
+    assert len(achieved) == 1 and achieved[0].date == date(2026, 3, 1) and achieved[0].tone == "good"
+    assert len(missed) == 1 and missed[0].date == date(2026, 4, 1) and missed[0].tone == "bad"
+    assert all(e.kind == "milestone" for e in created + achieved + missed)
+
+
+async def test_derived_events_genetics_import_grouped_by_day(db_session):
+    for gene in ("MTHFR", "APOE", "FTO"):
+        db_session.add(GeneticVariant(
+            gene=gene, domain=GENETICS_DOMAIN, source="vcf_import",
+            created_at=datetime(2026, 2, 10, 12, 0),
+        ))
+    db_session.add(GeneticVariant(
+        gene="CYP1A2", domain=GENETICS_DOMAIN, source="manual",
+        created_at=datetime(2026, 5, 1, 9, 0),
+    ))
+    await db_session.commit()
+
+    events = await timeline_service.list_events(db_session)
+    imports = {e.date: e for e in events if e.ref.startswith("genetics_import:")}
+
+    assert len(imports) == 2
+    assert "3" in imports[date(2026, 2, 10)].title
+    assert "1" in imports[date(2026, 5, 1)].title
+
+
+async def test_derived_events_progress_photo_includes_image(db_session):
+    db_session.add(ProgressPhoto(
+        date=date(2026, 6, 15), domain=WEIGHT_DOMAIN, source="manual",
+        file_key="uploads/abc123.jpg",
+    ))
+    await db_session.commit()
+
+    events = await timeline_service.list_events(db_session)
+    photo_events = [e for e in events if e.kind == "photo"]
+
+    assert len(photo_events) == 1
+    assert photo_events[0].image == "uploads/abc123.jpg"
+
+
+async def test_derived_events_labs_tone_reflects_worst_flag(db_session):
+    db_session.add(LabResult(
+        date=date(2026, 6, 1), domain="labs", source="manual",
+        marker="TSH", value=2.1, flag="normal",
+    ))
+    db_session.add(LabResult(
+        date=date(2026, 6, 1), domain="labs", source="manual",
+        marker="Ferritin", value=400, flag="critical_high",
+    ))
+    db_session.add(LabResult(
+        date=date(2026, 6, 5), domain="labs", source="manual",
+        marker="Vitamin D", value=25, flag="low",
+    ))
+    await db_session.commit()
+
+    events = await timeline_service.list_events(db_session)
+    labs_events = {e.date: e for e in events if e.domain == "labs"}
+
+    critical_day = labs_events[date(2026, 6, 1)]
+    assert critical_day.tone == "bad"
+    assert critical_day.detail is not None and "Ferritin" in critical_day.detail
+
+    warn_day = labs_events[date(2026, 6, 5)]
+    assert warn_day.tone == "warn"
+    assert warn_day.detail is not None and "Vitamin D" in warn_day.detail

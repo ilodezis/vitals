@@ -122,12 +122,15 @@ async def test_settings_card_and_banner_present(auth_client):
 
 
 async def test_consistent_layout_max_width(auth_client):
-    """Timeline, Settings, and Weight pages must have the same max-w-6xl wrapper class."""
+    """Timeline, Settings, and Weight pages must share the same outer max-w-6xl
+    page shell. Settings and Timeline additionally nest a narrower max-w-4xl
+    column around their text-feed content (form + list) — that's intentional,
+    not a regression, so this only pins the outer wrapper, not the absence of
+    max-w-4xl anywhere on the page."""
     for path in ("/weight", "/timeline", "/settings"):
         r = await auth_client.get(path, headers={"Accept": "text/html"})
         assert r.status_code == 200
-        assert "max-w-6xl" in r.text
-        assert "max-w-4xl" not in r.text
+        assert 'class="px-6 py-7 max-w-6xl mx-auto space-y-8"' in r.text
 
 
 

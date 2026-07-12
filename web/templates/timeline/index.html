@@ -8,7 +8,9 @@
 'workouts': 'hevy', 'labs': 'labs', 'nutrition': 'nutrition', 'skincare': 'skincare',
 'supplements': 'supplements', 'genetics': 'genetics', 'body_comp': 'weight'} %}
 {% set KIND_TAG = {'life_event': 'good', 'illness': 'bad', 'travel': 'cool', 'protocol_change': 'violet', 'note':
-'muted'} %}
+'muted', 'side_effect': 'bad', 'milestone': 'cool', 'photo': 'muted'} %}
+{% set DERIVED_KIND_LABEL = {'side_effect': 'timeline.kind.side_effect', 'milestone': 'timeline.kind.milestone',
+'photo': 'timeline.kind.photo'} %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showForm: false }">
 
     {% if request.state.ui_version == 'masthead' %}
@@ -88,11 +90,12 @@
         {% for e in items %}
         <div class="v-card p-4 flex items-start gap-3">
             <span class="v-bar mt-1"
-                style="background: {% if e.tone == 'good' %}var(--good){% elif e.tone in ('bad', 'warn') %}var(--bad){% else %}var(--line-2){% endif %}"></span>
+                style="background: {% if e.tone == 'good' %}var(--good){% elif e.tone == 'bad' %}var(--bad){% elif e.tone == 'warn' %}var(--warn){% else %}var(--line-2){% endif %}"></span>
             <div class="flex-1 min-w-0 space-y-1">
                 <div class="flex items-center gap-2 flex-wrap">
-                    <span class="v-tag {{ KIND_TAG.get(e.kind, 'muted') }}">{{ t("enum.annotation_kind." + e.kind) if
-                        e.kind in kinds else t("common.note") }}</span>
+                    <span class="v-tag {{ KIND_TAG.get(e.kind, 'muted') }}">{% if e.kind in kinds %}{{
+                        t("enum.annotation_kind." + e.kind) }}{% elif e.kind in DERIVED_KIND_LABEL %}{{
+                        t(DERIVED_KIND_LABEL[e.kind]) }}{% else %}{{ t("common.note") }}{% endif %}</span>
                     {% if e.domain in DOMAIN_ICON %}
                     <span class="v-text-micro inline-flex items-center gap-1" style="color: var(--muted)">
                         <span style="width:0.85rem;height:0.85rem;display:inline-flex">{{ mh_icon(DOMAIN_ICON[e.domain])
@@ -106,6 +109,11 @@
                 </div>
                 <p class="v-text-body">{{ e.title }}</p>
                 {% if e.detail %}<p class="v-text-micro" style="color: var(--muted)">{{ e.detail }}</p>{% endif %}
+                {% if e.image %}
+                <div class="mt-1.5 w-16 h-16 v-card-inset overflow-hidden">
+                    <img src="/static/{{ e.image }}" alt="{{ t('weight.photo_alt') }}" class="w-full h-full object-cover">
+                </div>
+                {% endif %}
             </div>
             {% if e.source == 'manual' %}
             <form action="/timeline/{{ e.ref.split(':')[1] }}/delete" method="POST" class="inline"
