@@ -275,10 +275,13 @@ async def test_derived_events_genetics_import_grouped_by_day(db_session):
     assert "1" in imports[date(2026, 5, 1)].title
 
 
-async def test_derived_events_progress_photo_includes_image(db_session):
+async def test_derived_events_progress_photo_is_marker_only(db_session):
+    """A checkpoint marker, not an image — progress photos are sensitive
+    (often nude/intimate) and must never be exposed inline in this general
+    feed. TimelineEvent carries no image reference for it."""
     db_session.add(ProgressPhoto(
         date=date(2026, 6, 15), domain=WEIGHT_DOMAIN, source="manual",
-        file_key="uploads/abc123.jpg",
+        file_key="uploads/abc123.jpg", note="checkpoint",
     ))
     await db_session.commit()
 
@@ -286,7 +289,8 @@ async def test_derived_events_progress_photo_includes_image(db_session):
     photo_events = [e for e in events if e.kind == "photo"]
 
     assert len(photo_events) == 1
-    assert photo_events[0].image == "uploads/abc123.jpg"
+    assert not hasattr(photo_events[0], "image")
+    assert "image" not in photo_events[0].to_dict()
 
 
 async def test_derived_events_labs_tone_reflects_worst_flag(db_session):

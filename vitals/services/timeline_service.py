@@ -52,7 +52,6 @@ class TimelineEvent:
     tone: str  # 'good' | 'bad' | 'warn' | ''
     source: str  # 'manual' | 'derived'
     ref: str
-    image: Optional[str] = None  # storage key of a thumbnail (ProgressPhoto/BodyScan.file_key)
 
     def to_dict(self) -> dict:
         return {
@@ -65,7 +64,6 @@ class TimelineEvent:
             "tone": self.tone,
             "source": self.source,
             "ref": self.ref,
-            "image": self.image,
         }
 
 
@@ -239,12 +237,14 @@ async def _derived_events(
             date=scan.date, end_date=None, domain=BODY_DOMAIN, kind="note",
             title=t("timeline.derived.body_scan", device=device),
             detail=None, tone="", source="derived", ref=f"body_scan:{scan.id}",
-            image=scan.file_key,
         ))
 
-    # Progress photos — a visual checkpoint alongside the numeric trend;
-    # thumbnail rendered inline via TimelineEvent.image (same file_key BodyScan
-    # uses above for its own optional sheet photo).
+    # Progress photos — a checkpoint marker only. No thumbnail: these are often
+    # nude/intimate reference shots for a body-recomposition dashboard, and this
+    # feed mixes freely with unrelated, non-sensitive events (goals, supplements,
+    # labs) — an always-visible inline image here is real, unwanted exposure.
+    # The photo itself stays reachable only from its deliberate destination
+    # (the /weight gallery), never surfaced ambiently.
     from vitals.models.weight import DOMAIN as WEIGHT_DOMAIN, ProgressPhoto
 
     pp_stmt = select(ProgressPhoto).where(ProgressPhoto.domain == WEIGHT_DOMAIN)
@@ -257,7 +257,6 @@ async def _derived_events(
             date=p.date, end_date=None, domain=WEIGHT_DOMAIN, kind="photo",
             title=t("timeline.derived.progress_photo"),
             detail=p.note, tone="", source="derived", ref=f"progress_photo:{p.id}",
-            image=p.file_key,
         ))
 
     # Milestones — created (any status, from created_at) and the achieved/

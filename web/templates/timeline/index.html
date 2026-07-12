@@ -109,11 +109,6 @@
                 </div>
                 <p class="v-text-body">{{ e.title }}</p>
                 {% if e.detail %}<p class="v-text-micro" style="color: var(--muted)">{{ e.detail }}</p>{% endif %}
-                {% if e.image %}
-                <div class="mt-1.5 w-16 h-16 v-card-inset overflow-hidden">
-                    <img src="/static/{{ e.image }}" alt="{{ t('weight.photo_alt') }}" class="w-full h-full object-cover">
-                </div>
-                {% endif %}
             </div>
             {% if e.source == 'manual' %}
             <form action="/timeline/{{ e.ref.split(':')[1] }}/delete" method="POST" class="inline"
