@@ -36,6 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from vitals.enums import Domain, LabFlag, Severity, Source
 from vitals.i18n import t
 from vitals.models.labs import DOMAIN, LabMarker, LabResult
+from vitals.models.raw_payload import RawPayload
 from vitals.services import alerts_service, conflict_engine, raw_payload_service
 from vitals.utils.timeutils import now_local, today_local
 
@@ -486,6 +487,67 @@ async def extract_from_file(
             system=_EXTRACT_SYSTEM,
             image_url=image_url,
         )
+
+
+def normalize_extracted(extracted: dict) -> list[dict]:
+    """Pure: turn a raw vision dict into normalized, editable marker rows for the
+    upload preview. Each row is ``{marker, value, unit, ref_low, ref_high}``.
+    Unparseable rows (no marker / non-numeric value) are dropped."""
+    rows: list[dict] = []
+    for item in extracted.get("results") or []:
+        marker = (item.get("marker") or "").strip()
+        value = _num(item.get("value"))
+        if not marker or value is None:
+            continue
+        rows.append({
+            "marker": normalize_marker(marker),
+            "value": value,
+            "unit": item.get("unit"),
+            "ref_low": _num(item.get("ref_low")),
+            "ref_high": _num(item.get("ref_high")),
+        })
+    return rows
+
+
+async def confirm_extracted(
+    session: AsyncSession,
+    *,
+    on_date: date_type,
+    markers: Sequence[dict],
+    lab_name: Optional[str] = None,
+    raw_payload_id: Optional[int] = None,
+) -> list[LabResult]:
+    """Persist the owner-edited marker rows from the upload preview (step 2 of
+    upload -> preview -> confirm). Marks the raw payload processed. Does not
+    commit — mirrors :func:`ingest_extracted` but trusts the caller's edits
+    instead of re-deriving from the raw vision dict, and never drops a row as a
+    'duplicate' (the owner already reviewed it)."""
+    created: list[LabResult] = []
+    for item in markers:
+        marker = (item.get("marker") or "").strip()
+        value = _num(item.get("value"))
+        if not marker or value is None:
+            continue
+        row = await add_result(
+            session,
+            on_date=on_date,
+            marker=marker,
+            value=value,
+            unit=item.get("unit"),
+            ref_low=_num(item.get("ref_low")),
+            ref_high=_num(item.get("ref_high")),
+            lab_name=lab_name,
+            source=Source.LAB_PARSER.value,
+            raw_payload_id=raw_payload_id,
+        )
+        created.append(row)
+
+    if raw_payload_id is not None:
+        raw = await session.get(RawPayload, raw_payload_id)
+        if raw is not None:
+            raw.processed_at = now_local()
+
+    return created
 
 
 async def ingest_extracted(

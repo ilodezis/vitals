@@ -9,6 +9,8 @@ from sqlalchemy import select
 
 from vitals.models.app_settings import AppSetting
 from vitals.models.conflict_rule import ConflictRule
+from vitals.models.labs import LabResult
+from vitals.models.raw_payload import RawPayload
 from vitals.models.system_alert import SystemAlert
 from vitals.models.weight import WeightLog
 from vitals.services.modules_service import SETTINGS_KEY
@@ -164,6 +166,7 @@ def test_page_dashboards_register_as_plain_globals():
         "app.js": "weightOSDashboard",
         "glp1.js": "glp1Dashboard",
         "nutrition.js": "nutritionDashboard",
+        "labs_upload.js": "labsUpload",
     }
     for filename, name in checks.items():
         src = (static_dir / filename).read_text(encoding="utf-8")
@@ -188,7 +191,7 @@ def test_page_controller_scripts_load_once_from_head():
     templates_dir = Path(__file__).resolve().parent.parent / "web" / "templates"
     base_html = (templates_dir / "base.html").read_text(encoding="utf-8")
 
-    scripts = ["app.js", "glp1.js", "nutrition.js", "protocol.js", "charts.js"]
+    scripts = ["app.js", "glp1.js", "nutrition.js", "protocol.js", "charts.js", "labs_upload.js"]
     alpine_pos = base_html.index('id="alpine-script"')
     for filename in scripts:
         tag = f"<script defer src=\"{{{{ static_version('/static/{filename}') }}}}\">"
@@ -690,20 +693,48 @@ async def test_labs_unit_superscript_still_renders(auth_client):
     assert "10<sup>9</sup>/L" in response.text
 
 
-async def test_labs_upload_without_llm_redirects(auth_client):
-    """Uploading one or more documents with no OpenRouter key configured surfaces
-    a status flag rather than erroring (LLM is optional)."""
+async def test_labs_upload_without_llm_returns_json(auth_client):
+    """Uploading with no OpenRouter key configured surfaces a JSON flag rather
+    than erroring (LLM is optional). B2 turned /labs/upload from a redirecting
+    form endpoint into a single-file JSON preview endpoint (upload -> preview ->
+    confirm), so this no longer redirects — the client shows the flag and moves
+    on to the next queued file."""
     r = await auth_client.post(
         "/labs/upload",
-        files=[("files", ("panel.png", b"\x89PNG\r\n\x1a\n-bytes", "image/png"))],
+        files={"file": ("panel.png", b"\x89PNG\r\n\x1a\n-bytes", "image/png")},
     )
-    assert r.status_code == 303
-    assert r.headers["location"] == "/labs?upload=not_configured"
+    assert r.status_code == 200
+    data = r.json()
+    assert data["ok"] is False
+    assert data["reason"] == "not_configured"
+    assert data["message"]
 
 
-async def test_labs_upload_partial_failure_reports_both_counts(auth_client, monkeypatch):
-    """B1 regression: when one file in a multi-file upload fails extraction, the
-    failure must be signalled via ?failed=, not silently dropped from the banner."""
+async def test_labs_upload_extraction_failure_returns_error_json(auth_client, monkeypatch):
+    """A file that fails vision extraction surfaces ok:false/reason:error in the
+    JSON response (B1's failure-signalling intent, now at single-file
+    granularity — B2 moved multi-file batching into a client-side queue)."""
+    from vitals.services import labs_service
+
+    async def fake_extract(contents, *, llm, content_type, filename=None):
+        raise ValueError("could not parse")
+
+    monkeypatch.setattr(labs_service, "extract_from_file", fake_extract)
+
+    r = await auth_client.post(
+        "/labs/upload",
+        files={"file": ("bad.png", b"\x89PNG\r\n\x1a\n-bytes", "image/png")},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["ok"] is False
+    assert data["reason"] == "error"
+
+
+async def test_labs_upload_returns_preview_without_persisting_results(auth_client, db_session, monkeypatch):
+    """B2 regression: /labs/upload must extract and return an editable preview
+    without writing any LabResult — the whole point of the preview step is that
+    a misread value never reaches the DB until the owner confirms it."""
     from vitals.services import labs_service
 
     payload = {
@@ -713,33 +744,73 @@ async def test_labs_upload_partial_failure_reports_both_counts(auth_client, monk
     }
 
     async def fake_extract(contents, *, llm, content_type, filename=None):
-        if filename == "bad.png":
-            raise ValueError("could not parse")
         return payload
 
     monkeypatch.setattr(labs_service, "extract_from_file", fake_extract)
 
-    # Deterministic language regardless of the app's default (RU).
-    lr = await auth_client.post("/settings/language", data={"language": "en"})
-    assert lr.status_code == 303
-
     r = await auth_client.post(
         "/labs/upload",
-        files=[
-            ("files", ("good.png", b"\x89PNG\r\n\x1a\n-bytes", "image/png")),
-            ("files", ("bad.png", b"\x89PNG\r\n\x1a\n-bytes", "image/png")),
-        ],
+        files={"file": ("panel.png", b"\x89PNG\r\n\x1a\n-bytes", "image/png")},
     )
-    assert r.status_code == 303
-    location = r.headers["location"]
-    assert location.startswith("/labs?upload=ok")
-    qs = parse_qs(urlsplit(location).query)
-    assert qs["added"][0] == "1"
-    assert qs["failed"][0] == "1"
+    assert r.status_code == 200
+    data = r.json()
+    assert data["ok"] is True
+    assert data["lab"]["date"] == "2026-06-10"
+    assert data["lab"]["lab_name"] == "Synevo"
+    assert data["lab"]["markers"] == [
+        {"marker": "Ferritin", "value": 95.0, "unit": "ng/mL", "ref_low": 30.0, "ref_high": 400.0}
+    ]
 
-    response = await auth_client.get(location, headers={"Accept": "text/html"})
-    assert response.status_code == 200
-    assert "1 file(s) not recognised" in response.text
+    results = (await db_session.execute(select(LabResult))).scalars().all()
+    assert results == []
+
+    raw = await db_session.get(RawPayload, data["lab"]["raw_payload_id"])
+    assert raw is not None and raw.processed_at is None
+
+
+async def test_labs_confirm_persists_edited_markers(auth_client, db_session, monkeypatch):
+    """B2 regression: /labs/confirm must save the owner's edits, not the raw OCR
+    values — proves the edit-before-save step actually takes effect."""
+    from vitals.services import labs_service
+
+    payload = {
+        "date": "2026-06-10",
+        "lab_name": "Synevo",
+        "results": [{"marker": "Ferritin", "value": 95, "unit": "ng/mL", "ref_low": 30, "ref_high": 400}],
+    }
+
+    async def fake_extract(contents, *, llm, content_type, filename=None):
+        return payload
+
+    monkeypatch.setattr(labs_service, "extract_from_file", fake_extract)
+
+    upload_r = await auth_client.post(
+        "/labs/upload",
+        files={"file": ("panel.png", b"\x89PNG\r\n\x1a\n-bytes", "image/png")},
+    )
+    lab = upload_r.json()["lab"]
+
+    # Owner corrects a misread value (95 -> 105) before saving.
+    confirm_r = await auth_client.post(
+        "/labs/confirm",
+        json={
+            "date": lab["date"],
+            "lab_name": lab["lab_name"],
+            "file_key": lab["file_key"],
+            "raw_payload_id": lab["raw_payload_id"],
+            "markers": [{**lab["markers"][0], "value": 105}],
+        },
+    )
+    assert confirm_r.status_code == 200
+    assert confirm_r.json() == {"ok": True, "created": 1}
+
+    results = (await db_session.execute(select(LabResult))).scalars().all()
+    assert len(results) == 1
+    assert results[0].marker == "Ferritin"
+    assert results[0].value == 105.0
+
+    raw = await db_session.get(RawPayload, lab["raw_payload_id"])
+    assert raw is not None and raw.processed_at is not None
 
 
 async def test_upload_extension_allowlist_rejected(auth_client):

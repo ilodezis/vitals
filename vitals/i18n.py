@@ -344,6 +344,11 @@ _EN: dict[str, str] = {
     "labs.deferred_until": "deferred until {date}",
     "labs.catalog_empty": "Catalog empty.",
     "labs.chart_title": "Dynamics:",
+    "labs.preview_title": "Check the recognized values",
+    "labs.preview_hint": "Edit or remove rows, then save.",
+    "labs.add_row": "Add marker",
+    "labs.confirm_btn": "Save results",
+    "labs.skip_btn": "Skip",
 
     # ── Hevy ──────────────────────────────────────────────────────────────
     "hevy.page_title": "Workouts — Vitals",
@@ -706,6 +711,7 @@ _EN: dict[str, str] = {
     "js.loader.operation_text": "Please wait, this may take a few seconds…",
     "js.loader.labs_upload_title": "Lab recognition",
     "js.loader.labs_upload_text": "Analyzing your medical results via AI. This may take up to 15 seconds…",
+    "js.labs.queue_progress": "File {index} of {total}",
     "js.loader.digest_title": "Report generation",
     "js.loader.digest_text": "Analyzing weight dynamics, workouts, and health metrics. Please wait…",
     "js.loader.garmin_sync_title": "Garmin sync",
@@ -1266,6 +1272,11 @@ _RU: dict[str, str] = {
     "labs.deferred_until": "отложено до {date}",
     "labs.catalog_empty": "Каталог пуст.",
     "labs.chart_title": "Динамика:",
+    "labs.preview_title": "Проверьте распознанные значения",
+    "labs.preview_hint": "Поправьте или удалите строки, затем сохраните.",
+    "labs.add_row": "Добавить маркер",
+    "labs.confirm_btn": "Сохранить результаты",
+    "labs.skip_btn": "Пропустить",
 
     # ── Hevy ──────────────────────────────────────────────────────────────
     "hevy.page_title": "Тренировки — Vitals",
@@ -1628,6 +1639,7 @@ _RU: dict[str, str] = {
     "js.loader.operation_text": "Пожалуйста, подождите, это может занять несколько секунд…",
     "js.loader.labs_upload_title": "Распознавание анализов",
     "js.loader.labs_upload_text": "Анализируем ваши медицинские показатели через AI. Это может занять до 15 секунд…",
+    "js.labs.queue_progress": "Файл {index} из {total}",
     "js.loader.digest_title": "Генерация отчета",
     "js.loader.digest_text": "Анализируем динамику веса, тренировок и показателей здоровья. Пожалуйста, подождите…",
     "js.loader.garmin_sync_title": "Синхронизация с Garmin",

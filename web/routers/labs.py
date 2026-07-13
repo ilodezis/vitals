@@ -1,5 +1,6 @@
 """Endpoints for the Labs module: dashboard, manual entry, document upload
-(LLM extraction), per-marker history, defer-retest, delete."""
+(LLM extraction) with an edit-before-save preview, per-marker history,
+defer-retest, delete."""
 from __future__ import annotations
 
 import logging
@@ -9,14 +10,15 @@ from datetime import date as date_type
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
-from typing import List
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.config import load_config
-from vitals.enums import Domain
+from vitals.enums import Domain, Source
+from vitals.i18n import t
 from vitals.integrations.llm_client import LLMClient, LLMNotConfigured
-from vitals.services import alerts_service, labs_service
+from vitals.services import alerts_service, labs_service, raw_payload_service
 from web.deps import get_session, require_auth
 from web.templating import STATIC_DIR, templates
 from web.uploads import DOC_EXTS, file_ext, read_capped, validate_extension
@@ -104,73 +106,116 @@ async def add_result(
     return _redirect(request, f"?marker={marker.strip()}&added=1")
 
 
+class LabMarkerIn(BaseModel):
+    marker: Optional[str] = None
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    ref_low: Optional[float] = None
+    ref_high: Optional[float] = None
+
+
+class LabConfirm(BaseModel):
+    date: str
+    lab_name: Optional[str] = None
+    file_key: Optional[str] = None
+    raw_payload_id: Optional[int] = None
+    markers: list[LabMarkerIn] = []
+
+
 @router.post("/upload")
 async def upload_document(
     request: Request,
-    files: List[UploadFile] = File(...),
+    file: UploadFile = File(...),
     db: AsyncSession = Depends(get_session),
     username: str = Depends(require_auth),
 ):
-    """Extract lab markers from one or more uploaded PDF/image files via the
-    OpenRouter vision model, then ingest them. Each file is processed in sequence;
-    totals are accumulated. The original files are kept under static/uploads."""
-    uploads_dir = os.path.join(STATIC_DIR, "uploads", "labs")
-    os.makedirs(uploads_dir, exist_ok=True)
+    """Step 1: a photo/PDF of a lab report -> vision extraction -> editable
+    preview. The original file + verbatim vision payload are stored now
+    (data-lake); the normalized ``LabResult`` rows are only written on confirm,
+    with the owner's edits. Returns JSON the client renders as an editable
+    table — a multi-file selection is queued and uploaded one file at a time by
+    the client, each getting its own preview."""
+    from vitals.utils.timeutils import today_local
 
-    total_created = 0
-    failed_count = 0
-    any_success = False
-    not_configured = False
+    # 415/413 surface as HTTP errors (handled by the client's error branch).
+    validate_extension(file.filename, DOC_EXTS)
+    contents = await read_capped(file)
 
     try:
         llm = LLMClient()
     except LLMNotConfigured:
-        return _redirect(request, "?upload=not_configured")
+        return JSONResponse({"ok": False, "reason": "not_configured", "message": t("labs.upload_not_configured")})
 
-    for file in files:
-        # Reject (and skip) unsupported types and oversized files per-file, so one
-        # bad file doesn't fail the whole batch and an .html/.svg can't be stored.
-        try:
-            validate_extension(file.filename, DOC_EXTS)
-            contents = await read_capped(file)
-        except HTTPException:
-            logger.warning("Lab upload rejected (type/size): %s", file.filename)
-            failed_count += 1
-            continue
+    # Persist the original document for reference (served at /static/uploads/...).
+    ext = file_ext(file.filename) or ".bin"
+    file_key = f"labs/{uuid.uuid4().hex}{ext}"
+    os.makedirs(os.path.join(STATIC_DIR, "uploads", "labs"), exist_ok=True)
+    with open(os.path.join(STATIC_DIR, "uploads", file_key), "wb") as fh:
+        fh.write(contents)
 
-        # Persist the original document for reference.
-        ext = file_ext(file.filename) or ".bin"
-        file_key = f"labs/{uuid.uuid4().hex}{ext}"
-        with open(os.path.join(STATIC_DIR, "uploads", file_key), "wb") as fh:
-            fh.write(contents)
+    try:
+        extracted = await labs_service.extract_from_file(
+            contents,
+            llm=llm,
+            content_type=file.content_type or "image/jpeg",
+            filename=file.filename,
+        )
+    except LLMNotConfigured:
+        return JSONResponse({"ok": False, "reason": "not_configured", "message": t("labs.upload_not_configured")})
+    except Exception as e:  # noqa: BLE001 — surface parse failures softly
+        logger.warning("Lab extraction failed for %s: %s", file.filename, e)
+        return JSONResponse({"ok": False, "reason": "error", "message": t("labs.upload_error")})
 
-        try:
-            extracted = await labs_service.extract_from_file(
-                contents,
-                llm=llm,
-                content_type=file.content_type or "image/jpeg",
-                filename=file.filename,
-            )
-        except LLMNotConfigured:
-            not_configured = True
-            failed_count += 1
-            continue
-        except Exception as e:  # noqa: BLE001 — surface parse failures softly
-            logger.warning("Lab extraction failed for %s: %s", file.filename, e)
-            failed_count += 1
-            continue
-
-        summary = await labs_service.ingest_extracted(db, extracted, file_key=file_key)
-        total_created += summary["created"]
-        any_success = True
-
+    raw_row = await raw_payload_service.upsert_raw_payload(
+        db,
+        domain=Domain.LABS.value,
+        source=Source.LAB_PARSER.value,
+        external_id=file_key,
+        payload=extracted,
+    )
     await db.commit()
 
-    if not_configured and not any_success:
-        return _redirect(request, "?upload=not_configured")
-    if not any_success:
-        return _redirect(request, "?upload=error")
-    return _redirect(request, f"?upload=ok&added={total_created}&failed={failed_count}")
+    rows = labs_service.normalize_extracted(extracted)
+    try:
+        lab_date = date_type.fromisoformat(str(extracted.get("date"))[:10]).isoformat()
+    except (ValueError, TypeError):
+        lab_date = today_local().isoformat()
+
+    return JSONResponse({
+        "ok": True,
+        "lab": {
+            "date": lab_date,
+            "lab_name": extracted.get("lab_name"),
+            "file_key": file_key,
+            "raw_payload_id": raw_row.id,
+            "markers": rows,
+        },
+    })
+
+
+@router.post("/confirm")
+async def labs_confirm(
+    request: Request,
+    payload: LabConfirm,
+    db: AsyncSession = Depends(get_session),
+    username: str = Depends(require_auth),
+):
+    """Step 2: persist the owner-edited marker rows from the upload preview."""
+    try:
+        on_date = date_type.fromisoformat(payload.date)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid date")
+
+    created = await labs_service.confirm_extracted(
+        db,
+        on_date=on_date,
+        markers=[m.model_dump() for m in payload.markers],
+        lab_name=payload.lab_name,
+        raw_payload_id=payload.raw_payload_id,
+    )
+    await labs_service.refresh_alerts(db)
+    await db.commit()
+    return JSONResponse({"ok": True, "created": len(created)})
 
 
 @router.post("/marker/{name}/defer")

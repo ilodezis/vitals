@@ -4,7 +4,7 @@
 
 {% block content %}
 {% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showUpload: {% if latest %}false{% else %}true{% endif %}, showOnlyProblematic: false }">
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="labsUpload({% if latest %}false{% else %}true{% endif %})">
 
     {% if request.state.ui_version == 'masthead' %}
     {% call masthead_header('labs', t('nav.labs'), [
@@ -85,9 +85,9 @@
             <p class="v-text-body">
                 {{ t("labs.recognize_description") }}
             </p>
-            <form action="/labs/upload" method="POST" enctype="multipart/form-data" class="space-y-3" onsubmit="this.querySelector('button[type=submit]').disabled = true">
+            <form @submit.prevent="lqSubmit($event)" hx-boost="false" class="space-y-3">
                 <label class="v-file-drop cursor-pointer" x-data="{ hint: '{{ t("labs.drop_hint") }}' }">
-                    <input type="file" name="files" accept="image/*,application/pdf,.pdf" required multiple
+                    <input type="file" name="file" accept="image/*,application/pdf,.pdf" required multiple
                            class="sr-only"
                            @change="hint = $el.files.length > 1 ? $el.files.length + ' {{ t("labs.files_selected") }}' : ($el.files[0] ? $el.files[0].name : '{{ t("labs.drop_hint") }}')">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -96,7 +96,9 @@
                     <span class="v-file-drop__text">{{ t("labs.drop_text") }}</span>
                     <span class="v-file-drop__hint" x-text="hint"></span>
                 </label>
-                <button type="submit" class="v-btn w-full text-xs" {% if not llm_configured %}disabled style="opacity:.5;cursor:not-allowed"{% endif %}>
+                <button type="submit" class="v-btn w-full text-xs"
+                        style="{% if not llm_configured %}opacity:.5;cursor:not-allowed{% endif %}"
+                        :disabled="lqUploading || {{ 'true' if not llm_configured else 'false' }}">
                     {% if llm_configured %}{{ t("labs.recognize_submit") }}{% else %}{{ t("labs.llm_not_configured") }}{% endif %}
                 </button>
             </form>
@@ -231,6 +233,62 @@
             </div>
             <div class="h-[280px] w-full relative">
                 <canvas id="labChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Lab upload preview (edit recognized markers before saving) -->
+    <div x-show="lqPreviewOpen" class="v-backdrop" x-cloak>
+        <div class="v-modal p-6 space-y-4" @click.stop style="max-width: 44rem; width: 100%;">
+            <div class="flex items-center gap-2">
+                <span class="v-bar"></span>
+                <span class="v-text-heading">{{ t("labs.preview_title") }}</span>
+                <span class="v-text-micro" style="color: var(--muted)" x-show="lqTotal > 1" x-text="lqProgressLabel()"></span>
+            </div>
+            <p class="v-text-micro" style="color: var(--muted)">{{ t("labs.preview_hint") }}</p>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="v-label">{{ t("common.date") }}</label>
+                    <input type="date" x-model="lqLab.date" class="v-input">
+                </div>
+                <div>
+                    <label class="v-label">{{ t("labs.lab_name") }}</label>
+                    <input type="text" x-model="lqLab.lab_name" placeholder="Synevo" class="v-input">
+                </div>
+            </div>
+            <div class="max-h-[50vh] overflow-y-auto v-card-inset">
+                <table class="v-table w-full">
+                    <thead>
+                        <tr>
+                            <th>{{ t("labs.marker") }}</th>
+                            <th class="text-right">{{ t("labs.value") }}</th>
+                            <th>{{ t("labs.unit") }}</th>
+                            <th>{{ t("labs.ref_low") }}</th>
+                            <th>{{ t("labs.ref_high") }}</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="(row, i) in lqRows" :key="i">
+                            <tr>
+                                <td><input type="text" x-model="row.marker" class="v-input" style="min-width: 9rem"></td>
+                                <td><input type="number" step="any" x-model.number="row.value" class="v-input" style="width: 6rem"></td>
+                                <td><input type="text" x-model="row.unit" class="v-input" style="width: 4.5rem"></td>
+                                <td><input type="number" step="any" x-model.number="row.ref_low" class="v-input" style="width: 5rem"></td>
+                                <td><input type="number" step="any" x-model.number="row.ref_high" class="v-input" style="width: 5rem"></td>
+                                <td class="text-right"><button type="button" class="v-icon-btn danger"
+                                        @click="lqRemoveRow(i)" title="{{ t('common.delete') }}">✕</button></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+                <button type="button" class="v-btn-ghost" @click="lqAddRow()">+ {{ t("labs.add_row") }}</button>
+                <div class="flex gap-3">
+                    <button type="button" class="v-btn-ghost" @click="lqSkip()">{{ t("labs.skip_btn") }}</button>
+                    <button type="button" class="v-btn" @click="lqSave()" :disabled="lqSaving">{{ t("labs.confirm_btn") }}</button>
+                </div>
             </div>
         </div>
     </div>
