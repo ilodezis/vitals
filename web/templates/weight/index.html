@@ -233,7 +233,7 @@
                                     onchange="
                                            const hint = this.parentElement.querySelector('.v-file-drop__hint');
                                            if (this.files.length > 5) {
-                                               alert(window.t('photo_max_alert'));
+                                               window.vitalsToast(window.t('photo_max_alert'), 'warn');
                                                this.value = '';
                                                hint.textContent = '{{ t("weight.photo_drop_hint") }}'; } else {
                                     hint.textContent=this.files.length> 0 ? Array.from(this.files).map(f =>
@@ -307,10 +307,10 @@
                         <span style="color: var(--fg-2)">{{ n.reason }}</span>
                         {% if n.direction == 'up' %}
                         <span style="color: var(--good); font-size: 0.65rem"
-                            title="{{ t('weight.noise_direction_up') }}">↑ вес завышен</span>
+                            title="{{ t('weight.noise_direction_up') }}">{{ t('weight.noise_up_label') }}</span>
                         {% elif n.direction == 'down' %}
                         <span style="color: var(--bad); font-size: 0.65rem"
-                            title="{{ t('weight.noise_direction_down') }}">↓ вес занижен</span>
+                            title="{{ t('weight.noise_direction_down') }}">{{ t('weight.noise_down_label') }}</span>
                         {% endif %}
                     </li>
                     {% else %}

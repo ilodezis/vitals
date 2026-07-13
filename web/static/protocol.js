@@ -11,7 +11,6 @@
  */
 
 window.protocolForm = function() {
-    console.log("protocolForm instantiation called v1.0.1");
     return {
         overrideFlag: false,
         showConfirm: false,
@@ -78,7 +77,6 @@ window.protocolForm = function() {
 
         // Fill a form's named fields from `obj`; ensures a hidden `id` input.
         editRow(formId, obj, submitLabel) {
-            console.log("editRow called for:", formId, obj, submitLabel);
             this.isEditing = true;
             const form = document.getElementById(formId);
             if (!form) return;
@@ -113,11 +111,9 @@ window.protocolForm = function() {
         },
 
         cancelEdit(formId, submitLabel) {
-            console.log("cancelEdit called for:", formId, submitLabel);
             this.isEditing = false;
             const form = document.getElementById(formId);
             if (!form) {
-                console.log("form not found in cancelEdit:", formId);
                 return;
             }
             form.reset();

@@ -16,8 +16,10 @@
             --bg: #1D1A21;
             --surface: rgba(30, 27, 37, 0.75);
             --line: rgba(255,255,255,0.07);
-            --fg: #e8e4f0;
-            --muted: #7d778e;
+            --fg: #F3F0F6;
+            --muted: #A39AB0;
+            --good: #6FC58E;
+            --bad: #E87056;
         }
 
         html, body {
@@ -186,7 +188,7 @@
         .check {
             flex-shrink: 0;
             width: 16px; height: 16px;
-            color: #10b981;
+            color: var(--good);
             margin-top: 1px;
         }
 
@@ -202,12 +204,12 @@
 
         /* ── Error ── */
         .error-box {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.25);
+            background: rgba(232, 112, 86, 0.1);
+            border: 1px solid rgba(232, 112, 86, 0.25);
             border-radius: 10px;
             padding: 12px 16px;
             font-size: 13px;
-            color: #fca5a5;
+            color: var(--bad);
             text-align: center;
             margin-bottom: 20px;
         }

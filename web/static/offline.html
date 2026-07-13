@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Офлайн — Vitals</title>
+    <title id="offline-title">Vitals — Offline</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -56,9 +56,22 @@
         <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a5 5 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414" />
         </svg>
-        <h1>Нет подключения</h1>
-        <p>Проверьте интернет и попробуйте снова. Vitals требует соединение для загрузки данных.</p>
-        <button onclick="location.reload()">Обновить</button>
+        <h1 id="offline-h1">No connection</h1>
+        <p id="offline-p">Check your internet connection and try again. Vitals needs a connection to load your data.</p>
+        <button id="offline-btn" onclick="location.reload()">Reload</button>
     </div>
+    <script>
+        // No server round-trip is possible here (this file is the service
+        // worker's offline fallback, served straight from cache), so pick the
+        // language client-side instead of going through vitals/i18n.py.
+        if ((navigator.language || '').toLowerCase().startsWith('ru')) {
+            document.documentElement.lang = 'ru';
+            document.title = 'Офлайн — Vitals';
+            document.getElementById('offline-title').textContent = 'Офлайн — Vitals';
+            document.getElementById('offline-h1').textContent = 'Нет подключения';
+            document.getElementById('offline-p').textContent = 'Проверьте интернет и попробуйте снова. Vitals требует соединение для загрузки данных.';
+            document.getElementById('offline-btn').textContent = 'Обновить';
+        }
+    </script>
 </body>
 </html>

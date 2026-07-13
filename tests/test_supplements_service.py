@@ -43,6 +43,26 @@ def test_parse_slot_unknown_or_blank_is_none():
     assert supplements_service._parse_slot("перед тренировкой") is None
 
 
+def test_timing_bucket_ru_and_en():
+    """The /supplements page's 4 display rows must accept English timing text
+    too — an English-named supplement's "Morning"/"Evening" used to fall into
+    the "Other" bucket because the template compared against raw RU strings."""
+    assert supplements_service.timing_bucket("утро") == "утро"
+    assert supplements_service.timing_bucket("Morning") == "утро"
+    assert supplements_service.timing_bucket("день") == "день"
+    assert supplements_service.timing_bucket("Afternoon") == "день"
+    assert supplements_service.timing_bucket("вечер") == "вечер"
+    assert supplements_service.timing_bucket("Evening") == "вечер"
+    assert supplements_service.timing_bucket("ночь") == "ночь"
+    assert supplements_service.timing_bucket("Night") == "ночь"
+
+
+def test_timing_bucket_unknown_or_blank_is_none():
+    assert supplements_service.timing_bucket(None) is None
+    assert supplements_service.timing_bucket("") is None
+    assert supplements_service.timing_bucket("before workout") is None
+
+
 async def test_add_list_toggle_delete(db_session):
     s = await supplements_service.add_supplement(
         db_session, name="Креатин", dose="5 г", evidence="A"

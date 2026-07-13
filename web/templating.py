@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 from markupsafe import Markup, escape
 
 from vitals.i18n import t, get_js_strings, plural
+from vitals.services.supplements_service import timing_bucket
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
@@ -108,6 +109,7 @@ templates.env.filters["plural_ru"] = plural_ru
 templates.env.filters["plural"] = lambda n, *args: plural(n, *args)
 templates.env.filters["meal_word"] = meal_word
 templates.env.filters["format_unit"] = format_unit
+templates.env.filters["timing_bucket"] = timing_bucket
 templates.env.globals["static_version"] = static_version
 templates.env.globals["t"] = t
 templates.env.globals["get_js_strings"] = get_js_strings

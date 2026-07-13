@@ -361,10 +361,14 @@
         <div class="space-y-2.5">
             <span class="v-label">{{ t("settings.export_label") }}</span>
             <div class="flex flex-col sm:flex-row gap-3">
-                <a href="/settings/export" class="v-btn text-xs text-center" download hx-boost="false">
+                <a href="/settings/export" class="v-btn text-xs text-center" download hx-boost="false"
+                    data-export-toast="{{ t('settings.export_started') }}"
+                    onclick="window.vitalsToast(this.dataset.exportToast, 'success')">
                     ⬇️ {{ t("settings.export_full") }}
                 </a>
-                <a href="/settings/export-llm" class="v-btn-ghost text-xs text-center" download hx-boost="false">
+                <a href="/settings/export-llm" class="v-btn-ghost text-xs text-center" download hx-boost="false"
+                    data-export-toast="{{ t('settings.export_started') }}"
+                    onclick="window.vitalsToast(this.dataset.exportToast, 'success')">
                     🤖 {{ t("settings.export_llm") }}
                 </a>
             </div>

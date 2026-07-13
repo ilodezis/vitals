@@ -1023,6 +1023,15 @@
                 }
             } catch (e) { /* non-JSON body — keep the generic message */ }
             if (window.vitalsToast) window.vitalsToast(message, 'error');
+
+            // Module toggle switches (partials/modules_card.html) POST on change
+            // with hx-swap="none", so a rejected change never re-renders — the
+            // switch would otherwise stay wherever the user clicked it even
+            // though the server didn't apply it. Flip it back to match reality.
+            const elt = evt.detail && evt.detail.elt;
+            if (elt && elt.matches && elt.matches('input[type="checkbox"][hx-post="/settings/modules"]')) {
+                elt.checked = !elt.checked;
+            }
         });
 
         // Safe fallback for normal form submits or page reloads (e.g. initial loads, logout)

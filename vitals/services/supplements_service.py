@@ -73,6 +73,32 @@ def _parse_slot(timing: Optional[str]) -> Optional[str]:
     return None
 
 
+# The /supplements page groups active supplements into four display rows
+# (morning/day/evening/night) — a finer split than _parse_slot's AM/DAY/MEAL/PM
+# (which folds evening+night into one PM slot for the conflict engine's
+# timing-separation rules). Keyed by the same RU bucket labels the template
+# already uses, so an EN or RU free-text `timing` value lands in the right row.
+_DISPLAY_BUCKET_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("утро", ("утро", "morning")),
+    ("день", ("день", "днем", "day", "afternoon", "midday")),
+    ("вечер", ("вечер", "evening")),
+    ("ночь", ("ночь", "night", "bedtime", "перед сном")),
+)
+
+
+def timing_bucket(timing: Optional[str]) -> Optional[str]:
+    """Canonical display-bucket key ('утро'/'день'/'вечер'/'ночь') a free-text
+    ``timing`` value (RU or EN) belongs to on the /supplements page, or
+    ``None`` when it matches none of them (renders under "Other")."""
+    if not timing:
+        return None
+    text = timing.strip().lower().replace("ё", "е")
+    for bucket, keywords in _DISPLAY_BUCKET_KEYWORDS:
+        if any(kw in text for kw in keywords):
+            return bucket
+    return None
+
+
 def _proposed(key: str, active: bool, timing_slot: Optional[str] = None) -> dict:
     return {"key": key, "active": active, "timing_slot": timing_slot}
 

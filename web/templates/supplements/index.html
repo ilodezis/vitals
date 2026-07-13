@@ -109,7 +109,7 @@
             <!-- Auto-fill grid: avoids orphan single-card rows -->
             <div class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))">
                 {% set count = namespace(value=0) %}
-                {% for s in supplements if s.active and (s.timing or '')|lower|trim == key %}
+                {% for s in supplements if s.active and (s.timing | timing_bucket) == key %}
                     {% set count.value = count.value + 1 %}
                     {{ supplement_card(s) }}
                 {% endfor %}
@@ -124,7 +124,7 @@
 
         <!-- Non-standard timings -->
         {% set count_other = namespace(value=0) %}
-        {% for s in supplements if s.active and (s.timing or '')|lower|trim not in ['утро', 'день', 'вечер', 'ночь'] %}
+        {% for s in supplements if s.active and not (s.timing | timing_bucket) %}
             {% set count_other.value = count_other.value + 1 %}
         {% endfor %}
 
@@ -136,7 +136,7 @@
             </div>
             <!-- Auto-fill grid: avoids orphan single-card rows -->
             <div class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))">
-                {% for s in supplements if s.active and (s.timing or '')|lower|trim not in ['утро', 'день', 'вечер', 'ночь'] %}
+                {% for s in supplements if s.active and not (s.timing | timing_bucket) %}
                     {{ supplement_card(s, show_timing=True) }}
                 {% endfor %}
             </div>
