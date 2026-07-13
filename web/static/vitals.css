@@ -7,6 +7,9 @@
    thin and consistent.
    ============================================================================ */
 
+/* Fonts (Inter/Outfit/Bricolage Grotesque) are self-hosted via fonts.css,
+   linked separately in base.html — see web/static/fonts.css (S2). */
+
 :root {
     /* Surfaces — warm plum-charcoal, layered from page → card → raised */
     --bg: #1D1A21;

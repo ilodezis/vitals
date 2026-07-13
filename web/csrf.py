@@ -37,21 +37,19 @@ def add_csrf_origin_check(app: FastAPI) -> None:
 # 'unsafe-eval' is REQUIRED by Alpine.js (Function() compilation of x-* directives).
 # 'unsafe-inline' covers inline <script> + Alpine/HTMX inline attributes. img-src
 # data:/blob: cover Chart.js canvases and inline SVG icons.
-# Scripts are vendored under /static (no CDN) — the one exception is Cloudflare's
-# Web Analytics beacon, which Cloudflare injects at the edge (into the proxied
-# HTML response) rather than anything our own templates load, so there's no
-# template reference to point at; it needs its own script-src/connect-src entries
-# or the browser blocks it outright. Fonts come from Google Fonts (Inter / Outfit /
-# Bricolage Grotesque — no monospace, per the design system), so allow that CDN
-# for stylesheets + font files only.
-# (Vendoring the woff2 locally later would let us drop these two and go fully
-# self-hosted / zero external calls.)
+# Scripts and fonts are vendored under /static (no CDN) — the one exception is
+# Cloudflare's Web Analytics beacon, which Cloudflare injects at the edge (into
+# the proxied HTML response) rather than anything our own templates load, so
+# there's no template reference to point at; it needs its own
+# script-src/connect-src entries or the browser blocks it outright. Fonts
+# (Inter / Outfit / Bricolage Grotesque — no monospace, per the design system)
+# are self-hosted woff2 under web/static/fonts/, so font-src/style-src stay 'self'.
 _CSP = (
     "default-src 'self'; "
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; "
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: blob: https:; "
-    "font-src 'self' https://fonts.gstatic.com; "
+    "font-src 'self'; "
     "connect-src 'self' https://cloudflareinsights.com; "
     "frame-ancestors 'none'; "
     "base-uri 'self'; "
