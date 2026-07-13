@@ -649,7 +649,7 @@
                     <div class="flex gap-3">
                         <button type="button" class="v-btn-ghost" @click="bsCancelPreview()">{{ t("body.cancel_btn")
                             }}</button>
-                        <button type="button" class="v-btn" @click="bsSave()">{{ t("body.confirm_btn") }}</button>
+                        <button type="button" class="v-btn" @click="bsSave()" :disabled="bsSaving">{{ t("body.confirm_btn") }}</button>
                     </div>
                 </div>
             </div>

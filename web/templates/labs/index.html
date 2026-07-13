@@ -63,7 +63,11 @@
     {% endif %}
 
     {% if upload == 'ok' %}
-    <div class="v-alert info" x-init="showUpload = false">{{ t("labs.upload_ok", count=added) }}</div>
+        {% if failed and failed|int > 0 %}
+        <div class="v-alert warn" x-init="showUpload = false">{{ t("labs.upload_partial", count=added, failed=failed) }}</div>
+        {% else %}
+        <div class="v-alert info" x-init="showUpload = false">{{ t("labs.upload_ok", count=added) }}</div>
+        {% endif %}
     {% elif upload == 'not_configured' %}
     <div class="v-alert warn" x-init="showUpload = true">{{ t("labs.upload_not_configured") }}</div>
     {% elif upload == 'error' %}

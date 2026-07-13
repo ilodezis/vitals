@@ -70,6 +70,7 @@ async def labs_dashboard(
             "today": today_local().isoformat(),
             "upload": request.query_params.get("upload"),
             "added": request.query_params.get("added"),
+            "failed": request.query_params.get("failed"),
         },
     )
 
@@ -117,6 +118,7 @@ async def upload_document(
     os.makedirs(uploads_dir, exist_ok=True)
 
     total_created = 0
+    failed_count = 0
     any_success = False
     not_configured = False
 
@@ -133,6 +135,7 @@ async def upload_document(
             contents = await read_capped(file)
         except HTTPException:
             logger.warning("Lab upload rejected (type/size): %s", file.filename)
+            failed_count += 1
             continue
 
         # Persist the original document for reference.
@@ -150,9 +153,11 @@ async def upload_document(
             )
         except LLMNotConfigured:
             not_configured = True
+            failed_count += 1
             continue
         except Exception as e:  # noqa: BLE001 — surface parse failures softly
             logger.warning("Lab extraction failed for %s: %s", file.filename, e)
+            failed_count += 1
             continue
 
         summary = await labs_service.ingest_extracted(db, extracted, file_key=file_key)
@@ -165,7 +170,7 @@ async def upload_document(
         return _redirect(request, "?upload=not_configured")
     if not any_success:
         return _redirect(request, "?upload=error")
-    return _redirect(request, f"?upload=ok&added={total_created}")
+    return _redirect(request, f"?upload=ok&added={total_created}&failed={failed_count}")
 
 
 @router.post("/marker/{name}/defer")

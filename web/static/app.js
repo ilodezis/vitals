@@ -216,6 +216,7 @@ window.weightOSDashboard = function () {
         bsOverride: false,
         bsAwaitingOverride: false,
         bsExpanded: {},
+        bsSaving: false,
 
         async bsUpload(e) {
             const form = e.target;
@@ -265,6 +266,8 @@ window.weightOSDashboard = function () {
         bsCancelPreview() { this.bsPreviewOpen = false; this.bsRows = []; this.bsError = ''; },
 
         async bsSave() {
+            if (this.bsSaving) return;
+            this.bsSaving = true;
             const rows = this.bsRows.filter(r => r.value !== null && r.value !== '' && (r.label || r.metric_key));
             const payload = {
                 date: this.bsScan.date,
@@ -296,6 +299,8 @@ window.weightOSDashboard = function () {
                 }
             } catch (err) {
                 if (window.vitalsToast) window.vitalsToast(window.t('network_error'));
+            } finally {
+                this.bsSaving = false;
             }
         },
 

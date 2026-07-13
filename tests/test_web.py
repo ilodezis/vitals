@@ -701,6 +701,47 @@ async def test_labs_upload_without_llm_redirects(auth_client):
     assert r.headers["location"] == "/labs?upload=not_configured"
 
 
+async def test_labs_upload_partial_failure_reports_both_counts(auth_client, monkeypatch):
+    """B1 regression: when one file in a multi-file upload fails extraction, the
+    failure must be signalled via ?failed=, not silently dropped from the banner."""
+    from vitals.services import labs_service
+
+    payload = {
+        "date": "2026-06-10",
+        "lab_name": "Synevo",
+        "results": [{"marker": "Ferritin", "value": 95, "unit": "ng/mL", "ref_low": 30, "ref_high": 400}],
+    }
+
+    async def fake_extract(contents, *, llm, content_type, filename=None):
+        if filename == "bad.png":
+            raise ValueError("could not parse")
+        return payload
+
+    monkeypatch.setattr(labs_service, "extract_from_file", fake_extract)
+
+    # Deterministic language regardless of the app's default (RU).
+    lr = await auth_client.post("/settings/language", data={"language": "en"})
+    assert lr.status_code == 303
+
+    r = await auth_client.post(
+        "/labs/upload",
+        files=[
+            ("files", ("good.png", b"\x89PNG\r\n\x1a\n-bytes", "image/png")),
+            ("files", ("bad.png", b"\x89PNG\r\n\x1a\n-bytes", "image/png")),
+        ],
+    )
+    assert r.status_code == 303
+    location = r.headers["location"]
+    assert location.startswith("/labs?upload=ok")
+    qs = parse_qs(urlsplit(location).query)
+    assert qs["added"][0] == "1"
+    assert qs["failed"][0] == "1"
+
+    response = await auth_client.get(location, headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "1 file(s) not recognised" in response.text
+
+
 async def test_upload_extension_allowlist_rejected(auth_client):
     """Non-allowlisted upload types are rejected (415), so an attacker-controlled
     extension can't be stored under same-origin /static/uploads."""
