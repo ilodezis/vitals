@@ -373,12 +373,12 @@
             {% endif %}
 
             <!-- Weight Log Table -->
-            <div class="v-card p-6 space-y-3">
+            <div class="v-card p-6 space-y-3" x-data="{ showAllWeights: false }">
                 <div class="flex items-center gap-2">
                     <span class="v-bar v-bar-sm"></span>
                     <span class="v-text-card">{{ t("weight.history_title") }}</span>
                 </div>
-                <div class="max-h-60 overflow-y-auto v-card-inset">
+                <div class="v-card-inset">
                     <div class="v-table-wrap">
                         <table class="v-table">
                             <thead>
@@ -393,7 +393,8 @@
                             </thead>
                             <tbody>
                                 {% for w in weights %}
-                                <tr class="{% if w.superseded %}opacity-40 line-through{% endif %}">
+                                <tr class="{% if w.superseded %}opacity-40 line-through{% endif %}"
+                                    {% if loop.index0 >= 8 %}x-show="showAllWeights" x-cloak{% endif %}>
                                     <td class="v-num v-col-date" style="color: var(--fg)">{{ w.date | format_date }}
                                     </td>
                                     <td class="v-num font-semibold" style="color: var(--fg)">{{ w.weight_kg }}<span
@@ -440,6 +441,11 @@
                         </table>
                     </div>
                 </div>
+                {% if weights|length > 8 %}
+                <button type="button" @click="showAllWeights = !showAllWeights" class="v-btn-ghost text-xs w-full">
+                    <span x-text="showAllWeights ? '{{ t("common.show_less") }}' : '{{ t("common.show_more") }} · {{ weights|length - 8 }}'"></span>
+                </button>
+                {% endif %}
             </div>
 
         </div> <!-- Close .lg:col-span-8 -->

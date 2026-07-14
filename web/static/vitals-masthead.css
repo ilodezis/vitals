@@ -429,6 +429,311 @@ body.ui-masthead .mh-metric-label {
     margin-top: 4px;
 }
 
+/* Day-intake ring (nutrition, I2) — SVG donut with a rounded cap over a soft
+   recessed track. --pct/--ring-color are set inline per-render; the fill circle
+   carries pathLength="100" so stroke-dasharray reads straight off the percent. */
+body.ui-masthead .mh-date-nav {
+    display: flex;
+    align-items: center;
+    background: var(--bg-inset);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    padding: 2px;
+    gap: 2px;
+}
+
+body.ui-masthead .mh-date-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: var(--muted);
+    transition: all 0.2s ease;
+}
+
+body.ui-masthead .mh-date-nav-btn:hover {
+    color: var(--fg);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+body.ui-masthead .mh-date-display {
+    position: relative;
+    font-size: var(--text-micro);
+    font-weight: 600;
+    color: var(--fg-2);
+    padding: 0 10px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+body.ui-masthead .mh-date-display:hover {
+    color: var(--accent-2);
+}
+
+body.ui-masthead .mh-ring {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    flex: none;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.015) 0%, transparent 70%);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+body.ui-masthead .mh-ring-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg); /* start the arc at 12 o'clock */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform-style: preserve-3d;
+    will-change: transform;
+    shape-rendering: geometricPrecision;
+}
+
+body.ui-masthead .mh-ring-track {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.03);
+    stroke-width: 6;
+    shape-rendering: geometricPrecision;
+}
+
+body.ui-masthead .mh-ring-fill {
+    fill: none;
+    stroke-width: 9;
+    stroke-linecap: round;
+    stroke-dasharray: var(--pct, 0) 100;
+    transition: stroke-dasharray .7s cubic-bezier(.4, 0, .2, 1);
+    shape-rendering: geometricPrecision;
+}
+
+body.ui-masthead .mh-ring-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 4px;
+}
+
+body.ui-masthead .mh-ring-val {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--fg);
+    font-family: 'Unbounded', 'Outfit', system-ui, sans-serif;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+body.ui-masthead .mh-ring-lbl {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+}
+
+body.ui-masthead .mh-ring-goal {
+    font-size: 11px;
+    color: var(--faint);
+    margin-top: 2px;
+}
+
+body.ui-masthead .mh-protein-bar {
+    height: 10px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-inset);
+    border: 1px solid rgba(255, 255, 255, 0.02);
+    overflow: hidden;
+}
+
+body.ui-masthead .mh-protein-fill {
+    height: 100%;
+    border-radius: var(--radius-pill);
+    transition: width .7s cubic-bezier(.4, 0, .2, 1);
+}
+
+body.ui-masthead .mh-protein-fill.is-good {
+    background: linear-gradient(90deg, #4FB97A, #8CE6B0);
+}
+
+body.ui-masthead .mh-protein-fill.is-warn {
+    background: linear-gradient(90deg, #EAA12B, #FCD370);
+}
+
+body.ui-masthead .mh-macro-bar {
+    display: flex;
+    gap: 3px;
+    height: 10px;
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+    background: var(--bg-inset);
+    border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+body.ui-masthead .mh-macro-seg {
+    min-width: 0;
+    transition: flex-grow .6s cubic-bezier(.4, 0, .2, 1);
+}
+
+/* Redesigned Intake Layout Grid */
+body.ui-masthead .mh-intake-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+}
+
+body.ui-masthead .mh-intake-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    align-items: center;
+}
+
+@media (min-width: 768px) {
+    body.ui-masthead .mh-intake-grid {
+        grid-template-columns: 180px 1fr;
+        gap: 32px;
+    }
+}
+
+body.ui-masthead .mh-intake-ring-panel {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+body.ui-masthead .mh-intake-macros-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+}
+
+/* Macro row layout */
+body.ui-masthead .mh-macro-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+body.ui-masthead .mh-macro-row-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    width: 100%;
+}
+
+body.ui-masthead .mh-macro-row-title {
+    font-size: var(--text-body);
+    font-weight: 600;
+    color: var(--fg);
+}
+
+body.ui-masthead .mh-macro-row-value {
+    font-size: var(--text-micro);
+    color: var(--muted);
+}
+
+body.ui-masthead .mh-value-highlight {
+    font-size: var(--text-body);
+    font-weight: 700;
+    color: var(--fg);
+}
+
+body.ui-masthead .mh-macro-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--faint);
+    background: var(--bg-inset);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 2px 8px;
+}
+
+/* Breakdown mini-cards grid */
+body.ui-masthead .mh-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+body.ui-masthead .mh-macro-card {
+    background: var(--bg-inset);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+body.ui-masthead .mh-macro-card:hover {
+    background: var(--surface-2);
+    border-color: var(--line-2);
+}
+
+body.ui-masthead .mh-macro-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    width: 100%;
+}
+
+body.ui-masthead .mh-macro-card-label-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+body.ui-masthead .mh-macro-card-label {
+    font-size: var(--text-micro);
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body.ui-masthead .mh-macro-card-pct {
+    font-size: var(--text-micro);
+    font-weight: 700;
+}
+
+body.ui-masthead .mh-macro-card-bottom {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    margin-top: 8px;
+}
+
+body.ui-masthead .mh-macro-card-val {
+    font-size: var(--text-heading);
+    font-weight: 700;
+    color: var(--fg);
+    letter-spacing: -0.01em;
+}
+
+body.ui-masthead .mh-macro-card-unit {
+    font-size: var(--text-micro);
+    color: var(--faint);
+}
+
 /* Top bar is mobile-only. */
 @media (min-width: 768px) {
     body.ui-masthead .mh-topbar {
@@ -463,5 +768,19 @@ body.ui-masthead .mh-metric-label {
 
     body.ui-masthead .mh-metric-div {
         display: none;
+    }
+
+    body.ui-masthead .mh-ring {
+        width: 128px;
+        height: 128px;
+    }
+
+    body.ui-masthead .mh-ring-val {
+        font-size: 26px;
+    }
+
+    body.ui-masthead .mh-ring-lbl,
+    body.ui-masthead .mh-ring-goal {
+        font-size: 10px;
     }
 }

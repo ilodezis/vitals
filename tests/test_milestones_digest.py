@@ -44,6 +44,36 @@ async def test_create_and_progress_weight_goal(db_session):
     assert len(await milestones_service.list_milestones(db_session)) == 0
 
 
+async def test_progress_guards_against_unit_domain_mismatch(db_session):
+    """T1: a goal filed under domain="weight" but with a "%" target_unit (e.g.
+    copy-pasted from a body-fat goal) must not compute current/remaining — on the
+    old code this compared a percentage target against a kilogram reading and
+    printed a nonsense "remaining"."""
+    await weight_service.log_weight(db_session, on_date=DAY, weight_kg=86.1)
+    m = await milestones_service.create_milestone(
+        db_session, name="Body fat under 15%", domain="weight", target_value=15.0,
+        target_unit="%",
+    )
+    await db_session.commit()
+
+    card = (await milestones_service.dashboard_cards(db_session))[0]
+    assert card["current"] is None
+    assert card["remaining"] is None
+
+    # A matching unit still computes normally (kg goal, kg unit).
+    await milestones_service.update_milestone(db_session, m.id, target_unit="кг")
+    await db_session.commit()
+    card = (await milestones_service.dashboard_cards(db_session))[0]
+    assert card["current"] == 86.1
+    assert card["remaining"] == pytest.approx(71.1, abs=0.01)
+
+    # No unit at all stays permissive (older goals predate this field).
+    await milestones_service.update_milestone(db_session, m.id, target_unit=None)
+    await db_session.commit()
+    card = (await milestones_service.dashboard_cards(db_session))[0]
+    assert card["current"] == 86.1
+
+
 async def test_create_and_progress_body_fat_goal(db_session, monkeypatch):
     # 1. Log Navy body fat (approx 14.52% for height=190, neck=38, waist=85, weight=88)
     await weight_service.log_weight(db_session, on_date=DAY, weight_kg=88.0)

@@ -1,7 +1,7 @@
 """Nutrition domain: meal logging with macro tracking."""
 from __future__ import annotations
 
-from datetime import date as date_type, time as time_type
+from datetime import date as date_type, time as time_type, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, Request, status
@@ -26,16 +26,25 @@ def _redirect(request: Request) -> RedirectResponse:
     return response
 
 
+def _pct(value: float, target: float) -> float:
+    """Clamped 0-100 progress toward a target, for the ring/bar widths."""
+    if not target:
+        return 0.0
+    return max(0.0, min(100.0, round(value / target * 100)))
+
+
 @router.get("", response_class=HTMLResponse)
 async def nutrition_dashboard(
     request: Request,
+    date: Optional[date_type] = None,
     db: AsyncSession = Depends(get_session),
     username: str = Depends(require_auth),
 ):
     cfg = load_config()
     today = today_local()
-    meals_today = await nutrition_service.list_meals_for_date(db, today)
-    summary = await nutrition_service.daily_summary(db, today, cfg)
+    selected_date = date or today
+    day_meals = await nutrition_service.list_meals_for_date(db, selected_date)
+    summary = await nutrition_service.daily_summary(db, selected_date, cfg)
     history = await nutrition_service.list_meals(db, start=None, end=None)
     alerts = await alerts_service.list_active(db, domain=Domain.NUTRITION.value)
     goals = nutrition_service.get_goals(cfg)
@@ -45,13 +54,20 @@ async def nutrition_dashboard(
         "nutrition/index.html",
         {
             "username": username,
-            "meals_today": meals_today,
+            "meals_today": day_meals,
             "summary": summary,
             "history": history,
             "alerts": alerts,
             "goals": goals,
             "today": today.isoformat(),
             "today_date": today,
+            "selected_date": selected_date.isoformat(),
+            "is_today": selected_date == today,
+            "prev_date": (selected_date - timedelta(days=1)).isoformat(),
+            "next_date": (selected_date + timedelta(days=1)).isoformat(),
+            "calories_pct": _pct(summary["totals"]["calories"], goals["calories_max"]),
+            "protein_pct": _pct(summary["totals"]["protein_g"], goals["protein_target_g"]),
+            "macro_split": nutrition_service.macro_energy_shares(summary["totals"]),
         },
     )
 

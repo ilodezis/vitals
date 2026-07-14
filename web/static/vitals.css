@@ -1030,6 +1030,46 @@ html {
     color: var(--fg) !important;
 }
 
+/* Body-map mini silhouette (GLP-1 I1) — decorative rotation summary shown above
+   the .v-site-btn grid; marker fill reflects historical frequency, the accent
+   ring marks the last-used site, the neutral ring mirrors .v-site-on/selected. */
+.v-body-map {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) 0 var(--space-3);
+}
+
+.v-body-map-svg {
+    height: 168px;
+    width: auto;
+}
+
+.v-bodymap-dot {
+    transition: stroke .15s ease, stroke-width .15s ease;
+}
+
+.v-bodymap-dot.v-bodymap-on {
+    stroke: var(--fg) !important;
+    stroke-width: 2.5px !important;
+}
+
+.v-body-map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-4);
+    font-size: var(--text-micro);
+    color: var(--muted);
+}
+
+.v-body-map-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
 /* Filter pills (genetics) */
 .v-pill {
     padding: .5rem .9rem;

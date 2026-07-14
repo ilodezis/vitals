@@ -3,6 +3,7 @@ plateau detection, and the weight-chart phase overlay link."""
 from __future__ import annotations
 
 from datetime import date, timedelta
+from types import SimpleNamespace
 
 import pytest
 
@@ -28,6 +29,22 @@ async def test_log_and_list_injection(db_session):
     assert rows[0].drug == "semaglutide"
     last = await glp1_service.last_injection(db_session)
     assert last.site == "abdomen_left"
+
+
+def test_site_frequency_counts_by_site():
+    """Pure logic feeding the rotation mini-map (I1) — no DB needed."""
+    rows = [
+        SimpleNamespace(site=InjectionSite.ABDOMEN_LEFT.value),
+        SimpleNamespace(site=InjectionSite.ABDOMEN_LEFT.value),
+        SimpleNamespace(site=InjectionSite.THIGH_RIGHT.value),
+        SimpleNamespace(site=None),  # logged without a site — must not crash/count
+    ]
+    counts = glp1_service.site_frequency(rows)
+    assert counts == {"abdomen_left": 2, "thigh_right": 1}
+
+
+def test_site_frequency_empty_when_no_injections():
+    assert glp1_service.site_frequency([]) == {}
 
 
 async def test_update_and_delete_injection(db_session):

@@ -147,6 +147,29 @@ def _sum_macros(meals: Sequence[MealLog]) -> dict[str, float]:
     }
 
 
+# Atwater energy factors (kcal per gram of each macronutrient).
+_KCAL_PER_G = {"protein_g": 4.0, "fat_g": 9.0, "carbs_g": 4.0}
+
+
+def macro_energy_shares(totals: dict[str, float]) -> dict[str, float]:
+    """Share (%) of macro-derived energy from protein/fat/carbs.
+
+    Drives the intake card's composition bar. Uses Atwater factors so the split
+    reflects *calories* from each macro, not raw grams (fat reads far heavier
+    per gram). Returns zeros when there's no macro data, so the bar collapses
+    cleanly on an empty day rather than dividing by zero.
+    """
+    energy = {k: (totals.get(k) or 0) * f for k, f in _KCAL_PER_G.items()}
+    total = sum(energy.values())
+    if total <= 0:
+        return {"protein": 0.0, "fat": 0.0, "carbs": 0.0}
+    return {
+        "protein": round(energy["protein_g"] / total * 100, 1),
+        "fat": round(energy["fat_g"] / total * 100, 1),
+        "carbs": round(energy["carbs_g"] / total * 100, 1),
+    }
+
+
 # ── Conflict-engine resolver ──────────────────────────────────────────────────
 
 async def resolve_today(session: AsyncSession) -> list[dict]:

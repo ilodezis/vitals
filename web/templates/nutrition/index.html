@@ -10,14 +10,127 @@
     {% if request.state.ui_version == 'masthead' %}
     {% call masthead_header('nutrition', t('nav.nutrition'), [
         {'label': t('nutrition.calories'), 'primary': true, 'tone': ('good' if summary.on_track.calories else ('bad' if summary.totals.calories > goals.calories_max else '')), 'value': summary.totals.calories | format_number, 'unit': ('/ ' ~ goals.calories_min ~ '–' ~ goals.calories_max)},
-        {'label': t('nutrition.protein'), 'unit': t('common.g'), 'tone': ('good' if summary.on_track.protein else ''), 'value': summary.totals.protein_g | format_number},
-        {'label': t('nutrition.fat'), 'unit': t('common.g'), 'value': summary.totals.fat_g | format_number},
-        {'label': t('nutrition.carbs'), 'unit': t('common.g'), 'value': summary.totals.carbs_g | format_number}
+        {'label': t('nutrition.meals_title'), 'value': summary.meal_count}
     ]) %}
         <button @click="showForm = !showForm" class="v-btn-ghost text-xs">
             <span x-text="showForm ? '{{ t("nutrition.toggle_history") }}' : '{{ t("nutrition.toggle_form") }}'"></span>
         </button>
     {% endcall %}
+
+    <!-- Day intake: ring (calories) + macro bars, driven by ?date= day-nav (I2) -->
+    <div class="v-card p-6 space-y-6">
+        <div class="mh-intake-header">
+            <div class="flex items-center gap-2">
+                <span class="v-bar v-bar-sm"></span>
+                <span class="v-text-card font-bold tracking-tight">{{ t("nutrition.intake_title") }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="mh-date-nav">
+                    <a href="/nutrition?date={{ prev_date }}" class="mh-date-nav-btn" title="{{ t('nutrition.prev_day') }}">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
+                    </a>
+                    <form method="get" action="/nutrition" class="relative inline-flex items-center">
+                        <button type="button" class="mh-date-display bg-transparent border-0 font-semibold" style="pointer-events:none">
+                            {{ t("common.today") if is_today else (selected_date | format_date) }}
+                        </button>
+                        <input type="date" name="date" value="{{ selected_date }}" aria-label="{{ t('common.date') }}"
+                               class="absolute inset-0 opacity-0 cursor-pointer w-full" style="border:0"
+                               onchange="this.form.requestSubmit()">
+                    </form>
+                    <a href="/nutrition?date={{ next_date }}" class="mh-date-nav-btn" title="{{ t('nutrition.next_day') }}">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
+                    </a>
+                </div>
+                {% if not is_today %}
+                <a href="/nutrition" class="v-btn-ghost text-xs py-1 px-3 rounded-full hover:bg-[rgba(255,255,255,0.05)] transition-all">{{ t("common.today") }}</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mh-intake-grid">
+            <!-- Calorie ring column -->
+            <div class="mh-intake-ring-panel">
+                <div class="mh-ring" style="--pct: {{ calories_pct }}; --ring-color: var({% if summary.on_track.calories %}--good{% elif summary.totals.calories > goals.calories_max %}--bad{% else %}--warn{% endif %});">
+                    <svg class="mh-ring-svg" viewBox="0 0 120 120" aria-hidden="true" shape-rendering="geometricPrecision">
+                        <defs>
+                            <linearGradient id="calGradGood" x1="0%" y1="100%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#4FB97A" />
+                                <stop offset="100%" stop-color="#8CE6B0" />
+                            </linearGradient>
+                            <linearGradient id="calGradWarn" x1="0%" y1="100%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#EAA12B" />
+                                <stop offset="100%" stop-color="#FCD370" />
+                            </linearGradient>
+                            <linearGradient id="calGradBad" x1="0%" y1="100%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#D9573C" />
+                                <stop offset="100%" stop-color="#FF9B85" />
+                            </linearGradient>
+                        </defs>
+                        <circle class="mh-ring-track" cx="60" cy="60" r="52"></circle>
+                        <circle class="mh-ring-fill" cx="60" cy="60" r="52" pathLength="100"
+                                stroke="url(#{% if summary.on_track.calories %}calGradGood{% elif summary.totals.calories > goals.calories_max %}calGradBad{% else %}calGradWarn{% endif %})"></circle>
+                    </svg>
+                    <div class="mh-ring-inner">
+                        <span class="mh-ring-val">{{ summary.totals.calories | format_number }}</span>
+                        <span class="mh-ring-lbl">{{ t("common.kcal") }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Macros column -->
+            <div class="mh-intake-macros-panel">
+                <!-- Protein progress bar -->
+                <div class="mh-macro-row">
+                    <div class="mh-macro-row-header">
+                        <span class="mh-macro-row-title">{{ t("nutrition.protein") }}</span>
+                        <span class="mh-macro-row-value">
+                            <strong class="mh-value-highlight">{{ summary.totals.protein_g | format_number }}</strong> / {{ goals.protein_target_g | format_number }} {{ t("common.g") }}
+                        </span>
+                    </div>
+                    <div class="mh-protein-bar">
+                        <div class="mh-protein-fill {% if summary.on_track.protein %}is-good{% else %}is-warn{% endif %}"
+                             style="width: {{ protein_pct }}%"></div>
+                    </div>
+                </div>
+
+                <!-- Macro composition bar & cards -->
+                <div class="mh-macro-row">
+                    <div class="mh-macro-row-header">
+                        <span class="mh-macro-row-title">{{ t("nutrition.macros_title") }}</span>
+                        <span class="mh-macro-badge">{{ t("nutrition.macro_share_hint") }}</span>
+                    </div>
+                    <div class="mh-macro-bar">
+                        <span class="mh-macro-seg" style="flex: {{ macro_split.protein }}; background: var(--good)"></span>
+                        <span class="mh-macro-seg" style="flex: {{ macro_split.fat }}; background: var(--violet)"></span>
+                        <span class="mh-macro-seg" style="flex: {{ macro_split.carbs }}; background: var(--cool)"></span>
+                    </div>
+
+                    <!-- Macro breakdown grid -->
+                    <div class="mh-cards-grid">
+                        {% for macro in [
+                            {'dot': 'good',   'color': 'var(--good)',   'label': t('nutrition.protein'), 'grams': summary.totals.protein_g, 'pct': macro_split.protein},
+                            {'dot': 'violet', 'color': 'var(--violet)', 'label': t('nutrition.fat'),     'grams': summary.totals.fat_g,     'pct': macro_split.fat},
+                            {'dot': 'cool',   'color': 'var(--cool)',   'label': t('nutrition.carbs'),   'grams': summary.totals.carbs_g,   'pct': macro_split.carbs}
+                        ] %}
+                        <div class="mh-macro-card">
+                            <div class="mh-macro-card-top">
+                                <div class="mh-macro-card-label-wrap">
+                                    <span class="v-dot {{ macro.dot }} shrink-0"></span>
+                                    <span class="mh-macro-card-label">{{ macro.label }}</span>
+                                </div>
+                                <span class="mh-macro-card-pct" style="color: {{ macro.color }}">{{ macro.pct | round | int }}%</span>
+                            </div>
+                            <div class="mh-macro-card-bottom">
+                                <span class="mh-macro-card-val">{{ macro.grams | format_number }}</span>
+                                <span class="mh-macro-card-unit">{{ t("common.g") }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     {% else %}
     <!-- Header -->
     <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
@@ -100,7 +213,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="v-label">{{ t("common.date") }}</label>
-                        <input type="date" name="date" value="{{ today }}" required class="v-input">
+                        <input type="date" name="date" value="{{ selected_date }}" required class="v-input">
                     </div>
                     <div>
                         <label class="v-label">{{ t("nutrition.meal_time") }}</label>
@@ -147,7 +260,7 @@
             <div class="v-card p-6 space-y-3">
                 <div class="flex items-center gap-2">
                     <span class="v-bar v-bar-sm"></span>
-                    <span class="v-text-card">{{ t("nutrition.today_title") }}</span>
+                    <span class="v-text-card">{% if request.state.ui_version == 'masthead' %}{{ t("nutrition.meals_title") }}{% else %}{{ t("nutrition.today_title") }}{% endif %}</span>
                     <span class="v-text-micro ml-auto">{{ summary.meal_count }} {{ summary.meal_count | meal_word }}</span>
                 </div>
                 <div class="max-h-[28rem] overflow-y-auto v-card-inset">
@@ -196,7 +309,7 @@
                                 </td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="7" class="text-center" style="color: var(--muted)">{{ t("nutrition.no_meals_today") }}</td></tr>
+                            <tr><td colspan="7" class="text-center" style="color: var(--muted)">{% if request.state.ui_version == 'masthead' and not is_today %}{{ t("nutrition.no_meals_day") }}{% else %}{{ t("nutrition.no_meals_today") }}{% endif %}</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -206,12 +319,12 @@
 
             <!-- Full history -->
             {% if history %}
-            <div class="v-card p-6 space-y-3">
+            <div class="v-card p-6 space-y-3" x-data="{ showAllHistory: false }">
                 <div class="flex items-center gap-2">
                     <span class="v-bar v-bar-sm"></span>
                     <span class="v-text-card">{{ t("nutrition.history_title") }}</span>
                 </div>
-                <div class="max-h-[38rem] overflow-y-auto v-card-inset">
+                <div class="v-card-inset">
                     <div class="v-table-wrap">
                         <table class="v-table" style="width: 100%; min-width: 620px; table-layout: fixed">
                         <colgroup>
@@ -238,7 +351,7 @@
                         </thead>
                         <tbody>
                             {% for m in history %}
-                            <tr>
+                            <tr {% if loop.index0 >= 8 %}x-show="showAllHistory" x-cloak{% endif %}>
                                 <td class="v-num" style="color: var(--fg)">{{ m.date | format_date }}</td>
                                 <td class="v-num">{{ m.eaten_at.strftime('%H:%M') if m.eaten_at else '—' }}</td>
                                 <td class="truncate">{{ m.name }}</td>
@@ -263,6 +376,11 @@
                         </tbody>
                     </table>
                 </div>
+                {% if history|length > 8 %}
+                <button type="button" @click="showAllHistory = !showAllHistory" class="v-btn-ghost text-xs w-full">
+                    <span x-text="showAllHistory ? '{{ t("common.show_less") }}' : '{{ t("common.show_more") }} · {{ history|length - 8 }}'"></span>
+                </button>
+                {% endif %}
             </div>
         </div>
             {% endif %}

@@ -113,6 +113,17 @@ async def last_injection(session: AsyncSession) -> Optional[Injection]:
     return result.scalars().first()
 
 
+def site_frequency(injections: Sequence[Injection]) -> dict[str, int]:
+    """How many times each body-map site has been used — feeds the rotation
+    mini-map (I1) so the owner can see at a glance which sites are overdue for
+    reuse. Pure function over already-fetched rows, no extra query."""
+    counts: dict[str, int] = {}
+    for inj in injections:
+        if inj.site:
+            counts[inj.site] = counts.get(inj.site, 0) + 1
+    return counts
+
+
 async def update_injection(
     session: AsyncSession,
     injection_id: int,

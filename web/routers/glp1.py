@@ -54,6 +54,7 @@ async def glp1_dashboard(
             "alerts": alerts,
             "active_phase": active_phase,
             "last_injection": last_inj,
+            "site_counts": glp1_service.site_frequency(injections),
             "drugs": [d.value for d in Drug],
             "sites": [s.value for s in InjectionSite],
             "today": today_local().isoformat(),

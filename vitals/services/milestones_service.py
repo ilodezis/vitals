@@ -173,6 +173,27 @@ async def _current_body_fat(session: AsyncSession) -> Optional[float]:
     return bia_val
 
 
+_WEIGHT_UNITS = {"kg", "кг"}
+_PERCENT_UNITS = {"%", "pct", "percent", "процент", "проценты"}
+
+
+def _unit_matches_domain(domain: str, target_unit: Optional[str]) -> bool:
+    """Guard against a goal whose ``target_unit`` doesn't match what ``progress()``
+    actually measures for its domain — e.g. a body-fat "%" target filed under
+    ``domain="weight"`` (the create-goal form's unit field is free text, so nothing
+    stops this at write time). Without this, ``current``/``remaining`` silently
+    compare a percentage against a kilogram reading. No unit set at all is left
+    permissive, since older goals predate this being checked."""
+    if not target_unit:
+        return True
+    normalized = target_unit.strip().lower()
+    if domain == Domain.WEIGHT.value:
+        return normalized in _WEIGHT_UNITS
+    if domain == Domain.BODY_COMPOSITION.value:
+        return normalized in _PERCENT_UNITS
+    return True
+
+
 async def progress(session: AsyncSession, milestone: Milestone) -> dict:
     """Live progress for a goal. Weight goals get current/remaining/pct vs target;
     others just echo status + days-to-deadline."""
@@ -192,12 +213,13 @@ async def progress(session: AsyncSession, milestone: Milestone) -> dict:
         "pct": None,
     }
 
-    if milestone.domain == Domain.WEIGHT.value and milestone.target_value is not None:
+    unit_ok = _unit_matches_domain(milestone.domain, milestone.target_unit)
+    if milestone.domain == Domain.WEIGHT.value and milestone.target_value is not None and unit_ok:
         current = await _current_weight(session)
         if current is not None:
             out["current"] = round(current, 2)
             out["remaining"] = round(current - milestone.target_value, 2)
-    elif milestone.domain == Domain.BODY_COMPOSITION.value and milestone.target_value is not None:
+    elif milestone.domain == Domain.BODY_COMPOSITION.value and milestone.target_value is not None and unit_ok:
         current = await _current_body_fat(session)
         if current is not None:
             out["current"] = round(current, 2)
