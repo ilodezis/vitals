@@ -826,26 +826,6 @@ html {
     box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
 }
 
-/* Modifier: let the row wrap instead of forcing one equal-flex line — for
-   segmented controls with 4+ options, where .v-seg's single-row squeeze
-   crams long labels unreadably thin (e.g. weight page's input-mode tabs).
-   Stays flex (not grid): each wrapped line still distributes its own width
-   evenly among just the buttons on that line, so a leftover 2nd line isn't
-   stuck at a fraction-of-3-columns width with a dangling empty gap next
-   to it — it stretches edge-to-edge like the first line does. */
-.v-seg-wrap {
-    flex-wrap: wrap;
-    gap: .4rem;
-    overflow-x: visible;
-}
-
-.v-seg-wrap .v-seg-btn {
-    flex: 1 1 5.5rem;
-    min-width: 0;
-    white-space: normal;
-    line-height: 1.2;
-}
-
 /* ── Pills / badges / chips ────────────────────────────────────────────── */
 .v-chip {
     display: inline-flex;

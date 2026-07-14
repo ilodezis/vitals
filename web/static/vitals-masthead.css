@@ -294,6 +294,13 @@ body.ui-masthead .mh-topbar-menu {
     display: flex;
     align-items: center;
     gap: 6px;
+    /* Tap zone: stretch to the full topbar height (52px, well over the 44px
+       minimum) instead of shrink-wrapping to the text+icon size. Padding
+       widens the hit area further; the negative margin cancels it back out
+       visually so the icon still sits flush with the topbar's own edge. */
+    align-self: stretch;
+    padding: 0 8px;
+    margin-right: -8px;
     color: var(--fg-2);
     font: 600 10px 'Inter', sans-serif;
     letter-spacing: .08em;

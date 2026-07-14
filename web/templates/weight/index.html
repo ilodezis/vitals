@@ -107,7 +107,7 @@
             <!-- Input Card -->
             <div class="v-card p-6 space-y-4">
                 <!-- Tabs -->
-                <div class="v-seg v-seg-wrap">
+                <div class="v-seg">
                     <button @click="activeTab = 'log'" :class="activeTab === 'log'     ? 'is-active' : ''"
                         class="v-seg-btn">{{ t("weight.tab_weight") }}</button>
                     <button @click="activeTab = 'measure'" :class="activeTab === 'measure' ? 'is-active' : ''"
@@ -306,10 +306,10 @@
                         </div>
                         <span style="color: var(--fg-2)">{{ n.reason }}</span>
                         {% if n.direction == 'up' %}
-                        <span style="color: var(--good); font-size: 0.65rem"
+                        <span style="color: var(--good); font-size: var(--text-micro)"
                             title="{{ t('weight.noise_direction_up') }}">{{ t('weight.noise_up_label') }}</span>
                         {% elif n.direction == 'down' %}
-                        <span style="color: var(--bad); font-size: 0.65rem"
+                        <span style="color: var(--bad); font-size: var(--text-micro)"
                             title="{{ t('weight.noise_direction_down') }}">{{ t('weight.noise_down_label') }}</span>
                         {% endif %}
                     </li>
@@ -418,8 +418,7 @@
                                             {% endif %}
                                             <form action="/weight/log/{{ w.id }}/delete" method="POST" class="inline"
                                                 data-confirm="{{ t("weight.confirm_delete") }}">
-                                                <button type="submit" class="v-icon-btn danger" title="{{ t("
-                                                    common.delete") }}">
+                                                <button type="submit" class="v-icon-btn danger" title="{{ t("common.delete") }}">
                                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                                                         stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -467,8 +466,9 @@
                             </svg>
                             <span class="v-num" style="color: var(--fg)">{{ s.date | format_date }}</span>
                             {% if s.device %}<span class="v-text-micro truncate">{{ s.device }}</span>{% endif %}
-                            <span class="v-chip" style="font-size:10px; padding:2px 6px;">{{ t("body.metrics_count",
-                                n=s.metrics|length) }}</span>
+                            <span class="v-chip" style="padding:2px 6px;">{{ s.metrics|length }} {{
+                                plural(s.metrics|length, t("body.metric"), t("body.metrics_234"), t("body.metrics_many"))
+                                }}</span>
                         </button>
                         <div class="flex items-center gap-2 flex-none">
                             {% if s.file_key %}

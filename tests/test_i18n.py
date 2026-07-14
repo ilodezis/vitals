@@ -50,6 +50,20 @@ def test_plurals():
     assert plural(11, "сессия", "сессии", "сессий") == "сессий"
 
 
+def test_body_metrics_count_plural():
+    # body-composition scan chip: "{n} metric(s)" — RU needs the 3-form split
+    current_lang.set("ru")
+    words = (t("body.metric"), t("body.metrics_234"), t("body.metrics_many"))
+    assert plural(1, *words) == "метрика"
+    assert plural(2, *words) == "метрики"
+    assert plural(5, *words) == "метрик"
+
+    current_lang.set("en")
+    words = (t("body.metric"), t("body.metrics_234"), t("body.metrics_many"))
+    assert plural(1, *words) == "metric"
+    assert plural(5, *words) == "metrics"
+
+
 def test_digest_build_prompt():
     context = {"test": "data"}
     
