@@ -42,6 +42,7 @@ _DAILY_METHODS = (
     ("stress", "get_stress_data"),
     ("training_readiness", "get_training_readiness"),
     ("max_metrics", "get_max_metrics"),
+    ("training_status", "get_training_status"),
 )
 
 

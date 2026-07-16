@@ -97,6 +97,9 @@ class GarminDaily(Base, InsightsMixin, TimestampMixin):
     # ── Training ────────────────────────────────────────────────────────────────
     training_readiness: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     vo2max: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    training_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    acute_load: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    load_ratio: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
 
 class GarminActivity(Base, InsightsMixin, TimestampMixin):

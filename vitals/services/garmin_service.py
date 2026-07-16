@@ -76,6 +76,16 @@ def _first(*values: Any) -> Any:
     return None
 
 
+def _strip_level_suffix(phrase: Optional[str]) -> Optional[str]:
+    """Garmin's training-status feedback phrase carries a numeric intensity
+    level suffix (e.g. ``"PRODUCTIVE_1"``) the wide column doesn't need -- the
+    raw phrase is still kept in ``raw_payloads``."""
+    if not isinstance(phrase, str):
+        return phrase
+    base, _, suffix = phrase.rpartition("_")
+    return base if base and suffix.isdigit() else phrase
+
+
 def _parse_sleep_boundary(sleep_dto: dict, prefix: str) -> Optional[datetime]:
     """Sleep bed/wake timestamp (``prefix`` is e.g. ``"sleepStart"``) -> local
     naive datetime.
@@ -105,6 +115,11 @@ def _normalize_daily(raw: dict) -> dict:
     tr0 = tr[0] if isinstance(tr, list) and tr else (tr if isinstance(tr, dict) else {})
     mm = raw.get("max_metrics")
     mm0 = mm[0] if isinstance(mm, list) and mm else (mm if isinstance(mm, dict) else {})
+    ts_map = _dig(raw, "training_status", "mostRecentTrainingStatus", "latestTrainingStatusData")
+    ts0 = next(iter(ts_map.values()), {}) if isinstance(ts_map, dict) else {}
+    if not isinstance(ts0, dict):
+        ts0 = {}
+    acute_load_dto = ts0.get("acuteTrainingLoadDTO") or {}
 
     return {
         # Sleep
@@ -154,6 +169,9 @@ def _normalize_daily(raw: dict) -> dict:
         # Training
         "training_readiness": _intish(tr0.get("score") if isinstance(tr0, dict) else None),
         "vo2max": _num(_dig(mm0, "generic", "vo2MaxValue") if isinstance(mm0, dict) else None),
+        "training_status": _strip_level_suffix(ts0.get("trainingStatusFeedbackPhrase")),
+        "acute_load": _num(acute_load_dto.get("acuteTrainingLoad")),
+        "load_ratio": _num(acute_load_dto.get("acwrPercent")),
     }
 
 

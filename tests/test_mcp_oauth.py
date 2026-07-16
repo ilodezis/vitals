@@ -327,6 +327,7 @@ async def test_mcp_read_only_tools_execution(db_session, session_factory):
         resting_hr=58,
         hrv_avg=65,
         spo2_lowest=91,
+        training_status="PRODUCTIVE",
         domain="garmin",
         source=Source.GARMIN_API.value,
     )
@@ -382,6 +383,8 @@ async def test_mcp_read_only_tools_execution(db_session, session_factory):
         assert garmin_data["daily_recovery"][0]["resting_hr"] == 58
         # New sleep-detail column reflected automatically via serialize_row.
         assert garmin_data["daily_recovery"][0]["spo2_lowest"] == 91
+        # New training-status column reflected automatically via serialize_row.
+        assert garmin_data["daily_recovery"][0]["training_status"] == "PRODUCTIVE"
 
         # Test get_hevy_workouts tool
         workouts_data = await get_hevy_workouts(start_date="2026-06-10", end_date="2026-06-20")

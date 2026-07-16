@@ -67,6 +67,26 @@ RAW_DAY = {
     "hrv": {"hrvSummary": {"lastNightAvg": 45, "status": "BALANCED", "weeklyAvg": 47}},
     "training_readiness": [{"score": 72}],
     "max_metrics": [{"generic": {"vo2MaxValue": 48.0}}],
+    "training_status": {
+        "userId": 147716288,
+        "mostRecentVO2Max": {"generic": {"vo2MaxValue": 48.0}},
+        "mostRecentTrainingLoadBalance": None,
+        "mostRecentTrainingStatus": {
+            "latestTrainingStatusData": {
+                "3635381933": {
+                    "calendarDate": "2026-06-10",
+                    "trainingStatus": 6,
+                    "trainingStatusFeedbackPhrase": "PRODUCTIVE_1",
+                    "acuteTrainingLoadDTO": {
+                        "acuteTrainingLoad": 450.5,
+                        "acwrPercent": 105.0,
+                        "acwrStatus": "OPTIMAL",
+                    },
+                }
+            }
+        },
+        "heatAltitudeAcclimationDTO": None,
+    },
     "body_battery": [{"charged": 60, "drained": 40}],
     "body_composition": {"totalAverage": {"weight": 85000.0}},
 }
@@ -120,6 +140,13 @@ def test_normalize_daily_extracts_sleep_detail():
     assert f["sleep_need_actual"] == 480
 
 
+def test_normalize_daily_extracts_training_status():
+    f = garmin_service._normalize_daily(RAW_DAY)
+    assert f["training_status"] == "PRODUCTIVE"
+    assert f["acute_load"] == 450.5
+    assert f["load_ratio"] == 105.0
+
+
 def test_normalize_daily_sparse_is_all_none():
     f = garmin_service._normalize_daily({"summary": {}})
     assert f["steps"] is None
@@ -129,6 +156,18 @@ def test_normalize_daily_sparse_is_all_none():
     assert f["spo2_lowest"] is None
     assert f["body_battery_change"] is None
     assert f["breathing_disruption"] is None
+    assert f["training_status"] is None
+    assert f["acute_load"] is None
+    assert f["load_ratio"] is None
+
+
+# ── Training status feedback-phrase level suffix ──────────────────────────────
+def test_strip_level_suffix_variants():
+    strip = garmin_service._strip_level_suffix
+    assert strip("PRODUCTIVE_1") == "PRODUCTIVE"
+    assert strip("NO_STATUS_0") == "NO_STATUS"
+    assert strip("PEAKING") == "PEAKING"
+    assert strip(None) is None
 
 
 # ── Sleep boundary parsing (GMT vs Local epoch quirk) ─────────────────────────
@@ -210,6 +249,17 @@ async def test_sync_persists_sleep_detail_columns(db_session):
     assert row.body_battery_change == 55
     assert row.breathing_disruption == "NONE"
     assert row.sleep_need_actual == 480
+
+
+async def test_sync_persists_training_status_columns(db_session):
+    client = FakeGarminClient()
+    await garmin_service.sync(db_session, client, days=1, on_date=DAY)
+    await db_session.commit()
+
+    row = await garmin_service.get_daily(db_session, DAY)
+    assert row.training_status == "PRODUCTIVE"
+    assert row.acute_load == 450.5
+    assert row.load_ratio == 105.0
 
 
 # ── Weight bridge + manual-over-Garmin priority ───────────────────────────────

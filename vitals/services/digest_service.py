@@ -40,7 +40,7 @@ DIGEST_SYSTEM = """\
   ВАЖНО: если активен noise_marker, то ma7_date — это последний чистый день ДО начала шума, а не сегодня. Не сравнивай latest_kg и ma7_kg как если бы они были одновременными. Разрыв между ними объясняется давностью MA, а не текущим шумом.
 - glp1: препарат, доза, plateau
 - body_comp: последний BIA/InBody-скан (date, device, metrics: % жира, скелетно-мышечная масса, безжировая масса, висцеральный жир, фазовый угол, балл). Может быть null (скана нет). Это отдельный источник состава тела (BIA); сосуществует с оценкой по замерам (Navy) в weight — не смешивай и не суммируй их.
-- garmin: sleep_score, resting_hr, hrv_avg, body_battery_high, training_readiness, total_days_logged, spo2_lowest (мин. SpO2 за ночь — низкий может говорить об апноэ), body_battery_change (восстановление за ночь), breathing_disruption (NONE/тяжесть нарушения дыхания)
+- garmin: sleep_score, resting_hr, hrv_avg, body_battery_high, training_readiness, training_status (баланс нагрузка/восстановление, считает сам Garmin: PRODUCTIVE/MAINTAINING/RECOVERY/UNPRODUCTIVE/DETRAINING/STRAINED/PEAKING — может быть null, если мало аэробных тренировок), total_days_logged, spo2_lowest (мин. SpO2 за ночь — низкий может говорить об апноэ), body_battery_change (восстановление за ночь), breathing_disruption (NONE/тяжесть нарушения дыхания)
 - hevy: тренировок за период, дата последней
 - labs: маркеры вне нормы (marker, value, flag, date)
 - nutrition: avg калории/белок в день, days_with_logs, цели
@@ -89,7 +89,7 @@ Any domain can be null (no data). Don't invent what isn't there.
   IMPORTANT: if a noise_marker is active, ma7_date is the last clean day BEFORE the noise started — not today. Do NOT compare latest_kg and ma7_kg as if they are simultaneous. Any gap between them reflects how stale the MA is, not current noise.
 - glp1: drug, dose, plateau flag
 - body_comp: latest BIA/InBody scan (date, device, metrics: body-fat %, skeletal muscle mass, lean body mass, visceral fat, phase angle, score). Can be null (no scan taken). This is a separate BIA body-composition source; it coexists with the tape/Navy estimate in weight — don't conflate or sum them.
-- garmin: sleep_score, resting_hr, hrv_avg, body_battery_high, training_readiness, total_days_logged, spo2_lowest (night-low SpO2 — low can suggest apnea), body_battery_change (overnight recovery), breathing_disruption (NONE/severity)
+- garmin: sleep_score, resting_hr, hrv_avg, body_battery_high, training_readiness, training_status (load/recovery balance, Garmin-computed: PRODUCTIVE/MAINTAINING/RECOVERY/UNPRODUCTIVE/DETRAINING/STRAINED/PEAKING — can be null if too little aerobic training), total_days_logged, spo2_lowest (night-low SpO2 — low can suggest apnea), body_battery_change (overnight recovery), breathing_disruption (NONE/severity)
 - hevy: workouts in period, last workout date
 - labs: out-of-range markers (marker, value, flag, date)
 - nutrition: avg calories/protein per day, days_with_logs, targets
@@ -243,6 +243,7 @@ async def assemble_context(
             "hrv_avg": g.hrv_avg,
             "body_battery_high": g.body_battery_high,
             "training_readiness": g.training_readiness,
+            "training_status": g.training_status,
             "spo2_lowest": g.spo2_lowest,
             "body_battery_change": g.body_battery_change,
             "breathing_disruption": g.breathing_disruption,

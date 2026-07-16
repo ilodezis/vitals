@@ -112,6 +112,21 @@
             {% if not latest or latest.training_readiness is none %}<span class="v-text-micro">{{ t("garmin.no_readiness") }}</span>{% endif %}
         </div>
         <div class="v-metric">
+            <span class="v-metric-label">{{ t("garmin.training_status") }}</span>
+            <div class="flex items-baseline">
+                {% if latest and latest.training_status %}
+                <span class="v-metric-value-text">{{ t("garmin.training_status." + latest.training_status.lower()) }}</span>
+                {% else %}
+                <span class="v-metric-value" style="color: var(--muted)">—</span>
+                {% endif %}
+            </div>
+            {% if latest and latest.load_ratio is not none %}
+            <span class="v-text-micro">ACWR {{ latest.load_ratio | round(0) | int }}%</span>
+            {% elif not latest or not latest.training_status %}
+            <span class="v-text-micro">{{ t("garmin.no_training_status") }}</span>
+            {% endif %}
+        </div>
+        <div class="v-metric">
             <span class="v-metric-label">{{ t("garmin.active_cal") }}</span>
             <div class="flex items-baseline">
                 <span class="v-metric-value">{% if latest and latest.active_calories is not none %}{{ latest.active_calories | format_number }}{% else %}—{% endif %}</span>
