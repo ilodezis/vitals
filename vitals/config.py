@@ -69,10 +69,12 @@ class Config:
     height_cm: float = 190.0
     sex: str = "male"
 
-    # Which body-fat / LBM source is the "primary" one for projections & summaries
-    # when both a Navy (tape) estimate and a BIA scan (InBody/МедАсс) exist for a
-    # date. ``latest`` = whichever was recorded most recently; ``navy`` / ``bia``
-    # pin a method. Both series are always shown on the chart regardless.
+    # Which body-fat / LBM source is "primary" for the goal-progress card when both
+    # a Navy (tape) estimate and a BIA scan (InBody/МедАсс) exist. ``latest``
+    # (default) prefers the BIA scan whenever body_comp has one — a real scan
+    # outranks the tape-formula estimate — falling back to Navy only when there's
+    # no BIA data; ``navy`` / ``bia`` pin a method explicitly. Both series are
+    # always shown on the weight chart regardless of this setting.
     body_fat_source: str = "latest"
 
     # User Profile settings (single user default based on Timur)

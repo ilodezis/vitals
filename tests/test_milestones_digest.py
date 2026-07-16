@@ -110,7 +110,7 @@ async def test_create_and_progress_body_fat_goal(db_session, monkeypatch):
     )
     await db_session.commit()
 
-    # Get cards - BIA scan is newer, so it should be picked by "latest"
+    # Get cards - BIA is available, so "latest" (default) picks it over Navy
     cards = await milestones_service.dashboard_cards(db_session)
     card = cards[0]
     assert card["current"] == 15.5
@@ -124,6 +124,18 @@ async def test_create_and_progress_body_fat_goal(db_session, monkeypatch):
 
     # 4. Force "bia"
     monkeypatch.setenv("VITALS_BODY_FAT_SOURCE", "bia")
+    cards = await milestones_service.dashboard_cards(db_session)
+    card = cards[0]
+    assert card["current"] == 15.5
+
+    # 5. Back to default ("latest"): even a Navy measurement logged *after* the
+    # BIA scan must not steal the spot back — BIA outranks Navy whenever it's
+    # available, this isn't a "most recent date wins" contest.
+    monkeypatch.delenv("VITALS_BODY_FAT_SOURCE", raising=False)
+    await weight_service.upsert_body_measurement(
+        db_session, on_date=DAY + timedelta(days=2), neck_cm=39, waist_cm=90
+    )
+    await db_session.commit()
     cards = await milestones_service.dashboard_cards(db_session)
     card = cards[0]
     assert card["current"] == 15.5

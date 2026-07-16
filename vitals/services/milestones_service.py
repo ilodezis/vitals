@@ -119,7 +119,10 @@ async def _current_weight(session: AsyncSession) -> Optional[float]:
 
 
 async def _current_body_fat(session: AsyncSession) -> Optional[float]:
-    """Latest active body fat percentage, either Navy or InBody (BIA) based on preference."""
+    """Latest active body fat percentage, either Navy or InBody (BIA) based on
+    preference. A BIA scan is a direct measurement, so by default it outranks the
+    Navy tape-formula estimate whenever body_comp is enabled and has one — Navy is
+    only the fallback when there's no BIA data (not a "most recent date" contest)."""
     from vitals.config import load_config
     from vitals.services import weight_service
     from vitals.services.modules_service import get_enabled_modules
@@ -132,19 +135,16 @@ async def _current_body_fat(session: AsyncSession) -> Optional[float]:
 
     # 1. Fetch Navy measurements if not pinned to bia
     navy_val = None
-    navy_date = None
     if source_pref in ("latest", "navy"):
         measurements = await weight_service.list_body_measurements(session)
         # Find the latest measurement with body_fat_pct
         for m in reversed(measurements):
             if m.body_fat_pct is not None:
                 navy_val = m.body_fat_pct
-                navy_date = m.date
                 break
 
     # 2. Fetch BIA scans if body_comp is enabled and not pinned to navy
     bia_val = None
-    bia_date = None
     if body_comp_enabled and source_pref in ("latest", "bia"):
         from vitals.services import body_scan_service
         from vitals.services.analytics import body_metrics
@@ -154,7 +154,6 @@ async def _current_body_fat(session: AsyncSession) -> Optional[float]:
             bf_val = body_metrics.body_fat_pct_from_scan(s.metrics)
             if bf_val is not None:
                 bia_val = bf_val
-                bia_date = s.date
                 break
 
     # 3. Resolve based on preference
@@ -163,14 +162,8 @@ async def _current_body_fat(session: AsyncSession) -> Optional[float]:
     if source_pref == "bia":
         return bia_val
 
-    # "latest" or fallback: choose whichever is newer
-    if navy_date is not None and bia_date is not None:
-        if bia_date >= navy_date:
-            return bia_val
-        return navy_val
-    if navy_date is not None:
-        return navy_val
-    return bia_val
+    # "latest" (default): BIA wins whenever it's available; Navy is the fallback.
+    return bia_val if bia_val is not None else navy_val
 
 
 _WEIGHT_UNITS = {"kg", "кг"}
