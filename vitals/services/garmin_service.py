@@ -23,7 +23,7 @@ handed a client (tests pass a fake), never touching the network itself.
 from __future__ import annotations
 
 import logging
-from datetime import date as date_type, datetime, timedelta
+from datetime import date as date_type, datetime, timedelta, timezone
 from typing import Any, Optional, Sequence
 
 from sqlalchemy import func, select
@@ -75,6 +75,25 @@ def _first(*values: Any) -> Any:
     return None
 
 
+def _parse_sleep_boundary(sleep_dto: dict, prefix: str) -> Optional[datetime]:
+    """Sleep bed/wake timestamp (``prefix`` is e.g. ``"sleepStart"``) -> local
+    naive datetime.
+
+    Garmin ships both a ``*TimestampGMT`` (a true UTC epoch, converted the same
+    way as ``_parse_activity_start``) and a ``*TimestampLocal`` variant whose ms
+    count already bakes the local offset in -- decoding THAT as UTC and just
+    stripping tzinfo gives the right wall-clock time directly; running it through
+    ``to_local_naive`` too would shift it a second time. GMT is preferred when
+    both are present since it's unambiguous."""
+    gmt_ms = _num(sleep_dto.get(f"{prefix}TimestampGMT"))
+    if gmt_ms is not None:
+        return to_local_naive(datetime.fromtimestamp(gmt_ms / 1000, tz=timezone.utc))
+    local_ms = _num(sleep_dto.get(f"{prefix}TimestampLocal"))
+    if local_ms is not None:
+        return datetime.fromtimestamp(local_ms / 1000, tz=timezone.utc).replace(tzinfo=None)
+    return None
+
+
 def _normalize_daily(raw: dict) -> dict:
     """Reduce the raw per-day sub-payload bundle to ``garmin_daily`` column values.
     Pure (no DB); every field defaults to None so a sparse day is fine."""
@@ -94,6 +113,21 @@ def _normalize_daily(raw: dict) -> dict:
         "light_sleep_seconds": _intish(sleep_dto.get("lightSleepSeconds")),
         "rem_sleep_seconds": _intish(sleep_dto.get("remSleepSeconds")),
         "awake_seconds": _intish(sleep_dto.get("awakeSleepSeconds")),
+        "sleep_start": _parse_sleep_boundary(sleep_dto, "sleepStart"),
+        "sleep_end": _parse_sleep_boundary(sleep_dto, "sleepEnd"),
+        "awake_count": _intish(sleep_dto.get("awakeCount")),
+        "restless_moments": _intish(sleep_dto.get("restlessMomentsCount")),
+        "avg_sleep_stress": _intish(sleep_dto.get("avgSleepStress")),
+        "avg_sleep_hr": _intish(sleep_dto.get("avgHeartRate")),
+        "spo2_lowest": _intish(sleep_dto.get("lowestSpO2Value")),
+        "respiration_lowest": _num(sleep_dto.get("lowestRespirationValue")),
+        "respiration_highest": _num(sleep_dto.get("highestRespirationValue")),
+        "body_battery_change": _intish(_dig(raw, "sleep", "bodyBatteryChange")),
+        "breathing_disruption": sleep_dto.get("breathingDisruptionSeverity"),
+        "sleep_need_actual": _intish(_first(
+            _dig(sleep_dto, "nextSleepNeed", "actual"),
+            _dig(raw, "sleep", "nextSleepNeed", "actual"),
+        )),
         # Heart / HRV / respiration
         "resting_hr": _intish(_first(summary.get("restingHeartRate"), _dig(raw, "rhr", "restingHeartRate"))),
         "avg_hr": _intish(summary.get("averageHeartRate")),

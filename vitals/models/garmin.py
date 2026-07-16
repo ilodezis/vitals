@@ -56,6 +56,18 @@ class GarminDaily(Base, InsightsMixin, TimestampMixin):
     light_sleep_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     rem_sleep_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     awake_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    sleep_start: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    sleep_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    awake_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    restless_moments: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    avg_sleep_stress: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    avg_sleep_hr: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    spo2_lowest: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    respiration_lowest: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    respiration_highest: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    body_battery_change: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    breathing_disruption: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    sleep_need_actual: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # ── Heart / HRV / respiration ───────────────────────────────────────────────
     resting_hr: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)

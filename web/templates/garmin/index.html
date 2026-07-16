@@ -61,7 +61,12 @@
                 <span class="v-metric-value">—</span>
                 {% endif %}
             </div>
-            {% if latest and latest.sleep_score %}<span class="v-text-micro">{{ t("garmin.sleep_score") }} {{ latest.sleep_score }}</span>{% endif %}
+            <div class="flex items-center gap-1.5 flex-wrap" style="margin-top: 2px">
+                {% if latest and latest.sleep_score %}<span class="v-text-micro">{{ t("garmin.sleep_score") }} {{ latest.sleep_score }}</span>{% endif %}
+                {% if latest and latest.sleep_start and latest.sleep_end %}<span class="v-text-micro">{{ latest.sleep_start.strftime('%H:%M') }}–{{ latest.sleep_end.strftime('%H:%M') }}</span>{% endif %}
+                {% if latest and latest.spo2_lowest is not none %}<span class="v-chip {% if latest.spo2_lowest < 90 %}bad{% endif %}">SpO2 {{ latest.spo2_lowest }}%</span>{% endif %}
+                {% if latest and latest.breathing_disruption and latest.breathing_disruption != 'NONE' %}<span class="v-chip bad">{{ t("garmin.breathing_disrupted") }}</span>{% endif %}
+            </div>
         </div>
         <div class="v-metric">
             <span class="v-metric-label">{{ t("garmin.resting_hr") }}</span>
@@ -156,13 +161,14 @@
                 <div class="v-table-wrap">
                     <table class="v-table">
                     <thead>
-                        <tr><th class="v-col-date whitespace-nowrap">{{ t("common.date") }}</th><th>{{ t("garmin.sleep") }}</th><th class="text-right">RHR</th><th class="text-right">HRV</th><th class="text-right">{{ t("garmin.stress") }}</th><th class="text-right">BB</th><th class="text-right">{{ t("garmin.steps") }}</th></tr>
+                        <tr><th class="v-col-date whitespace-nowrap">{{ t("common.date") }}</th><th>{{ t("garmin.sleep") }}</th><th class="text-right">{{ t("garmin.awake_count") }}</th><th class="text-right">RHR</th><th class="text-right">HRV</th><th class="text-right">{{ t("garmin.stress") }}</th><th class="text-right">BB</th><th class="text-right">{{ t("garmin.steps") }}</th></tr>
                     </thead>
                     <tbody>
                         {% for d in history %}
                         <tr>
                             <td class="v-num v-col-date" style="color: var(--fg)">{{ d.date | format_date }}</td>
                             <td class="v-num">{{ hm(d.sleep_seconds) }}{% if d.sleep_score %} <span class="v-text-micro" style="color: var(--muted)">· {{ d.sleep_score }}</span>{% endif %}</td>
+                            <td class="v-num text-right">{{ d.awake_count if d.awake_count is not none else '—' }}</td>
                             <td class="v-num text-right">{{ d.resting_hr or '—' }}</td>
                             <td class="v-num text-right">{{ d.hrv_avg | round(0) | int if d.hrv_avg else '—' }}</td>
                             <td class="v-num text-right">{{ d.avg_stress if d.avg_stress is not none else '—' }}</td>
@@ -170,7 +176,7 @@
                             <td class="v-num text-right">{{ d.steps | format_number if d.steps is not none else '—' }}</td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="7" class="text-center" style="color: var(--muted)">{{ t("garmin.no_history") }}</td></tr>
+                        <tr><td colspan="8" class="text-center" style="color: var(--muted)">{{ t("garmin.no_history") }}</td></tr>
                         {% endfor %}
                     </tbody>
                     </table>

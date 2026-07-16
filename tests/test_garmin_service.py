@@ -3,7 +3,7 @@ manual-over-Garmin priority, activities, recovery advice, the MFA alert path,
 and the Health Auto Export backup channel."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pytest
 from sqlalchemy import func, select
@@ -13,11 +13,16 @@ from vitals.models.garmin import GarminActivity, GarminDaily
 from vitals.models.raw_payload import RawPayload
 from vitals.models.weight import WeightLog
 from vitals.services import garmin_service, weight_service
+from vitals.utils.timeutils import to_local_naive
 
 # asyncio_mode=auto (pytest.ini) runs the async tests; the pure normalisation
 # tests below stay synchronous, so no module-level asyncio mark here.
 
 DAY = date(2026, 6, 10)
+
+# GMT epoch ms for the sleep window used below (night of 2026-06-09 -> 06-10).
+_SLEEP_START_GMT_MS = int(datetime(2026, 6, 9, 23, 0, tzinfo=timezone.utc).timestamp() * 1000)
+_SLEEP_END_GMT_MS = int(datetime(2026, 6, 10, 6, 30, tzinfo=timezone.utc).timestamp() * 1000)
 
 RAW_DAY = {
     "summary": {
@@ -45,7 +50,19 @@ RAW_DAY = {
             "remSleepSeconds": 6000,
             "awakeSleepSeconds": 300,
             "sleepScores": {"overall": {"value": 78}},
-        }
+            "sleepStartTimestampGMT": _SLEEP_START_GMT_MS,
+            "sleepEndTimestampGMT": _SLEEP_END_GMT_MS,
+            "awakeCount": 2,
+            "restlessMomentsCount": 8,
+            "avgSleepStress": 18,
+            "avgHeartRate": 54,
+            "lowestSpO2Value": 91,
+            "lowestRespirationValue": 12.5,
+            "highestRespirationValue": 16.0,
+            "breathingDisruptionSeverity": "NONE",
+            "nextSleepNeed": {"actual": 480},
+        },
+        "bodyBatteryChange": 55,
     },
     "hrv": {"hrvSummary": {"lastNightAvg": 45, "status": "BALANCED", "weeklyAvg": 47}},
     "training_readiness": [{"score": 72}],
@@ -87,11 +104,52 @@ def test_normalize_daily_extracts_metrics():
     assert f["active_calories"] == 600
 
 
+def test_normalize_daily_extracts_sleep_detail():
+    f = garmin_service._normalize_daily(RAW_DAY)
+    assert f["sleep_start"] == to_local_naive(datetime(2026, 6, 9, 23, 0, tzinfo=timezone.utc))
+    assert f["sleep_end"] == to_local_naive(datetime(2026, 6, 10, 6, 30, tzinfo=timezone.utc))
+    assert f["awake_count"] == 2
+    assert f["restless_moments"] == 8
+    assert f["avg_sleep_stress"] == 18
+    assert f["avg_sleep_hr"] == 54
+    assert f["spo2_lowest"] == 91
+    assert f["respiration_lowest"] == 12.5
+    assert f["respiration_highest"] == 16.0
+    assert f["body_battery_change"] == 55
+    assert f["breathing_disruption"] == "NONE"
+    assert f["sleep_need_actual"] == 480
+
+
 def test_normalize_daily_sparse_is_all_none():
     f = garmin_service._normalize_daily({"summary": {}})
     assert f["steps"] is None
     assert f["sleep_score"] is None
     assert f["vo2max"] is None
+    assert f["sleep_start"] is None
+    assert f["spo2_lowest"] is None
+    assert f["body_battery_change"] is None
+    assert f["breathing_disruption"] is None
+
+
+# ── Sleep boundary parsing (GMT vs Local epoch quirk) ─────────────────────────
+def test_parse_sleep_boundary_prefers_gmt():
+    dto = {"sleepStartTimestampGMT": _SLEEP_START_GMT_MS, "sleepStartTimestampLocal": 0}
+    result = garmin_service._parse_sleep_boundary(dto, "sleepStart")
+    assert result == to_local_naive(datetime(2026, 6, 9, 23, 0, tzinfo=timezone.utc))
+
+
+def test_parse_sleep_boundary_falls_back_to_local_as_is():
+    # Garmin's "*Local" epoch already bakes the local offset into the ms count, so
+    # decoding it as UTC and stripping tzinfo gives the correct wall-clock time
+    # directly -- routing it through to_local_naive() would double-shift it.
+    local_ms = int(datetime(2026, 6, 9, 23, 0, tzinfo=timezone.utc).timestamp() * 1000)
+    dto = {"sleepStartTimestampLocal": local_ms}
+    result = garmin_service._parse_sleep_boundary(dto, "sleepStart")
+    assert result == datetime(2026, 6, 9, 23, 0)
+
+
+def test_parse_sleep_boundary_missing_is_none():
+    assert garmin_service._parse_sleep_boundary({}, "sleepStart") is None
 
 
 # ── Daily upsert + raw payload ────────────────────────────────────────────────
@@ -132,6 +190,26 @@ async def test_sync_is_idempotent_per_date(db_session):
         )
     )).scalar()
     assert n_raw == 1
+
+
+async def test_sync_persists_sleep_detail_columns(db_session):
+    client = FakeGarminClient()
+    await garmin_service.sync(db_session, client, days=1, on_date=DAY)
+    await db_session.commit()
+
+    row = await garmin_service.get_daily(db_session, DAY)
+    assert row.sleep_start == to_local_naive(datetime(2026, 6, 9, 23, 0, tzinfo=timezone.utc))
+    assert row.sleep_end == to_local_naive(datetime(2026, 6, 10, 6, 30, tzinfo=timezone.utc))
+    assert row.awake_count == 2
+    assert row.restless_moments == 8
+    assert row.avg_sleep_stress == 18
+    assert row.avg_sleep_hr == 54
+    assert row.spo2_lowest == 91
+    assert row.respiration_lowest == 12.5
+    assert row.respiration_highest == 16.0
+    assert row.body_battery_change == 55
+    assert row.breathing_disruption == "NONE"
+    assert row.sleep_need_actual == 480
 
 
 # ── Weight bridge + manual-over-Garmin priority ───────────────────────────────

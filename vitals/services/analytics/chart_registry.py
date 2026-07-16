@@ -97,6 +97,11 @@ REGISTRY: dict[str, MetricField] = {
         _d("garmin.activity_calories", "garmin", "Калории (тренировки)", "Activity calories", "ккал", model=GarminActivity, column="calories", aggregate="sum"),
         _d("garmin.activity_avg_hr", "garmin", "Средний пульс (тренировки)", "Activity avg HR", "уд/мин", model=GarminActivity, column="avg_hr", aggregate="avg"),
         _d("garmin.activity_duration", "garmin", "Длительность тренировок", "Activity duration", "мин", model=GarminActivity, column="duration_seconds", aggregate="sum", transform=lambda v: v / 60),
+        _d("garmin.avg_sleep_hr", "garmin", "Пульс во сне", "Sleep HR", "уд/мин", model=GarminDaily, column="avg_sleep_hr"),
+        _d("garmin.spo2_lowest", "garmin", "SpO2 (мин. за ночь)", "SpO2 (night low)", "%", model=GarminDaily, column="spo2_lowest"),
+        _d("garmin.avg_sleep_stress", "garmin", "Стресс во сне", "Sleep stress", None, model=GarminDaily, column="avg_sleep_stress"),
+        _d("garmin.body_battery_change", "garmin", "Восстановление за ночь", "Body Battery change", None, model=GarminDaily, column="body_battery_change"),
+        _d("garmin.sleep_need", "garmin", "Потребность сна", "Sleep need", "ч", model=GarminDaily, column="sleep_need_actual", transform=lambda v: v / 60),
 
         # ── glp1 (optional) ──────────────────────────────────────────────────
         _d("glp1.dose_mg", "glp1", "Доза GLP-1", "GLP-1 dose", "мг", model=Injection, column="dose_mg", aggregate="sum", module_key="glp1"),
