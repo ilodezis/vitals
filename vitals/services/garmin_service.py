@@ -42,6 +42,7 @@ AUTH_ALERT_KEY = "garmin.auth"
 
 SLEEP_SCORE_FLOOR = 60
 BODY_BATTERY_FLOOR = 40
+SPO2_FLOOR = 90
 
 
 # ── Pure extraction helpers ───────────────────────────────────────────────────
@@ -394,6 +395,10 @@ def recovery_advice(daily: Optional[GarminDaily]) -> Optional[str]:
         notes.append(t("alert.recovery_sleep", score=daily.sleep_score))
     if daily.body_battery_high is not None and daily.body_battery_high < BODY_BATTERY_FLOOR:
         notes.append(t("alert.recovery_battery", value=daily.body_battery_high))
+    if daily.spo2_lowest is not None and daily.spo2_lowest < SPO2_FLOOR:
+        notes.append(t("alert.recovery_spo2", value=daily.spo2_lowest))
+    if daily.breathing_disruption and daily.breathing_disruption != "NONE":
+        notes.append(t("alert.recovery_breathing"))
     if not notes:
         return None
     return t("alert.recovery_prefix") + ", ".join(notes) + t("alert.recovery_suffix")

@@ -61,12 +61,9 @@
                 <span class="v-metric-value">—</span>
                 {% endif %}
             </div>
-            <div class="flex items-center gap-1.5 flex-wrap" style="margin-top: 2px">
-                {% if latest and latest.sleep_score %}<span class="v-text-micro">{{ t("garmin.sleep_score") }} {{ latest.sleep_score }}</span>{% endif %}
-                {% if latest and latest.sleep_start and latest.sleep_end %}<span class="v-text-micro">{{ latest.sleep_start.strftime('%H:%M') }}–{{ latest.sleep_end.strftime('%H:%M') }}</span>{% endif %}
-                {% if latest and latest.spo2_lowest is not none %}<span class="v-chip {% if latest.spo2_lowest < 90 %}bad{% endif %}">SpO2 {{ latest.spo2_lowest }}%</span>{% endif %}
-                {% if latest and latest.breathing_disruption and latest.breathing_disruption != 'NONE' %}<span class="v-chip bad">{{ t("garmin.breathing_disrupted") }}</span>{% endif %}
-            </div>
+            {% if latest and (latest.sleep_score or (latest.sleep_start and latest.sleep_end)) %}
+            <span class="v-text-micro">{% if latest.sleep_score %}{{ t("garmin.sleep_score") }} {{ latest.sleep_score }}{% endif %}{% if latest.sleep_score and latest.sleep_start and latest.sleep_end %} · {% endif %}{% if latest.sleep_start and latest.sleep_end %}{{ latest.sleep_start.strftime('%H:%M') }}–{{ latest.sleep_end.strftime('%H:%M') }}{% endif %}</span>
+            {% endif %}
         </div>
         <div class="v-metric">
             <span class="v-metric-label">{{ t("garmin.resting_hr") }}</span>

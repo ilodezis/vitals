@@ -292,6 +292,23 @@ async def test_recovery_advice_flags_low_sleep_and_battery(db_session):
     assert garmin_service.recovery_advice(None) is None
 
 
+async def test_recovery_advice_flags_low_spo2_and_breathing_disruption(db_session):
+    from vitals.i18n import current_lang
+    current_lang.set("ru")
+    low_spo2 = GarminDaily(date=DAY, domain="garmin", spo2_lowest=85)
+    advice = garmin_service.recovery_advice(low_spo2)
+    assert advice is not None
+    assert "SpO2" in advice
+
+    disrupted = GarminDaily(date=DAY, domain="garmin", breathing_disruption="MILD")
+    advice = garmin_service.recovery_advice(disrupted)
+    assert advice is not None
+    assert "дыхания" in advice
+
+    fine = GarminDaily(date=DAY, domain="garmin", spo2_lowest=95, breathing_disruption="NONE")
+    assert garmin_service.recovery_advice(fine) is None
+
+
 # ── Health Auto Export backup channel ─────────────────────────────────────────
 async def test_health_auto_export_ingest(db_session):
     payload = {

@@ -92,6 +92,8 @@ _EN: dict[str, str] = {
     "alert.lab_retest": "{marker}: time to retest (last {date}).",
     "alert.recovery_sleep": "low sleep ({score})",
     "alert.recovery_battery": "Body Battery didn't recover ({value})",
+    "alert.recovery_spo2": "low night SpO2 ({value}%)",
+    "alert.recovery_breathing": "breathing disrupted",
     "alert.recovery_prefix": "Recovery: ",
     "alert.recovery_suffix": " — consider reducing load.",
 
@@ -190,7 +192,6 @@ _EN: dict[str, str] = {
     "garmin.no_readiness": "no data",
     "garmin.active_cal": "Active calories",
     "garmin.awake_count": "Awakenings",
-    "garmin.breathing_disrupted": "Breathing disrupted",
     "garmin.sync_ok": "Days synchronized: {count}",
     "garmin.sync_imported": "Days imported from Health Auto Export: {count}",
     "garmin.sync_not_configured": "Garmin not configured — set VITALS_GARMIN_EMAIL / VITALS_GARMIN_PASSWORD.",
@@ -1037,6 +1038,8 @@ _RU: dict[str, str] = {
     "alert.lab_retest": "{marker}: пора пересдать (последний {date}).",
     "alert.recovery_sleep": "низкий сон ({score})",
     "alert.recovery_battery": "Body Battery не восстановилась ({value})",
+    "alert.recovery_spo2": "низкий SpO2 за ночь ({value}%)",
+    "alert.recovery_breathing": "нарушения дыхания",
     "alert.recovery_prefix": "Восстановление: ",
     "alert.recovery_suffix": " — стоит облегчить нагрузку.",
 
@@ -1135,7 +1138,6 @@ _RU: dict[str, str] = {
     "garmin.no_readiness": "нет данных",
     "garmin.active_cal": "Активные калории",
     "garmin.awake_count": "Пробуждения",
-    "garmin.breathing_disrupted": "Нарушение дыхания",
     "garmin.sync_ok": "Синхронизировано дней: {count}",
     "garmin.sync_imported": "Импортировано из Health Auto Export дней: {count}",
     "garmin.sync_not_configured": "Garmin не настроен — задайте VITALS_GARMIN_EMAIL / VITALS_GARMIN_PASSWORD.",
