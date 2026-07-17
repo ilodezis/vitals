@@ -218,14 +218,26 @@ async def get_garmin_metrics(
     """Retrieves daily Garmin recovery/sleep scores and recorded activity sessions.
     Each series defaults to the most recent 100 rows.
 
-    Set ``intraday=True`` to also get the within-day curves behind the daily
-    stress / Body Battery summaries (a sample every ~3 minutes, so ~480 points per
-    series per day) as ``intraday: {series_type: [{ts, value}]}``. Off by default
-    because it is orders of magnitude more data than the daily rows: use it to
-    answer *when* inside a day something happened (a stress spike, a Body Battery
-    drain), always with a narrow start_date/end_date window. The response caps at
-    5000 points (~5 days of one series) and sets ``intraday_truncated`` to true
-    when the window held more than that.
+    Set ``intraday=True`` to also get the curves behind the daily summaries, as
+    ``intraday: {series_type: [{ts, value}]}``. Two families of series:
+
+      * the whole day — ``stress``, ``body_battery`` (a sample every ~3 minutes,
+        so ~480 points per series per day);
+      * the night — ``sleep_hr``, ``sleep_spo2``, ``sleep_respiration``,
+        ``sleep_stress``, ``sleep_bb``, ``sleep_hrv``, ``sleep_movement``
+        (~2000 points across the seven).
+
+    A night's samples are dated to the daily row they belong to (the morning of
+    waking), including the ones recorded the previous evening, so one night reads
+    as one date. The night's *stage* timeline is not a series — it's
+    ``sleep_stages`` on the daily row (``[{start, end, stage}]``, stage being
+    deep/light/rem/awake), next to ``breathing_events``.
+
+    Off by default because it is orders of magnitude more data than the daily
+    rows: use it to answer *when* something happened (a stress spike, a Body
+    Battery drain, an SpO2 dip and which sleep stage it fell in), always with a
+    narrow start_date/end_date window. The response caps at 5000 points and sets
+    ``intraday_truncated`` to true when the window held more than that.
     """
     session_factory = get_session_factory()
     start = date_type.fromisoformat(start_date) if start_date else None

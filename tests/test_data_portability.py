@@ -57,6 +57,14 @@ async def _seed(session) -> None:
                 date=date(2026, 4, 29), domain="garmin", source="garmin_api",
                 raw_payload_id=rp.id, steps=8000, sleep_seconds=27000,
                 sleep_score=80, resting_hr=55,
+                # The night's interval series — JSONB round-trip stability.
+                sleep_stages=[
+                    {"start": "2026-04-28T23:00:00", "end": "2026-04-28T23:30:00", "stage": "light"},
+                    {"start": "2026-04-28T23:30:00", "end": "2026-04-29T01:00:00", "stage": "deep"},
+                ],
+                breathing_events=[
+                    {"start": "2026-04-28T23:00:00", "end": "2026-04-29T01:00:00", "value": 0},
+                ],
             ),
             # Per-activity detail — exercises JSONB round-trip stability.
             GarminActivity(
@@ -76,6 +84,13 @@ async def _seed(session) -> None:
                 date=date(2026, 4, 29), domain="garmin", source="garmin_api",
                 raw_payload_id=rp.id, series_type="body_battery",
                 ts=datetime(2026, 4, 29, 8, 0), value=72.0,
+            ),
+            # A nightly series, timestamped the evening before the date it's filed
+            # under — the backup must not "helpfully" re-date it.
+            GarminIntraday(
+                date=date(2026, 4, 29), domain="garmin", source="garmin_api",
+                raw_payload_id=rp.id, series_type="sleep_hr",
+                ts=datetime(2026, 4, 28, 23, 10), value=58.0,
             ),
             LabResult(
                 date=date(2026, 4, 1), domain="labs", source="lab_parser",
@@ -140,9 +155,16 @@ async def test_full_roundtrip_replace_is_stable(db_session):
     assert stats.counts["hevy_exercises"] == 1
     assert stats.counts["hevy_sets"] == 2
     # The intraday series is in the backup (it rides the generic sorted_tables
-    # walk, so this guards the walk actually reaching new tables).
-    assert stats.counts["garmin_intraday"] == 2
-    assert {r["series_type"] for r in snap1["garmin_intraday"]} == {"stress", "body_battery"}
+    # walk, so this guards the walk actually reaching new tables) — whole-day and
+    # nightly series alike.
+    assert stats.counts["garmin_intraday"] == 3
+    assert {r["series_type"] for r in snap1["garmin_intraday"]} == {
+        "stress", "body_battery", "sleep_hr",
+    }
+    # The night's interval series survive as structure, not as a stringified blob.
+    daily = snap1["garmin_daily"][0]
+    assert [s["stage"] for s in daily["sleep_stages"]] == ["light", "deep"]
+    assert daily["breathing_events"][0]["value"] == 0
 
 
 async def test_import_is_idempotent(db_session):

@@ -38,6 +38,13 @@ from vitals.integrations.garmin_client import GarminAuthError, GarminMFARequired
 from vitals.models.garmin import (
     DOMAIN,
     SERIES_BODY_BATTERY,
+    SERIES_SLEEP_BB,
+    SERIES_SLEEP_HR,
+    SERIES_SLEEP_HRV,
+    SERIES_SLEEP_MOVEMENT,
+    SERIES_SLEEP_RESPIRATION,
+    SERIES_SLEEP_SPO2,
+    SERIES_SLEEP_STRESS,
     SERIES_STRESS,
     GarminActivity,
     GarminDaily,
@@ -182,10 +189,12 @@ def _parse_intraday_points(
 def _intraday_series(raw: dict) -> dict[str, list[tuple[datetime, float]]]:
     """Every intraday curve in the day's bundle, keyed by ``series_type``. Pure.
 
-    Both series ride in the one ``get_stress_data`` payload at full ~3-minute
-    resolution; the separate ``get_body_battery`` payload only carries inflection
-    points, so it's a fallback for when the stress payload came back without the
-    array."""
+    The whole-day stress and Body Battery curves ride in the one
+    ``get_stress_data`` payload at full ~3-minute resolution; the separate
+    ``get_body_battery`` payload only carries inflection points, so it's a
+    fallback for when the stress payload came back without the array. The night's
+    seven series come from ``get_sleep_data`` and join them here, so ``ingest_daily``
+    stores every curve through one loop."""
     stress_payload = raw.get("stress") or {}
 
     stress_rows = stress_payload.get("stressValuesArray")
@@ -209,7 +218,131 @@ def _intraday_series(raw: dict) -> dict[str, list[tuple[datetime, float]]]:
     return {
         SERIES_STRESS: _parse_intraday_points(stress_rows, value_index=stress_index),
         SERIES_BODY_BATTERY: _parse_intraday_points(bb_rows, value_index=bb_index),
+        **_sleep_intraday_series(raw),
     }
+
+
+# ── The night's series (sleep detail, level B) ────────────────────────────────
+# Each nightly array in the one ``get_sleep_data`` payload: the series it feeds,
+# its key, and the field names holding the sample's moment and value. The shapes
+# genuinely differ per array — verified against the watch's own responses — so
+# this table is the parser: most ship an epoch-ms ``startGMT`` + ``value``, but
+# respiration renames both fields, SpO2 renames both *and* ships an ISO string,
+# and movement ships an ISO string with its own value field.
+_SLEEP_SERIES = (
+    (SERIES_SLEEP_HR, "sleepHeartRate", "startGMT", "value"),
+    (SERIES_SLEEP_STRESS, "sleepStress", "startGMT", "value"),
+    (SERIES_SLEEP_BB, "sleepBodyBattery", "startGMT", "value"),
+    (SERIES_SLEEP_HRV, "hrvData", "startGMT", "value"),
+    (SERIES_SLEEP_RESPIRATION, "wellnessEpochRespirationDataDTOList",
+     "startTimeGMT", "respirationValue"),
+    (SERIES_SLEEP_SPO2, "wellnessEpochSPO2DataDTOList", "epochTimestamp", "spo2Reading"),
+    (SERIES_SLEEP_MOVEMENT, "sleepMovement", "startGMT", "activityLevel"),
+)
+
+# ``sleepLevels.activityLevel`` is a stage code, not a measurement.
+_SLEEP_STAGE_NAMES = {0: "deep", 1: "light", 2: "rem", 3: "awake"}
+
+
+def _gmt_moment(value: Any) -> Optional[datetime]:
+    """A nightly timestamp in either shape Garmin uses → local naive.
+
+    Epoch ms for most arrays, but an ISO-8601 string for sleepLevels /
+    sleepMovement / the SpO2 epochs. The string carries no offset marker yet is
+    GMT, so it needs the same UTC→local conversion as the epochs — reading it as
+    already-local would smear the whole night by the offset and put stages and
+    heart rate on two different timelines."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return _epoch_ms_to_local(value)
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    # to_local_naive() reads a naive value as UTC, which is exactly what these are.
+    return to_local_naive(parsed)
+
+
+def _parse_sleep_points(
+    rows: Any, ts_key: str, value_key: str
+) -> list[tuple[datetime, float]]:
+    """``[{ts_key: …, value_key: …}, …]`` → ``[(local_ts, value), …]``, by time.
+
+    Negatives are dropped for the same reason as the whole-day curves: Garmin's
+    ``-1``/``-2`` are "no reading" / "off the wrist" sentinels, not measurements.
+    Zero is kept — a movement level of 0.0 means lying perfectly still, which is
+    a reading. The raw array stays whole in ``raw_payloads`` either way."""
+    out: list[tuple[datetime, float]] = []
+    if not isinstance(rows, list):
+        return out
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        ts = _gmt_moment(row.get(ts_key))
+        value = _num(row.get(value_key))
+        if ts is None or value is None or value < 0:
+            continue
+        out.append((ts, value))
+    out.sort(key=lambda p: p[0])
+    return out
+
+
+def _sleep_intraday_series(raw: dict) -> dict[str, list[tuple[datetime, float]]]:
+    """Every nightly point series in the day's bundle, keyed by ``series_type``."""
+    sleep = raw.get("sleep")
+    if not isinstance(sleep, dict):
+        sleep = {}
+    return {
+        series_type: _parse_sleep_points(sleep.get(key), ts_key, value_key)
+        for series_type, key, ts_key, value_key in _SLEEP_SERIES
+    }
+
+
+def _parse_sleep_intervals(rows: Any, value_key: str, out_key: str) -> Optional[list]:
+    """A nightly *interval* array → ``[{"start", "end", <out_key>}, …]``.
+
+    Spans, not samples, so they can't be point series — they go in a JSONB column
+    on the night's row. Timestamps are stored as ISO strings because JSON has no
+    datetime, and the chart plots them as-is."""
+    if not isinstance(rows, list) or not rows:
+        return None
+    out: list[dict] = []
+    for item in rows:
+        if not isinstance(item, dict):
+            continue
+        start = _gmt_moment(item.get("startGMT"))
+        end = _gmt_moment(item.get("endGMT"))
+        if start is None or end is None:
+            continue
+        out.append({
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            out_key: _intish(item.get(value_key)),
+        })
+    # ISO strings sort chronologically as text; Garmin ships these in order, but
+    # the hypnogram is drawn straight from this list so don't rely on it.
+    out.sort(key=lambda s: s["start"])
+    return out or None
+
+
+def _normalize_sleep_stages(raw: dict) -> Optional[list]:
+    """The hypnogram from ``sleepLevels`` — the stage code resolved to a name."""
+    stages = _parse_sleep_intervals(_dig(raw, "sleep", "sleepLevels"), "activityLevel", "stage")
+    if stages is None:
+        return None
+    for stage in stages:
+        stage["stage"] = _SLEEP_STAGE_NAMES.get(stage["stage"], "unknown")
+    return stages
+
+
+def _normalize_breathing_events(raw: dict) -> Optional[list]:
+    """``breathingDisruptionData`` — severity spans across the night. The
+    undisturbed (``value`` 0) spans are kept too: dropping them would erase the
+    difference between "measured and fine" and "never measured"."""
+    return _parse_sleep_intervals(
+        _dig(raw, "sleep", "breathingDisruptionData"), "value", "value"
+    )
 
 
 async def ingest_intraday(
@@ -292,6 +425,8 @@ def _normalize_daily(raw: dict) -> dict:
             _dig(sleep_dto, "nextSleepNeed", "actual"),
             _dig(raw, "sleep", "nextSleepNeed", "actual"),
         )),
+        "sleep_stages": _normalize_sleep_stages(raw),
+        "breathing_events": _normalize_breathing_events(raw),
         # Heart / HRV / respiration
         "resting_hr": _intish(_first(summary.get("restingHeartRate"), _dig(raw, "rhr", "restingHeartRate"))),
         "avg_hr": _intish(summary.get("averageHeartRate")),

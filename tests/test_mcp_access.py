@@ -131,6 +131,45 @@ async def test_get_garmin_metrics_intraday_off_by_default(db_session, session_fa
     assert len(with_series["intraday"]["body_battery"]) == 1
 
 
+async def test_get_garmin_metrics_exposes_sleep_series_and_stages(
+    db_session, session_factory, monkeypatch
+):
+    """The night's data reaches Claude by the same two paths as everything else:
+    point series through ``intraday``, and the stage timeline reflected off the
+    daily row's JSONB column by ``serialize_row`` — neither needed new plumbing."""
+    from datetime import date, datetime
+
+    from vitals.models.garmin import GarminDaily, GarminIntraday
+
+    monkeypatch.setattr(mcp_router, "get_session_factory", lambda: session_factory)
+    db_session.add_all([
+        GarminDaily(
+            date=date(2026, 6, 10), domain="garmin", source="garmin_api",
+            sleep_score=78,
+            sleep_stages=[
+                {"start": "2026-06-09T23:00:00", "end": "2026-06-10T01:00:00", "stage": "deep"},
+            ],
+        ),
+        # Recorded the evening before, filed under the night's date.
+        GarminIntraday(
+            date=date(2026, 6, 10), domain="garmin", source="garmin_api",
+            series_type="sleep_hr", ts=datetime(2026, 6, 9, 23, 10), value=58.0,
+        ),
+        GarminIntraday(
+            date=date(2026, 6, 10), domain="garmin", source="garmin_api",
+            series_type="sleep_spo2", ts=datetime(2026, 6, 10, 1, 0), value=91.0,
+        ),
+    ])
+    await db_session.commit()
+
+    result = await mcp_router.get_garmin_metrics(
+        start_date="2026-06-10", end_date="2026-06-10", intraday=True
+    )
+    assert [p["value"] for p in result["intraday"]["sleep_hr"]] == [58.0]
+    assert [p["value"] for p in result["intraday"]["sleep_spo2"]] == [91.0]
+    assert result["daily_recovery"][0]["sleep_stages"][0]["stage"] == "deep"
+
+
 async def test_get_garmin_metrics_intraday_caps_and_flags_truncation(
     db_session, session_factory, monkeypatch
 ):

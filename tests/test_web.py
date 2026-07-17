@@ -193,7 +193,7 @@ def test_page_controller_scripts_load_once_from_head():
 
     scripts = [
         "app.js", "glp1.js", "nutrition.js", "protocol.js", "charts.js",
-        "garmin.js", "labs_upload.js",
+        "garmin.js", "garmin_sleep.js", "labs_upload.js",
     ]
     alpine_pos = base_html.index('id="alpine-script"')
     for filename in scripts:
@@ -212,6 +212,7 @@ def test_page_controller_scripts_load_once_from_head():
         "supplements/index.html",
         "charts/index.html",
         "garmin/index.html",
+        "garmin/sleep.html",
     ]
     for rel_path in page_templates:
         html = (templates_dir / rel_path).read_text(encoding="utf-8")
@@ -598,6 +599,42 @@ async def test_garmin_dashboard_renders(auth_client):
     assert "История метрик" in response.text
     assert "showHaeModal" in response.text
     assert "Импорт JSON" in response.text
+
+
+async def test_garmin_sleep_night_page_renders(auth_client, db_session):
+    """GET /garmin/sleep/<date> renders the night's hypnogram + curve data."""
+    from datetime import date, datetime
+
+    from vitals.models.garmin import GarminDaily, GarminIntraday
+
+    db_session.add_all([
+        GarminDaily(
+            date=date(2026, 6, 10), domain="garmin", source="garmin_api",
+            sleep_seconds=27000, sleep_score=78, avg_sleep_hr=54, spo2_lowest=91,
+            sleep_start=datetime(2026, 6, 9, 23, 0), sleep_end=datetime(2026, 6, 10, 6, 30),
+            sleep_stages=[
+                {"start": "2026-06-09T23:00:00", "end": "2026-06-10T01:00:00", "stage": "deep"},
+            ],
+        ),
+        GarminIntraday(
+            date=date(2026, 6, 10), domain="garmin", source="garmin_api",
+            series_type="sleep_hr", ts=datetime(2026, 6, 9, 23, 10), value=58.0,
+        ),
+    ])
+    await db_session.commit()
+
+    response = await auth_client.get("/garmin/sleep/2026-06-10", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "Фазы сна" in response.text
+    assert "garminHypnogram" in response.text
+    # The chart data is handed to the renderer, not fetched by it.
+    assert "vitalsGarminSleep" in response.text
+    assert "sleep_hr" in response.text
+
+
+async def test_garmin_sleep_night_page_unknown_date_is_404(auth_client):
+    response = await auth_client.get("/garmin/sleep/2019-01-01", headers={"Accept": "text/html"})
+    assert response.status_code == 404
 
 
 async def test_garmin_sync_not_configured_redirects(auth_client):

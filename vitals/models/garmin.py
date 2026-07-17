@@ -11,9 +11,10 @@ Three tables, all ``domain='garmin'`` via ``InsightsMixin``:
     channel), upserted by date.
   * ``garmin_activities`` — recorded sport sessions, keyed by Garmin's activity id
     (the upsert key), for correlation with Hevy workouts.
-  * ``garmin_intraday`` — the within-day curves behind those day-level scalars
-    (stress and Body Battery every ~3 minutes). One row per sample, tall and
-    generic rather than a column per series, so a new series is a new
+  * ``garmin_intraday`` — the within-day curves behind those day-level scalars:
+    stress and Body Battery every ~3 minutes, plus the night's heart rate, SpO2,
+    respiration, stress, Body Battery, HRV and movement. One row per sample, tall
+    and generic rather than a column per series, so a new series is a new
     ``series_type`` value and never a migration.
 """
 from __future__ import annotations
@@ -41,13 +42,39 @@ from vitals.models.mixins import InsightsMixin, insights_index
 DOMAIN = Domain.GARMIN.value
 
 # JSONB on Postgres, generic JSON on the SQLite fast-test path (mirrors
-# ``raw_payloads``). Used for the variable-shape per-activity detail arrays.
+# ``raw_payloads``). Used for the variable-shape per-activity detail arrays and
+# the night's interval series.
 _JSON_TYPE = JSONB().with_variant(JSON(), "sqlite")
 
 # ``garmin_intraday.series_type`` values. Both come out of the one
 # ``get_stress_data`` payload the daily sync already downloads.
 SERIES_STRESS = "stress"
 SERIES_BODY_BATTERY = "body_battery"
+
+# The night's series (run 5) — all seven ride in the one ``get_sleep_data``
+# payload the daily sync already downloads. Deliberately distinct from the
+# whole-day ``stress`` / ``body_battery`` curves above even where they overlap in
+# time: these come from a different endpoint at a different cadence, and a night
+# is the unit the sleep page reads.
+SERIES_SLEEP_HR = "sleep_hr"
+SERIES_SLEEP_SPO2 = "sleep_spo2"
+SERIES_SLEEP_RESPIRATION = "sleep_respiration"
+SERIES_SLEEP_STRESS = "sleep_stress"
+SERIES_SLEEP_BB = "sleep_bb"
+SERIES_SLEEP_HRV = "sleep_hrv"
+SERIES_SLEEP_MOVEMENT = "sleep_movement"
+
+#: The nightly series as one unit — what the sleep page reads and what the day
+#: chart excludes.
+SLEEP_SERIES_TYPES = (
+    SERIES_SLEEP_HR,
+    SERIES_SLEEP_SPO2,
+    SERIES_SLEEP_RESPIRATION,
+    SERIES_SLEEP_STRESS,
+    SERIES_SLEEP_BB,
+    SERIES_SLEEP_HRV,
+    SERIES_SLEEP_MOVEMENT,
+)
 
 
 class GarminDaily(Base, InsightsMixin, TimestampMixin):
@@ -84,6 +111,14 @@ class GarminDaily(Base, InsightsMixin, TimestampMixin):
     body_battery_change: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     breathing_disruption: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     sleep_need_actual: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # The night's two *interval* series (run 5). Unlike the point series in
+    # ``garmin_intraday``, these are spans (start/end/what) — a couple of dozen a
+    # night — so a JSONB column keeps them on the night's own row instead of
+    # inventing a second tall table for ~20 rows.
+    # ``[{"start", "end", "stage"}]`` — the hypnogram (deep/light/rem/awake).
+    sleep_stages: Mapped[Optional[Any]] = mapped_column(_JSON_TYPE, nullable=True)
+    # ``[{"start", "end", "value"}]`` — breathing-disruption spans (0 = undisturbed).
+    breathing_events: Mapped[Optional[Any]] = mapped_column(_JSON_TYPE, nullable=True)
 
     # ── Heart / HRV / respiration ───────────────────────────────────────────────
     resting_hr: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -156,18 +191,24 @@ class GarminActivity(Base, InsightsMixin, TimestampMixin):
 
 
 class GarminIntraday(Base, InsightsMixin, TimestampMixin):
-    """One within-day sample of one series (run 4).
+    """One within-day sample of one series.
 
-    ``garmin_daily`` keeps the day's *summary* of stress and Body Battery (avg,
-    max, high/low); this keeps the curve those numbers were reduced from — ~480
-    samples per series per day, which is what makes "when did the stress spike"
-    answerable at all.
+    ``garmin_daily`` keeps the day's *summary* of stress, Body Battery and sleep
+    (avg, max, high/low); this keeps the curves those numbers were reduced from —
+    ~480 samples per whole-day series, plus the night's seven series — which is
+    what makes "when did the stress spike" and "when did SpO2 dip" answerable at
+    all.
 
     Deliberately tall/generic (``series_type`` + ``ts`` + ``value``) rather than a
-    wide row: the sleep-detail series of run 5 (``sleep_hr``, ``sleep_spo2``, …)
-    reuse this table by adding ``series_type`` values only, with no schema change.
-    A day+series is rebuilt wholesale on re-import (delete then insert), which is
-    why there's no unique constraint to upsert against.
+    wide row, which is what let run 5's nightly series join run 4's whole-day ones
+    with no schema change at all. A day+series is rebuilt wholesale on re-import
+    (delete then insert), which is why there's no unique constraint to upsert
+    against.
+
+    ``date`` is the date of the **daily row the samples belong to**, not
+    necessarily each sample's own calendar day: a night's series start on the
+    previous evening but file under the night's date, so one night reads as one
+    unit rather than two halves.
     """
 
     __tablename__ = "garmin_intraday"

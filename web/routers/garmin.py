@@ -1,17 +1,19 @@
-"""Endpoints for the Garmin module: dashboard, manual sync, and the Health Auto
-Export backup-channel upload."""
+"""Endpoints for the Garmin module: dashboard, the per-night sleep detail page,
+manual sync, and the Health Auto Export backup-channel upload."""
 from __future__ import annotations
 
 import json
 import logging
+from datetime import date as date_type
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.enums import Domain
 from vitals.integrations.garmin_client import GarminClient
+from vitals.models.garmin import SERIES_BODY_BATTERY, SERIES_STRESS, SLEEP_SERIES_TYPES
 from vitals.services import alerts_service, garmin_service
 from web.deps import get_redis, get_session, require_auth
 from web.templating import templates
@@ -35,8 +37,16 @@ async def garmin_dashboard(
     history = await garmin_service.list_daily(db, limit=30)
     activities = await garmin_service.list_activities(db, limit=20)
     # The latest day's stress / Body Battery curves (empty dict on a day that has
-    # only day-level scalars — the template then hides the chart card).
-    intraday = await garmin_service.intraday_series_map(db, latest.date) if latest else {}
+    # only day-level scalars — the template then hides the chart card). Asked for
+    # by name: the same date also holds the night's ~2k samples, which belong to
+    # the sleep page and would otherwise ride along into this page for nothing.
+    intraday = (
+        await garmin_service.intraday_series_map(
+            db, latest.date, series_types=(SERIES_STRESS, SERIES_BODY_BATTERY)
+        )
+        if latest
+        else {}
+    )
     count = await garmin_service.daily_count(db)
     advice = garmin_service.recovery_advice(latest)
     alerts = await alerts_service.list_active(db, domain=Domain.GARMIN.value)
@@ -72,6 +82,39 @@ async def garmin_dashboard(
             "last_sync": last_sync,
             "sync": request.query_params.get("sync"),
             "synced": request.query_params.get("synced"),
+        },
+    )
+
+
+@router.get("/sleep/{on_date}", response_class=HTMLResponse)
+async def sleep_night(
+    request: Request,
+    on_date: date_type,
+    db: AsyncSession = Depends(get_session),
+    username: str = Depends(require_auth),
+):
+    """One night in detail: the hypnogram plus the minute-level curves recorded
+    while asleep. Its own page rather than another card on the dashboard because
+    it's a different scale of data — a night is ~2k samples across seven series,
+    against the dashboard's day-level scalars.
+
+    ``on_date`` is the date of the daily row, i.e. the morning you woke up; the
+    samples themselves start the previous evening."""
+    daily = await garmin_service.get_daily(db, on_date)
+    if daily is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="no such day")
+
+    series = await garmin_service.intraday_series_map(
+        db, on_date, series_types=SLEEP_SERIES_TYPES
+    )
+    return templates.TemplateResponse(
+        request,
+        "garmin/sleep.html",
+        {
+            "username": username,
+            "daily": daily,
+            "series": series,
+            "stages": daily.sleep_stages or [],
         },
     )
 

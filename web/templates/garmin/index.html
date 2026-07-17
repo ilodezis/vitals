@@ -64,6 +64,10 @@
             {% if latest and (latest.sleep_score or (latest.sleep_start and latest.sleep_end)) %}
             <span class="v-text-micro">{% if latest.sleep_score %}{{ t("garmin.sleep_score") }} {{ latest.sleep_score }}{% endif %}{% if latest.sleep_score and latest.sleep_start and latest.sleep_end %} · {% endif %}{% if latest.sleep_start and latest.sleep_end %}{{ latest.sleep_start.strftime('%H:%M') }}–{{ latest.sleep_end.strftime('%H:%M') }}{% endif %}</span>
             {% endif %}
+            {# Only a night with a hypnogram has a detail page worth opening. #}
+            {% if latest and latest.sleep_stages %}
+            <a href="/garmin/sleep/{{ latest.date.isoformat() }}" class="v-text-micro" style="color: var(--fg-2)">{{ t("garmin.sleep_detail_link") }} →</a>
+            {% endif %}
         </div>
         <div class="v-metric">
             <span class="v-metric-label">{{ t("garmin.resting_hr") }}</span>
@@ -199,7 +203,7 @@
                         {% for d in history %}
                         <tr>
                             <td class="v-num v-col-date" style="color: var(--fg)">{{ d.date | format_date }}</td>
-                            <td class="v-num">{{ hm(d.sleep_seconds) }}{% if d.sleep_score %} <span class="v-text-micro" style="color: var(--muted)">· {{ d.sleep_score }}</span>{% endif %}</td>
+                            <td class="v-num">{% if d.sleep_stages %}<a href="/garmin/sleep/{{ d.date.isoformat() }}" style="color: var(--fg-2); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px">{{ hm(d.sleep_seconds) }}</a>{% else %}{{ hm(d.sleep_seconds) }}{% endif %}{% if d.sleep_score %} <span class="v-text-micro" style="color: var(--muted)">· {{ d.sleep_score }}</span>{% endif %}</td>
                             <td class="v-num text-right">{{ d.awake_count if d.awake_count is not none else '—' }}</td>
                             <td class="v-num text-right">{{ d.resting_hr or '—' }}</td>
                             <td class="v-num text-right">{{ d.hrv_avg | round(0) | int if d.hrv_avg else '—' }}</td>

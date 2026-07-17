@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("garmin.sleep_night_heading") }} — Vitals{% endblock %}
+
+{% macro hm(seconds) %}{% if seconds %}{{ seconds // 3600 }}h {{ (seconds % 3600) // 60 }}m{% else %}—{% endif %}{% endmacro %}
+
+{% block content %}
+{# A sub-page of the Garmin module, not a section of its own: no masthead_header
+   and no entry in the nav registry — a back link is the whole wayfinding. #}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
+
+    <!-- Header -->
+    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+        <div class="flex items-start gap-3.5">
+            <span class="v-bar mt-1"></span>
+            <div class="space-y-2">
+                <span class="v-tag violet">🌙 {{ t("garmin.sleep_night_tag") }}</span>
+                <h1 class="v-text-heading">{{ t("garmin.sleep_night_heading") }} · {{ daily.date | format_date }}</h1>
+                <p class="v-text-body" style="color: var(--muted)">
+                    {% if daily.sleep_start and daily.sleep_end %}
+                    {{ daily.sleep_start.strftime('%H:%M') }}–{{ daily.sleep_end.strftime('%H:%M') }} · {{ hm(daily.sleep_seconds) }}
+                    {% else %}
+                    {{ t("garmin.no_sleep_window") }}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        <a href="/garmin" class="v-btn-ghost text-xs shrink-0">
+            <svg style="width:0.85rem;height:0.85rem" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>{{ t("garmin.back_to_overview") }}</span>
+        </a>
+    </div>
+
+    <!-- Key figures -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("garmin.sleep_score") }}</span>
+            <div class="flex items-baseline">
+                <span class="v-metric-value">{% if daily.sleep_score %}{{ daily.sleep_score }}{% else %}—{% endif %}</span>
+            </div>
+            {% if daily.sleep_need_actual %}
+            <span class="v-text-micro">{{ t("garmin.sleep_need") }} {{ daily.sleep_need_actual // 60 }}h {{ daily.sleep_need_actual % 60 }}m</span>
+            {% endif %}
+        </div>
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("garmin.avg_sleep_hr") }}</span>
+            <div class="flex items-baseline">
+                <span class="v-metric-value">{% if daily.avg_sleep_hr %}{{ daily.avg_sleep_hr }}{% else %}—{% endif %}</span>
+                <span class="v-metric-unit">{{ t("garmin.bpm") }}</span>
+            </div>
+        </div>
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("garmin.spo2_lowest") }}</span>
+            <div class="flex items-baseline">
+                <span class="v-metric-value">{% if daily.spo2_lowest %}{{ daily.spo2_lowest }}{% else %}—{% endif %}</span>
+                <span class="v-metric-unit">%</span>
+            </div>
+            {% if daily.breathing_disruption and daily.breathing_disruption != 'NONE' %}
+            <span class="v-text-micro">{{ t("garmin.breathing_disrupted") }}</span>
+            {% endif %}
+        </div>
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("garmin.bb_change") }}</span>
+            <div class="flex items-baseline">
+                <span class="v-metric-value">{% if daily.body_battery_change is not none %}+{{ daily.body_battery_change }}{% else %}—{% endif %}</span>
+            </div>
+            <span class="v-text-micro">{{ t("garmin.awake_count") }}: {{ daily.awake_count if daily.awake_count is not none else '—' }} · {{ t("garmin.restless") }}: {{ daily.restless_moments if daily.restless_moments is not none else '—' }}</span>
+        </div>
+    </div>
+
+    <!-- Hypnogram -->
+    {% if stages %}
+    <div class="v-card p-6 space-y-3">
+        <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <span class="v-bar v-bar-sm"></span>
+                <span class="v-text-card">{{ t("garmin.hypnogram_title") }}</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {% for stage, seconds in [('deep', daily.deep_sleep_seconds), ('light', daily.light_sleep_seconds), ('rem', daily.rem_sleep_seconds), ('awake', daily.awake_seconds)] %}
+                {% if seconds %}
+                <span class="v-text-micro flex items-center gap-1.5">
+                    <span class="v-dot {{ {'deep': 'violet', 'light': 'cool', 'rem': 'good'}.get(stage, '') }}"></span>
+                    {{ t("garmin.stage." + stage) }} <span class="v-num" style="color: var(--fg-2)">{{ hm(seconds) }}</span>
+                </span>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        <!-- h-[280px]: an arbitrary utility already in the prebuilt tailwind.css.
+             A fresh value compiles to nothing until the bundle is rebuilt, and the
+             canvas silently collapses to Chart.js's 150px default. -->
+        <div class="h-[280px] w-full relative">
+            <canvas id="garminHypnogram"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Overnight curves -->
+    {% if series %}
+    <div class="v-card p-6 space-y-3">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <span class="v-bar v-bar-sm"></span>
+                <span class="v-text-card">{{ t("garmin.sleep_curves_title") }}</span>
+            </div>
+            <!-- Seven series on one canvas would be unreadable; grouped by what
+                 shares a scale, and switched rather than toggled so the chart
+                 always shows a set that's directly comparable. -->
+            <div class="v-seg" id="garminSleepGroups">
+                {% for group in ['pulse', 'breathing', 'recovery', 'movement'] %}
+                <button type="button" class="v-seg-btn{% if loop.first %} is-active{% endif %}" data-sleep-group="{{ group }}">
+                    {{ t("garmin.sleep_group." + group) }}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="h-[280px] w-full relative">
+            <canvas id="garminSleepCurves"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not stages and not series %}
+    <div class="v-card p-6">
+        <div class="v-empty-state">
+            <span>{{ t("garmin.no_sleep_detail") }}</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <script>
+        // Data only — the renderer lives in /static/garmin_sleep.js, loaded from
+        // <head> so it survives boosted navigation (see the notes in base.html).
+        window.vitalsGarminSleep = {
+            stages: {{ stages | tojson | safe }},
+            series: {{ series | tojson | safe }}
+        };
+    </script>
+</div>
+{% endblock %}
