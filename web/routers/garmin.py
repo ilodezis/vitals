@@ -86,6 +86,27 @@ async def garmin_dashboard(
     )
 
 
+@router.get("/sleep", response_class=HTMLResponse)
+async def sleep_list(
+    request: Request,
+    db: AsyncSession = Depends(get_session),
+    username: str = Depends(require_auth),
+):
+    """The Sleep tab: recent nights (days with a recorded sleep session), newest
+    first, and the latest one singled out for a highlighted summary."""
+    nights = await garmin_service.list_nights(db, limit=60)
+    return templates.TemplateResponse(
+        request,
+        "garmin/sleep_list.html",
+        {
+            "username": username,
+            "latest_night": nights[0] if nights else None,
+            "nights": nights,
+            "night_count": len(nights),
+        },
+    )
+
+
 @router.get("/sleep/{on_date}", response_class=HTMLResponse)
 async def sleep_night(
     request: Request,
@@ -107,6 +128,7 @@ async def sleep_night(
     series = await garmin_service.intraday_series_map(
         db, on_date, series_types=SLEEP_SERIES_TYPES
     )
+    prev_date, next_date = await garmin_service.adjacent_night_dates(db, on_date)
     return templates.TemplateResponse(
         request,
         "garmin/sleep.html",
@@ -115,6 +137,26 @@ async def sleep_night(
             "daily": daily,
             "series": series,
             "stages": daily.sleep_stages or [],
+            "prev_date": prev_date,
+            "next_date": next_date,
+        },
+    )
+
+
+@router.get("/activities", response_class=HTMLResponse)
+async def activities_list(
+    request: Request,
+    db: AsyncSession = Depends(get_session),
+    username: str = Depends(require_auth),
+):
+    """The Workouts tab: recorded sport activities, full width."""
+    activities = await garmin_service.list_activities(db, limit=20)
+    return templates.TemplateResponse(
+        request,
+        "garmin/activities.html",
+        {
+            "username": username,
+            "activities": activities,
         },
     )
 

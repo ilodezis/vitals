@@ -827,6 +827,21 @@ async def list_daily(
     return result.scalars().all()
 
 
+async def list_nights(
+    session: AsyncSession, *, limit: int = 60
+) -> Sequence[GarminDaily]:
+    """Days with a recorded sleep session, newest first — the Sleep tab's feed.
+    Unlike ``list_daily``, a day synced with no sleep data (steps/HR only) is
+    excluded rather than showing up as a noise row in the night list."""
+    result = await session.execute(
+        select(GarminDaily)
+        .where(GarminDaily.sleep_seconds.is_not(None))
+        .order_by(GarminDaily.date.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
 async def list_activities(
     session: AsyncSession, *, limit: int = 20
 ) -> Sequence[GarminActivity]:
@@ -887,6 +902,27 @@ async def latest_daily(
     stmt = stmt.order_by(GarminDaily.date.desc()).limit(1)
     result = await session.execute(stmt)
     return result.scalars().first()
+
+
+async def adjacent_night_dates(
+    session: AsyncSession, on_date: date_type
+) -> tuple[Optional[date_type], Optional[date_type]]:
+    """The nearest earlier/later dates that also have a recorded sleep session —
+    feeds the night page's ‹ previous / next › links. Either side is ``None``
+    when there's no such neighbour."""
+    prev_result = await session.execute(
+        select(GarminDaily.date)
+        .where(GarminDaily.sleep_seconds.is_not(None), GarminDaily.date < on_date)
+        .order_by(GarminDaily.date.desc())
+        .limit(1)
+    )
+    next_result = await session.execute(
+        select(GarminDaily.date)
+        .where(GarminDaily.sleep_seconds.is_not(None), GarminDaily.date > on_date)
+        .order_by(GarminDaily.date.asc())
+        .limit(1)
+    )
+    return prev_result.scalar(), next_result.scalar()
 
 
 async def daily_count(session: AsyncSession) -> int:

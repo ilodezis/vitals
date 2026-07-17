@@ -826,6 +826,14 @@ html {
     box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
 }
 
+/* .v-seg-btn is a class selector, not an element one — it also lands on <a>
+   (the garmin sub-tabs link between routes instead of toggling Alpine state),
+   which needs these two resets since an anchor is inline/underlined by default. */
+a.v-seg-btn {
+    display: block;
+    text-decoration: none;
+}
+
 /* ── Pills / badges / chips ────────────────────────────────────────────── */
 .v-chip {
     display: inline-flex;

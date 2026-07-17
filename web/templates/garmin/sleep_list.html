@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("garmin.tab_sleep") }} — Vitals{% endblock %}
+
+{% macro hm(seconds) %}{% if seconds %}{{ seconds // 3600 }}h {{ (seconds % 3600) // 60 }}m{% else %}—{% endif %}{% endmacro %}
+
+{% block content %}
+{% from "garmin/_tabs.html" import garmin_tabs %}
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
+
+    {% if request.state.ui_version == 'masthead' %}
+    {{ masthead_header('garmin', t('garmin.tab_sleep'), []) }}
+    {% else %}
+    <div class="v-card p-6 flex items-start gap-3.5">
+        <span class="v-bar mt-1"></span>
+        <div class="space-y-2">
+            <span class="v-tag violet">🌙 {{ t("garmin.sleep_night_tag") }}</span>
+            <h1 class="v-text-heading">{{ t("garmin.tab_sleep") }}</h1>
+        </div>
+    </div>
+    {% endif %}
+
+    {{ garmin_tabs('sleep') }}
+
+    <div class="v-card p-6 space-y-3">
+        <div class="flex items-center gap-2">
+            <span class="v-bar v-bar-sm"></span>
+            <span class="v-text-card">{{ t("garmin.history_title", count=night_count) }}</span>
+        </div>
+        <ul class="space-y-2">
+            {% for n in nights %}
+            <li>
+                <a href="/garmin/sleep/{{ n.date.isoformat() }}" class="v-card-tile block p-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="v-num" style="color: var(--fg)">{{ n.date | format_date }}</span>
+                        <span class="v-text-micro v-num">{{ hm(n.sleep_seconds) }}{% if n.sleep_score %} · {{ n.sleep_score }}{% endif %}</span>
+                    </div>
+                </a>
+            </li>
+            {% else %}
+            <li class="text-center pt-2" style="color: var(--muted)">{{ t("garmin.no_history") }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

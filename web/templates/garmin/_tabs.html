@@ -1,0 +1,11 @@
+{# Sub-tab panel shared by all four Garmin routes (overview / sleep / activities
+   + the per-night detail page, which passes active='sleep'). Plain links, not
+   an Alpine tab: each tab is its own GET route with its own data, not a client-
+   side view swap — see the plan note on why routes were chosen over x-data. #}
+{% macro garmin_tabs(active) %}
+<nav class="v-seg">
+    <a href="/garmin" class="v-seg-btn{{ ' is-active' if active == 'overview' }}">{{ t("garmin.tab_overview") }}</a>
+    <a href="/garmin/sleep" class="v-seg-btn{{ ' is-active' if active == 'sleep' }}">{{ t("garmin.tab_sleep") }}</a>
+    <a href="/garmin/activities" class="v-seg-btn{{ ' is-active' if active == 'activities' }}">{{ t("garmin.tab_activities") }}</a>
+</nav>
+{% endmacro %}

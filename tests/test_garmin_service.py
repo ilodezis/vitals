@@ -946,3 +946,57 @@ async def test_reparse_activity_from_raw_recovers_summary_fields_only(db_session
     assert row.hr_zone_seconds is None
     assert row.splits is None
     assert raw_row.fetched_at == old_fetched_at
+
+
+# ── Reads: night list / adjacent-night navigation (Sleep tab) ─────────────────
+async def test_list_nights_excludes_days_without_sleep(db_session):
+    """A day synced for steps/HR only (no sleep_seconds) is noise in a night
+    list — list_nights must drop it, unlike list_daily."""
+    db_session.add_all([
+        GarminDaily(date=date(2026, 6, 8), domain="garmin", source="garmin_api", sleep_seconds=25200),
+        GarminDaily(date=date(2026, 6, 9), domain="garmin", source="garmin_api", steps=8000),
+        GarminDaily(date=date(2026, 6, 10), domain="garmin", source="garmin_api", sleep_seconds=27000),
+    ])
+    await db_session.commit()
+
+    nights = await garmin_service.list_nights(db_session)
+    assert [n.date for n in nights] == [date(2026, 6, 10), date(2026, 6, 8)]
+
+
+async def test_list_nights_respects_limit(db_session):
+    db_session.add_all([
+        GarminDaily(date=date(2026, 6, 8), domain="garmin", source="garmin_api", sleep_seconds=25200),
+        GarminDaily(date=date(2026, 6, 9), domain="garmin", source="garmin_api", sleep_seconds=26400),
+        GarminDaily(date=date(2026, 6, 10), domain="garmin", source="garmin_api", sleep_seconds=27000),
+    ])
+    await db_session.commit()
+
+    nights = await garmin_service.list_nights(db_session, limit=2)
+    assert [n.date for n in nights] == [date(2026, 6, 10), date(2026, 6, 9)]
+
+
+async def test_adjacent_night_dates_finds_nearest_neighbours_with_sleep(db_session):
+    """The nearest earlier/later dates that also have sleep data — a day in
+    between with no sleep_seconds must be skipped, not treated as a neighbour."""
+    db_session.add_all([
+        GarminDaily(date=date(2026, 6, 7), domain="garmin", source="garmin_api", sleep_seconds=24000),
+        GarminDaily(date=date(2026, 6, 8), domain="garmin", source="garmin_api", steps=5000),  # no sleep
+        GarminDaily(date=date(2026, 6, 10), domain="garmin", source="garmin_api", sleep_seconds=27000),
+        GarminDaily(date=date(2026, 6, 12), domain="garmin", source="garmin_api", sleep_seconds=25000),
+    ])
+    await db_session.commit()
+
+    prev_date, next_date = await garmin_service.adjacent_night_dates(db_session, date(2026, 6, 10))
+    assert prev_date == date(2026, 6, 7)
+    assert next_date == date(2026, 6, 12)
+
+
+async def test_adjacent_night_dates_missing_neighbour_is_none(db_session):
+    db_session.add_all([
+        GarminDaily(date=date(2026, 6, 10), domain="garmin", source="garmin_api", sleep_seconds=27000),
+    ])
+    await db_session.commit()
+
+    prev_date, next_date = await garmin_service.adjacent_night_dates(db_session, date(2026, 6, 10))
+    assert prev_date is None
+    assert next_date is None

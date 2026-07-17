@@ -213,6 +213,8 @@ def test_page_controller_scripts_load_once_from_head():
         "charts/index.html",
         "garmin/index.html",
         "garmin/sleep.html",
+        "garmin/sleep_list.html",
+        "garmin/activities.html",
     ]
     for rel_path in page_templates:
         html = (templates_dir / rel_path).read_text(encoding="utf-8")
@@ -635,6 +637,57 @@ async def test_garmin_sleep_night_page_renders(auth_client, db_session):
 async def test_garmin_sleep_night_page_unknown_date_is_404(auth_client):
     response = await auth_client.get("/garmin/sleep/2019-01-01", headers={"Accept": "text/html"})
     assert response.status_code == 404
+
+
+async def test_garmin_sleep_list_renders(auth_client, db_session):
+    """GET /garmin/sleep lists nights (days with sleep data), newest first, each
+    row linking to its own detail page."""
+    from datetime import date
+
+    from vitals.models.garmin import GarminDaily
+
+    db_session.add_all([
+        GarminDaily(date=date(2026, 6, 9), domain="garmin", source="garmin_api", sleep_seconds=25200, sleep_score=70),
+        GarminDaily(date=date(2026, 6, 10), domain="garmin", source="garmin_api", sleep_seconds=27000, sleep_score=78),
+    ])
+    await db_session.commit()
+
+    response = await auth_client.get("/garmin/sleep", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "/garmin/sleep/2026-06-10" in response.text
+    assert "/garmin/sleep/2026-06-09" in response.text
+
+
+async def test_garmin_activities_list_renders(auth_client, db_session):
+    """GET /garmin/activities renders the full activity list (moved off the
+    overview page onto its own full-width tab)."""
+    from datetime import date, datetime
+
+    from vitals.models.garmin import GarminActivity
+
+    db_session.add(GarminActivity(
+        date=date(2026, 6, 10), domain="garmin", source="garmin_api",
+        external_id="act-1", activity_type="running", name="Вечерняя пробежка",
+        start_time=datetime(2026, 6, 10, 18, 0), duration_seconds=1800,
+    ))
+    await db_session.commit()
+
+    response = await auth_client.get("/garmin/activities", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "Вечерняя пробежка" in response.text
+
+
+async def test_garmin_tabs_mark_the_right_tab_active(auth_client):
+    """The overview/sleep/activities sub-tab bar renders on all three top-level
+    Garmin routes with exactly the current one marked is-active."""
+    r = await auth_client.get("/garmin", headers={"Accept": "text/html"})
+    assert 'href="/garmin" class="v-seg-btn is-active"' in r.text
+
+    r = await auth_client.get("/garmin/sleep", headers={"Accept": "text/html"})
+    assert 'href="/garmin/sleep" class="v-seg-btn is-active"' in r.text
+
+    r = await auth_client.get("/garmin/activities", headers={"Accept": "text/html"})
+    assert 'href="/garmin/activities" class="v-seg-btn is-active"' in r.text
 
 
 async def test_garmin_sync_not_configured_redirects(auth_client):

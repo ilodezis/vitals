@@ -93,7 +93,7 @@ async def test_masthead_rubric_number_is_stable_per_rubric(auth_client):
     await auth_client.post("/settings/ui-version", data={"ui_version": "masthead"})
 
     # Same rubric (Health), different tabs → same number, every time.
-    for path in ("/weight", "/garmin", "/reports"):
+    for path in ("/weight", "/garmin", "/garmin/sleep", "/garmin/activities", "/reports"):
         r = await auth_client.get(path, headers={"Accept": "text/html"})
         assert r.status_code == 200
         assert "Раздел 01 ·" in r.text

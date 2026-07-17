@@ -5,6 +5,7 @@
 {% macro hm(seconds) %}{% if seconds %}{{ seconds // 3600 }}h {{ (seconds % 3600) // 60 }}m{% else %}—{% endif %}{% endmacro %}
 
 {% block content %}
+{% from "garmin/_tabs.html" import garmin_tabs %}
 {% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showHaeModal: false }">
 
@@ -21,6 +22,7 @@
             </button>
         </form>
     {% endcall %}
+    {{ garmin_tabs('overview') }}
     {% else %}
     <!-- Header -->
     <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
@@ -46,6 +48,8 @@
             <span class="v-text-micro">{{ t("common.synced_label") }} <span class="font-medium text-[var(--fg-2)]">{{ last_sync or t("common.never_synced") }}</span></span>
         </div>
     </div>
+
+    {{ garmin_tabs('overview') }}
 
     <!-- Metrics -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
