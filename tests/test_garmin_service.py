@@ -86,7 +86,6 @@ RAW_DAY = {
             "sleepStartTimestampGMT": _SLEEP_START_GMT_MS,
             "sleepEndTimestampGMT": _SLEEP_END_GMT_MS,
             "awakeCount": 2,
-            "restlessMomentsCount": 8,
             "avgSleepStress": 18,
             "avgHeartRate": 54,
             "lowestSpO2Value": 91,
@@ -96,6 +95,10 @@ RAW_DAY = {
             "nextSleepNeed": {"actual": 480},
         },
         "bodyBatteryChange": 55,
+        # restlessMomentsCount ships at THIS level in the real payload, not inside
+        # dailySleepDTO (verified against real nights 2026-07-16/17) — unlike
+        # awakeCount, which does live in dailySleepDTO.
+        "restlessMomentsCount": 8,
         # ── The night's minute-level arrays (run 5) ───────────────────────────
         # Shapes verified against real responses from the watch: most arrays are
         # [{value, startGMT: epoch_ms}], but respiration renames both keys, SpO2

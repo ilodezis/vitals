@@ -413,7 +413,10 @@ def _normalize_daily(raw: dict) -> dict:
         "sleep_start": _parse_sleep_boundary(sleep_dto, "sleepStart"),
         "sleep_end": _parse_sleep_boundary(sleep_dto, "sleepEnd"),
         "awake_count": _intish(sleep_dto.get("awakeCount")),
-        "restless_moments": _intish(sleep_dto.get("restlessMomentsCount")),
+        "restless_moments": _intish(_first(
+            sleep_dto.get("restlessMomentsCount"),
+            _dig(raw, "sleep", "restlessMomentsCount"),
+        )),
         "avg_sleep_stress": _intish(sleep_dto.get("avgSleepStress")),
         "avg_sleep_hr": _intish(sleep_dto.get("avgHeartRate")),
         "spo2_lowest": _intish(sleep_dto.get("lowestSpO2Value")),
