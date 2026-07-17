@@ -352,10 +352,10 @@ async def test_glp1_log_injection(auth_client, db_session):
 async def test_phase3_dashboards_render(auth_client):
     """The three Phase 3 dashboards render with their headings."""
     r = await auth_client.get("/supplements", headers={"Accept": "text/html"})
-    assert r.status_code == 200 and "Каталог добавок" in r.text
+    assert r.status_code == 200 and "Протокол добавок" in r.text
 
     r = await auth_client.get("/genetics", headers={"Accept": "text/html"})
-    assert r.status_code == 200 and "Генетические варианты" in r.text
+    assert r.status_code == 200 and "Персональный геном" in r.text
     assert "Импорт VCF" in r.text
 
     r = await auth_client.get("/skincare", headers={"Accept": "text/html"})
@@ -719,10 +719,8 @@ async def test_garmin_sleep_night_page_body_battery_sign(auth_client, db_session
     assert "ворочания: 15" in response.text
 
 
-async def test_garmin_sleep_night_page_masthead_and_nav(auth_client, db_session):
-    """Masthead mode gets the shared editorial header (title = the night's own
-    date, metrics = score/HR/SpO2/BB) instead of the classic card, and the
-    prev/next night arrows link to the correct adjacent dates in both shells."""
+async def test_garmin_sleep_night_page_uses_canonical_header_and_nav(auth_client, db_session):
+    """The canonical header shows the night's metrics and adjacent dates."""
     from datetime import date
 
     from vitals.models.garmin import GarminDaily
@@ -737,15 +735,6 @@ async def test_garmin_sleep_night_page_masthead_and_nav(auth_client, db_session)
     ])
     await db_session.commit()
 
-    # Classic: same prev/next links, no masthead header markup.
-    r = await auth_client.get("/garmin/sleep/2026-06-10", headers={"Accept": "text/html"})
-    assert r.status_code == 200
-    assert 'href="/garmin/sleep/2026-06-09"' in r.text
-    assert 'href="/garmin/sleep/2026-06-11"' in r.text
-    assert 'class="mh-head"' not in r.text
-
-    # Masthead: editorial header with the night's own date as title + prev/next.
-    await auth_client.post("/settings/ui-version", data={"ui_version": "masthead"})
     r = await auth_client.get("/garmin/sleep/2026-06-10", headers={"Accept": "text/html"})
     assert r.status_code == 200
     assert 'class="mh-head"' in r.text
@@ -825,11 +814,10 @@ async def test_garmin_health_auto_export_upload(auth_client, db_session):
     assert row is not None and row.steps == 7200
 
 
-async def test_garmin_dashboard_day_strip_renders_in_masthead(auth_client, db_session):
+async def test_garmin_dashboard_day_strip_renders_in_canonical_shell(auth_client, db_session):
     """The day-strip (steps/stress/readiness/training status/active calories)
     used to live only in a classic-only grid, so masthead lost 5 of 9 daily
-    metrics. It's now a shared card — regression-check it actually shows up
-    once the session is switched to masthead."""
+    metrics. It must remain visible in the canonical shell."""
     from datetime import date
 
     from vitals.models.garmin import GarminDaily
@@ -841,7 +829,6 @@ async def test_garmin_dashboard_day_strip_renders_in_masthead(auth_client, db_se
     ))
     await db_session.commit()
 
-    await auth_client.post("/settings/ui-version", data={"ui_version": "masthead"})
     response = await auth_client.get("/garmin", headers={"Accept": "text/html"})
     assert response.status_code == 200
     assert "12 345" in response.text
@@ -1448,7 +1435,7 @@ async def test_toggle_module_hides_and_shows_nav(auth_client, db_session):
     r = await auth_client.post("/settings/modules", data={"module": "hevy", "enabled": "true"})
     assert r.status_code == 200
     # Response is an OOB nav fragment that swaps the header live (no reload).
-    assert 'id="primary-nav"' in r.text
+    assert 'id="vitals-navigation"' in r.text
     assert 'hx-swap-oob="true"' in r.text
     assert 'href="/hevy"' in r.text
     page = await auth_client.get("/weight", headers=html_headers)

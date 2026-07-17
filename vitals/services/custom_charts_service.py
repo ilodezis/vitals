@@ -3,7 +3,7 @@
 Storage: one ``app_settings`` row, ``key='custom_charts'``, ``value`` a JSON
 array of chart configs (not an object — this key just happens to hold a list).
 Redis (``settings:custom_charts``) is a read-through cache; the DB is the
-source of truth. Same shape as ``modules_service``/``ui_version_service``:
+source of truth. Same shape as ``modules_service``/``language_service``:
 ``_sanitize()`` never raises, projecting arbitrary stored data onto a clean
 shape so a corrupt row degrades to an empty list instead of 500-ing.
 

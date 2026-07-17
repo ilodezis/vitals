@@ -3,11 +3,11 @@
 {% block title %}{{ t("skincare.page_title") }}{% endblock %}
 
 {% block content %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="protocolForm()">
+{% from "partials/masthead.html" import masthead_header with context %}
+<link rel="stylesheet" href="{{ static_version('/static/vitals-lifestyle.css') }}">
+<div class="lifestyle-page lifestyle-page--skincare skincare-dashboard" x-data="protocolForm()">
 
-    {% if request.state.ui_version == 'masthead' %}
-    {% call masthead_header('skincare', t('nav.skincare'), [
+    {% call masthead_header('skincare', t('skincare.heading'), [
         {'label': t('masthead.skincare.active'), 'primary': true, 'value': products | selectattr('active') | list | length},
         {'label': t('masthead.skincare.total'), 'value': products | length}
     ]) %}
@@ -15,30 +15,14 @@
             <span>{{ t("skincare.add_product") }}</span>
         </button>
     {% endcall %}
-    {% else %}
-    <!-- Header -->
-    <div class="v-card p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div class="flex items-start gap-3.5">
-            <span class="v-bar mt-1"></span>
-            <div>
-                <h1 class="v-text-heading">{{ t("skincare.heading") }}</h1>
-                <p class="v-text-body mt-1">{{ t("skincare.subheading") }}</p>
-            </div>
-        </div>
-        <button @click="cancelEdit('form-skincare-product', '{{ t("common.save") }}'); showFormModal = true" class="v-btn-ghost">
-            <svg style="width:1.1rem;height:1.1rem" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
-            <span>{{ t("skincare.add_product") }}</span>
-        </button>
-    </div>
-    {% endif %}
 
     <!-- Weekly Schedule -->
-    <div class="v-card p-6 space-y-4">
-        <div class="flex items-center gap-2.5">
-            <span class="v-bar"></span>
+    <div class="skincare-week">
+        <div class="lifestyle-section-heading">
+            <span class="lifestyle-section-heading__index">01</span>
             <div>
-                <h2 class="v-text-heading">{{ t("skincare.schedule_title") }}</h2>
-                <p class="v-text-micro mt-0.5">{{ t("skincare.schedule_hint") }}</p>
+                <h2>{{ t("skincare.schedule_title") }}</h2>
+                <p>{{ t("skincare.schedule_hint") }}</p>
             </div>
         </div>
 
@@ -49,7 +33,7 @@
             ] %}
 
             {% for day_index, day_name, day_abbr in days %}
-            <div class="v-card-tile p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition hover:border-[var(--line-2)]"
+            <div class="skincare-day"
                  :class="todayDow === {{ day_index }} ? 'ring-1 ring-[var(--line-2)] border-[var(--line-2)]' : ''">
 
                 <!-- Left: Day of the week info -->
@@ -69,8 +53,8 @@
                 <!-- Right: Routines -->
                 <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- Morning -->
-                    <div class="space-y-1.5 p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)]">
-                        <span class="v-text-micro flex items-center gap-1">☀️ {{ t("skincare.morning") }}</span>
+                    <div class="skincare-routine skincare-routine--morning">
+                        <span class="skincare-period">{{ t("skincare.morning") }}</span>
                         <div class="flex flex-wrap gap-1.5">
                             {% set has_morning = namespace(value=false) %}
                             {% for p in products if p.active and day_index in (p.schedule_days or []) and p.default_time in ['morning', 'both'] %}
@@ -82,8 +66,8 @@
                     </div>
 
                     <!-- Evening -->
-                    <div class="space-y-1.5 p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)]">
-                        <span class="v-text-micro flex items-center gap-1">🌙 {{ t("skincare.evening") }}</span>
+                    <div class="skincare-routine skincare-routine--evening">
+                        <span class="skincare-period">{{ t("skincare.evening") }}</span>
                         <div class="flex flex-wrap gap-1.5">
                             {% set has_evening = namespace(value=false) %}
                             {% for p in products if p.active and day_index in (p.schedule_days or []) and p.default_time in ['evening', 'both'] %}
@@ -100,21 +84,21 @@
     </div>
 
     <!-- Actives + Safety -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <div class="skincare-reference">
 
         <!-- Actives Guide -->
-        <div class="lg:col-span-7 v-card p-6 space-y-4">
-            <div class="flex items-center gap-2.5">
-                <span class="v-bar"></span>
+        <div class="skincare-product-ledger">
+            <div class="lifestyle-section-heading">
+                <span class="lifestyle-section-heading__index">02</span>
                 <div>
-                    <h2 class="v-text-heading">{{ t("skincare.actives_title") }}</h2>
-                    <p class="v-text-micro mt-0.5">{{ t("skincare.actives_hint") }}</p>
+                    <h2>{{ t("skincare.actives_title") }}</h2>
+                    <p>{{ t("skincare.actives_hint") }}</p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="skincare-products">
                 {% for p in products %}
-                <div class="v-card-tile p-6 space-y-4 flex flex-col justify-between">
+                <article class="skincare-product">
                     <div class="space-y-4">
                         <div class="flex items-start justify-between gap-3 pb-3" style="border-bottom: 1px solid var(--line)">
                             <div class="space-y-1 min-w-0">
@@ -154,7 +138,7 @@
                             {% endif %}
                         </div>
                     </div>
-                </div>
+                </article>
                 {% else %}
                 <div class="md:col-span-2 rounded-xl p-8 text-center v-text-label" style="border: 1px dashed var(--line); color: var(--muted)">
                     {{ t("skincare.no_products") }}
@@ -164,20 +148,20 @@
         </div>
 
         <!-- Safety Rules -->
-        <div class="lg:col-span-5 v-card p-6 space-y-4">
-            <div class="flex items-center gap-2.5">
-                <span class="v-bar" style="background: var(--bad)"></span>
+        <aside class="skincare-safety">
+            <div class="lifestyle-section-heading">
+                <span class="lifestyle-section-heading__index">03</span>
                 <div>
-                    <h2 class="v-text-heading">{{ t("skincare.safety_title") }}</h2>
-                    <p class="v-text-micro mt-0.5">{{ t("skincare.safety_hint") }}</p>
+                    <h2>{{ t("skincare.safety_title") }}</h2>
+                    <p>{{ t("skincare.safety_hint") }}</p>
                 </div>
             </div>
 
             <div class="space-y-3">
                 {% for r in conflict_rules %}
-                <div class="rounded-xl p-4 space-y-1.5" style="{% if r.severity == 'block' %}background: var(--bad-soft); border: 1px solid rgba(232,112,86,.35){% else %}background: var(--warn-soft); border: 1px solid rgba(240,178,74,.35){% endif %}">
-                    <div class="flex items-center gap-2 font-semibold v-text-label" style="color: {% if r.severity == 'block' %}var(--bad){% else %}var(--warn){% endif %}">
-                        <span>{% if r.rule_type == 'hard_block' %}🚫{% else %}⚠️{% endif %}</span>
+                <div class="skincare-rule {% if r.severity == 'block' %}skincare-rule--block{% else %}skincare-rule--warn{% endif %}">
+                    <div class="skincare-rule__label">
+                        <span class="skincare-rule__signal" aria-hidden="true"></span>
                         <span>{% if r.domain_a == 'skincare' and r.domain_b == 'skincare' %}{{ t("skincare.rule_compatibility") }}{% elif r.domain_a == 'supplements' or r.domain_b == 'supplements' %}{{ t("skincare.rule_supplements") }}{% else %}{{ t("skincare.rule_safety") }}{% endif %}</span>
                     </div>
                     <p class="v-text-body leading-relaxed font-medium" style="color: var(--fg-2)">{{ r.message }}</p>
@@ -188,16 +172,16 @@
                 </div>
                 {% endfor %}
 
-                <div class="rounded-xl p-4 space-y-1.5" style="background: var(--surface-3); border: 1px solid var(--line)">
-                    <div class="flex items-center gap-2 font-semibold v-text-label" style="color: var(--fg-2)">
-                        <span>💧</span><span>{{ t("skincare.moisture_title") }}</span>
+                <div class="skincare-rule skincare-rule--neutral">
+                    <div class="skincare-rule__label">
+                        <span class="skincare-rule__signal" aria-hidden="true"></span><span>{{ t("skincare.moisture_title") }}</span>
                     </div>
                     <p class="v-text-body leading-relaxed font-medium" style="color: var(--fg-2)">
                         {{ t("skincare.moisture_text") }}
                     </p>
                 </div>
             </div>
-        </div>
+        </aside>
     </div>
 
     <!-- Add/Edit Modal -->
@@ -237,14 +221,14 @@
                             <option value="both">{{ t("skincare.time_both") }}</option>
                         </select>
                     </div>
-                    <label class="flex items-center justify-between v-card-inset px-4 cursor-pointer" style="height:42px">
+                    <label class="skincare-toggle">
                         <span class="text-sm" style="color: var(--fg-2)">{{ t("supplements.active_checkbox") }}</span>
                         <input type="checkbox" name="active" value="true" checked class="w-4 h-4 accent-[var(--accent)]">
                     </label>
                 </div>
                 <div>
                     <label class="v-label">{{ t("skincare.schedule_days_label") }}</label>
-                    <div class="grid grid-cols-4 gap-2 v-card-inset p-3">
+                    <div class="skincare-days">
                         {% for val, tkey in [('1','skincare.day.mon'),('2','skincare.day.tue'),('3','skincare.day.wed'),('4','skincare.day.thu'),('5','skincare.day.fri'),('6','skincare.day.sat'),('0','skincare.day.sun')] %}
                         <label class="flex items-center gap-1.5 text-sm cursor-pointer" style="color: var(--fg-2)">
                             <input type="checkbox" name="schedule_days" value="{{ val }}" class="w-4 h-4 accent-[var(--accent)]">

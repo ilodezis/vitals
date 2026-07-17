@@ -3,111 +3,21 @@
 {% block title %}{{ t("reports.page_title") }}{% endblock %}
 
 {% block content %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showGoalForm: false }">
+{% from "partials/masthead.html" import masthead_header with context %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8 product-page reports-page" x-data="{ showGoalForm: false }">
 
-    {% if request.state.ui_version == 'masthead' %}
     {{ masthead_header('reports', t('nav.reports'), [
         {'label': t('masthead.reports.goals'), 'primary': true, 'value': cards | length},
         {'label': t('masthead.reports.digests'), 'value': history | length},
         {'label': t('masthead.reports.latest'), 'value': (latest_digest.date | format_date) if latest_digest else '—'}
     ]) }}
-    {% else %}
-    <!-- Header -->
-    <div class="v-card p-6 flex items-start gap-3.5">
-        <span class="v-bar mt-1"></span>
-        <div class="space-y-2">
-            <span class="v-tag muted">📊 {{ t("reports.tag") }}</span>
-            <h1 class="v-text-heading">{{ t("reports.heading") }}</h1>
-            <p class="v-text-body max-w-2xl">
-                {{ t("reports.description") }}
-            </p>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Goal cards -->
-    <div class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2">
-            <span class="v-bar"></span>
-            <span class="v-text-heading">{{ t("reports.goals_title") }}</span>
-        </div>
-        <button @click="showGoalForm = !showGoalForm" class="v-btn-ghost text-xs">{{ t("reports.add_goal") }}</button>
-    </div>
-
-    <div x-show="showGoalForm" x-cloak class="v-card p-6">
-        <form action="/reports/milestone" method="POST" class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-            <div class="md:col-span-2">
-                <label class="v-label">{{ t("reports.goal_name") }}</label>
-                <input type="text" name="name" required placeholder="{{ t("reports.goal_name_placeholder") }}" class="v-input">
-            </div>
-            <div>
-                <label class="v-label">{{ t("reports.goal_domain") }}</label>
-                <select name="domain" class="v-select">
-                    {% for d in goal_domains %}<option value="{{ d }}">{{ t("enum.domain." + d) }}</option>{% endfor %}
-                </select>
-            </div>
-            <div>
-                <label class="v-label">{{ t("reports.goal_target") }}</label>
-                <input type="number" name="target_value" step="any" placeholder="82" class="v-input">
-            </div>
-            <div>
-                <label class="v-label">{{ t("reports.goal_unit") }}</label>
-                <input type="text" name="target_unit" placeholder="{{ t("common.kg") }}" class="v-input">
-            </div>
-            <div>
-                <label class="v-label">{{ t("reports.goal_deadline") }}</label>
-                <input type="date" name="deadline" class="v-input">
-            </div>
-            <div class="md:col-span-6">
-                <button type="submit" class="v-btn-ghost">{{ t("reports.create_goal") }}</button>
-            </div>
-        </form>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {% for c in cards %}
-        <div class="v-card p-6 space-y-3">
-            <div class="flex justify-between items-start gap-2">
-                <div>
-                    <div class="v-text-card">{{ c.name }}</div>
-                    <div class="v-text-micro mt-0.5">{{ t("enum.domain." + c.domain) }} · {{ t("enum.status." + c.status) }}</div>
-                </div>
-                <form action="/reports/milestone/{{ c.id }}/delete" method="POST" data-confirm="{{ t("reports.confirm_delete_goal") }}">
-                    <button type="submit" class="v-icon-btn danger" style="width:1.6rem;height:1.6rem" title="{{ t("common.delete") }}">
-                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                </form>
-            </div>
-            {% if c.target_value is not none %}
-            <div class="flex items-baseline gap-1.5">
-                <span class="v-metric-value v-num">{{ c.target_value | format_number }}</span>
-                <span class="v-unit">{{ c.target_unit or '' }}</span>
-            </div>
-            {% if c.current is not none %}
-            <div class="v-text-micro v-num">{{ t("reports.current") }} {{ c.current | format_number }}{% if c.remaining is not none %} · {{ t("reports.remaining") }} {{ c.remaining | abs | format_number }}{% endif %}</div>
-            {% endif %}
-            {% endif %}
-            <div class="v-text-micro v-num">
-                {% if c.deadline %}{{ t("reports.deadline_label") }} {{ c.deadline | format_date }}{% if c.days_left is not none %} ({{ c.days_left }} {{ t("reports.days_left") }}){% endif %}{% else %}{{ t("reports.no_deadline") }}{% endif %}
-            </div>
-        </div>
-        {% else %}
-        <div class="v-empty-state col-span-full py-10">
-            <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p>{{ t("reports.no_goals") }}</p>
-        </div>
-        {% endfor %}
-    </div>
 
     <!-- Weekly digest -->
-    <div class="v-card p-6 space-y-3">
+    <section class="reports-brief" aria-labelledby="reports-brief-title">
         <div class="flex items-center justify-between gap-3 flex-wrap">
             <div class="flex items-center gap-2">
                 <span class="v-bar"></span>
-                <span class="v-text-heading">{{ t("reports.digest_title") }}</span>
+                <span id="reports-brief-title" class="v-text-heading">{{ t("reports.digest_title") }}</span>
             </div>
             <form action="/reports/digest" method="POST" class="flex items-center gap-2">
                 <select name="period_days" class="v-select text-xs" style="width: auto; padding: 0.45rem 2.2rem 0.45rem 0.75rem; height: 36px;">
@@ -116,7 +26,7 @@
                     <option value="7" selected>{{ t("reports.period_7d") }}</option>
                     <option value="30">{{ t("reports.period_30d") }}</option>
                 </select>
-                <button type="submit" class="v-btn text-xs" style="padding: 0.45rem 1.15rem; height: 36px;" {% if not llm_configured %}disabled style="opacity:.5;cursor:not-allowed"{% endif %}>
+                <button type="submit" class="v-btn text-xs" style="padding: 0.45rem 1.15rem; height: 36px;" {% if not llm_configured %}disabled{% endif %}>
                     {% if llm_configured %}{{ t("reports.generate_btn") }}{% else %}{{ t("reports.llm_not_configured") }}{% endif %}
                 </button>
             </form>
@@ -154,7 +64,87 @@
             </ul>
         </details>
         {% endif %}
-    </div>
+    </section>
+
+    <section class="reports-goals" aria-labelledby="reports-goals-title">
+        <div class="product-section-head">
+            <div>
+                <span class="product-section-kicker">{{ t("masthead.reports.goals") }}</span>
+                <h2 id="reports-goals-title" class="v-text-heading">{{ t("reports.goals_title") }}</h2>
+            </div>
+            <button type="button" @click="showGoalForm = !showGoalForm"
+                    :aria-expanded="showGoalForm" aria-controls="goal-composer"
+                    class="v-btn-ghost text-xs">{{ t("reports.add_goal") }}</button>
+        </div>
+
+        <div id="goal-composer" x-show="showGoalForm" x-cloak class="goal-composer">
+            <form action="/reports/milestone" method="POST" class="goal-composer-grid">
+                <div class="goal-field-name">
+                    <label class="v-label">{{ t("reports.goal_name") }}</label>
+                    <input type="text" name="name" required placeholder="{{ t("reports.goal_name_placeholder") }}" class="v-input">
+                </div>
+                <div>
+                    <label class="v-label">{{ t("reports.goal_domain") }}</label>
+                    <select name="domain" class="v-select">
+                        {% for d in goal_domains %}<option value="{{ d }}">{{ t("enum.domain." + d) }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="v-label">{{ t("reports.goal_target") }}</label>
+                    <input type="number" name="target_value" step="any" placeholder="82" class="v-input">
+                </div>
+                <div>
+                    <label class="v-label">{{ t("reports.goal_unit") }}</label>
+                    <input type="text" name="target_unit" placeholder="{{ t("common.kg") }}" class="v-input">
+                </div>
+                <div>
+                    <label class="v-label">{{ t("reports.goal_deadline") }}</label>
+                    <input type="date" name="deadline" class="v-input">
+                </div>
+                <div class="goal-composer-action">
+                    <button type="submit" class="v-btn">{{ t("reports.create_goal") }}</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="goal-grid">
+            {% for c in cards %}
+            <article class="goal-card" data-status="{{ c.status }}">
+                <div class="goal-card-head">
+                    <div>
+                        <span class="goal-domain">{{ t("enum.domain." + c.domain) }}</span>
+                        <h3 class="v-text-card">{{ c.name }}</h3>
+                    </div>
+                    <form action="/reports/milestone/{{ c.id }}/delete" method="POST"
+                          data-confirm="{{ t("reports.confirm_delete_goal") }}">
+                        <button type="submit" class="v-icon-btn danger" title="{{ t("common.delete") }}"
+                                aria-label="{{ t("common.delete") }}">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    </form>
+                </div>
+                {% if c.target_value is not none %}
+                <div class="goal-target">
+                    <span class="v-metric-value v-num">{{ c.target_value | format_number }}</span>
+                    <span class="v-unit">{{ c.target_unit or '' }}</span>
+                </div>
+                {% endif %}
+                <div class="goal-card-meta">
+                    <span class="goal-status">{{ t("enum.status." + c.status) }}</span>
+                    {% if c.current is not none %}
+                    <span class="v-num">{{ t("reports.current") }} {{ c.current | format_number }}{% if c.remaining is not none %} · {{ t("reports.remaining") }} {{ c.remaining | abs | format_number }}{% endif %}</span>
+                    {% endif %}
+                    <span class="v-num">{% if c.deadline %}{{ t("reports.deadline_label") }} {{ c.deadline | format_date }}{% if c.days_left is not none %} · {{ c.days_left }} {{ t("reports.days_left") }}{% endif %}{% else %}{{ t("reports.no_deadline") }}{% endif %}</span>
+                </div>
+            </article>
+            {% else %}
+            <div class="v-empty-state goal-empty">
+                <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <p>{{ t("reports.no_goals") }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
 </div>
 
 <script>

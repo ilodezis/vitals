@@ -1,49 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <radialGradient id="bg" cx="50%" cy="45%" r="55%">
-      <stop offset="0%" stop-color="#2E2A36" />
-      <stop offset="100%" stop-color="#1A1820" />
-    </radialGradient>
-    <linearGradient id="vGrad" x1="20%" y1="0%" x2="80%" y2="100%">
-      <stop offset="0%" stop-color="#FFC85A" />
-      <stop offset="50%" stop-color="#F5A623" />
-      <stop offset="100%" stop-color="#D4891A" />
-    </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="8" result="blur" />
-      <feMerge>
-        <feMergeNode in="blur" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
-    <filter id="innerShadow">
-      <feOffset dx="0" dy="3" />
-      <feGaussianBlur stdDeviation="2" />
-      <feComposite in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" />
-      <feFlood flood-color="#000" flood-opacity="0.3" />
-      <feComposite in2="SourceAlpha" operator="in" />
-      <feMerge>
-        <feMergeNode />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="title desc">
+  <title id="title">Vitals</title>
+  <desc id="desc">A precise champagne V on a warm black field.</desc>
 
-  <!-- Rounded background -->
-  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  <rect width="512" height="512" fill="#111310" />
+  <rect x="18" y="18" width="476" height="476" rx="99" fill="#191C19" stroke="#424942" stroke-width="4" />
 
-  <!-- Subtle border -->
-  <rect width="510" height="510" x="1" y="1" rx="111" fill="none" stroke="#3D3848" stroke-width="1.5" />
+  <path
+    d="M137 137 L256 374 L375 137"
+    fill="none"
+    stroke="#D8B879"
+    stroke-width="52"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
 
-  <!-- Ambient glow behind the V -->
-  <ellipse cx="256" cy="290" rx="120" ry="100" fill="#F5A623" opacity="0.06" filter="url(#glow)" />
-
-  <!-- The "V" letterform — bold Outfit-inspired geometric V -->
-  <path d="M148 128 L256 384 L364 128 L310 128 L256 310 L202 128 Z"
-        fill="url(#vGrad)"
-        filter="url(#innerShadow)" />
-
-  <!-- Subtle highlight on left stroke -->
-  <path d="M148 128 L202 128 L256 310 L256 316 L142 128 Z"
-        fill="rgba(255,255,255,0.08)" />
+  <circle cx="256" cy="374" r="11" fill="#F4F1E8" />
 </svg>

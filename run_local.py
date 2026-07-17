@@ -20,19 +20,32 @@ os.environ["VITALS_MCP_REDIRECT_URIS"] = (
 
 import fakeredis.aioredis
 import uvicorn
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from vitals.models.base import Base
 
 # Patch get_redis_client to return FakeRedis
 import web.deps
 web.deps._redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
 
-async def init_db():
-    engine = create_async_engine(os.environ["VITALS_DATABASE_URL"])
+async def init_db(database_url: str | None = None):
+    """Rebuild the disposable local DB and load the current UI demo dataset."""
+    engine = create_async_engine(database_url or os.environ["VITALS_DATABASE_URL"])
     async with engine.begin() as conn:
-        # Create tables
+        # local_vitals.db is a disposable browser fixture, not user data. Rebuild
+        # it so old SQLite files also receive columns added by newer features.
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    print("Database tables initialized successfully in local_vitals.db")
+
+    from scripts.seed_demo import seed_all
+
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with factory() as session:
+        counts = await seed_all(session)
+        await session.commit()
+    await engine.dispose()
+
+    print("Local database rebuilt and seeded with current demo data")
+    print("Seeded: " + ", ".join(f"{name}={count}" for name, count in counts.items()))
 
 if __name__ == "__main__":
     asyncio.run(init_db())

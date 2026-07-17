@@ -3,24 +3,12 @@
 {% block title %}{{ t("charts.page_title") }}{% endblock %}
 
 {% block content %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
+{% from "partials/masthead.html" import masthead_header with context %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8 product-page charts-page">
 
-    {% if request.state.ui_version == 'masthead' %}
     {{ masthead_header('charts', t('nav.charts'), [
         {'label': t('charts.metric_count'), 'primary': true, 'value': charts | length}
     ]) }}
-    {% else %}
-    <!-- Header -->
-    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-        <div class="flex items-start gap-3.5">
-            <span class="v-bar mt-1"></span>
-            <div class="space-y-2">
-                <h1 class="v-text-heading">{{ t("charts.page_title") }}</h1>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
     {% if error == 'invalid' %}
     <div class="v-alert warn">{{ t("charts.error_invalid") }}</div>
@@ -28,9 +16,9 @@
 
     <!-- Saved charts -->
     {% if charts %}
-    <div class="space-y-6">
+    <section class="chart-library" aria-label="{{ t('nav.charts') }}">
         {% for chart in charts %}
-        <div class="v-card p-6 space-y-3">
+        <article class="chart-panel">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <span class="v-bar v-bar-sm"></span>
@@ -44,7 +32,7 @@
             <div class="h-[280px] w-full relative">
                 <canvas id="customChart-{{ chart.id }}"></canvas>
             </div>
-        </div>
+        </article>
         <script>
             window.vitalsCustomCharts = window.vitalsCustomCharts || {};
             window.vitalsCustomCharts["{{ chart.id }}"] = {
@@ -54,16 +42,20 @@
             };
         </script>
         {% endfor %}
-    </div>
+    </section>
     {% else %}
-    <div class="v-card p-6 text-center" style="color: var(--muted)">{{ t("charts.no_charts") }}</div>
+    <section class="chart-library">
+        <div class="v-empty-state chart-empty"><p>{{ t("charts.no_charts") }}</p></div>
+    </section>
     {% endif %}
 
     <!-- Builder -->
-    <div class="v-card p-6 space-y-4" x-data="chartBuilder({{ catalog | tojson | forceescape }})">
-        <div class="flex items-center gap-2">
-            <span class="v-bar v-bar-sm"></span>
-            <span class="v-text-card">{{ t("charts.builder_title") }}</span>
+    <section class="chart-studio" x-data="chartBuilder({{ catalog | tojson | forceescape }})" aria-labelledby="chart-studio-title">
+        <div class="product-section-head">
+            <div>
+                <span class="product-section-kicker">{{ t("charts.select_metric") }}</span>
+                <h2 id="chart-studio-title" class="v-text-heading">{{ t("charts.builder_title") }}</h2>
+            </div>
         </div>
         <form action="/charts" method="POST" class="space-y-4"
               onsubmit="this.querySelector('button[type=submit]').disabled = true">
@@ -74,7 +66,7 @@
 
             <div class="space-y-3">
                 <template x-for="(row, index) in series" :key="index">
-                    <div class="border border-[var(--line)] rounded-lg p-3 space-y-3">
+                    <div class="chart-series-row">
                         <div class="flex items-center justify-between">
                             <span class="v-text-label font-semibold" x-text="'{{ t("charts.select_metric") }} #' + (index + 1)"></span>
                             <button type="button" class="v-btn-ghost text-xs" @click="removeSeries(index)" x-show="series.length > 1">
@@ -153,7 +145,7 @@
 
             <button type="submit" class="v-btn w-full">{{ t("charts.save") }}</button>
         </form>
-    </div>
+    </section>
 </div>
 
 {% endblock %}

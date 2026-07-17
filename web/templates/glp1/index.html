@@ -4,11 +4,11 @@
 
 {% block content %}
 {% from "partials/body_map.html" import body_map %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8"
+{% from "partials/masthead.html" import masthead_header with context %}
+<link rel="stylesheet" href="{{ static_version('/static/vitals-lifestyle.css') }}">
+<div class="lifestyle-page lifestyle-page--glp1 glp1-dashboard"
      x-data="glp1Dashboard({{ (last_injection.site | tojson if last_injection and last_injection.site else 'null') | forceescape }})">
 
-    {% if request.state.ui_version == 'masthead' %}
     {% call masthead_header('glp1', t('nav.glp1'), [
         {'label': t('glp1.current_dose'), 'primary': true, 'unit': t('common.mg'), 'value': (active_phase.dose_mg | format_number) if active_phase else '—'},
         {'label': t('glp1.drug'), 'value': (t('enum.drug.' + active_phase.drug)) if active_phase else '—'},
@@ -19,66 +19,16 @@
             <span x-text="showForm ? '{{ t("glp1.toggle_history") }}' : '{{ t("glp1.toggle_form") }}'"></span>
         </button>
     {% endcall %}
-    {% else %}
-    <!-- Header -->
-    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-        <div class="flex items-start gap-3.5">
-            <span class="v-bar mt-1"></span>
-            <div class="space-y-2">
-                <span class="v-tag violet">💉 {{ t("glp1.tag") }}</span>
-                <h1 class="v-text-heading">{{ t("glp1.heading") }}</h1>
-                <p class="v-text-body max-w-2xl">
-                    {{ t("glp1.description") }}
-                </p>
-            </div>
-        </div>
-        <button @click="showForm = !showForm" class="v-btn-ghost w-full md:w-auto shrink-0">
-            <svg style="width:1.1rem;height:1.1rem" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-            </svg>
-            <span x-text="showForm ? '{{ t("glp1.toggle_history") }}' : '{{ t("glp1.toggle_form") }}'"></span>
-        </button>
-    </div>
-
-    <!-- Metrics -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("glp1.current_dose") }}</span>
-            <div class="flex items-baseline gap-1.5">
-                <span class="v-metric-value">{% if active_phase %}{{ active_phase.dose_mg | format_number }}{% else %}—{% endif %}</span>
-                <span class="v-metric-unit">{{ t("common.mg") }}</span>
-            </div>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("glp1.drug") }}</span>
-            <span class="v-metric-value-text truncate">{% if active_phase %}{{ t("enum.drug." + active_phase.drug) }}{% else %}—{% endif %}</span>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("glp1.days_on_dose") }}</span>
-            <div class="flex items-baseline gap-1.5">
-                <span class="v-metric-value">{% if active_phase %}{{ (today_date - active_phase.start_date).days }}{% else %}—{% endif %}</span>
-                <span class="v-metric-unit">{{ t("common.days_abbr") }}</span>
-            </div>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("glp1.last_injection") }}</span>
-            <span class="v-metric-value-text v-num">{% if last_injection %}{{ last_injection.date | format_date }}{% else %}—{% endif %}</span>
-            {% if last_injection and last_injection.site %}
-            <span class="v-text-micro">{{ t("enum.site." + last_injection.site) }}</span>
-            {% endif %}
-        </div>
-    </div>
-    {% endif %}
 
     <!-- Workspace -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <div class="glp1-command">
 
         <!-- Form Panel (when showForm is true) -->
-        <div x-show="showForm" class="lg:col-span-12 v-card p-6 space-y-4" x-cloak>
-            <div class="v-seg">
-                <button @click="activeTab = 'injection'" :class="activeTab === 'injection' ? 'is-active' : ''" class="v-seg-btn">{{ t("glp1.tab_injection") }}</button>
-                <button @click="activeTab = 'phase'" :class="activeTab === 'phase' ? 'is-active' : ''" class="v-seg-btn">{{ t("glp1.tab_phase") }}</button>
-                <button @click="activeTab = 'side'" :class="activeTab === 'side' ? 'is-active' : ''" class="v-seg-btn">{{ t("glp1.tab_side") }}</button>
+        <div x-show="showForm" class="lifestyle-panel glp1-entry" x-cloak>
+            <div class="lifestyle-tabs v-seg" role="tablist" aria-label="{{ t('nav.glp1') }}">
+                <button type="button" role="tab" @click="activeTab = 'injection'" :aria-selected="activeTab === 'injection'" :class="activeTab === 'injection' ? 'is-active' : ''" class="v-seg-btn">{{ t("glp1.tab_injection") }}</button>
+                <button type="button" role="tab" @click="activeTab = 'phase'" :aria-selected="activeTab === 'phase'" :class="activeTab === 'phase' ? 'is-active' : ''" class="v-seg-btn">{{ t("glp1.tab_phase") }}</button>
+                <button type="button" role="tab" @click="activeTab = 'side'" :aria-selected="activeTab === 'side'" :class="activeTab === 'side' ? 'is-active' : ''" class="v-seg-btn">{{ t("glp1.tab_side") }}</button>
             </div>
 
             <!-- TAB: Injection -->
@@ -190,13 +140,13 @@
         </div>
 
         <!-- History & Info panels (when showForm is false) -->
-        <div x-show="!showForm" class="lg:col-span-8 space-y-6">
-            <div class="v-card p-6 space-y-3">
-                <div class="flex items-center gap-2">
-                    <span class="v-bar v-bar-sm"></span>
-                    <span class="v-text-card">{{ t("glp1.history_title") }}</span>
+        <div x-show="!showForm" class="glp1-ledger">
+            <div class="lifestyle-panel lifestyle-panel--ledger">
+                <div class="lifestyle-section-heading">
+                    <span class="lifestyle-section-heading__index">01</span>
+                    <h2>{{ t("glp1.history_title") }}</h2>
                 </div>
-                <div class="max-h-[38rem] overflow-y-auto v-card-inset">
+                <div class="lifestyle-scroll">
                     <div class="v-table-wrap">
                         <table class="v-table" style="width: 100%; table-layout: fixed">
                         <colgroup>
@@ -239,9 +189,9 @@
         </div>
         </div>
 
-        <div x-show="!showForm" class="lg:col-span-4 space-y-6">
-            <div class="v-card p-6 space-y-3">
-                <span class="v-text-card">{{ t("glp1.phases_title") }}</span>
+        <aside x-show="!showForm" class="glp1-side-rail">
+            <section class="lifestyle-rail-section">
+                <h2>{{ t("glp1.phases_title") }}</h2>
                 <ul class="space-y-2.5 max-h-48 overflow-y-auto pr-1">
                     {% for p in phases %}
                     <li class="pb-2" style="border-bottom: 1px solid var(--line)">
@@ -264,10 +214,10 @@
                     </div>
                     {% endfor %}
                 </ul>
-            </div>
+            </section>
 
-            <div class="v-card p-6 space-y-3">
-                <span class="v-text-card">{{ t("glp1.side_effects_title") }}</span>
+            <section class="lifestyle-rail-section lifestyle-rail-section--signal">
+                <h2>{{ t("glp1.side_effects_title") }}</h2>
                 <ul class="space-y-2.5 max-h-48 overflow-y-auto pr-1">
                     {% for se in side_effects %}
                     <li class="pb-2 flex justify-between items-start" style="border-bottom: 1px solid var(--line)">
@@ -292,8 +242,8 @@
                     </div>
                     {% endfor %}
                 </ul>
-            </div>
-        </div>
+            </section>
+        </aside>
     </div>
 
     {% include "partials/conflict_modal.html" %}

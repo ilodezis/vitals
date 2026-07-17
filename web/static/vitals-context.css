@@ -1,0 +1,677 @@
+/* ========================================================================== 
+   Vitals — Quiet Precision context pages
+
+   Scoped presentation for Genetics, Interactions and Timeline. These pages
+   favour readable evidence, restrained hierarchy and progressive disclosure.
+   ========================================================================== */
+
+body.ui-vitals .v-context-page {
+    width: min(100%, var(--page-max, 72rem));
+    margin-inline: auto;
+    padding: clamp(20px, 3vw, 40px) clamp(16px, 3vw, 32px) 64px;
+    display: grid;
+    gap: clamp(24px, 3vw, 40px);
+    overflow-x: clip;
+}
+
+body.ui-vitals .v-context-page > *,
+body.ui-vitals .v-context-page section,
+body.ui-vitals .v-context-page article,
+body.ui-vitals .v-context-page aside,
+body.ui-vitals .v-context-page form {
+    min-width: 0;
+}
+
+body.ui-vitals .v-context-state {
+    padding-bottom: clamp(20px, 2.5vw, 30px);
+    border-bottom: 1px solid var(--line);
+}
+
+body.ui-vitals .v-context-state .mh-head {
+    margin: 0;
+}
+
+body.ui-vitals .v-context-section {
+    min-width: 0;
+    padding-top: clamp(20px, 2.5vw, 30px);
+    border-top: 1px solid var(--line);
+}
+
+body.ui-vitals .v-context-surface {
+    min-width: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: none;
+}
+
+body.ui-vitals .v-context-page .v-card,
+body.ui-vitals .v-context-page .v-card-tile,
+body.ui-vitals .v-context-page .v-card-inset {
+    box-shadow: none;
+}
+
+body.ui-vitals .v-context-page button,
+body.ui-vitals .v-context-page .v-btn,
+body.ui-vitals .v-context-page .v-btn-ghost,
+body.ui-vitals .v-context-page .v-icon-btn,
+body.ui-vitals .v-context-page input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+body.ui-vitals .v-context-page select,
+body.ui-vitals .v-context-page summary {
+    min-height: 44px;
+}
+
+body.ui-vitals .v-context-page .v-icon-btn {
+    min-width: 44px;
+}
+
+body.ui-vitals .v-context-page button,
+body.ui-vitals .v-context-page a,
+body.ui-vitals .v-context-page summary {
+    touch-action: manipulation;
+}
+
+body.ui-vitals .v-context-page :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+}
+
+body.ui-vitals .v-context-heading-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+body.ui-vitals .v-context-table-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+}
+
+body.ui-vitals .v-context-table-scroll .v-table {
+    width: 100%;
+    min-width: 680px;
+}
+
+body.ui-vitals .v-context-page p,
+body.ui-vitals .v-context-page td,
+body.ui-vitals .v-context-page .v-chip {
+    overflow-wrap: anywhere;
+}
+
+/* Genetics --------------------------------------------------------------- */
+
+body.ui-vitals .v-genetics-page {
+    --context-marker: var(--warn);
+}
+
+body.ui-vitals .v-genetics-alert {
+    min-height: 44px;
+    padding: 10px 14px;
+}
+
+body.ui-vitals .v-genetics-library {
+    display: grid;
+    gap: 24px;
+}
+
+body.ui-vitals .v-genetics-tabs {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-width: 0;
+}
+
+body.ui-vitals .v-genetics-tabs__list {
+    display: flex;
+    gap: 8px;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+}
+
+body.ui-vitals .v-genetics-tabs__list::-webkit-scrollbar {
+    display: none;
+}
+
+body.ui-vitals .v-genetics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+body.ui-vitals .v-genetics-entry {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 20px;
+    min-width: 0;
+    padding: clamp(18px, 2.2vw, 26px);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: none;
+}
+
+body.ui-vitals .v-genetics-entry::before {
+    content: "";
+    position: absolute;
+    inset: 18px auto 18px 0;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--line-2);
+}
+
+body.ui-vitals .v-genetics-entry.is-marker::before {
+    background: var(--context-marker);
+}
+
+body.ui-vitals .v-genetics-entry__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+body.ui-vitals .v-genetics-entry__identity,
+body.ui-vitals .v-genetics-entry__body {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+}
+
+body.ui-vitals .v-genetics-entry__gene {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+body.ui-vitals .v-genetics-entry__genotype {
+    display: grid;
+    justify-items: end;
+    gap: 5px;
+    flex: 0 0 auto;
+}
+
+body.ui-vitals .v-genetics-entry__value {
+    padding: 5px 10px;
+    color: var(--fg);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+body.ui-vitals .v-genetics-entry__body {
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+}
+
+body.ui-vitals .v-genetics-entry__recommendation {
+    padding: 14px 16px;
+    color: var(--fg-2);
+    background: var(--surface-2);
+    border-left: 2px solid var(--good);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+body.ui-vitals .v-genetics-entry.is-marker .v-genetics-entry__recommendation {
+    border-left-color: var(--warn);
+}
+
+body.ui-vitals .v-genetics-empty {
+    max-width: 34rem;
+    margin-inline: auto;
+    padding: clamp(28px, 5vw, 48px);
+    text-align: center;
+}
+
+body.ui-vitals .v-genetics-empty__mark {
+    width: 44px;
+    height: 44px;
+    margin-inline: auto;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    border: 1px solid var(--line-2);
+    border-radius: 50%;
+}
+
+body.ui-vitals .v-genetics-admin {
+    display: grid;
+    gap: 24px;
+}
+
+body.ui-vitals .v-genetics-import,
+body.ui-vitals .v-genetics-editor,
+body.ui-vitals .v-genetics-catalog {
+    padding: clamp(18px, 2.5vw, 28px);
+}
+
+body.ui-vitals .v-genetics-admin-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.22fr);
+    gap: 24px;
+    align-items: start;
+}
+
+/* Interactions ----------------------------------------------------------- */
+
+body.ui-vitals .v-interactions-page {
+    --rule-block: var(--bad);
+    --rule-warn: var(--warn);
+    --rule-info: var(--accent);
+}
+
+body.ui-vitals .v-interactions-toolbar {
+    position: sticky;
+    top: 12px;
+    z-index: 8;
+    display: grid;
+    grid-template-columns: minmax(220px, 1.25fr) repeat(2, minmax(170px, 0.75fr));
+    gap: 12px;
+    align-items: end;
+    padding: 16px;
+    background: var(--surface);
+    border-color: var(--line-2);
+}
+
+body.ui-vitals .v-interactions-search {
+    position: relative;
+}
+
+body.ui-vitals .v-interactions-search svg {
+    position: absolute;
+    left: 13px;
+    bottom: 14px;
+    width: 16px;
+    height: 16px;
+    color: var(--muted);
+    pointer-events: none;
+}
+
+body.ui-vitals .v-interactions-search input {
+    padding-left: 40px;
+}
+
+body.ui-vitals .v-interactions-catalog {
+    display: grid;
+    gap: 32px;
+}
+
+body.ui-vitals .v-interactions-category {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+}
+
+body.ui-vitals .v-interactions-category:first-child {
+    padding-top: 0;
+    border-top: 0;
+}
+
+body.ui-vitals .v-interactions-category__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+body.ui-vitals .v-interactions-rules {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+body.ui-vitals .v-context-rule {
+    position: relative;
+    min-width: 0;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: none;
+}
+
+body.ui-vitals .v-context-rule::before {
+    content: "";
+    position: absolute;
+    inset: 14px auto 14px 0;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--rule-warn);
+}
+
+body.ui-vitals .v-context-rule.is-block::before {
+    background: var(--rule-block);
+}
+
+body.ui-vitals .v-context-rule.is-info::before {
+    background: var(--rule-info);
+}
+
+body.ui-vitals .v-context-rule__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+}
+
+body.ui-vitals .v-context-rule__type {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: var(--fg-2);
+}
+
+body.ui-vitals .v-context-rule .v-switch {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+body.ui-vitals .v-context-rule details {
+    min-width: 0;
+}
+
+body.ui-vitals .v-context-rule summary {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    padding: 8px 28px 6px 0;
+    color: var(--fg);
+    cursor: pointer;
+    list-style: none;
+}
+
+body.ui-vitals .v-context-rule summary::-webkit-details-marker {
+    display: none;
+}
+
+body.ui-vitals .v-context-rule summary::after {
+    content: "";
+    position: absolute;
+    top: 17px;
+    right: 4px;
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid var(--muted);
+    border-bottom: 1.5px solid var(--muted);
+    transform: rotate(45deg);
+}
+
+body.ui-vitals .v-context-rule details[open] summary::after {
+    top: 20px;
+    transform: rotate(225deg);
+}
+
+body.ui-vitals .v-context-rule__message {
+    font-weight: 650;
+    line-height: 1.45;
+}
+
+body.ui-vitals .v-context-rule__detail {
+    display: grid;
+    gap: 10px;
+    padding: 12px 0 2px;
+    border-top: 1px solid var(--line);
+}
+
+body.ui-vitals .v-context-rule__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+body.ui-vitals .v-interactions-empty {
+    padding: clamp(28px, 5vw, 48px);
+    text-align: center;
+}
+
+/* Timeline --------------------------------------------------------------- */
+
+body.ui-vitals .v-timeline-page {
+    --timeline-date-width: 88px;
+}
+
+body.ui-vitals .v-timeline-shell {
+    width: min(100%, 58rem);
+    display: grid;
+    gap: 28px;
+}
+
+body.ui-vitals .v-timeline-form {
+    padding: clamp(18px, 2.5vw, 28px);
+}
+
+body.ui-vitals .v-timeline-rail {
+    position: relative;
+    display: grid;
+    gap: 0;
+    min-width: 0;
+}
+
+body.ui-vitals .v-timeline-rail::before {
+    content: "";
+    position: absolute;
+    top: 18px;
+    bottom: 18px;
+    left: calc(var(--timeline-date-width) + 9px);
+    width: 1px;
+    background: var(--line-2);
+}
+
+body.ui-vitals .v-timeline-day {
+    display: grid;
+    grid-template-columns: var(--timeline-date-width) minmax(0, 1fr);
+    gap: 20px;
+    min-width: 0;
+    padding-bottom: 28px;
+}
+
+body.ui-vitals .v-timeline-day:last-child {
+    padding-bottom: 0;
+}
+
+body.ui-vitals .v-timeline-date {
+    padding-top: 14px;
+    color: var(--muted);
+    text-align: right;
+}
+
+body.ui-vitals .v-timeline-events {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+}
+
+body.ui-vitals .v-timeline-event {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    min-width: 0;
+    padding: 14px 16px 14px 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: none;
+}
+
+body.ui-vitals .v-timeline-event::before {
+    content: "";
+    position: absolute;
+    top: 19px;
+    left: -15px;
+    width: 9px;
+    height: 9px;
+    background: var(--surface);
+    border: 2px solid var(--line-2);
+    border-radius: 50%;
+}
+
+body.ui-vitals .v-timeline-event.is-good::before {
+    border-color: var(--good);
+}
+
+body.ui-vitals .v-timeline-event.is-bad::before {
+    border-color: var(--bad);
+}
+
+body.ui-vitals .v-timeline-event.is-warn::before {
+    border-color: var(--warn);
+}
+
+body.ui-vitals .v-timeline-event__content {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+}
+
+body.ui-vitals .v-timeline-event__meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+body.ui-vitals .v-timeline-event__title {
+    color: var(--fg);
+    font-weight: 650;
+    line-height: 1.45;
+}
+
+body.ui-vitals .v-timeline-empty {
+    margin-left: calc(var(--timeline-date-width) + 20px);
+    padding: 32px;
+}
+
+/* Responsive ------------------------------------------------------------- */
+
+@media (max-width: 1023px) {
+    body.ui-vitals .v-genetics-admin-grid,
+    body.ui-vitals .v-interactions-toolbar {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    body.ui-vitals .v-interactions-search {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 767px) {
+    body.ui-vitals .v-context-page {
+        padding: 16px 14px calc(92px + env(safe-area-inset-bottom));
+        gap: 24px;
+    }
+
+    body.ui-vitals .v-context-state {
+        padding-bottom: 18px;
+    }
+
+    body.ui-vitals .v-context-page .mh-actions,
+    body.ui-vitals .v-context-page .mh-actions .v-btn,
+    body.ui-vitals .v-context-page .mh-actions .v-btn-ghost {
+        width: 100%;
+    }
+
+    body.ui-vitals .v-genetics-tabs {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    body.ui-vitals .v-genetics-tabs__list,
+    body.ui-vitals .v-genetics-tabs__list .v-pill {
+        flex: 0 0 auto;
+    }
+
+    body.ui-vitals .v-genetics-grid,
+    body.ui-vitals .v-genetics-admin-grid,
+    body.ui-vitals .v-interactions-toolbar,
+    body.ui-vitals .v-interactions-rules {
+        grid-template-columns: 1fr;
+    }
+
+    body.ui-vitals .v-interactions-search {
+        grid-column: auto;
+    }
+
+    body.ui-vitals .v-interactions-toolbar {
+        position: static;
+    }
+
+    body.ui-vitals .v-genetics-entry__head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    body.ui-vitals .v-genetics-entry__genotype {
+        justify-items: start;
+    }
+
+    body.ui-vitals .v-timeline-page {
+        --timeline-date-width: 0px;
+    }
+
+    body.ui-vitals .v-timeline-rail::before {
+        left: 4px;
+    }
+
+    body.ui-vitals .v-timeline-day {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding-left: 18px;
+    }
+
+    body.ui-vitals .v-timeline-date {
+        padding-top: 0;
+        text-align: left;
+    }
+
+    body.ui-vitals .v-timeline-event::before {
+        left: -18px;
+    }
+
+    body.ui-vitals .v-timeline-event {
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 14px;
+    }
+
+    body.ui-vitals .v-timeline-empty {
+        margin-left: 18px;
+    }
+}
+
+@media (max-width: 479px) {
+    body.ui-vitals .v-context-table-scroll .v-table {
+        min-width: 640px;
+    }
+
+    body.ui-vitals .v-timeline-event {
+        gap: 8px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.ui-vitals .v-context-page *,
+    body.ui-vitals .v-context-page *::before,
+    body.ui-vitals .v-context-page *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

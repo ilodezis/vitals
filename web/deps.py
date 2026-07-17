@@ -145,27 +145,6 @@ async def load_language(
     request.state.lang = lang
 
 
-async def load_ui_version(
-    request: Request,
-    db: AsyncSession = Depends(get_session),
-    redis: Redis = Depends(get_redis),
-) -> None:
-    """Global dependency: resolve the UI version (classic|masthead) once per
-    request and stash it on ``request.state`` so ``base.html`` and every section
-    template can pick the right chrome without each router passing it through.
-
-    Fail-safe: any error yields ``"classic"`` — the frame must **always** render.
-    """
-    from vitals.services import ui_version_service
-
-    try:
-        version = await ui_version_service.get_ui_version(db, redis)
-    except Exception:
-        logger.exception("ui_version load failed; defaulting to 'classic'")
-        version = "classic"
-    request.state.ui_version = version
-
-
 def require_module(key: str) -> Callable:
     """Build a dependency that 404s (→ redirect) when module ``key`` is disabled.
 

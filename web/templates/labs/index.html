@@ -3,10 +3,11 @@
 {% block title %}{{ t("labs.page_title") }}{% endblock %}
 
 {% block content %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="labsUpload({% if latest %}false{% else %}true{% endif %})">
+{% from "partials/masthead.html" import masthead_header with context %}
+<link rel="stylesheet" href="{{ static_version('/static/vitals-data.css') }}">
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8 v-data-page v-labs-page" x-data="labsUpload({% if latest %}false{% else %}true{% endif %})">
 
-    {% if request.state.ui_version == 'masthead' %}
+    <section class="v-data-state" aria-label="{{ t('nav.labs') }}">
     {% call masthead_header('labs', t('nav.labs'), [
         {'label': t('labs.metric_markers'), 'primary': true, 'value': markers | length},
         {'label': t('labs.metric_oor'), 'tone': ('bad' if out_of_range > 0 else ''), 'value': out_of_range},
@@ -17,52 +18,9 @@
             <span x-text="showUpload ? '{{ t("labs.toggle_results") }}' : '{{ t("labs.toggle_upload") }}'"></span>
         </button>
     {% endcall %}
-    {% else %}
-    <!-- Header -->
-    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-        <div class="flex items-start gap-3.5">
-            <span class="v-bar mt-1"></span>
-            <div class="space-y-2">
-                <span class="v-tag muted">🧪 {{ t("labs.tag") }}</span>
-                <h1 class="v-text-heading">{{ t("labs.heading") }}</h1>
-                <p class="v-text-body max-w-2xl">
-                    {{ t("labs.description") }}
-                </p>
-            </div>
-        </div>
-        <!-- Secondary action: ghost button — data consumption takes visual priority -->
-        <button @click="showUpload = !showUpload" class="v-btn-ghost w-full md:w-auto shrink-0">
-            <svg style="width:1.1rem;height:1.1rem" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            <span x-text="showUpload ? '{{ t("labs.toggle_results") }}' : '{{ t("labs.toggle_upload") }}'"></span>
-        </button>
-    </div>
+    </section>
 
-    <!-- Metrics -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("labs.metric_markers") }}</span>
-            <span class="v-metric-value">{{ markers | length }}</span>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("labs.metric_oor") }}</span>
-            <!-- If any markers are out of range, highlight value in warning red -->
-            <span class="v-metric-value {% if out_of_range > 0 %}bad{% endif %}">{{ out_of_range }}</span>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("labs.metric_selected") }}</span>
-            <span class="v-metric-value-text truncate">{{ selected or '—' }}</span>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("labs.metric_recognition") }}</span>
-            <span class="v-metric-value-text {% if llm_configured %}good{% endif %}">
-                {% if llm_configured %}{{ t("labs.llm_connected") }}{% else %}{{ t("labs.llm_not_configured") }}{% endif %}
-            </span>
-        </div>
-    </div>
-    {% endif %}
-
+    <div class="v-labs-alerts" aria-live="polite">
     {% if upload == 'ok' %}
         {% if failed and failed|int > 0 %}
         <div class="v-alert warn" x-init="showUpload = false">{{ t("labs.upload_partial", count=added, failed=failed) }}</div>
@@ -74,14 +32,15 @@
     {% elif upload == 'error' %}
     <div class="v-alert warn" x-init="showUpload = true">{{ t("labs.upload_error") }}</div>
     {% endif %}
+    </div>
 
     <!-- Forms Section (Toggled) -->
-    <div x-show="showUpload" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start" x-cloak>
+    <section x-show="showUpload" class="v-labs-entry-grid" x-cloak aria-label="{{ t('labs.toggle_upload') }}">
         <!-- Left: Upload dropzone -->
-        <div class="lg:col-span-6 v-card p-6 space-y-3">
+        <article class="v-card v-data-surface v-labs-entry-panel space-y-3" aria-labelledby="labs-upload-title">
             <div class="flex items-center gap-2">
                 <span class="v-bar v-bar-sm"></span>
-                <span class="v-text-card">{{ t("labs.recognize_title") }}</span>
+                <h2 id="labs-upload-title" class="v-text-card">{{ t("labs.recognize_title") }}</h2>
             </div>
             <p class="v-text-body">
                 {{ t("labs.recognize_description") }}
@@ -103,15 +62,15 @@
                     {% if llm_configured %}{{ t("labs.recognize_submit") }}{% else %}{{ t("labs.llm_not_configured") }}{% endif %}
                 </button>
             </form>
-        </div>
+        </article>
 
         <!-- Right: Manual entry -->
-        <div class="lg:col-span-6 v-card p-6 space-y-3">
+        <article class="v-card v-data-surface v-labs-entry-panel space-y-3" aria-labelledby="labs-manual-title">
             <div class="flex items-center gap-2">
                 <span class="v-bar v-bar-sm"></span>
-                <span class="v-text-card">{{ t("labs.manual_title") }}</span>
+                <h2 id="labs-manual-title" class="v-text-card">{{ t("labs.manual_title") }}</h2>
             </div>
-            <form action="/labs/result" method="POST" class="space-y-4" onsubmit="this.querySelector('button[type=submit]').disabled = true">
+            <form action="/labs/result" method="POST" class="space-y-4 v-labs-manual-form" onsubmit="this.querySelector('button[type=submit]').disabled = true">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="v-label">{{ t("common.date") }}</label>
@@ -151,19 +110,19 @@
                 </div>
                 <button type="submit" class="v-btn-ghost w-full">{{ t("labs.add_result") }}</button>
             </form>
-        </div>
-    </div>
+        </article>
+    </section>
 
     <!-- Main Dashboard Section (Table + Catalog + Chart) -->
-    <div x-show="!showUpload" class="space-y-6">
+    <section x-show="!showUpload" class="v-labs-dashboard" aria-label="{{ t('labs.latest_values') }}">
         <!-- Tables Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div class="v-labs-overview-grid">
             <!-- Left: latest per marker table -->
-            <div class="lg:col-span-8 v-card p-6 space-y-3">
+            <section class="v-card v-data-surface v-labs-results space-y-3" aria-labelledby="labs-results-title">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
                         <span class="v-bar v-bar-sm"></span>
-                        <span class="v-text-card">{{ t("labs.latest_values") }}</span>
+                        <h2 id="labs-results-title" class="v-text-card">{{ t("labs.latest_values") }}</h2>
                     </div>
                     <label class="flex items-center gap-2 v-text-label cursor-pointer select-none">
                         <input type="checkbox" x-model="showOnlyProblematic" class="rounded bg-surface-2 border-line text-accent focus:ring-accent">
@@ -171,8 +130,8 @@
                     </label>
                 </div>
                 <div class="max-h-[24rem] overflow-y-auto v-card-inset">
-                    <div class="v-table-wrap">
-                        <table class="v-table">
+                    <div class="v-table-wrap v-data-table-scroll" tabindex="0" aria-label="{{ t('labs.latest_values') }}">
+                        <table class="v-table v-labs-results-table">
                         <thead>
                             <tr><th>{{ t("labs.marker") }}</th><th>{{ t("labs.value") }}</th><th>{{ t("labs.norm") }}</th><th>{{ t("labs.status") }}</th><th>{{ t("common.date") }}</th></tr>
                         </thead>
@@ -180,19 +139,19 @@
                             {% for r in latest %}
                             {% set f = r.flag or 'normal' %}
                             {% set is_bad = f in ['low', 'high', 'critical_low', 'critical_high'] %}
-                            <tr class="cursor-pointer" style="{% if r.marker == selected %}background: var(--surface-2){% endif %}"
+                            <tr class="cursor-pointer{% if r.marker == selected %} is-selected{% endif %}"
                                 onclick="window.location.href='/labs?marker={{ r.marker | urlencode }}'"
                                 x-show="!showOnlyProblematic || {{ 'true' if is_bad else 'false' }}">
-                                <td class="max-w-[150px] truncate" style="color: {% if r.marker == selected %}var(--fg){% else %}var(--fg-2){% endif %}" title="{{ r.marker }}">{{ r.marker }}</td>
-                                <td class="v-num font-semibold" style="color: var(--fg)">{{ r.value | format_number }}{% if r.unit %}<span class="v-unit">{{ r.unit | format_unit }}</span>{% endif %}</td>
-                                <td class="v-num v-text-micro">{% if r.ref_low is not none or r.ref_high is not none %}{{ r.ref_low if r.ref_low is not none else '' }}–{{ r.ref_high if r.ref_high is not none else '' }}{% else %}—{% endif %}</td>
-                                <td>
+                                <td data-label="{{ t('labs.marker') }}" class="max-w-[150px] truncate" style="color: {% if r.marker == selected %}var(--fg){% else %}var(--fg-2){% endif %}" title="{{ r.marker }}">{{ r.marker }}</td>
+                                <td data-label="{{ t('labs.value') }}" class="v-num font-semibold" style="color: var(--fg)">{{ r.value | format_number }}{% if r.unit %}<span class="v-unit">{{ r.unit | format_unit }}</span>{% endif %}</td>
+                                <td data-label="{{ t('labs.norm') }}" class="v-num v-text-micro">{% if r.ref_low is not none or r.ref_high is not none %}{{ r.ref_low if r.ref_low is not none else '' }}–{{ r.ref_high if r.ref_high is not none else '' }}{% else %}—{% endif %}</td>
+                                <td data-label="{{ t('labs.status') }}">
                                     <span class="v-text-label font-semibold"
                                           style="color: {% if 'critical' in f %}var(--bad-strong){% elif f in ['low','high'] %}var(--warn){% else %}var(--good){% endif %}">
                                         {{ t("enum.flag." + f) }}
                                     </span>
                                 </td>
-                                <td class="v-num v-text-micro">{{ r.date | format_date }}</td>
+                                <td data-label="{{ t('common.date') }}" class="v-num v-text-micro">{{ r.date | format_date }}</td>
                             </tr>
                             {% else %}
                             <tr><td colspan="5" class="text-center" style="color: var(--muted)">{{ t("labs.no_data") }}</td></tr>
@@ -201,15 +160,15 @@
                     </table>
                 </div>
             </div>
-        </div>
+            </section>
 
             <!-- Right: catalog -->
-            <div class="lg:col-span-4 v-card p-6 space-y-3">
+            <aside class="v-card v-data-surface v-labs-catalog space-y-3" aria-labelledby="labs-catalog-title">
                 <div class="flex items-center gap-2">
                     <span class="v-bar v-bar-sm"></span>
-                    <span class="v-text-card">{{ t("labs.catalog_title") }}</span>
+                    <h2 id="labs-catalog-title" class="v-text-card">{{ t("labs.catalog_title") }}</h2>
                 </div>
-                <ul class="space-y-2.5 max-h-[24rem] overflow-y-auto pr-1">
+                <ul class="space-y-2.5 max-h-[24rem] overflow-y-auto pr-1 v-labs-catalog-list">
                     {% for m in markers %}
                     <li class="pb-2 flex justify-between items-center gap-2" style="border-bottom: 1px solid var(--line)">
                         <span class="v-text-body">{{ m.name }}
@@ -223,20 +182,20 @@
                     <li class="text-center pt-2" style="color: var(--muted)">{{ t("labs.catalog_empty") }}</li>
                     {% endfor %}
                 </ul>
-            </div>
+            </aside>
         </div>
 
         <!-- Chart (bottom) -->
-        <div class="v-card p-6 space-y-3">
+        <section class="v-card v-data-surface v-labs-trend space-y-3" aria-labelledby="labs-trend-title">
             <div class="flex items-center gap-2">
                 <span class="v-bar"></span>
-                <span class="v-text-heading">{{ t("labs.chart_title") }} {{ selected or '—' }}</span>
+                <h2 id="labs-trend-title" class="v-text-heading">{{ t("labs.chart_title") }} {{ selected or '—' }}</h2>
             </div>
-            <div class="h-[280px] w-full relative">
+            <div class="v-data-chart-frame">
                 <canvas id="labChart"></canvas>
             </div>
-        </div>
-    </div>
+        </section>
+    </section>
 
     <!-- MODAL: Lab upload preview (edit recognized markers before saving) -->
     <div x-show="lqPreviewOpen" class="v-backdrop" x-cloak>
@@ -257,7 +216,7 @@
                     <input type="text" x-model="lqLab.lab_name" placeholder="Synevo" class="v-input">
                 </div>
             </div>
-            <div class="max-h-[50vh] overflow-y-auto v-card-inset">
+            <div class="max-h-[50vh] overflow-y-auto v-card-inset v-data-table-scroll" tabindex="0" aria-label="{{ t('labs.preview_title') }}">
                 <table class="v-table w-full">
                     <thead>
                         <tr>

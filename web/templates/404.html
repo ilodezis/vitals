@@ -1,49 +1,37 @@
 {% extends "base.html" %}
 {% block title %}404 · Vitals{% endblock %}
 
-{# Deliberately built only from design-system classes (.v-card / .v-btn / .v-btn-ghost
-   / .v-text-*) and utilities already present in the compiled tailwind.css. The first
-   version leaned on a pile of arbitrary Tailwind classes (blur-3xl, grid-cols-[…],
-   min-h-full, off-brand fuchsia/emerald gradients) that were never in the prebuilt
-   bundle, so the page rendered unstyled. Warm dim, single amber CTA — per DESIGN_SYSTEM.md. #}
 {% block content %}
+<link rel="stylesheet" href="{{ static_version('/static/vitals-public.css') }}">
 {% set is_ru = request.state.lang == 'ru' %}
-<div class="px-6 py-7 w-full" style="min-height: 72vh; display: flex; align-items: center; justify-content: center;">
-    <div class="v-card p-6 w-full text-center" style="max-width: 30rem;">
-        <div class="flex justify-center" style="margin-bottom: 1.25rem;">
-            <svg style="width: 2.4rem; height: 2.4rem; color: var(--accent);" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor" stroke-width="3">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h2.5l2.5-6 3.5 12 2.5-9 1.5 3h3" />
-            </svg>
+
+<section class="v-public v-public-status" aria-labelledby="status-title">
+    <div class="v-public-status-frame">
+        <p class="v-public-code" aria-hidden="true">404</p>
+
+        <div class="v-public-status-copy">
+            <p class="v-public-kicker">
+                {{ 'Маршрут не найден' if is_ru else 'Route not found' }}
+            </p>
+            <h1 id="status-title">
+                {{ 'Эта страница ушла на внеплановый чекап.' if is_ru else 'This page went in for an unscheduled checkup.' }}
+            </h1>
+            <p>
+                {{ 'Ссылка может быть устаревшей, модуль выключен или адрес набран с ошибкой.' if is_ru else 'The link may be outdated, a module may be disabled, or the address may be mistyped.' }}
+            </p>
+
+            <div class="v-public-actions">
+                <a href="/weight" class="v-public-action">{{ 'На главную' if is_ru else 'Go to dashboard' }}</a>
+                <button type="button" class="v-public-back"
+                    onclick="history.length > 1 ? history.back() : location.assign('/weight')">
+                    {{ 'Назад' if is_ru else 'Go back' }}
+                </button>
+            </div>
+
+            {% if requested_path %}
+            <code class="v-public-path">{{ requested_path }}</code>
+            {% endif %}
         </div>
-
-        <p class="v-text-micro"
-            style="color: var(--muted); letter-spacing: .2em; text-transform: uppercase; margin-bottom: .85rem;">
-            {{ '404 · Маршрут не найден' if is_ru else '404 · Route not found' }}
-        </p>
-
-        <h1 class="v-text-title" style="color: var(--fg); margin-bottom: .75rem;">
-            {{ 'Эта страница ушла на внеплановый чекап.' if is_ru else 'This page went in for an unscheduled checkup.' }}
-        </h1>
-
-        <p class="v-text-card"
-            style="color: var(--muted); font-weight: 400; max-width: 26rem; margin: 0 auto 1.75rem;">
-            {{ 'Ссылка может быть устаревшей, модуль выключен или адрес набран с ошибкой.' if is_ru else 'The link may be outdated, a module may be disabled, or the address may be mistyped.' }}
-        </p>
-
-        <div class="flex flex-col sm:flex-row gap-3 justify-center">
-            <a href="/weight" class="v-btn justify-center">{{ 'На главную' if is_ru else 'Go to dashboard' }}</a>
-            <button type="button" onclick="history.length > 1 ? history.back() : location.assign('/weight')"
-                class="v-btn-ghost justify-center">
-                {{ 'Назад' if is_ru else 'Go back' }}
-            </button>
-        </div>
-
-        {% if requested_path %}
-        <p class="v-text-micro" style="color: var(--muted); opacity: .6; margin-top: 1.5rem; word-break: break-all;">
-            {{ requested_path }}
-        </p>
-        {% endif %}
     </div>
-</div>
+</section>
 {% endblock %}

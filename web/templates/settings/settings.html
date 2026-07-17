@@ -3,441 +3,478 @@
 {% block title %}{{ t("settings.page_title") }}{% endblock %}
 
 {% block content %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
+<link rel="stylesheet" href="{{ static_version('/static/vitals-settings.css') }}">
 
-    <div class="max-w-4xl space-y-8">
-
-    <!-- Header -->
-    <div class="v-card p-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div class="flex items-start gap-3.5">
-                <span class="v-bar mt-1"></span>
-                <div class="space-y-1.5">
-                    <span class="v-tag cool">⚙️ {{ t("settings.config_tag") }}</span>
-                    <h1 class="v-text-heading">{{ t("settings.heading") }}</h1>
-                    <p class="v-text-body max-w-2xl">
-                        {{ t("settings.description") }}
-                    </p>
-                </div>
-            </div>
-            <div class="flex items-center gap-2 self-start sm:self-center">
-                <button type="button" onclick="triggerRestart()" class="v-btn whitespace-nowrap flex items-center gap-2 text-xs">
-                    <svg style="width: 1rem; height: 1rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                    </svg>
-                    {{ t("settings.restart_btn") }}
-                </button>
-            </div>
+<div class="settings-page">
+    <header class="settings-hero" aria-labelledby="settings-page-title">
+        <div class="settings-hero__copy">
+            <span class="settings-eyebrow">{{ t("settings.config_tag") }}</span>
+            <h1 id="settings-page-title" class="settings-hero__title">{{ t("settings.heading") }}</h1>
+            <p class="settings-hero__description">{{ t("settings.description") }}</p>
         </div>
-    </div>
+        <div class="settings-hero__signal" aria-hidden="true">
+            <span class="settings-hero__signal-dot"></span>
+            <svg viewBox="0 0 48 48" fill="none">
+                <path d="M8 24h8l4-10 7 22 5-12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+    </header>
 
-    <!-- Saved / Error banners -->
-    {% if saved == 'profile' %}
-    <div class="v-alert info">✅ {{ t("settings.saved.profile") }}</div>
-    {% elif saved == 'ai' %}
-    <div class="v-alert info">✅ {{ t("settings.saved.ai") }}</div>
-    {% elif saved == 'hevy' %}
-    <div class="v-alert info">✅ {{ t("settings.saved.hevy") }}</div>
-    {% elif saved == 'garmin' %}
-    <div class="v-alert info">✅ {{ t("settings.saved.garmin") }}</div>
-    {% elif saved == 'mcp' %}
-    <div class="v-alert info">✅ {{ t("settings.saved.mcp") }}</div>
-    {% elif saved == 'password' %}
-    <div class="v-alert info">✅ {{ t("settings.saved.password") }}</div>
-    {% elif saved == 'restart' %}
-    <div class="v-alert info" style="background: var(--good-soft); border-color: rgba(111,197,142,0.3); color: var(--good);">✅ {{ t("settings.saved.restart") }}</div>
-    {% elif saved == 'language' %}
-    <div class="v-alert info">✅ {{ t("settings.saved.language") }}</div>
-    {% elif saved == 'ui_version' %}
-    <div class="v-alert info">✅ {{ t("settings.saved.ui_version") }}</div>
+    {% if saved %}
+    <div class="settings-feedback" aria-live="polite">
+        {% if saved == 'profile' %}
+        <div class="settings-notice settings-notice--success" role="status">{{ t("settings.saved.profile") }}</div>
+        {% elif saved == 'ai' %}
+        <div class="settings-notice settings-notice--success" role="status">{{ t("settings.saved.ai") }}</div>
+        {% elif saved == 'hevy' %}
+        <div class="settings-notice settings-notice--success" role="status">{{ t("settings.saved.hevy") }}</div>
+        {% elif saved == 'garmin' %}
+        <div class="settings-notice settings-notice--success" role="status">{{ t("settings.saved.garmin") }}</div>
+        {% elif saved == 'mcp' %}
+        <div class="settings-notice settings-notice--success" role="status">{{ t("settings.saved.mcp") }}</div>
+        {% elif saved == 'password' %}
+        <div class="settings-notice settings-notice--success" role="status">{{ t("settings.saved.password") }}</div>
+        {% elif saved == 'restart' %}
+        <div class="settings-notice settings-notice--success" role="status">{{ t("settings.saved.restart") }}</div>
+        {% elif saved == 'language' %}
+        <div class="settings-notice settings-notice--success" role="status">{{ t("settings.saved.language") }}</div>
+        {% endif %}
+    </div>
     {% endif %}
 
-    {% if error == 'wrong_password' %}
-    <div class="v-alert warn">❌ {{ t("settings.error.wrong_password") }}</div>
-    {% elif error == 'password_mismatch' %}
-    <div class="v-alert warn">❌ {{ t("settings.error.password_mismatch") }}</div>
-    {% elif error == 'password_too_short' %}
-    <div class="v-alert warn">❌ {{ t("settings.error.password_too_short") }}</div>
+    {% if error %}
+    <div class="settings-feedback" aria-live="assertive">
+        {% if error == 'wrong_password' %}
+        <div class="settings-notice settings-notice--error" role="alert">{{ t("settings.error.wrong_password") }}</div>
+        {% elif error == 'password_mismatch' %}
+        <div class="settings-notice settings-notice--error" role="alert">{{ t("settings.error.password_mismatch") }}</div>
+        {% elif error == 'password_too_short' %}
+        <div class="settings-notice settings-notice--error" role="alert">{{ t("settings.error.password_too_short") }}</div>
+        {% endif %}
+    </div>
     {% endif %}
 
-    <!-- ─── LANGUAGE ───────────────────────────────────────────────────────── -->
-    <div class="v-card p-6 space-y-5">
-        <div class="flex items-center gap-2 pb-2" style="border-bottom: 1px solid var(--line)">
-            <span class="v-bar v-bar-sm"></span>
-            <span class="v-text-card">🌐 {{ t("settings.language_title") }}</span>
+    <div class="settings-layout">
+        <aside class="settings-nav" aria-label="{{ t('settings.heading') }}">
+            <nav>
+                <ol class="settings-nav__list">
+                    <li><a href="#settings-general"><span>01</span>{% if request.state.lang|default('en') == 'ru' %}Общие{% else %}General{% endif %}</a></li>
+                    <li><a href="#settings-modules"><span>02</span>{{ t("modules.title") }}</a></li>
+                    <li><a href="#settings-profile"><span>03</span>{{ t("settings.profile_title") }}</a></li>
+                    <li><a href="#settings-integrations"><span>04</span>{% if request.state.lang|default('en') == 'ru' %}Интеграции{% else %}Integrations{% endif %}</a></li>
+                    <li><a href="#settings-data"><span>05</span>{{ t("settings.data_title") }}</a></li>
+                    <li><a href="#settings-security"><span>06</span>{% if request.state.lang|default('en') == 'ru' %}Безопасность{% else %}Security{% endif %}</a></li>
+                    <li><a href="#settings-system"><span>07</span>{% if request.state.lang|default('en') == 'ru' %}Система{% else %}System{% endif %}</a></li>
+                </ol>
+            </nav>
+        </aside>
+
+        <div class="settings-content">
+            <section id="settings-general" class="settings-section" aria-labelledby="settings-general-title">
+                <header class="settings-section__header">
+                    <span class="settings-section__index">01</span>
+                    <div>
+                        <h2 id="settings-general-title">{{ t("settings.language_title") }}</h2>
+                        <p>{{ t("settings.language_description") }}</p>
+                    </div>
+                </header>
+                <div class="settings-panel settings-panel--compact">
+                    <form action="/settings/language" method="POST" hx-boost="false"
+                          x-data="{ selected: '{{ request.state.lang|default('en') }}' }">
+                        <input type="hidden" name="language" :value="selected">
+                        <fieldset>
+                            <legend class="sr-only">{{ t("settings.language_title") }}</legend>
+                            <div class="settings-language">
+                                <button type="button"
+                                        @click="selected = 'en'; $nextTick(() => $el.form.submit())"
+                                        :aria-pressed="selected === 'en'"
+                                        :class="selected === 'en' ? 'is-active' : ''">
+                                    <span class="settings-language__code">EN</span>
+                                    <span>English</span>
+                                </button>
+                                <button type="button"
+                                        @click="selected = 'ru'; $nextTick(() => $el.form.submit())"
+                                        :aria-pressed="selected === 'ru'"
+                                        :class="selected === 'ru' ? 'is-active' : ''">
+                                    <span class="settings-language__code">RU</span>
+                                    <span>Русский</span>
+                                </button>
+                            </div>
+                        </fieldset>
+                    </form>
+                </div>
+            </section>
+
+            <section id="settings-modules" class="settings-section" aria-labelledby="settings-modules-title">
+                <header class="settings-section__header">
+                    <span class="settings-section__index">02</span>
+                    <div>
+                        <h2 id="settings-modules-title">{{ t("modules.title") }}</h2>
+                        <p>{{ t("modules.description") }}</p>
+                    </div>
+                </header>
+                {% include "partials/modules_card.html" %}
+            </section>
+
+            <section id="settings-profile" class="settings-section" aria-labelledby="settings-profile-title">
+                <header class="settings-section__header">
+                    <span class="settings-section__index">03</span>
+                    <div>
+                        <h2 id="settings-profile-title">{{ t("settings.profile_title") }}</h2>
+                        <p>{{ t("settings.profile_description") }}</p>
+                    </div>
+                </header>
+                <div class="settings-panel">
+                    <form action="/settings/profile" method="POST" class="settings-form">
+                        <div class="settings-form__grid settings-form__grid--two">
+                            <div class="settings-field">
+                                <label for="s-height" class="v-label">{{ t("settings.height") }}</label>
+                                <input id="s-height" name="height_cm" type="number" min="100" max="250" step="0.5"
+                                       value="{{ height_cm }}" class="v-input" placeholder="190">
+                            </div>
+                            <div class="settings-field">
+                                <label for="s-sex" class="v-label">{{ t("settings.sex") }}</label>
+                                <select id="s-sex" name="sex" class="v-select">
+                                    <option value="male" {% if sex == 'male' %}selected{% endif %}>{{ t("settings.sex_male") }}</option>
+                                    <option value="female" {% if sex == 'female' %}selected{% endif %}>{{ t("settings.sex_female") }}</option>
+                                </select>
+                            </div>
+                            <div class="settings-field">
+                                <label for="s-age" class="v-label">{{ t("settings.age") }}</label>
+                                <input id="s-age" name="user_age" type="number" min="10" max="120"
+                                       value="{{ user_age }}" class="v-input" placeholder="18">
+                            </div>
+                            <div class="settings-field">
+                                <label for="s-tz" class="v-label">{{ t("settings.timezone") }}</label>
+                                <input id="s-tz" name="timezone" type="text"
+                                       value="{{ timezone }}" class="v-input" placeholder="Europe/Chisinau">
+                                <p class="settings-field__hint">{{ t("settings.timezone_hint") }}</p>
+                            </div>
+                        </div>
+                        <div class="settings-field">
+                            <label for="s-program" class="v-label">{{ t("settings.program") }}</label>
+                            <textarea id="s-program" name="user_program" rows="3" class="v-input"
+                                      placeholder="{{ t("settings.program_placeholder") }}">{{ user_program }}</textarea>
+                            <p class="settings-field__hint">{{ t("settings.program_hint") }}</p>
+                        </div>
+                        <div class="settings-field">
+                            <label for="s-goals" class="v-label">{{ t("settings.goals_label") }}</label>
+                            <input id="s-goals" name="user_goals" type="text" value="{{ user_goals }}" class="v-input"
+                                   placeholder="{{ t("settings.goals_placeholder") }}">
+                            <p class="settings-field__hint">{{ t("settings.goals_hint") }}</p>
+                        </div>
+                        <fieldset class="settings-subsection">
+                            <legend>{{ t("settings.nutrition_title") }}</legend>
+                            <p>{{ t("settings.nutrition_hint") }}</p>
+                            <div class="settings-form__grid settings-form__grid--three">
+                                <div class="settings-field">
+                                    <label for="s-protein" class="v-label">{{ t("settings.protein_target") }}</label>
+                                    <input id="s-protein" name="nutrition_protein_target_g" type="number" min="0" step="1"
+                                           value="{{ nutrition_protein_target_g }}" class="v-input" placeholder="150">
+                                </div>
+                                <div class="settings-field">
+                                    <label for="s-cal-min" class="v-label">{{ t("settings.cal_min") }}</label>
+                                    <input id="s-cal-min" name="nutrition_calories_min" type="number" min="0" step="50"
+                                           value="{{ nutrition_calories_min }}" class="v-input" placeholder="1300">
+                                </div>
+                                <div class="settings-field">
+                                    <label for="s-cal-max" class="v-label">{{ t("settings.cal_max") }}</label>
+                                    <input id="s-cal-max" name="nutrition_calories_max" type="number" min="0" step="50"
+                                           value="{{ nutrition_calories_max }}" class="v-input" placeholder="1700">
+                                </div>
+                            </div>
+                        </fieldset>
+                        <div class="settings-form__actions">
+                            <button type="submit" class="v-btn">{{ t("settings.save_profile") }}</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <section id="settings-integrations" class="settings-section" aria-labelledby="settings-integrations-title">
+                <header class="settings-section__header">
+                    <span class="settings-section__index">04</span>
+                    <div>
+                        <h2 id="settings-integrations-title">{% if request.state.lang|default('en') == 'ru' %}Интеграции{% else %}Integrations{% endif %}</h2>
+                    </div>
+                </header>
+                <div class="settings-integrations">
+                    <article class="settings-integration settings-integration--wide">
+                        <header class="settings-integration__header">
+                            <span class="settings-integration__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M8 9h8M8 13h5M7 3h10a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-4l-4 3v-3H7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </span>
+                            <div>
+                                <h3>{{ t("settings.ai_title") }}</h3>
+                                <p>{{ t("settings.ai_description") }}</p>
+                            </div>
+                            <span class="settings-status {% if openrouter_api_key_set %}settings-status--ready{% else %}settings-status--idle{% endif %}">
+                                {{ t("settings.key_set") if openrouter_api_key_set else t("settings.key_not_set") }}
+                            </span>
+                        </header>
+                        <form action="/settings/ai" method="POST" class="settings-form">
+                            <div class="settings-field">
+                                <label for="s-or-key" class="v-label">{{ t("settings.api_key") }}</label>
+                                <input id="s-or-key" name="openrouter_api_key" type="password" value=""
+                                       class="v-input font-mono"
+                                       placeholder="{{ t('settings.key_placeholder_set') if openrouter_api_key_set else 'sk-or-...' }}"
+                                       autocomplete="new-password">
+                                {% if openrouter_api_key_set %}
+                                <p class="settings-field__hint">{{ t("settings.keep_hint") }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="settings-form__grid settings-form__grid--two">
+                                <div class="settings-field">
+                                    <label for="s-digest-model" class="v-label">{{ t("settings.digest_model") }}</label>
+                                    <input id="s-digest-model" name="llm_model_digest" type="text"
+                                           value="{{ llm_model_digest }}" class="v-input font-mono"
+                                           placeholder="anthropic/claude-sonnet-4.6">
+                                    <p class="settings-field__hint">{{ t("settings.digest_model_hint") }}</p>
+                                </div>
+                                <div class="settings-field">
+                                    <label for="s-parser-model" class="v-label">{{ t("settings.parser_model") }}</label>
+                                    <input id="s-parser-model" name="llm_model_parser" type="text"
+                                           value="{{ llm_model_parser }}" class="v-input font-mono"
+                                           placeholder="google/gemini-2.5-flash">
+                                    <p class="settings-field__hint">{{ t("settings.parser_model_hint") }}</p>
+                                </div>
+                            </div>
+                            <div class="settings-field">
+                                <label for="s-or-url" class="v-label">{{ t("settings.base_url") }}</label>
+                                <input id="s-or-url" name="openrouter_base_url" type="url"
+                                       value="{{ openrouter_base_url }}" class="v-input font-mono"
+                                       placeholder="https://openrouter.ai/api/v1">
+                            </div>
+                            <div class="settings-form__actions">
+                                <button type="submit" class="v-btn">{{ t("settings.save_ai") }}</button>
+                            </div>
+                        </form>
+                    </article>
+
+                    <article class="settings-integration">
+                        <header class="settings-integration__header">
+                            <span class="settings-integration__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M6 19v-4M10 19V9m4 10v-7m4 7V5M4 19h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </span>
+                            <div>
+                                <h3>{{ t("settings.hevy_title") }}</h3>
+                                <p>{{ t("settings.hevy_description") }}</p>
+                            </div>
+                            <span class="settings-status {% if hevy_api_key_set %}settings-status--ready{% else %}settings-status--idle{% endif %}">
+                                {{ t("settings.key_set") if hevy_api_key_set else t("settings.key_not_set") }}
+                            </span>
+                        </header>
+                        <form action="/settings/hevy" method="POST" class="settings-form">
+                            <div class="settings-field">
+                                <label for="s-hevy-key" class="v-label">{{ t("settings.hevy_key") }}</label>
+                                <input id="s-hevy-key" name="hevy_api_key" type="password" value=""
+                                       class="v-input font-mono"
+                                       placeholder="{{ t('settings.key_placeholder_set') if hevy_api_key_set else 'hevy_...' }}"
+                                       autocomplete="new-password">
+                            </div>
+                            <div class="settings-form__actions">
+                                <button type="submit" class="v-btn">{{ t("settings.save_hevy") }}</button>
+                            </div>
+                        </form>
+                    </article>
+
+                    <article class="settings-integration">
+                        <header class="settings-integration__header">
+                            <span class="settings-integration__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M8 3h8M8 21h8M9 6h6a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M10 12h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                            </span>
+                            <div>
+                                <h3>{{ t("settings.garmin_title") }}</h3>
+                                <p>{{ t("settings.garmin_description") }}</p>
+                            </div>
+                            <span class="settings-status {% if garmin_password_set %}settings-status--ready{% else %}settings-status--idle{% endif %}">
+                                {{ t("settings.key_set") if garmin_password_set else t("settings.key_not_set") }}
+                            </span>
+                        </header>
+                        <form action="/settings/garmin" method="POST" class="settings-form">
+                            <div class="settings-form__grid settings-form__grid--two">
+                                <div class="settings-field">
+                                    <label for="s-garmin-email" class="v-label">Email</label>
+                                    <input id="s-garmin-email" name="garmin_email" type="email"
+                                           value="{{ garmin_email }}" class="v-input"
+                                           placeholder="you@example.com" autocomplete="email">
+                                </div>
+                                <div class="settings-field">
+                                    <label for="s-garmin-pass" class="v-label">{{ t("settings.garmin_password") }}</label>
+                                    <input id="s-garmin-pass" name="garmin_password" type="password" value=""
+                                           class="v-input"
+                                           placeholder="{{ t('settings.garmin_password_placeholder_set') if garmin_password_set else t('settings.garmin_password_placeholder') }}"
+                                           autocomplete="new-password">
+                                </div>
+                            </div>
+                            <div class="settings-form__actions">
+                                <button type="submit" class="v-btn">{{ t("settings.save_garmin") }}</button>
+                            </div>
+                        </form>
+                    </article>
+
+                    <article class="settings-integration settings-integration--wide">
+                        <header class="settings-integration__header">
+                            <span class="settings-integration__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M8.5 8.5 5 12l3.5 3.5M15.5 8.5 19 12l-3.5 3.5M10 18l4-12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </span>
+                            <div>
+                                <h3>{{ t("settings.mcp_title") }}</h3>
+                                <p>{{ t("settings.mcp_description") }}</p>
+                            </div>
+                            <span class="settings-status {% if mcp_client_secret_set %}settings-status--ready{% else %}settings-status--idle{% endif %}">
+                                {{ t("settings.key_set") if mcp_client_secret_set else t("settings.key_not_set") }}
+                            </span>
+                        </header>
+                        <form action="/settings/mcp" method="POST" class="settings-form">
+                            <div class="settings-form__grid settings-form__grid--two">
+                                <div class="settings-field">
+                                    <label for="s-mcp-id" class="v-label">Client ID</label>
+                                    <input id="s-mcp-id" name="mcp_client_id" type="text"
+                                           value="{{ mcp_client_id }}" class="v-input font-mono"
+                                           placeholder="vitals-claude-connector">
+                                </div>
+                                <div class="settings-field">
+                                    <label for="s-mcp-secret" class="v-label">Client Secret</label>
+                                    <input id="s-mcp-secret" name="mcp_client_secret" type="password" value=""
+                                           class="v-input font-mono"
+                                           placeholder="{{ t('settings.key_placeholder_set') if mcp_client_secret_set else t('settings.mcp_secret_placeholder') }}"
+                                           autocomplete="new-password">
+                                </div>
+                            </div>
+                            <div class="settings-form__actions">
+                                <button type="submit" class="v-btn">{{ t("settings.save_mcp") }}</button>
+                            </div>
+                        </form>
+                    </article>
+                </div>
+            </section>
+
+            <section id="settings-data" class="settings-section" aria-labelledby="settings-data-title">
+                <header class="settings-section__header">
+                    <span class="settings-section__index">05</span>
+                    <div>
+                        <h2 id="settings-data-title">{{ t("settings.data_title") }}</h2>
+                        <p>{{ t("settings.data_description") }}</p>
+                    </div>
+                </header>
+                <div class="settings-data">
+                    <div class="settings-panel">
+                        <div class="settings-panel__header">
+                            <span class="settings-panel__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </span>
+                            <h3>{{ t("settings.export_label") }}</h3>
+                        </div>
+                        <p class="settings-panel__description">{{ t("settings.export_hint") }}</p>
+                        <div class="settings-action-stack">
+                            <a href="/settings/export" class="v-btn" download hx-boost="false"
+                               data-export-toast="{{ t('settings.export_started') }}"
+                               onclick="window.vitalsToast(this.dataset.exportToast, 'success')">
+                                {{ t("settings.export_full") }}
+                            </a>
+                            <a href="/settings/export-llm" class="v-btn-ghost" download hx-boost="false"
+                               data-export-toast="{{ t('settings.export_started') }}"
+                               onclick="window.vitalsToast(this.dataset.exportToast, 'success')">
+                                {{ t("settings.export_llm") }}
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="settings-panel settings-panel--caution">
+                        <div class="settings-panel__header">
+                            <span class="settings-panel__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none"><path d="M12 21V9m0 0 4 4m-4-4-4 4M5 5h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </span>
+                            <h3>{{ t("settings.import_label") }}</h3>
+                        </div>
+                        <div class="settings-notice settings-notice--warning" role="note">{{ t("settings.import_warning") }}</div>
+                        <form hx-post="/settings/import" hx-encoding="multipart/form-data"
+                              hx-confirm="{{ t('settings.import_confirm') }}"
+                              hx-target="#import-result" hx-swap="innerHTML" class="settings-form">
+                            <label class="settings-file" x-data='{ hint: "{{ t("settings.import_drop_hint") }}" }'>
+                                <input type="file" name="backup_file" accept=".json,application/json" required
+                                       class="sr-only"
+                                       @change="hint = $el.files[0] ? $el.files[0].name : '{{ t("settings.import_drop_hint") }}'">
+                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M12 16V4m0 0 4 4m-4-4L8 8M5 20h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span class="settings-file__title">{{ t("settings.import_drop_text") }}</span>
+                                <span class="settings-file__hint" x-text="hint"></span>
+                            </label>
+                            <div class="settings-form__actions">
+                                <button type="submit" class="v-btn">{{ t("settings.import_submit") }}</button>
+                            </div>
+                        </form>
+                        <div id="import-result" aria-live="polite"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="settings-security" class="settings-section" aria-labelledby="settings-security-title">
+                <header class="settings-section__header">
+                    <span class="settings-section__index">06</span>
+                    <div>
+                        <h2 id="settings-security-title">{% if request.state.lang|default('en') == 'ru' %}Безопасность{% else %}Security{% endif %}</h2>
+                        <p>{{ t("settings.password_description") }}</p>
+                    </div>
+                </header>
+                <div class="settings-panel">
+                    <div class="settings-panel__header">
+                        <span class="settings-panel__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none"><path d="M7 10V8a5 5 0 0 1 10 0v2M6 10h12v10H6V10Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </span>
+                        <h3>{{ t("settings.password_title") }}</h3>
+                    </div>
+                    <form action="/settings/password" method="POST" class="settings-form">
+                        <div class="settings-field">
+                            <label for="s-old-pass" class="v-label">{{ t("settings.current_password") }}</label>
+                            <input id="s-old-pass" name="old_password" type="password"
+                                   class="v-input" placeholder="••••••••" autocomplete="current-password" required>
+                        </div>
+                        <div class="settings-form__grid settings-form__grid--two">
+                            <div class="settings-field">
+                                <label for="s-new-pass" class="v-label">{{ t("settings.new_password") }}</label>
+                                <input id="s-new-pass" name="new_password" type="password"
+                                       class="v-input" placeholder="{{ t('settings.new_password_placeholder') }}"
+                                       autocomplete="new-password" minlength="8" required>
+                            </div>
+                            <div class="settings-field">
+                                <label for="s-new-pass2" class="v-label">{{ t("settings.confirm_password") }}</label>
+                                <input id="s-new-pass2" name="new_password_confirm" type="password"
+                                       class="v-input" placeholder="••••••••"
+                                       autocomplete="new-password" minlength="8" required>
+                            </div>
+                        </div>
+                        <div class="settings-form__actions">
+                            <button type="submit" class="v-btn">{{ t("settings.save_password") }}</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <section id="settings-system" class="settings-section settings-section--system" aria-labelledby="settings-system-title">
+                <header class="settings-section__header">
+                    <span class="settings-section__index">07</span>
+                    <div>
+                        <h2 id="settings-system-title">{% if request.state.lang|default('en') == 'ru' %}Система{% else %}System{% endif %}</h2>
+                    </div>
+                </header>
+                <div class="settings-maintenance">
+                    <div>
+                        <h3>{{ t("settings.restart_title") }}</h3>
+                        <p>{{ t("settings.description") }}</p>
+                    </div>
+                    <button type="button" onclick="triggerRestart()" class="settings-restart">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M19 8a8 8 0 1 0 1 7M19 4v4h-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        {{ t("settings.restart_btn") }}
+                    </button>
+                </div>
+            </section>
         </div>
-        <p class="v-text-body" style="color: var(--muted)">
-            {{ t("settings.language_description") }}
-        </p>
-        <form action="/settings/language" method="POST" hx-boost="false" x-data="{ selected: '{{ request.state.lang|default('en') }}' }">
-            <input type="hidden" name="language" :value="selected">
-            <div class="v-seg max-w-[240px]">
-                <button type="button" 
-                        @click="selected = 'en'; $nextTick(() => $el.form.submit())"
-                        :class="selected === 'en' ? 'is-active' : ''"
-                        class="v-seg-btn py-2.5">
-                    English
-                </button>
-                <button type="button" 
-                        @click="selected = 'ru'; $nextTick(() => $el.form.submit())"
-                        :class="selected === 'ru' ? 'is-active' : ''"
-                        class="v-seg-btn py-2.5">
-                    Русский
-                </button>
-            </div>
-        </form>
     </div>
-
-    <!-- ─── INTERFACE (Classic / Masthead) ─────────────────────────────────── -->
-    <div class="v-card p-6 space-y-5">
-        <div class="flex items-center gap-2 pb-2" style="border-bottom: 1px solid var(--line)">
-            <span class="v-bar v-bar-sm"></span>
-            <span class="v-text-card">🖥️ {{ t("settings.ui_version_title") }}</span>
-        </div>
-        <p class="v-text-body" style="color: var(--muted)">
-            {{ t("settings.ui_version_description") }}
-        </p>
-        <form action="/settings/ui-version" method="POST" hx-boost="false">
-            <div class="v-seg max-w-[280px]">
-                <button type="submit" name="ui_version" value="classic"
-                        class="v-seg-btn py-2.5 {% if ui_version != 'masthead' %}is-active{% endif %}">
-                    {{ t("settings.ui_version_classic") }}
-                </button>
-                <button type="submit" name="ui_version" value="masthead"
-                        class="v-seg-btn py-2.5 {% if ui_version == 'masthead' %}is-active{% endif %}">
-                    {{ t("settings.ui_version_masthead") }}
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <!-- ─── DASHBOARD MODULES ──────────────────────────────────────────────── -->
-    {% include "partials/modules_card.html" %}
-
-    <!-- ─── PROFILE ────────────────────────────────────────────────────────── -->
-    <div class="v-card p-6 space-y-5">
-        <div class="flex items-center gap-2 pb-2" style="border-bottom: 1px solid var(--line)">
-            <span class="v-bar v-bar-sm"></span>
-            <span class="v-text-card">🧬 {{ t("settings.profile_title") }}</span>
-        </div>
-        <p class="v-text-body" style="color: var(--muted)">
-            {{ t("settings.profile_description") }}
-        </p>
-        <form action="/settings/profile" method="POST" class="space-y-4">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="space-y-1.5">
-                    <label for="s-height" class="v-label">{{ t("settings.height") }}</label>
-                    <input id="s-height" name="height_cm" type="number" min="100" max="250" step="0.5"
-                           value="{{ height_cm }}" class="v-input" placeholder="190">
-                </div>
-                <div class="space-y-1.5">
-                    <label for="s-sex" class="v-label">{{ t("settings.sex") }}</label>
-                    <select id="s-sex" name="sex" class="v-select">
-                        <option value="male" {% if sex == 'male' %}selected{% endif %}>{{ t("settings.sex_male") }}</option>
-                        <option value="female" {% if sex == 'female' %}selected{% endif %}>{{ t("settings.sex_female") }}</option>
-                    </select>
-                </div>
-                <div class="space-y-1.5">
-                    <label for="s-age" class="v-label">{{ t("settings.age") }}</label>
-                    <input id="s-age" name="user_age" type="number" min="10" max="120"
-                           value="{{ user_age }}" class="v-input" placeholder="18">
-                </div>
-                <div class="space-y-1.5">
-                    <label for="s-tz" class="v-label">{{ t("settings.timezone") }}</label>
-                    <input id="s-tz" name="timezone" type="text"
-                           value="{{ timezone }}" class="v-input" placeholder="Europe/Chisinau">
-                    <p class="v-text-micro mt-1">{{ t("settings.timezone_hint") }}</p>
-                </div>
-            </div>
-            <div class="space-y-1.5">
-                <label for="s-program" class="v-label">{{ t("settings.program") }}</label>
-                <textarea id="s-program" name="user_program" rows="2"
-                          class="v-input resize-none"
-                          placeholder="{{ t("settings.program_placeholder") }}">{{ user_program }}</textarea>
-                <p class="v-text-micro mt-1">{{ t("settings.program_hint") }}</p>
-            </div>
-            <div class="space-y-1.5">
-                <label for="s-goals" class="v-label">{{ t("settings.goals_label") }}</label>
-                <input id="s-goals" name="user_goals" type="text"
-                       value="{{ user_goals }}" class="v-input"
-                       placeholder="{{ t("settings.goals_placeholder") }}">
-                <p class="v-text-micro mt-1">{{ t("settings.goals_hint") }}</p>
-            </div>
-            <div class="pt-3 space-y-1.5" style="border-top: 1px solid var(--line)">
-                <span class="v-text-label">{{ t("settings.nutrition_title") }}</span>
-                <p class="v-text-micro" style="color: var(--muted)">{{ t("settings.nutrition_hint") }}</p>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="space-y-1.5">
-                    <label for="s-protein" class="v-label">{{ t("settings.protein_target") }}</label>
-                    <input id="s-protein" name="nutrition_protein_target_g" type="number" min="0" step="1"
-                           value="{{ nutrition_protein_target_g }}" class="v-input" placeholder="150">
-                </div>
-                <div class="space-y-1.5">
-                    <label for="s-cal-min" class="v-label">{{ t("settings.cal_min") }}</label>
-                    <input id="s-cal-min" name="nutrition_calories_min" type="number" min="0" step="50"
-                           value="{{ nutrition_calories_min }}" class="v-input" placeholder="1300">
-                </div>
-                <div class="space-y-1.5">
-                    <label for="s-cal-max" class="v-label">{{ t("settings.cal_max") }}</label>
-                    <input id="s-cal-max" name="nutrition_calories_max" type="number" min="0" step="50"
-                           value="{{ nutrition_calories_max }}" class="v-input" placeholder="1700">
-                </div>
-            </div>
-            <div class="flex justify-end pt-1">
-                <button type="submit" class="v-btn text-xs">{{ t("settings.save_profile") }}</button>
-            </div>
-        </form>
-    </div>
-
-    <!-- ─── AI / OPENROUTER ────────────────────────────────────────────────── -->
-    <div class="v-card p-6 space-y-5">
-        <div class="flex items-center gap-2 pb-2" style="border-bottom: 1px solid var(--line)">
-            <span class="v-bar v-bar-sm"></span>
-            <span class="v-text-card">🤖 {{ t("settings.ai_title") }}</span>
-        </div>
-        <p class="v-text-body" style="color: var(--muted)">
-            {{ t("settings.ai_description") }}
-        </p>
-        <form action="/settings/ai" method="POST" class="space-y-4">
-            <div class="space-y-1.5">
-                <label for="s-or-key" class="v-label">
-                    {{ t("settings.api_key") }}
-                    {% if openrouter_api_key_set %}
-                    <span class="v-chip v-chip-sm good ml-1.5">{{ t("settings.key_set") }}</span>
-                    {% else %}
-                    <span class="v-chip v-chip-sm bad ml-1.5">{{ t("settings.key_not_set") }}</span>
-                    {% endif %}
-                </label>
-                <input id="s-or-key" name="openrouter_api_key" type="password"
-                       value="" class="v-input font-mono"
-                       placeholder="{{ t('settings.key_placeholder_set') if openrouter_api_key_set else 'sk-or-...' }}"
-                       autocomplete="new-password">
-                {% if openrouter_api_key_set %}
-                <p class="v-text-micro mt-1">{{ t("settings.keep_hint") }}</p>
-                {% endif %}
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="space-y-1.5">
-                    <label for="s-digest-model" class="v-label">{{ t("settings.digest_model") }}</label>
-                    <input id="s-digest-model" name="llm_model_digest" type="text"
-                           value="{{ llm_model_digest }}" class="v-input font-mono"
-                           placeholder="anthropic/claude-sonnet-4.6">
-                    <p class="v-text-micro mt-1">{{ t("settings.digest_model_hint") }}</p>
-                </div>
-                <div class="space-y-1.5">
-                    <label for="s-parser-model" class="v-label">{{ t("settings.parser_model") }}</label>
-                    <input id="s-parser-model" name="llm_model_parser" type="text"
-                           value="{{ llm_model_parser }}" class="v-input font-mono"
-                           placeholder="google/gemini-2.5-flash">
-                    <p class="v-text-micro mt-1">{{ t("settings.parser_model_hint") }}</p>
-                </div>
-            </div>
-            <div class="space-y-1.5">
-                <label for="s-or-url" class="v-label">{{ t("settings.base_url") }}</label>
-                <input id="s-or-url" name="openrouter_base_url" type="url"
-                       value="{{ openrouter_base_url }}" class="v-input font-mono"
-                       placeholder="https://openrouter.ai/api/v1">
-            </div>
-            <div class="flex justify-end pt-1">
-                <button type="submit" class="v-btn text-xs">{{ t("settings.save_ai") }}</button>
-            </div>
-        </form>
-    </div>
-
-    <!-- ─── HEVY ───────────────────────────────────────────────────────────── -->
-    <div class="v-card p-6 space-y-5">
-        <div class="flex items-center gap-2 pb-2" style="border-bottom: 1px solid var(--line)">
-            <span class="v-bar v-bar-sm"></span>
-            <span class="v-text-card">🏋️ {{ t("settings.hevy_title") }}</span>
-        </div>
-        <p class="v-text-body" style="color: var(--muted)">
-            {{ t("settings.hevy_description") }}
-        </p>
-        <form action="/settings/hevy" method="POST" class="space-y-4">
-            <div class="space-y-1.5">
-                <label for="s-hevy-key" class="v-label">
-                    {{ t("settings.hevy_key") }}
-                    {% if hevy_api_key_set %}
-                    <span class="v-chip v-chip-sm good ml-1.5">{{ t("settings.key_set") }}</span>
-                    {% else %}
-                    <span class="v-chip v-chip-sm bad ml-1.5">{{ t("settings.key_not_set") }}</span>
-                    {% endif %}
-                </label>
-                <input id="s-hevy-key" name="hevy_api_key" type="password"
-                       value="" class="v-input font-mono"
-                       placeholder="{{ t('settings.key_placeholder_set') if hevy_api_key_set else 'hevy_...' }}"
-                       autocomplete="new-password">
-            </div>
-            <div class="flex justify-end pt-1">
-                <button type="submit" class="v-btn text-xs">{{ t("settings.save_hevy") }}</button>
-            </div>
-        </form>
-    </div>
-
-    <!-- ─── GARMIN ─────────────────────────────────────────────────────────── -->
-    <div class="v-card p-6 space-y-5">
-        <div class="flex items-center gap-2 pb-2" style="border-bottom: 1px solid var(--line)">
-            <span class="v-bar v-bar-sm"></span>
-            <span class="v-text-card">⌚ {{ t("settings.garmin_title") }}</span>
-        </div>
-        <p class="v-text-body" style="color: var(--muted)">
-            {{ t("settings.garmin_description") }}
-        </p>
-        <form action="/settings/garmin" method="POST" class="space-y-4">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="space-y-1.5">
-                    <label for="s-garmin-email" class="v-label">Email</label>
-                    <input id="s-garmin-email" name="garmin_email" type="email"
-                           value="{{ garmin_email }}" class="v-input"
-                           placeholder="you@example.com" autocomplete="email">
-                </div>
-                <div class="space-y-1.5">
-                    <label for="s-garmin-pass" class="v-label">
-                        {{ t("settings.garmin_password") }}
-                        {% if garmin_password_set %}
-                        <span class="v-chip v-chip-sm good ml-1.5">{{ t("settings.key_set") }}</span>
-                        {% endif %}
-                    </label>
-                    <input id="s-garmin-pass" name="garmin_password" type="password"
-                           value="" class="v-input"
-                           placeholder="{{ t('settings.garmin_password_placeholder_set') if garmin_password_set else t('settings.garmin_password_placeholder') }}"
-                           autocomplete="new-password">
-                </div>
-            </div>
-            <div class="flex justify-end pt-1">
-                <button type="submit" class="v-btn text-xs">{{ t("settings.save_garmin") }}</button>
-            </div>
-        </form>
-    </div>
-
-    <!-- ─── CLAUDE MCP ────────────────────────────────────────────────────── -->
-    <div class="v-card p-6 space-y-5">
-        <div class="flex items-center gap-2 pb-2" style="border-bottom: 1px solid var(--line)">
-            <span class="v-bar v-bar-sm"></span>
-            <span class="v-text-card">🤖 {{ t("settings.mcp_title") }}</span>
-        </div>
-        <p class="v-text-body" style="color: var(--muted)">
-            {{ t("settings.mcp_description") }}
-        </p>
-        <form action="/settings/mcp" method="POST" class="space-y-4">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="space-y-1.5">
-                    <label for="s-mcp-id" class="v-label">Client ID</label>
-                    <input id="s-mcp-id" name="mcp_client_id" type="text"
-                           value="{{ mcp_client_id }}" class="v-input font-mono"
-                           placeholder="vitals-claude-connector">
-                </div>
-                <div class="space-y-1.5">
-                    <label for="s-mcp-secret" class="v-label">
-                        Client Secret
-                        {% if mcp_client_secret_set %}
-                        <span class="v-chip v-chip-sm good ml-1.5">{{ t("settings.key_set") }}</span>
-                        {% endif %}
-                    </label>
-                    <input id="s-mcp-secret" name="mcp_client_secret" type="password"
-                           value="" class="v-input font-mono"
-                           placeholder="{{ t('settings.key_placeholder_set') if mcp_client_secret_set else t('settings.mcp_secret_placeholder') }}"
-                           autocomplete="new-password">
-                </div>
-            </div>
-            <div class="flex justify-end pt-1">
-                <button type="submit" class="v-btn text-xs">{{ t("settings.save_mcp") }}</button>
-            </div>
-        </form>
-    </div>
-
-    <!-- ─── DATA PORTABILITY ───────────────────────────────────────────────── -->
-    <div class="v-card p-6 space-y-5">
-        <div class="flex items-center gap-2 pb-2" style="border-bottom: 1px solid var(--line)">
-            <span class="v-bar v-bar-sm"></span>
-            <span class="v-text-card">💾 {{ t("settings.data_title") }}</span>
-        </div>
-        <p class="v-text-body" style="color: var(--muted)">
-            {{ t("settings.data_description") }}
-        </p>
-
-        <!-- Export -->
-        <div class="space-y-2.5">
-            <span class="v-label">{{ t("settings.export_label") }}</span>
-            <div class="flex flex-col sm:flex-row gap-3">
-                <a href="/settings/export" class="v-btn text-xs text-center" download hx-boost="false"
-                    data-export-toast="{{ t('settings.export_started') }}"
-                    onclick="window.vitalsToast(this.dataset.exportToast, 'success')">
-                    ⬇️ {{ t("settings.export_full") }}
-                </a>
-                <a href="/settings/export-llm" class="v-btn-ghost text-xs text-center" download hx-boost="false"
-                    data-export-toast="{{ t('settings.export_started') }}"
-                    onclick="window.vitalsToast(this.dataset.exportToast, 'success')">
-                    🤖 {{ t("settings.export_llm") }}
-                </a>
-            </div>
-            <p class="v-text-micro" style="color: var(--muted)">
-                {{ t("settings.export_hint") }}
-            </p>
-        </div>
-
-        <!-- Import -->
-        <div class="space-y-3 pt-4" style="border-top: 1px solid var(--line)">
-            <span class="v-label">{{ t("settings.import_label") }}</span>
-            <div class="v-alert warn">
-                {{ t("settings.import_warning") }}
-            </div>
-            <form hx-post="/settings/import" hx-encoding="multipart/form-data"
-                  hx-confirm="{{ t('settings.import_confirm') }}"
-                  hx-target="#import-result" hx-swap="innerHTML" class="space-y-3">
-                <label class="v-file-drop cursor-pointer" x-data='{ hint: "{{ t("settings.import_drop_hint") }}" }'>
-                    <input type="file" name="backup_file" accept=".json,application/json" required
-                           class="sr-only"
-                           @change="hint = $el.files[0] ? $el.files[0].name : '{{ t("settings.import_drop_hint") }}'">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    <span class="v-file-drop__text">{{ t("settings.import_drop_text") }}</span>
-                    <span class="v-file-drop__hint" x-text="hint"></span>
-                </label>
-                <button type="submit" class="v-btn text-xs">{{ t("settings.import_submit") }}</button>
-            </form>
-            <div id="import-result"></div>
-        </div>
-    </div>
-
-    <!-- ─── CHANGE PASSWORD ────────────────────────────────────────────────── -->
-    <div class="v-card p-6 space-y-5">
-        <div class="flex items-center gap-2 pb-2" style="border-bottom: 1px solid var(--line)">
-            <span class="v-bar v-bar-sm"></span>
-            <span class="v-text-card">🔐 {{ t("settings.password_title") }}</span>
-        </div>
-        <p class="v-text-body" style="color: var(--muted)">
-            {{ t("settings.password_description") }}
-        </p>
-        <form action="/settings/password" method="POST" class="space-y-4">
-            <div class="space-y-1.5">
-                <label for="s-old-pass" class="v-label">{{ t("settings.current_password") }}</label>
-                <input id="s-old-pass" name="old_password" type="password"
-                       class="v-input" placeholder="••••••••" autocomplete="current-password" required>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="space-y-1.5">
-                    <label for="s-new-pass" class="v-label">{{ t("settings.new_password") }}</label>
-                    <input id="s-new-pass" name="new_password" type="password"
-                           class="v-input" placeholder="{{ t('settings.new_password_placeholder') }}" autocomplete="new-password"
-                           minlength="8" required>
-                </div>
-                <div class="space-y-1.5">
-                    <label for="s-new-pass2" class="v-label">{{ t("settings.confirm_password") }}</label>
-                    <input id="s-new-pass2" name="new_password_confirm" type="password"
-                           class="v-input" placeholder="••••••••" autocomplete="new-password"
-                           minlength="8" required>
-                </div>
-            </div>
-            <div class="flex justify-end pt-1">
-                <button type="submit" class="v-btn text-xs">{{ t("settings.save_password") }}</button>
-            </div>
-        </form>
-    </div>
-    </div>
-
 </div>
 
 <script>
@@ -446,7 +483,6 @@ async function triggerRestart() {
         return;
     }
 
-    // Show global loader overlay
     const loader = document.getElementById('global-loader');
     const titleEl = document.getElementById('loader-title');
     const textEl = document.getElementById('loader-text');
@@ -457,7 +493,6 @@ async function triggerRestart() {
         loader.classList.add('is-active');
     }
 
-    // Send POST request
     fetch('/settings/restart', {
         method: 'POST',
         headers: {
@@ -471,10 +506,8 @@ async function triggerRestart() {
             if (secondsLeft <= 0) {
                 clearInterval(interval);
                 window.location.href = '/settings?saved=restart';
-            } else {
-                if (textEl) {
-                    textEl.textContent = window.t('loader.restart_text').replace('{seconds}', secondsLeft);
-                }
+            } else if (textEl) {
+                textEl.textContent = window.t('loader.restart_text').replace('{seconds}', secondsLeft);
             }
         }, 1000);
     })
@@ -485,10 +518,8 @@ async function triggerRestart() {
             if (secondsLeft <= 0) {
                 clearInterval(interval);
                 window.location.href = '/settings?saved=restart';
-            } else {
-                if (textEl) {
-                    textEl.textContent = window.t('loader.restart_text').replace('{seconds}', secondsLeft);
-                }
+            } else if (textEl) {
+                textEl.textContent = window.t('loader.restart_text').replace('{seconds}', secondsLeft);
             }
         }, 1000);
     });

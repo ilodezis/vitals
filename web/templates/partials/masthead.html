@@ -1,19 +1,17 @@
 {# ============================================================================
-   "Masthead" interface — shared building blocks.
+   Canonical Vitals shell — shared building blocks.
 
-   One source of truth for the section registry so the sidebar rail and the
-   in-content tab bar never drift apart. Import `with context` so t(), request
-   and request.state.enabled_modules are visible:
+   One source of truth for the grouped sidebar and page mastheads. Import
+   `with context` so t(), request and request.state.enabled_modules are visible:
 
        {% from "partials/masthead.html" import masthead_header with context %}
 
-   Nothing here is emitted in the classic interface — templates only pull these
-   macros inside a `{% if request.state.ui_version == 'masthead' %}` branch.
+   Page templates import these macros directly; the shell has no runtime mode.
    ============================================================================ #}
 
 {# ── Section registry ────────────────────────────────────────────────────────
    Ordered by rubric. `gate` = the enabled_modules key that must be on (none =
-   Core, always shown), mirroring nav_primary.html exactly. `cat` overrides the
+   Core, always shown). `cat` overrides the
    rubric's eyebrow category for one section (reports → "AI digest"). #}
 {% set MH_RUBRICS = [
     {'id': 'main',      'cat': 'masthead.rubric.health',    'members': ['weight', 'garmin', 'hevy', 'nutrition', 'timeline', 'reports', 'charts']},
@@ -37,7 +35,7 @@
     'interactions': {'href': '/interactions', 'label': 'nav.interactions', 'gate': 'interactions', 'cat': none},
 } %}
 
-{# ── Section icons (same <path> data as nav_primary.html / base.html) ──────── #}
+{# ── Section icons ────────────────────────────────────────────────────────── #}
 {% macro mh_icon(key) %}
 {%- if key == 'weight' -%}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 16a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 12.5l2-2" /></svg>
@@ -69,28 +67,34 @@
 {% endmacro %}
 
 {# ── Sidebar rail ────────────────────────────────────────────────────────────
-   Standalone so it can be re-rendered out-of-band (modules_oob.html) exactly
-   like nav_primary.html. Pass oob=true to emit the hx-swap-oob marker. #}
+   Standalone so modules_oob.html can re-render it out-of-band. Pass oob=true
+   to emit the hx-swap-oob marker. #}
 {% macro masthead_rail(oob=false) %}
 {% set current_path = request.url.path if request else '' %}
 {% set em = request.state.enabled_modules or {} %}
-<aside id="primary-nav-masthead" {% if oob %}hx-swap-oob="true"{% endif %} class="mh-rail">
-    <a href="/" class="mh-rail-logo is-live" title="Vitals">
+<aside id="vitals-navigation" {% if oob %}hx-swap-oob="true"{% endif %} class="mh-rail">
+    <a href="/" class="mh-rail-logo is-live" title="Vitals" aria-label="Vitals">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h2.5l2.5-6 3.5 12 2.5-9 1.5 3h3" /></svg>
+        <span class="mh-rail-wordmark">Vitals</span>
     </a>
     <div class="mh-rail-div"></div>
-    <nav class="mh-rail-nav">
-        {% for r in MH_RUBRICS %}{% for key in r.members %}{% set meta = MH_SECTIONS[key] %}{% if meta.gate is none or em.get(meta.gate) %}
-        <a href="{{ meta.href }}" title="{{ t(meta.label) }}" class="mh-rail-btn {% if current_path.startswith(meta.href) %}is-active{% endif %}">{{ mh_icon(key) }}<span class="mh-rail-label">{{ t(meta.label) }}</span></a>
-        {% endif %}{% endfor %}{% endfor %}
+    <nav class="mh-rail-nav" aria-label="{{ t('nav.menu_title') }}">
+        {% for r in MH_RUBRICS %}
+        <div class="mh-rail-group">
+            <div class="mh-rail-group-label">{{ t(r.cat) }}</div>
+            {% for key in r.members %}{% set meta = MH_SECTIONS[key] %}{% if meta.gate is none or em.get(meta.gate) %}
+            <a href="{{ meta.href }}" title="{{ t(meta.label) }}"
+                class="mh-rail-btn {% if current_path.startswith(meta.href) %}is-active{% endif %}"
+                {% if current_path.startswith(meta.href) %}aria-current="page"{% endif %}>
+                {{ mh_icon(key) }}<span class="mh-rail-label">{{ t(meta.label) }}</span>
+            </a>
+            {% endif %}{% endfor %}
+        </div>
+        {% endfor %}
     </nav>
     <div class="mh-rail-foot">
-        <button type="button" class="mh-rail-btn mh-rail-pin" data-mh-pin aria-pressed="false"
-            data-label-pin="{{ t('nav.pin_sidebar') }}" data-label-unpin="{{ t('nav.unpin_sidebar') }}"
-            title="{{ t('nav.pin_sidebar') }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 4h6M9 4v4l-2 4h10l-2-4V4M12 12v9" /></svg><span class="mh-rail-label" data-mh-pin-label>{{ t('nav.pin_sidebar') }}</span>
-        </button>
-        <a href="/settings" class="mh-rail-btn {% if current_path.startswith('/settings') %}is-active{% endif %}" title="{{ t('nav.settings_title') }}">
+        <a href="/settings" class="mh-rail-btn {% if current_path.startswith('/settings') %}is-active{% endif %}"
+            title="{{ t('nav.settings_title') }}" {% if current_path.startswith('/settings') %}aria-current="page"{% endif %}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg><span class="mh-rail-label">{{ t('nav.settings') }}</span>
         </a>
         <a href="/settings" class="mh-rail-avatar" title="{{ username or 'Vitals' }}">{{ (username or 'V')[0] | upper }}</a>
@@ -110,19 +114,13 @@
    Wrap the call in {% call %} to slot section actions (sync/upload buttons)
    top-right. #}
 {% macro masthead_header(section, title, metrics) %}
-{% set em = request.state.enabled_modules or {} %}
-{% set rb = namespace(cat=none, members=[], num=0) %}
-{% for r in MH_RUBRICS %}{% if section in r.members %}{% set rb.members = r.members %}{% set rb.cat = MH_SECTIONS[section].cat or r.cat %}{% set rb.num = loop.index %}{% endif %}{% endfor %}
+{% set rb = namespace(cat=none, num=0) %}
+{% for r in MH_RUBRICS %}{% if section in r.members %}{% set rb.cat = MH_SECTIONS[section].cat or r.cat %}{% set rb.num = loop.index %}{% endif %}{% endfor %}
 <div class="mh-head">
     <div class="mh-eyebrow-row">
         <span class="mh-eyebrow">{{ t("masthead.section_word") }} {{ "%02d" | format(rb.num) }} · {{ t(rb.cat) if rb.cat else '' }}</span>
         {% if caller %}<div class="mh-actions">{{ caller() }}</div>{% endif %}
     </div>
-    <nav class="mh-tabs">
-        {% for mem in rb.members %}{% set meta = MH_SECTIONS[mem] %}{% if meta.gate is none or em.get(meta.gate) %}
-        <a href="{{ meta.href }}" class="mh-tab {% if mem == section %}is-active{% endif %}">{{ t(meta.label) }}</a>
-        {% endif %}{% endfor %}
-    </nav>
     <h1 class="mh-title">{{ title }}</h1>
     {% if metrics %}
     <div class="mh-metrics">

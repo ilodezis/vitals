@@ -1,9 +1,8 @@
 /* ============================================================================
-   Vitals — "Masthead" interface skin
+   Vitals — canonical interface skin
    ----------------------------------------------------------------------------
-   Every rule is scoped under `body.ui-masthead`, so this file is completely
-   inert in the classic interface (the <link> is unconditional, the class is
-   not). Palette is NOT redefined — all colours come from the existing
+   Rules remain scoped under `body.ui-masthead` as a temporary compatibility
+   hook. Palette is NOT redefined — all colours come from the existing
    :root tokens in vitals.css. Only the frame changes: a sidebar icon-rail
    instead of the top navbar, and an editorial masthead (eyebrow → tabs → big
    title → key figures) instead of KPI cards.
@@ -32,13 +31,11 @@ body.ui-masthead .mh-shell {
    rules are more specific than the utilities, so they would always win — the
    rail is hidden below md and shown from md up via the media query below.
 
-   position:fixed on purpose: a hover-preview expansion (below) then only ever
-   grows this overlay, never the flex layout, so <main> and its charts/tables
-   never reflow just because the pointer passed over the rail. .mh-rail-spacer
-   is the plain in-flow box that actually reserves the column width in
-   .mh-shell — pinning (also below) is the one deliberate case that resizes
-   both the rail and the spacer together, which is the only time <main> is
-   meant to move. */
+   position:fixed on purpose: the rail overlays the left edge and never takes
+   part in the flex layout, so <main> and its charts/tables never reflow when
+   the rail changes. .mh-rail-spacer is the plain in-flow box that actually
+   reserves the column width in .mh-shell; both widths per breakpoint are set
+   together in vitals-design.css. */
 body.ui-masthead .mh-rail {
     position: fixed;
     top: 0;
@@ -75,22 +72,8 @@ body.ui-masthead .mh-rail-spacer {
     }
 }
 
-/* Hover / keyboard-focus preview — overlay only, spacer untouched. */
-body.ui-masthead .mh-rail:hover,
-body.ui-masthead .mh-rail:focus-within {
-    width: var(--mh-rail-w-expanded);
-    box-shadow: var(--shadow-lg);
-}
-
-/* Pinned (toggled by .mh-rail-pin, state kept on <html> — see base.html):
-   the one case where the spacer widens too, so <main> genuinely resizes. */
-html.mh-rail-pinned body.ui-masthead .mh-rail {
-    width: var(--mh-rail-w-expanded);
-}
-
-html.mh-rail-pinned body.ui-masthead .mh-rail-spacer {
-    width: var(--mh-rail-w-expanded);
-}
+/* No hover/pin expansion: the rail's width per breakpoint is owned by
+   vitals-design.css (compact tablet rail, permanently expanded desktop). */
 
 body.ui-masthead .mh-rail-logo {
     width: 44px;
@@ -181,8 +164,8 @@ body.ui-masthead .mh-rail-btn.is-active {
     border-color: var(--accent-line);
 }
 
-/* Label — collapsed to zero width by default; revealed under the same three
-   conditions (hover / keyboard-focus / pinned) as the rail's own width. */
+/* Label — collapsed to zero width by default; vitals-design.css reveals it
+   permanently on desktop widths. */
 body.ui-masthead .mh-rail-label {
     margin-left: 12px;
     font: 600 13px 'Inter', sans-serif;
@@ -193,14 +176,7 @@ body.ui-masthead .mh-rail-label {
     transition: opacity .15s ease, max-width .18s ease;
 }
 
-body.ui-masthead .mh-rail:hover .mh-rail-label,
-body.ui-masthead .mh-rail:focus-within .mh-rail-label,
-html.mh-rail-pinned body.ui-masthead .mh-rail-label {
-    opacity: 1;
-    max-width: 160px;
-}
-
-/* Bottom cluster: pin toggle, settings, avatar. Always visible — never part of
+/* Bottom cluster: settings, avatar, logout. Always visible — never part of
    .mh-rail-nav's own scroll region (see above) — and laid out with the same
    align-self:stretch + 16px side padding as the nav so its icons line up with
    the nav's icons exactly, collapsed or expanded. */
@@ -213,22 +189,6 @@ body.ui-masthead .mh-rail-foot {
     gap: 14px;
     padding: 12px 16px 0;
     border-top: 1px solid var(--line);
-}
-
-/* Pin toggle and settings share .mh-rail-btn (added in the HTML) for their box
-   model and color states, so they always match the nav buttons pixel-for-pixel
-   instead of drifting independently. Only the pin-specific "tacked down" glyph
-   rotation lives here. */
-body.ui-masthead .mh-rail-pin {
-    cursor: pointer;
-}
-
-body.ui-masthead .mh-rail-pin svg {
-    transition: transform .15s ease;
-}
-
-body.ui-masthead .mh-rail-pin.is-active svg {
-    transform: rotate(-45deg);
 }
 
 body.ui-masthead .mh-rail-avatar {
@@ -254,7 +214,7 @@ body.ui-masthead .mh-rail-avatar::before {
     border-radius: 50%;
 }
 
-/* ── Mobile top bar (replaces the classic <header> under md) ──────────────── */
+/* ── Mobile top bar ───────────────────────────────────────────────────────── */
 /* Shown below md, hidden from md up (media query at the bottom). Owned here for
    the same specificity reason as the rail above. */
 body.ui-masthead .mh-topbar {

@@ -1,48 +1,48 @@
-{# Dashboard modules card on /settings. Core modules render as locked switches
-   (checked + disabled); Optional ones POST to /settings/modules on change and
-   live-update the header nav via an OOB swap. No Alpine — native checkbox + HTMX. #}
-<div class="v-card p-6 space-y-5">
-    <div class="flex items-center gap-2 pb-2" style="border-bottom: 1px solid var(--line)">
-        <span class="v-bar v-bar-sm"></span>
-        <span class="v-text-card">🧩 {{ t("modules.title") }}</span>
-    </div>
-    <p class="v-text-body" style="color: var(--muted)">
-        {{ t("modules.description") }}
-    </p>
-
-    <!-- Core — locked -->
-    <div class="space-y-2.5">
-        <span class="v-label">{{ t("modules.core_label") }}</span>
-        {% for spec in module_registry.values() if spec.category == 'core' %}
-        <div class="v-module-row">
-            <div class="flex items-center gap-2">
-                <span class="v-text-body" style="color: var(--fg-2)">{{ t("nav." + spec.key) }}</span>
-                <span class="v-chip v-chip-sm">{{ t("modules.core_chip") }}</span>
+{# Dashboard modules on /settings. Core switches stay locked; optional switches
+   update both state and navigation through the existing HTMX contract. #}
+<div class="settings-modules">
+    <div class="settings-modules__group">
+        <div class="settings-modules__group-heading">
+            <h3>{{ t("modules.core_label") }}</h3>
+            <span>{{ t("modules.core_chip") }}</span>
+        </div>
+        <div class="settings-modules__list">
+            {% for spec in module_registry.values() if spec.category == 'core' %}
+            <div class="settings-module">
+                <div>
+                    <span class="settings-module__name">{{ t("nav." + spec.key) }}</span>
+                    <span class="settings-module__meta">{{ t("modules.core_tooltip") }}</span>
+                </div>
+                <label class="v-switch" title="{{ t('modules.core_tooltip') }}">
+                    <input type="checkbox" role="switch" checked disabled
+                           aria-label="{{ t('nav.' + spec.key) }}">
+                    <span class="v-switch-track"><span class="v-switch-thumb"></span></span>
+                </label>
             </div>
-            <label class="v-switch" title="{{ t('modules.core_tooltip') }}">
-                <input type="checkbox" checked disabled>
-                <span class="v-switch-track"><span class="v-switch-thumb"></span></span>
-            </label>
+            {% endfor %}
         </div>
-        {% endfor %}
     </div>
 
-    <!-- Optional — toggleable -->
-    <div class="space-y-2.5">
-        <span class="v-label">{{ t("modules.optional_label") }}</span>
-        {% for spec in module_registry.values() if spec.category == 'optional' %}
-        <div class="v-module-row">
-            <span class="v-text-body" style="color: var(--fg-2)">{{ t("nav." + spec.key) }}</span>
-            <label class="v-switch">
-                <input type="checkbox" role="switch"
-                       {% if enabled_modules.get(spec.key) %}checked{% endif %}
-                       hx-post="/settings/modules"
-                       hx-vals='js:{module:"{{ spec.key }}", enabled: event.target.checked}'
-                       hx-trigger="change"
-                       hx-swap="none">
-                <span class="v-switch-track"><span class="v-switch-thumb"></span></span>
-            </label>
+    <div class="settings-modules__group">
+        <div class="settings-modules__group-heading">
+            <h3>{{ t("modules.optional_label") }}</h3>
         </div>
-        {% endfor %}
+        <div class="settings-modules__list">
+            {% for spec in module_registry.values() if spec.category == 'optional' %}
+            <div class="settings-module">
+                <span class="settings-module__name">{{ t("nav." + spec.key) }}</span>
+                <label class="v-switch">
+                    <input type="checkbox" role="switch"
+                           aria-label="{{ t('nav.' + spec.key) }}"
+                           {% if enabled_modules.get(spec.key) %}checked{% endif %}
+                           hx-post="/settings/modules"
+                           hx-vals='js:{module:"{{ spec.key }}", enabled: event.target.checked}'
+                           hx-trigger="change"
+                           hx-swap="none">
+                    <span class="v-switch-track"><span class="v-switch-thumb"></span></span>
+                </label>
+            </div>
+            {% endfor %}
+        </div>
     </div>
 </div>

@@ -11,36 +11,29 @@
 'muted', 'side_effect': 'bad', 'milestone': 'cool', 'photo': 'muted'} %}
 {% set DERIVED_KIND_LABEL = {'side_effect': 'timeline.kind.side_effect', 'milestone': 'timeline.kind.milestone',
 'photo': 'timeline.kind.photo'} %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showForm: false }">
+<link rel="stylesheet" href="{{ static_version('/static/vitals-context.css') }}">
+<div class="v-context-page v-timeline-page" x-data="{ showForm: false }">
 
-    {% if request.state.ui_version == 'masthead' %}
+    <section class="v-context-state" aria-label="{{ t('nav.timeline') }}">
     {% call masthead_header('timeline', t('nav.timeline'), [
     {'label': t('timeline.metric_total'), 'primary': true, 'value': events|length},
     {'label': t('timeline.metric_manual'), 'value': manual_count}
     ]) %}
-    <button @click="showForm = !showForm" class="v-btn text-xs">
-        <span x-text="showForm ? '{{ t(" common.cancel") }}' : '{{ t("timeline.add_button") }}'"></span>
-        </button>
+    <button type="button" @click="showForm = !showForm" class="v-btn text-xs"
+        aria-controls="timeline-form" :aria-expanded="showForm.toString()">
+        <span x-text="showForm ? '{{ t("common.cancel") }}' : '{{ t("timeline.add_button") }}'"></span>
+    </button>
     {% endcall %}
-    {% else %}
-    <div class=" v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-            <div class="flex items-start gap-3.5">
-                <span class="v-bar mt-1"></span>
-                <div class="space-y-2">
-                    <span class="v-tag cool">🚩 {{ t("timeline.tag") }}</span>
-                    <h1 class="v-text-heading">{{ t("timeline.heading") }}</h1>
-                    <p class="v-text-body max-w-2xl">{{ t("timeline.description") }}</p>
-                </div>
-            </div>
-            <button @click="showForm = !showForm" class="v-btn w-full md:w-auto shrink-0">
-                <span x-text="showForm ? '{{ t(" common.cancel") }}' : '{{ t("timeline.add_button") }}'"></span>
-        </button>
-    </div>
-    {% endif %}
+    </section>
 
-    <div class="max-w-4xl space-y-8">
+    <div class="v-timeline-shell">
     <!-- Add annotation form -->
-    <div x-show=" showForm" x-cloak class="v-card p-6 space-y-4">
+    <section id="timeline-form" x-show="showForm" x-cloak class="v-context-surface v-timeline-form space-y-4"
+        aria-labelledby="timeline-form-title">
+                    <div class="flex items-center gap-2">
+                        <span class="v-bar v-bar-sm"></span>
+                        <h2 id="timeline-form-title" class="v-text-card">{{ t("timeline.add_button") }}</h2>
+                    </div>
                     <form action="/timeline" method="POST" class="space-y-4">
                         <div>
                             <label class="v-label">{{ t("timeline.title_label") }}</label>
@@ -80,19 +73,18 @@
                         </div>
                         <button type="submit" class="v-btn w-full">{{ t("timeline.save") }}</button>
                     </form>
-</div>
+    </section>
 
 <!-- Feed -->
-<div class="space-y-6">
+<section class="v-timeline-rail" aria-label="{{ t('timeline.heading') }}">
     {% for day, items in events|groupby('date')|list|reverse %}
-    <div class="space-y-2.5">
-        <span class="v-text-micro v-num" style="color: var(--muted)">{{ day | format_date }}</span>
+    <div class="v-timeline-day">
+        <time class="v-timeline-date v-text-micro v-num">{{ day | format_date }}</time>
+        <div class="v-timeline-events">
         {% for e in items %}
-        <div class="v-card p-4 flex items-start gap-3">
-            <span class="v-bar mt-1"
-                style="background: {% if e.tone == 'good' %}var(--good){% elif e.tone == 'bad' %}var(--bad){% elif e.tone == 'warn' %}var(--warn){% else %}var(--line-2){% endif %}"></span>
-            <div class="flex-1 min-w-0 space-y-1">
-                <div class="flex items-center gap-2 flex-wrap">
+        <article class="v-timeline-event{% if e.tone %} is-{{ e.tone }}{% endif %}">
+            <div class="v-timeline-event__content">
+                <div class="v-timeline-event__meta">
                     <span class="v-tag {{ KIND_TAG.get(e.kind, 'muted') }}">{% if e.kind in kinds %}{{
                         t("enum.annotation_kind." + e.kind) }}{% elif e.kind in DERIVED_KIND_LABEL %}{{
                         t(DERIVED_KIND_LABEL[e.kind]) }}{% else %}{{ t("common.note") }}{% endif %}</span>
@@ -107,7 +99,7 @@
                     <span class="v-text-micro" style="color: var(--muted)">→ {{ e.end_date | format_date }}</span>
                     {% endif %}
                 </div>
-                <p class="v-text-body">{{ e.title }}</p>
+                <p class="v-text-body v-timeline-event__title">{{ e.title }}</p>
                 {% if e.detail %}<p class="v-text-micro" style="color: var(--muted)">{{ e.detail }}</p>{% endif %}
             </div>
             {% if e.source == 'manual' %}
@@ -121,11 +113,12 @@
                 </button>
             </form>
             {% endif %}
-        </div>
+        </article>
         {% endfor %}
+        </div>
     </div>
     {% else %}
-    <div class="v-empty-state">
+    <div class="v-empty-state v-timeline-empty">
         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -133,7 +126,7 @@
         <p>{{ t("timeline.no_events") }}</p>
     </div>
     {% endfor %}
-</div>
+</section>
 </div>
 </div>
 {% endblock %}

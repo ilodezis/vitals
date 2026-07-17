@@ -3,34 +3,29 @@
 {% block title %}{{ t("interactions.page_title") }}{% endblock %}
 
 {% block content %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
+{% from "partials/masthead.html" import masthead_header with context %}
+<link rel="stylesheet" href="{{ static_version('/static/vitals-context.css') }}">
+<div class="v-context-page v-interactions-page"
+    x-data="{ query: '', matches(value) { const needle = this.query.trim().toLowerCase(); return !needle || value.toLowerCase().includes(needle); } }">
 
-    {% if request.state.ui_version == 'masthead' %}
+    <section class="v-context-state" aria-label="{{ t('nav.interactions') }}">
     {{ masthead_header('interactions', t('nav.interactions'), [
         {'label': t('interactions.total_label'), 'primary': true, 'value': total_count},
         {'label': t('interactions.firing_now'), 'value': firing_ids | length, 'tone': 'bad' if firing_ids else ''}
     ]) }}
-    {% else %}
-    <div class="v-card p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div class="flex items-start gap-3.5">
-            <span class="v-bar mt-1"></span>
-            <div>
-                <h1 class="v-text-heading">{{ t("interactions.heading") }}</h1>
-                <p class="v-text-body mt-1">{{ t("interactions.subheading") }}</p>
-            </div>
-        </div>
-        <div class="flex items-center gap-2">
-            <span class="v-chip">{{ t("interactions.total_count", n=total_count) }}</span>
-            {% if firing_ids %}
-            <span class="v-chip" style="background: var(--bad-soft); color: var(--bad)">{{ t("interactions.firing_now") }}: {{ firing_ids | length }}</span>
-            {% endif %}
-        </div>
-    </div>
-    {% endif %}
+    </section>
 
     <!-- Filters -->
-    <form method="get" action="/interactions" class="v-card p-4 flex flex-wrap items-end gap-4">
+    <form method="get" action="/interactions" class="v-card v-context-surface v-interactions-toolbar">
+        <div class="v-interactions-search">
+            <label for="interaction-search" class="v-label">{{ t("interactions.total_label") }}</label>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m20 20-3.5-3.5"></path>
+            </svg>
+            <input id="interaction-search" type="search" class="v-input" autocomplete="off"
+                placeholder="{{ t('interactions.filter_all') }}" x-model.debounce.250ms="query">
+        </div>
         <div>
             <label class="v-label">{{ t("interactions.filter_domain") }}</label>
             <select name="domain" class="v-select" onchange="this.form.submit()">
@@ -52,27 +47,33 @@
     </form>
 
     {% if not ordered_categories %}
-    <div class="v-card p-8 text-center v-text-body" style="color: var(--muted)">{{ t("interactions.no_rules") }}</div>
+    <section class="v-context-surface v-interactions-empty v-text-body" style="color: var(--muted)">
+        {{ t("interactions.no_rules") }}
+    </section>
     {% endif %}
 
+    <section class="v-interactions-catalog" aria-label="{{ t('interactions.heading') }}">
     {% for category in ordered_categories %}
-    <div class="v-card p-6 space-y-4">
-        <div class="flex items-center gap-2.5">
-            <span class="v-bar"></span>
+    <section class="v-interactions-category" aria-labelledby="interaction-category-{{ category }}">
+        <div class="v-interactions-category__head">
             <h2 class="v-text-heading">{{ t("interactions.category." + category) }}</h2>
             <span class="v-chip">{{ by_category[category] | length }}</span>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="v-interactions-rules">
             {% for r in by_category[category] %}
             {% set is_block = r.severity == 'block' %}
-            <div class="v-card-tile p-5 space-y-3" style="{% if is_block %}background: var(--bad-soft); border: 1px solid rgba(232,112,86,.35){% else %}background: var(--warn-soft); border: 1px solid rgba(240,178,74,.35){% endif %}">
-                <div class="flex items-start justify-between gap-3">
-                    <div class="flex items-center gap-2 font-semibold v-text-label" style="color: {% if is_block %}var(--bad){% else %}var(--warn){% endif %}">
-                        <span>{% if r.rule_type == 'hard_block' %}🚫{% elif r.rule_type == 'timing_separation' %}⏱️{% else %}⚠️{% endif %}</span>
-                        <span>{{ t("interactions.rule_type." + r.rule_type) }}</span>
+            {% set is_info = r.severity == 'info' %}
+            <div class="v-context-rule {% if is_block %}is-block{% elif is_info %}is-info{% endif %}"
+                x-show="matches({{ (r.message ~ ' ' ~ t('enum.domain.' + r.domain_a) ~ ' ' ~ t('enum.domain.' + r.domain_b) ~ ' ' ~ t('interactions.rule_type.' + r.rule_type) ~ ' ' ~ (r.code or '')) | tojson | forceescape }})">
+                <div class="v-context-rule__head">
+                    <div class="v-context-rule__type v-text-label font-semibold">
+                        <span style="color: {% if is_block %}var(--bad){% elif is_info %}var(--accent){% else %}var(--warn){% endif %}">{{ t("interactions.rule_type." + r.rule_type) }}</span>
                         {% if r.rule_type == 'timing_separation' and r.params and r.params.hours %}
                         <span class="v-chip v-chip-sm">{{ t("interactions.hours_apart", n=r.params.hours) }}</span>
+                        {% endif %}
+                        {% if r.id in firing_ids %}
+                        <span class="v-chip v-chip-sm" style="background: var(--bad-soft); color: var(--bad); font-weight: 700;">{{ t("interactions.firing_now") }}</span>
                         {% endif %}
                     </div>
                     <label class="v-switch shrink-0" title="{{ r.code or '' }}">
@@ -85,25 +86,27 @@
                     </label>
                 </div>
 
-                <p class="v-text-body leading-relaxed font-medium" style="color: var(--fg-2)">{{ r.message }}</p>
-
-                <div class="flex flex-wrap items-center gap-1.5">
-                    <span class="v-chip">{{ t("enum.domain." + r.domain_a) }} ↔ {{ t("enum.domain." + r.domain_b) }}</span>
-                    {% if r.evidence %}
-                    <span class="v-chip" title="{{ t('interactions.evidence_label') }}">{{ t("interactions.evidence_label") }} {{ r.evidence }}</span>
-                    {% endif %}
-                    {% if r.id in firing_ids %}
-                    <span class="v-chip" style="background: var(--bad-soft); color: var(--bad); font-weight: 700;">{{ t("interactions.firing_now") }}</span>
-                    {% endif %}
-                </div>
-
-                {% if r.source %}
-                <p class="v-text-micro" style="color: var(--muted)"><span class="font-semibold">{{ t("interactions.source_label") }}:</span> {{ r.source }}</p>
-                {% endif %}
+                <details>
+                    <summary>
+                        <span class="v-context-rule__message v-text-body">{{ r.message }}</span>
+                    </summary>
+                    <div class="v-context-rule__detail">
+                        <div class="v-context-rule__meta">
+                            <span class="v-chip">{{ t("enum.domain." + r.domain_a) }} ↔ {{ t("enum.domain." + r.domain_b) }}</span>
+                            {% if r.evidence %}
+                            <span class="v-chip" title="{{ t('interactions.evidence_label') }}">{{ t("interactions.evidence_label") }} {{ r.evidence }}</span>
+                            {% endif %}
+                        </div>
+                        {% if r.source %}
+                        <p class="v-text-micro" style="color: var(--muted)"><span class="font-semibold">{{ t("interactions.source_label") }}:</span> {{ r.source }}</p>
+                        {% endif %}
+                    </div>
+                </details>
             </div>
             {% endfor %}
         </div>
-    </div>
+    </section>
     {% endfor %}
+    </section>
 </div>
 {% endblock %}
