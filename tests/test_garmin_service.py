@@ -876,3 +876,73 @@ async def test_health_auto_export_ingest(db_session):
     assert row.resting_hr == 50
     assert row.sleep_seconds == int(7.5 * 3600)
     assert row.source == "health_auto_export"
+
+
+# ── Historical reparse (recover new fields with zero new Garmin calls) ────────
+async def test_reparse_daily_from_raw_recovers_new_fields_and_preserves_fetched_at(db_session):
+    """A day synced before the sleep-detail/training-status columns existed: the
+    raw response already had everything (get_sleep_data/get_stress_data always
+    return the full payload), the old parser just discarded most of it.
+    Reparsing the stored row — not re-fetching — must recover the new columns,
+    and must not overwrite the original upstream fetch time with "now"."""
+    old_fetched_at = to_local_naive(datetime(2026, 1, 1, 3, 0, tzinfo=timezone.utc))
+    raw_row = RawPayload(
+        domain="garmin", source="garmin_api",
+        external_id=f"daily:{DAY.isoformat()}", payload=RAW_DAY,
+        fetched_at=old_fetched_at,
+    )
+    db_session.add(raw_row)
+    await db_session.flush()
+
+    row = await garmin_service.reparse_daily_from_raw(db_session, raw_row)
+    await db_session.commit()
+
+    assert row.date == DAY
+    assert row.spo2_lowest == 91
+    assert row.body_battery_change == 55
+    assert row.training_status == "PRODUCTIVE"
+    assert raw_row.fetched_at == old_fetched_at
+
+
+async def test_reparse_activity_from_raw_recovers_summary_fields_only(db_session):
+    """An activity synced before the per-activity detail call existed has
+    elevation/power/training-effect on its summary already (free to recover),
+    but never made the hr-zones/splits detail call — those must stay null
+    rather than being silently invented."""
+    activity = {
+        "activityId": 99001,
+        "activityName": "Вечерняя пробежка",
+        "activityType": {"typeKey": "running"},
+        "startTimeGMT": "2026-06-10 18:00:00",
+        "duration": 1800.0,
+        "distance": 5000.0,
+        "calories": 350,
+        "averageHR": 140,
+        "maxHR": 165,
+        "elevationGain": 12.0,
+        "avgPower": 200,
+        "aerobicTrainingEffect": 2.8,
+        "anaerobicTrainingEffect": 0.5,
+        # No "_details" key — predates the per-activity detail fetch.
+    }
+    old_fetched_at = to_local_naive(datetime(2026, 1, 1, 3, 0, tzinfo=timezone.utc))
+    raw_row = RawPayload(
+        domain="garmin", source="garmin_api",
+        external_id="activity:99001", payload=activity,
+        fetched_at=old_fetched_at,
+    )
+    db_session.add(raw_row)
+    await db_session.flush()
+
+    await garmin_service.reparse_activity_from_raw(db_session, raw_row)
+    await db_session.commit()
+
+    row = (await db_session.execute(
+        select(GarminActivity).where(GarminActivity.external_id == "99001")
+    )).scalars().first()
+    assert row.elevation_gain_m == 12.0
+    assert row.avg_power == 200
+    assert row.training_effect_aerobic == 2.8
+    assert row.hr_zone_seconds is None
+    assert row.splits is None
+    assert raw_row.fetched_at == old_fetched_at

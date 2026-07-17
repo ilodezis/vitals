@@ -50,6 +50,7 @@ from vitals.models.garmin import (
     GarminDaily,
     GarminIntraday,
 )
+from vitals.models.raw_payload import RawPayload
 from vitals.services import alerts_service, raw_payload_service, weight_service
 from vitals.utils.timeutils import now_local, to_local_naive
 
@@ -525,6 +526,20 @@ async def ingest_daily(
     return row
 
 
+async def reparse_daily_from_raw(session: AsyncSession, raw_row: RawPayload) -> GarminDaily:
+    """Re-run the current parser against a daily payload already on disk — no
+    Garmin call. Recovers columns/series the parser gained after this row was
+    fetched (get_sleep_data/get_stress_data always returned the full response;
+    early versions of this parser just discarded most of it). Preserves
+    ``fetched_at``: this is a reparse, not a real fetch, so the original
+    upstream timestamp stays more accurate than "now". Does not commit."""
+    on_date = date_type.fromisoformat(raw_row.external_id.split(":", 1)[1])
+    original_fetched_at = raw_row.fetched_at
+    row = await ingest_daily(session, on_date, raw=raw_row.payload)
+    raw_row.fetched_at = original_fetched_at
+    return row
+
+
 # ── Activities ────────────────────────────────────────────────────────────────
 async def ingest_activities(session: AsyncSession, activities: Sequence[dict]) -> int:
     """Upsert recorded activities by Garmin activity id. Returns rows written."""
@@ -571,6 +586,18 @@ async def ingest_activities(session: AsyncSession, activities: Sequence[dict]) -
         raw_row.processed_at = now_local()
         written += 1
     return written
+
+
+async def reparse_activity_from_raw(session: AsyncSession, raw_row: RawPayload) -> None:
+    """Re-run the current parser against an activity payload already on disk —
+    no Garmin call. Recovers the summary-level fields (elevation, power,
+    training effect) the parser gained after this row was fetched; the
+    per-activity detail fields (hr_zone_seconds, splits) stay null here since
+    they come from a separate call (``fetch_activity_details``) this row never
+    made. Preserves ``fetched_at``. Does not commit."""
+    original_fetched_at = raw_row.fetched_at
+    await ingest_activities(session, [raw_row.payload])
+    raw_row.fetched_at = original_fetched_at
 
 
 def _normalize_hr_zones(raw: dict) -> Optional[list]:
