@@ -4,26 +4,30 @@
 
 {% block content %}
 {% from "garmin/_tabs.html" import garmin_tabs %}
-{% from "partials/masthead.html" import masthead_header with context %}
-<link rel="stylesheet" href="{{ static_version('/static/vitals-data.css') }}">
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8 v-data-page v-garmin-activities">
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
 
-    <section class="v-data-state" aria-label="{{ t('garmin.tab_activities') }}">
+    {% if request.state.ui_version == 'masthead' %}
     {{ masthead_header('garmin', t('garmin.tab_activities'), []) }}
-    </section>
+    {% else %}
+    <div class="v-card p-6 flex items-start gap-3.5">
+        <span class="v-bar mt-1"></span>
+        <div class="space-y-2">
+            <span class="v-tag cool">⌚ {{ t("garmin.tag") }}</span>
+            <h1 class="v-text-heading">{{ t("garmin.tab_activities") }}</h1>
+        </div>
+    </div>
+    {% endif %}
 
-    <nav class="v-garmin-tabs" aria-label="{{ t('nav.organism') }}">
     {{ garmin_tabs('activities') }}
-    </nav>
 
     {% set zone_colors = ['var(--cool)', 'var(--good)', 'var(--accent)', 'var(--warn)', 'var(--bad)'] %}
-    <section class="v-activity-feed" aria-label="{{ t('garmin.tab_activities') }}">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {% for a in activities %}
         {% set type_label = t("garmin.activity." + (a.activity_type or "other")) %}
         {% set has_detail = a.hr_zone_seconds or (a.splits and a.splits | length > 1) or a.training_effect_aerobic is not none or a.training_effect_anaerobic is not none or a.elevation_gain_m is not none or a.avg_power is not none %}
-        <article class="v-card v-data-surface v-activity-card" x-data="{ open: false }">
-            <div class="v-activity-summary flex justify-between items-start gap-2 {% if has_detail %}cursor-pointer{% endif %}"
-                 {% if has_detail %}@click="open = !open" @keydown.enter.prevent="open = !open" @keydown.space.prevent="open = !open" role="button" tabindex="0" :aria-expanded="open.toString()"{% endif %}>
+        <div class="v-card p-5 space-y-3" x-data="{ open: false }">
+            <div class="flex justify-between items-start gap-2 {% if has_detail %}cursor-pointer{% endif %}" {% if has_detail %}@click="open = !open"{% endif %}>
                 <div class="flex items-start gap-1.5 min-w-0">
                     {% if has_detail %}<svg class="h-3.5 w-3.5 mt-1 shrink-0 transition-transform duration-200" :class="open ? 'rotate-180' : ''" style="color: var(--muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>{% endif %}
                     <div class="min-w-0">
@@ -38,7 +42,7 @@
 
             <!-- Collapsed-visible summary: distance/calories/HR were captured but had
                  nowhere to show before this tab (see the plan's list of DB-only fields). -->
-            <div class="v-activity-metrics">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <div class="v-card-inset p-3 space-y-1">
                     <span class="v-metric-label">{{ t("garmin.duration") }}</span>
                     <div>{% if a.duration_seconds %}<span class="v-metric-value-text">{{ a.duration_seconds // 60 }}</span> <span class="v-metric-unit">{{ t("common.min_abbr") }}</span>{% else %}<span class="v-metric-value-text" style="color: var(--muted)">—</span>{% endif %}</div>
@@ -58,7 +62,7 @@
             </div>
 
             {% if has_detail %}
-            <div x-show="open" x-cloak class="v-activity-details space-y-3">
+            <div x-show="open" x-cloak class="space-y-3 pt-2" style="border-top: 1px solid var(--line)">
                 <!-- Scalar detail chips -->
                 <div class="flex flex-wrap gap-x-4 gap-y-1">
                     {% if a.training_effect_aerobic is not none %}<span class="v-text-micro">{{ t("garmin.te_aerobic") }} <span class="v-num" style="color: var(--fg-2)">{{ a.training_effect_aerobic | round(1) }}</span></span>{% endif %}
@@ -86,7 +90,6 @@
                 {% if a.splits and a.splits | length > 1 %}
                 <div class="space-y-1">
                     <div class="v-text-micro" style="color: var(--muted)">{{ t("garmin.splits") }}</div>
-                    <div class="v-data-table-scroll" tabindex="0" aria-label="{{ t('garmin.splits') }}">
                     <table class="v-table">
                         <thead>
                             <tr><th class="text-right">#</th><th class="text-right">{{ t("garmin.split_distance") }}</th><th class="text-right">{{ t("garmin.split_time") }}</th><th class="text-right">{{ t("garmin.split_hr") }}</th></tr>
@@ -102,15 +105,14 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                    </div>
                 </div>
                 {% endif %}
             </div>
             {% endif %}
-        </article>
+        </div>
         {% else %}
         <div class="v-card p-6 text-center" style="grid-column: 1 / -1; color: var(--muted)">{{ t("garmin.no_activities") }}</div>
         {% endfor %}
-    </section>
+    </div>
 </div>
 {% endblock %}

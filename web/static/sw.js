@@ -1,18 +1,10 @@
-const CACHE_NAME = 'vitals-os-v8';
+const CACHE_NAME = 'vitals-os-v6';
 
 const OFFLINE_PAGE = '/static/offline.html';
 
-// Everything the offline fallback needs to render fully styled with no
-// network: the page itself plus the public-surface stylesheet and fonts.css.
-const PRECACHE = [
-  OFFLINE_PAGE,
-  '/static/vitals-public.css',
-  '/static/fonts.css',
-];
-
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE))
+    caches.open(CACHE_NAME).then((cache) => cache.add(OFFLINE_PAGE))
   );
   self.skipWaiting();
 });

@@ -3,30 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#111310">
     <title id="offline-title">Vitals — Offline</title>
-    <link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg">
-    <!-- Both stylesheets are precached by sw.js alongside this page, so the
-         offline fallback renders fully styled with no network at all. -->
-    <link rel="stylesheet" href="/static/fonts.css">
-    <link rel="stylesheet" href="/static/vitals-public.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            background: #1D1A21;
+            color: #F3F0F6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            -webkit-font-smoothing: antialiased;
+        }
+        .wrap {
+            text-align: center;
+            max-width: 20rem;
+        }
+        .icon {
+            width: 3rem; height: 3rem;
+            color: #A39AB0;
+            margin: 0 auto 1.5rem;
+        }
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        p {
+            font-size: 0.875rem;
+            color: #A39AB0;
+            line-height: 1.5;
+            margin-bottom: 1.5rem;
+        }
+        button {
+            background: #F5A623;
+            color: #2A1B03;
+            font-weight: 650;
+            font-size: 0.875rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            min-height: 2.75rem;
+        }
+        button:active { transform: translateY(1px); }
+    </style>
 </head>
-<body class="v-public v-public-offline">
-    <main aria-labelledby="offline-h1">
-        <div class="v-public-offline-frame">
-            <span class="v-public-offline-signal" aria-hidden="true">
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a5 5 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414" />
-                </svg>
-            </span>
-            <div class="v-public-offline-copy">
-                <p class="v-public-kicker">Vitals</p>
-                <h1 id="offline-h1">No connection</h1>
-                <p id="offline-p">Check your internet connection and try again. Vitals needs a connection to load your data.</p>
-                <button id="offline-btn" type="button" class="v-public-action" onclick="location.reload()">Reload</button>
-            </div>
-        </div>
-    </main>
+<body>
+    <div class="wrap">
+        <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a5 5 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414" />
+        </svg>
+        <h1 id="offline-h1">No connection</h1>
+        <p id="offline-p">Check your internet connection and try again. Vitals needs a connection to load your data.</p>
+        <button id="offline-btn" onclick="location.reload()">Reload</button>
+    </div>
     <script>
         // No server round-trip is possible here (this file is the service
         // worker's offline fallback, served straight from cache), so pick the

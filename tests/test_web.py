@@ -132,32 +132,6 @@ async def test_boosted_swap_reliability_guards(auth_client):
     assert "_x_dataStack" in html  # guard against Alpine double-init
 
 
-async def test_mobile_drawer_defaults_hidden_and_desktop_gated(auth_client):
-    """Regression lock for the "switching sections pops open a full-screen nav/
-    settings panel that can't be closed without a reload" bug. The mobile drawer
-    is a position:fixed overlay whose visibility is driven by Alpine ``x-show``.
-    On an hx-boost body swap the drawer is a brand-new node re-initialised by
-    Alpine's observer, and that re-init intermittently fails to (re)apply the
-    initial ``display:none`` — so the ``.flex`` base class left the panel visible
-    on top of every page after the first boosted navigation, desktop included.
-
-    Two rAF-independent safety nets must stay in the served markup so the CLOSED
-    state never depends on Alpine winning that race:
-      1. a static inline ``display:none`` default — the server always renders the
-         drawer closed, so a missed x-show re-init keeps it hidden (x-show still
-         strips the inline display to open it);
-      2. ``md:hidden`` — its only trigger (the bottom-nav "More" button) is itself
-         ``md:hidden``, so the drawer must never render at >=768px, whatever the
-         Alpine state.
-    """
-    html = (await auth_client.get("/weight", headers={"Accept": "text/html"})).text
-    start = html.index('id="mobile-navigation-drawer"')
-    opening_tag = html[start:html.index(">", start) + 1]
-    assert 'x-show="mobileMenuOpen"' in opening_tag  # still Alpine-driven
-    assert "display: none" in opening_tag  # default-closed, race-proof
-    assert "md:hidden" in opening_tag  # never shown on desktop/tablet
-
-
 def test_body_script_const_is_iife_scoped():
     """Regression lock for a second, sharper cause of the same "randomly dead
     until reload" bug: the <script> in base.html's <body> (toast/confirm/loader/
@@ -378,10 +352,10 @@ async def test_glp1_log_injection(auth_client, db_session):
 async def test_phase3_dashboards_render(auth_client):
     """The three Phase 3 dashboards render with their headings."""
     r = await auth_client.get("/supplements", headers={"Accept": "text/html"})
-    assert r.status_code == 200 and "Протокол добавок" in r.text
+    assert r.status_code == 200 and "Каталог добавок" in r.text
 
     r = await auth_client.get("/genetics", headers={"Accept": "text/html"})
-    assert r.status_code == 200 and "Персональный геном" in r.text
+    assert r.status_code == 200 and "Генетические варианты" in r.text
     assert "Импорт VCF" in r.text
 
     r = await auth_client.get("/skincare", headers={"Accept": "text/html"})
@@ -745,8 +719,10 @@ async def test_garmin_sleep_night_page_body_battery_sign(auth_client, db_session
     assert "ворочания: 15" in response.text
 
 
-async def test_garmin_sleep_night_page_uses_canonical_header_and_nav(auth_client, db_session):
-    """The canonical header shows the night's metrics and adjacent dates."""
+async def test_garmin_sleep_night_page_masthead_and_nav(auth_client, db_session):
+    """Masthead mode gets the shared editorial header (title = the night's own
+    date, metrics = score/HR/SpO2/BB) instead of the classic card, and the
+    prev/next night arrows link to the correct adjacent dates in both shells."""
     from datetime import date
 
     from vitals.models.garmin import GarminDaily
@@ -761,6 +737,15 @@ async def test_garmin_sleep_night_page_uses_canonical_header_and_nav(auth_client
     ])
     await db_session.commit()
 
+    # Classic: same prev/next links, no masthead header markup.
+    r = await auth_client.get("/garmin/sleep/2026-06-10", headers={"Accept": "text/html"})
+    assert r.status_code == 200
+    assert 'href="/garmin/sleep/2026-06-09"' in r.text
+    assert 'href="/garmin/sleep/2026-06-11"' in r.text
+    assert 'class="mh-head"' not in r.text
+
+    # Masthead: editorial header with the night's own date as title + prev/next.
+    await auth_client.post("/settings/ui-version", data={"ui_version": "masthead"})
     r = await auth_client.get("/garmin/sleep/2026-06-10", headers={"Accept": "text/html"})
     assert r.status_code == 200
     assert 'class="mh-head"' in r.text
@@ -840,10 +825,11 @@ async def test_garmin_health_auto_export_upload(auth_client, db_session):
     assert row is not None and row.steps == 7200
 
 
-async def test_garmin_dashboard_day_strip_renders_in_canonical_shell(auth_client, db_session):
+async def test_garmin_dashboard_day_strip_renders_in_masthead(auth_client, db_session):
     """The day-strip (steps/stress/readiness/training status/active calories)
     used to live only in a classic-only grid, so masthead lost 5 of 9 daily
-    metrics. It must remain visible in the canonical shell."""
+    metrics. It's now a shared card — regression-check it actually shows up
+    once the session is switched to masthead."""
     from datetime import date
 
     from vitals.models.garmin import GarminDaily
@@ -855,6 +841,7 @@ async def test_garmin_dashboard_day_strip_renders_in_canonical_shell(auth_client
     ))
     await db_session.commit()
 
+    await auth_client.post("/settings/ui-version", data={"ui_version": "masthead"})
     response = await auth_client.get("/garmin", headers={"Accept": "text/html"})
     assert response.status_code == 200
     assert "12 345" in response.text
@@ -1461,7 +1448,7 @@ async def test_toggle_module_hides_and_shows_nav(auth_client, db_session):
     r = await auth_client.post("/settings/modules", data={"module": "hevy", "enabled": "true"})
     assert r.status_code == 200
     # Response is an OOB nav fragment that swaps the header live (no reload).
-    assert 'id="vitals-navigation"' in r.text
+    assert 'id="primary-nav"' in r.text
     assert 'hx-swap-oob="true"' in r.text
     assert 'href="/hevy"' in r.text
     page = await auth_client.get("/weight", headers=html_headers)

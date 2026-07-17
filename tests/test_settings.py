@@ -110,8 +110,8 @@ async def test_settings_page_renders(auth_client):
     assert "Garmin Connect" in r.text
     assert "Смена пароля" in r.text
     # Verify download links have hx-boost="false" to bypass HTMX boosting
-    assert 'href="/settings/export" class="v-btn" download hx-boost="false"' in r.text
-    assert 'href="/settings/export-llm" class="v-btn-ghost" download hx-boost="false"' in r.text
+    assert 'href="/settings/export" class="v-btn text-xs text-center" download hx-boost="false"' in r.text
+    assert 'href="/settings/export-llm" class="v-btn-ghost text-xs text-center" download hx-boost="false"' in r.text
 
 
 async def test_settings_page_has_gear_icon(auth_client):

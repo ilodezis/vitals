@@ -4,11 +4,10 @@
 
 {% block content %}
 {% from "garmin/_tabs.html" import garmin_tabs %}
-{% from "partials/masthead.html" import masthead_header with context %}
-<link rel="stylesheet" href="{{ static_version('/static/vitals-data.css') }}">
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8 v-data-page v-garmin-page" x-data="{ showHaeModal: false }">
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showHaeModal: false }">
 
-    <section class="v-data-state" aria-label="{{ t('nav.organism') }}">
+    {% if request.state.ui_version == 'masthead' %}
     {% call masthead_header('garmin', t('nav.organism'), [
         {'label': t('masthead.metric.body_battery'), 'primary': true, 'value': ((latest.body_battery_low or '—') ~ '–' ~ latest.body_battery_high) if (latest and latest.body_battery_high) else '—'},
         {'label': t('garmin.sleep'), 'value': ((latest.sleep_seconds // 3600) ~ 'h ' ~ ((latest.sleep_seconds % 3600) // 60) ~ 'm') if (latest and latest.sleep_seconds) else '—', 'href': ('/garmin/sleep/' ~ latest.date.isoformat()) if (latest and latest.sleep_stages) else none},
@@ -22,18 +21,89 @@
         </form>
         <span class="v-text-micro">{{ t("common.synced_label") }} <span class="font-medium text-[var(--fg-2)]">{{ last_sync or t("common.never_synced") }}</span></span>
     {% endcall %}
-    </section>
-    <nav class="v-garmin-tabs" aria-label="{{ t('nav.organism') }}">
     {{ garmin_tabs('overview') }}
-    </nav>
+    {% else %}
+    <!-- Header -->
+    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+        <div class="flex items-start gap-3.5">
+            <span class="v-bar mt-1"></span>
+            <div class="space-y-2">
+                <span class="v-tag cool">⌚ {{ t("garmin.tag") }}</span>
+                <h1 class="v-text-heading">{{ t("garmin.heading") }}</h1>
+                <p class="v-text-body max-w-2xl">
+                    {{ t("garmin.description") }}
+                </p>
+            </div>
+        </div>
+        <div class="w-full md:w-auto shrink-0 flex flex-col items-center md:items-end gap-1.5">
+            <form action="/garmin/sync" method="POST" class="w-full">
+                <button type="submit" class="v-btn w-full md:w-auto text-xs" {% if not is_configured %}disabled style="opacity:.5;cursor:not-allowed"{% endif %}>
+                    <svg style="width: 1rem; height: 1rem;" class="shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    {% if is_configured %}{{ t("common.synchronize") }}{% else %}{{ t("common.not_configured") }}{% endif %}
+                </button>
+            </form>
+            <span class="v-text-micro">{{ t("common.synced_label") }} <span class="font-medium text-[var(--fg-2)]">{{ last_sync or t("common.never_synced") }}</span></span>
+        </div>
+    </div>
 
-    <!-- Day strip: steps, stress, readiness, training status, active calories. -->
-    <section class="v-card v-data-surface v-garmin-daily space-y-3" aria-labelledby="garmin-daily-title">
+    {{ garmin_tabs('overview') }}
+
+    <!-- Metrics -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("garmin.sleep") }}</span>
+            <div class="flex items-baseline">
+                {% if latest and latest.sleep_seconds %}
+                <span class="v-metric-value">{{ latest.sleep_seconds // 3600 }}</span>
+                <span class="v-metric-unit">h</span>
+                <span class="v-metric-value" style="margin-left: 3px">{{ (latest.sleep_seconds % 3600) // 60 }}</span>
+                <span class="v-metric-unit">m</span>
+                {% else %}
+                <span class="v-metric-value">—</span>
+                {% endif %}
+            </div>
+            {% if latest and (latest.sleep_score or (latest.sleep_start and latest.sleep_end)) %}
+            <span class="v-text-micro">{% if latest.sleep_score %}{{ t("garmin.sleep_score") }} {{ latest.sleep_score }}{% endif %}{% if latest.sleep_score and latest.sleep_start and latest.sleep_end %} · {% endif %}{% if latest.sleep_start and latest.sleep_end %}{{ latest.sleep_start.strftime('%H:%M') }}–{{ latest.sleep_end.strftime('%H:%M') }}{% endif %}</span>
+            {% endif %}
+            {# Only a night with a hypnogram has a detail page worth opening. #}
+            {% if latest and latest.sleep_stages %}
+            <a href="/garmin/sleep/{{ latest.date.isoformat() }}" class="v-text-micro" style="color: var(--fg-2)">{{ t("garmin.sleep_detail_link") }} →</a>
+            {% endif %}
+        </div>
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("garmin.resting_hr") }}</span>
+            <div class="flex items-baseline">
+                <span class="v-metric-value">{% if latest and latest.resting_hr %}{{ latest.resting_hr }}{% else %}—{% endif %}</span>
+                <span class="v-metric-unit">{{ t("garmin.bpm") }}</span>
+            </div>
+        </div>
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("garmin.hrv") }}</span>
+            <div class="flex items-baseline">
+                <span class="v-metric-value">{% if latest and latest.hrv_avg %}{{ latest.hrv_avg | round(0) | int }}{% else %}—{% endif %}</span>
+                <span class="v-metric-unit">{{ t("garmin.ms") }}</span>
+            </div>
+        </div>
+        <div class="v-metric">
+            <span class="v-metric-label">Body battery</span>
+            <div class="flex items-baseline">
+                <span class="v-metric-value">{% if latest and latest.body_battery_high %}{{ latest.body_battery_low or '—' }}–{{ latest.body_battery_high }}{% else %}—{% endif %}</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Day strip: steps, stress, readiness, training status, active calories —
+         shared by both shells (classic used to bury these in a classic-only
+         grid, which is exactly how masthead lost them; see the plan). -->
+    <div class="v-card p-6 space-y-3">
         <div class="flex items-center gap-2">
             <span class="v-bar v-bar-sm"></span>
-            <h2 id="garmin-daily-title" class="v-text-card">{{ t("garmin.day_strip_title") }}</h2>
+            <span class="v-text-card">{{ t("garmin.day_strip_title") }}</span>
         </div>
-        <div class="v-daystrip v-garmin-metrics-grid">
+        <div class="v-daystrip">
             <div class="v-card-inset p-3 space-y-1">
                 <span class="v-metric-label">{{ t("garmin.steps") }}</span>
                 <div class="flex items-baseline">
@@ -80,10 +150,9 @@
                 </div>
             </div>
         </div>
-    </section>
+    </div>
 
     <!-- Recovery advice + sync status -->
-    <div class="v-garmin-alerts" aria-live="polite">
     {% if advice %}
     <div class="v-alert warn">{{ advice }}</div>
     {% endif %}
@@ -98,30 +167,33 @@
     {% elif sync == 'auth' %}
     <div class="v-alert warn">{{ t("garmin.sync_auth") }}</div>
     {% endif %}
-    </div>
 
     <!-- Intraday curves for the latest day (hidden when only day-level scalars exist) -->
     {% if intraday %}
-    <section class="v-card v-data-surface v-garmin-chart space-y-3" aria-labelledby="garmin-intraday-title">
+    <div class="v-card p-6 space-y-3">
         <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-2">
                 <span class="v-bar v-bar-sm"></span>
-                <h2 id="garmin-intraday-title" class="v-text-card">{{ t("garmin.intraday_title") }}</h2>
+                <span class="v-text-card">{{ t("garmin.intraday_title") }}</span>
             </div>
             <span class="v-text-micro">{{ latest.date | format_date }}</span>
         </div>
-        <div class="v-data-chart-frame">
+        <!-- h-[280px]: an arbitrary utility already in the prebuilt tailwind.css
+             (charts/labs use it). A fresh value like h-[240px] compiles to nothing
+             until the bundle is rebuilt, and the canvas silently collapses to
+             Chart.js's 150px default. -->
+        <div class="h-[280px] w-full relative">
             <canvas id="garminIntradayChart"></canvas>
         </div>
-    </section>
+    </div>
     {% endif %}
 
     <!-- Metrics history: full width now that activities live on their own tab -->
-    <section class="v-card v-data-surface v-garmin-history space-y-3" aria-labelledby="garmin-history-title">
+    <div class="v-card p-6 space-y-3">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <span class="v-bar v-bar-sm"></span>
-                <h2 id="garmin-history-title" class="v-text-card">{{ t("garmin.history_title", count=count) }}</h2>
+                <span class="v-text-card">{{ t("garmin.history_title", count=count) }}</span>
             </div>
             <button @click="showHaeModal = true" class="v-btn-ghost text-xs" style="padding: 0.35rem 0.75rem">
                 <svg style="width:0.85rem;height:0.85rem" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -131,7 +203,7 @@
             </button>
         </div>
         <div class="max-h-[28rem] overflow-y-auto v-card-inset">
-            <div class="v-table-wrap v-data-table-scroll" tabindex="0" aria-label="{{ t('garmin.history_title', count=count) }}">
+            <div class="v-table-wrap">
                 <table class="v-table">
                 <thead>
                     <tr><th class="v-col-date whitespace-nowrap">{{ t("common.date") }}</th><th class="text-right">{{ t("garmin.awake_count") }}</th><th class="text-right">{{ t("garmin.col_rhr") }}</th><th class="text-right">{{ t("garmin.col_hrv") }}</th><th class="text-right">{{ t("garmin.stress") }}</th><th class="text-right">{{ t("garmin.col_bb") }}</th><th class="text-right">{{ t("garmin.steps") }}</th></tr>
@@ -154,7 +226,7 @@
                 </table>
             </div>
         </div>
-    </section>
+    </div>
 
     <script>
         // Data only — the renderer lives in /static/garmin.js, loaded from <head>

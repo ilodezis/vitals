@@ -3,26 +3,71 @@
 {% block title %}{{ t("weight.page_title") }}{% endblock %}
 
 {% block content %}
-{% from "partials/masthead.html" import masthead_header with context %}
-<link rel="stylesheet" href="{{ static_version('/static/vitals-data.css') }}">
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8 v-data-page v-weight-page" x-data="weightOSDashboard()">
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="weightOSDashboard()">
 
-    <section class="v-data-state" aria-label="{{ t('nav.weight') }}">
+    {% if request.state.ui_version == 'masthead' %}
     {{ masthead_header('weight', t('nav.weight'), [
         {'label': t('weight.latest'), 'unit': t('common.kg'), 'primary': true, 'value': (weights[0].weight_kg | format_number) if weights else '—'},
         {'label': t('weight.ma7'), 'unit': t('common.kg'), 'value': (series.trend_ma[-1].weight_kg | round(2) | format_number) if series.trend_ma else '—'},
         {'label': t('weight.body_fat'), 'unit': '%', 'value': (latest_bf | round(1) | format_number) if latest_bf is not none else '—'},
         {'label': t('weight.weekly_change'), 'unit': t('common.kg'), 'tone': ('good' if (series.trend and series.trend.slope_per_week < 0) else ('bad' if series.trend else '')), 'value': (('+' if series.trend.slope_per_week > 0 else '') ~ (series.trend.slope_per_week | round(1) | format_number)) if series.trend else '—'}
     ]) }}
-    </section>
+    {% else %}
+    <!-- Top Row: Metrics Grid -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+
+        <!-- Latest Weight -->
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("weight.latest") }}</span>
+            <div class="flex items-baseline">
+                <span class="v-metric-value">{% if weights %}{{ weights[0].weight_kg | format_number }}{% else %}—{%
+                    endif %}</span>
+                <span class="v-metric-unit">{{ t("common.kg") }}</span>
+            </div>
+        </div>
+
+        <!-- 7-Day MA -->
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("weight.ma7") }}</span>
+            <div class="flex items-baseline">
+                <span class="v-metric-value">{% if series.trend_ma %}{{ series.trend_ma[-1].weight_kg | round(2) |
+                    format_number }}{% else %}—{% endif %}</span>
+                <span class="v-metric-unit">{{ t("common.kg") }}</span>
+            </div>
+        </div>
+
+        <!-- Latest Body Fat % (most recent measurement that actually has one) -->
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("weight.body_fat") }}</span>
+            <div class="flex items-baseline">
+                <span class="v-metric-value">{% if latest_bf is not none %}{{ latest_bf | round(1) | format_number }}{%
+                    else %}—{% endif %}</span>
+                <span class="v-metric-unit">%</span>
+            </div>
+        </div>
+
+        <!-- Weekly Trend Slope — rounded to 1 decimal so -1.151 → -1.2 -->
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("weight.weekly_change") }}</span>
+            <div class="flex items-baseline">
+                <span
+                    class="v-metric-value {% if series.trend and series.trend.slope_per_week < 0 %}good{% elif series.trend %}bad{% endif %}">
+                    {% if series.trend %}{% if series.trend.slope_per_week > 0 %}+{% endif %}{{
+                    series.trend.slope_per_week | round(1) | format_number }}{% else %}—{% endif %}
+                </span>
+                <span class="v-metric-unit">{{ t("common.kg") }}</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Chart Block -->
-    <section class="v-weight-chart" aria-labelledby="weight-chart-title">
-    <div class="v-card v-data-surface p-6 space-y-3">
+    <div class="v-card p-6 space-y-3">
         <div class="flex justify-between items-center gap-3 flex-wrap">
             <div class="flex items-center gap-2">
                 <span class="v-bar"></span>
-                <h2 id="weight-chart-title" class="v-text-heading">{{ t("weight.chart_title") }}</h2>
+                <span class="v-text-heading">{{ t("weight.chart_title") }}</span>
             </div>
             {% if series.projection %}
             <div class="v-text-micro">
@@ -33,7 +78,7 @@
             </div>
             {% endif %}
         </div>
-        <div class="v-data-chart-frame">
+        <div class="h-[320px] w-full relative">
             {% if weights %}
             <canvas id="weightChart"></canvas>
             {% else %}
@@ -52,16 +97,15 @@
             {% endif %}
         </div>
     </div>
-    </section>
 
     <!-- Workspace -->
-    <section class="v-data-section v-data-workspace v-weight-workspace" aria-label="{{ t('nav.weight') }}">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
         <!-- Left: Input Controls (4 of 12 cols) -->
-        <aside class="v-weight-input-rail">
+        <div class="lg:col-span-4 space-y-6">
 
             <!-- Input Card -->
-            <div class="v-card v-data-surface v-weight-quick-input p-6 space-y-4">
+            <div class="v-card p-6 space-y-4">
                 <!-- Tabs -->
                 <div class="v-seg">
                     <button @click="activeTab = 'log'" :class="activeTab === 'log'     ? 'is-active' : ''"
@@ -241,7 +285,7 @@
             </div>
 
             <!-- Excluded Periods (Noise) -->
-            <div class="v-card v-data-surface v-weight-support-card p-6 space-y-3">
+            <div class="v-card p-6 space-y-3">
                 <span class="v-text-card">{{ t("weight.excluded_periods") }}</span>
                 <ul class="text-xs space-y-2.5 max-h-40 overflow-y-auto pr-1">
                     {% for n in noise_markers %}
@@ -276,7 +320,7 @@
             </div>
 
             <!-- Photos (Gallery) -->
-            <div class="v-card v-data-surface v-weight-support-card p-6 space-y-3">
+            <div class="v-card p-6 space-y-3">
                 <span class="v-text-card">{{ t("weight.gallery_title") }}</span>
                 <div class="flex gap-2 overflow-x-auto pb-1 max-h-40">
                     {% for p in photos %}
@@ -295,15 +339,15 @@
                 </div>
             </div>
 
-        </aside>
+        </div>
 
         <!-- Right: Logs & Tables (8 of 12 cols) -->
-        <div class="v-weight-detail">
+        <div class="lg:col-span-8 space-y-6">
 
             <!-- BODY COMPOSITION (InBody / МедАсс) -->
             {% if body_comp_enabled %}
             <!-- Latest scan summary chips -->
-            <div class="v-card v-data-surface p-6 space-y-4">
+            <div class="v-card p-6 space-y-4">
                 <div class="flex items-center justify-between gap-3 flex-wrap">
                     <div class="flex items-center gap-2"><span class="v-bar"></span><span class="v-text-heading">{{
                             t("body.title") }}</span></div>
@@ -329,14 +373,13 @@
             {% endif %}
 
             <!-- Weight Log Table -->
-            <div class="v-card v-data-surface p-6 space-y-3" x-data="{ showAllWeights: false }">
+            <div class="v-card p-6 space-y-3" x-data="{ showAllWeights: false }">
                 <div class="flex items-center gap-2">
                     <span class="v-bar v-bar-sm"></span>
                     <span class="v-text-card">{{ t("weight.history_title") }}</span>
                 </div>
                 <div class="v-card-inset">
-                    <div class="v-table-wrap v-data-table-scroll" tabindex="0" role="region"
-                        aria-label="{{ t('weight.history_title') }}">
+                    <div class="v-table-wrap">
                         <table class="v-table">
                             <thead>
                                 <tr>
@@ -405,14 +448,14 @@
                 {% endif %}
             </div>
 
-        </div>
-    </section>
+        </div> <!-- Close .lg:col-span-8 -->
+    </div> <!-- Close the 12-column grid -->
 
     <!-- Bottom Full-Width Tables -->
-    <section class="v-data-history v-weight-history" aria-label="{{ t('weight.history_title') }}">
+    <div class="space-y-6">
         <!-- BODY COMPOSITION (InBody / МедАсс) Scan History -->
         {% if body_comp_enabled %}
-        <div class="v-card v-data-surface p-6 space-y-3">
+        <div class="v-card p-6 space-y-3">
             <div class="flex items-center gap-2"><span class="v-bar v-bar-sm"></span><span class="v-text-card">{{
                     t("body.history") }}</span></div>
             <div class="space-y-2">
@@ -460,8 +503,6 @@
                         {% if cat_metrics %}
                         <div>
                             <span class="v-label">{{ t("body.cat." + cat) }}</span>
-                            <div class="v-data-table-scroll" tabindex="0" role="region"
-                                aria-label="{{ t('body.cat.' + cat) }}">
                             <table class="v-table w-full">
                                 <tbody>
                                     {% for m in cat_metrics %}
@@ -479,7 +520,6 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
-                            </div>
                         </div>
                         {% endif %}
                         {% endfor %}
@@ -491,14 +531,13 @@
         {% endif %}
 
         <!-- Measurements History (Circumferences) Table -->
-        <div class="v-card v-data-surface p-6 space-y-3">
+        <div class="v-card p-6 space-y-3">
             <div class="flex items-center gap-2">
                 <span class="v-bar v-bar-sm"></span>
                 <span class="v-text-card">{{ t("weight.measures_title") }}</span>
             </div>
             <div class="max-h-60 overflow-y-auto v-card-inset">
-                <div class="v-table-wrap v-data-table-scroll" tabindex="0" role="region"
-                    aria-label="{{ t('weight.measures_title') }}">
+                <div class="v-table-wrap">
                     <table class="v-table">
                         <thead>
                             <tr>
@@ -563,7 +602,6 @@
                 </div>
             </div>
         </div>
-    </section>
 
         <!-- BODY COMPOSITION (InBody / МедАсс) -->
         {% if body_comp_enabled %}
@@ -586,8 +624,7 @@
                             class="v-input">
                     </div>
                 </div>
-                <div class="max-h-[50vh] overflow-y-auto v-card-inset v-data-table-scroll" tabindex="0"
-                    role="region" aria-label="{{ t('body.preview_title') }}">
+                <div class="max-h-[50vh] overflow-y-auto v-card-inset">
                     <table class="v-table w-full">
                         <thead>
                             <tr>
@@ -656,5 +693,4 @@
         <script>
             window.vitalsChartData = {{ series | tojson | safe }};
         </script>
-</div>
         {% endblock %}

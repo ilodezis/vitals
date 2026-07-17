@@ -19,21 +19,25 @@
 
 {% block content %}
 {% from "garmin/_tabs.html" import garmin_tabs %}
-{% from "partials/masthead.html" import masthead_header with context %}
-<link rel="stylesheet" href="{{ static_version('/static/vitals-data.css') }}">
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8 v-data-page v-garmin-sleep-list">
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
 
-    <section class="v-data-state" aria-label="{{ t('garmin.tab_sleep') }}">
+    {% if request.state.ui_version == 'masthead' %}
     {{ masthead_header('garmin', t('garmin.tab_sleep'), []) }}
-    </section>
+    {% else %}
+    <div class="v-card p-6 flex items-start gap-3.5">
+        <span class="v-bar mt-1"></span>
+        <div class="space-y-2">
+            <span class="v-tag violet">🌙 {{ t("garmin.sleep_night_tag") }}</span>
+            <h1 class="v-text-heading">{{ t("garmin.tab_sleep") }}</h1>
+        </div>
+    </div>
+    {% endif %}
 
-    <nav class="v-garmin-tabs" aria-label="{{ t('nav.organism') }}">
     {{ garmin_tabs('sleep') }}
-    </nav>
 
     {% if latest_night %}
-    <section class="v-data-section" aria-label="{{ t('garmin.sleep_last_night_title') }}">
-    <a href="/garmin/sleep/{{ latest_night.date.isoformat() }}" class="v-card v-data-surface v-sleep-hero">
+    <a href="/garmin/sleep/{{ latest_night.date.isoformat() }}" class="v-card p-6 space-y-4">
         <div class="flex items-start justify-between gap-3">
             <div class="space-y-1">
                 <span class="v-text-micro" style="color: var(--muted)">{{ t("garmin.sleep_last_night_title") }}</span>
@@ -48,7 +52,7 @@
             </div>
             <svg class="h-5 w-5 shrink-0 mt-1" style="color: var(--muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
         </div>
-        <div class="v-sleep-hero-metrics">
+        <div class="flex flex-wrap items-center gap-5">
             <div>
                 <span class="v-metric-label">{{ t("garmin.sleep_score") }}</span>
                 <div class="v-metric-value">{{ latest_night.sleep_score if latest_night.sleep_score else '—' }}</div>
@@ -60,13 +64,12 @@
         </div>
         {{ phase_bar(latest_night, true) }}
     </a>
-    </section>
     {% endif %}
 
-    <section class="v-card v-data-surface v-sleep-history" aria-labelledby="sleep-history-title">
+    <div class="v-card p-6 space-y-3">
         <div class="flex items-center gap-2">
             <span class="v-bar v-bar-sm"></span>
-            <h2 id="sleep-history-title" class="v-text-card">{{ t("garmin.sleep_history_title", count=night_count) }}</h2>
+            <span class="v-text-card">{{ t("garmin.sleep_history_title", count=night_count) }}</span>
         </div>
         {% if nights %}
         <div class="v-night-row-head">
@@ -79,7 +82,7 @@
             <span></span>
         </div>
         {% endif %}
-        <div class="v-sleep-history-list">
+        <div class="space-y-1">
             {% for n in nights %}
             <a href="/garmin/sleep/{{ n.date.isoformat() }}" class="v-night-row">
                 <span class="v-num" style="color: var(--fg)">{{ n.date | format_date }}</span>
@@ -94,6 +97,6 @@
             <div class="text-center pt-2" style="color: var(--muted)">{{ t("garmin.no_history") }}</div>
             {% endfor %}
         </div>
-    </section>
+    </div>
 </div>
 {% endblock %}

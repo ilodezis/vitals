@@ -1,4 +1,10 @@
 {# Response body for POST /settings/modules. The toggle uses hx-swap="none", so
-   only the stable desktop rail is re-rendered out-of-band. The mobile Alpine
-   navigation reflects module state on the next navigation. #}
+   nothing is swapped into the trigger; this fragment carries only out-of-band
+   updates. Re-renders the desktop header nav so enabling/disabling a module is
+   reflected live without a page reload. (Mobile nav reflects on next navigation —
+   it carries Alpine directives we don't want to re-init via OOB.) #}
+{% if request.state.ui_version == 'masthead' %}
 {% with oob=true %}{% include "partials/nav_masthead.html" %}{% endwith %}
+{% else %}
+{% with oob=true %}{% include "partials/nav_primary.html" %}{% endwith %}
+{% endif %}

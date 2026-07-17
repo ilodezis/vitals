@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
-"""Current, deterministic local dataset used for browser and UI work.
+"""Seed a local dev instance with realistic demo data.
 
-It fills every UI surface, including detail views added after v1, and is
-idempotent. The caller owns the transaction.
+Persona: Alex, 27, 185 cm, fat-loss journey over 3 months (94 → 86 kg).
+Run AFTER `python run_local.py` has been started at least once (creates the DB).
+
+Usage:
+    python scripts/seed_demo.py
 """
-from __future__ import annotations
-
 import asyncio
-import math
 import os
-import random
 import sys
+import random
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
-
-from sqlalchemy import delete
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -22,671 +20,743 @@ os.environ.setdefault("VITALS_DATABASE_URL", "sqlite+aiosqlite:///local_vitals.d
 os.environ.setdefault("VITALS_REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("VITALS_TIMEZONE", "Europe/Chisinau")
 
+from sqlalchemy import delete
+
 from vitals.config import load_config
 from vitals.database import create_session_factory
 from vitals.enums import (
-    AnnotationKind,
     Domain,
     Drug,
     Evidence,
     InjectionSite,
     LabFlag,
     MilestoneStatus,
-    NoiseDirection,
+    RuleType,
     Severity,
     Source,
 )
 from vitals.models.app_settings import AppSetting
-from vitals.models.body_scan import BodyScan, BodyScanMetric
 from vitals.models.conflict_rule import ConflictRule
 from vitals.models.garmin import (
     SERIES_BODY_BATTERY,
-    SERIES_SLEEP_BB,
-    SERIES_SLEEP_HR,
-    SERIES_SLEEP_HRV,
-    SERIES_SLEEP_MOVEMENT,
-    SERIES_SLEEP_RESPIRATION,
-    SERIES_SLEEP_SPO2,
-    SERIES_SLEEP_STRESS,
     SERIES_STRESS,
-    GarminActivity,
     GarminDaily,
     GarminIntraday,
 )
 from vitals.models.genetics import GeneticVariant
-from vitals.models.glp1 import DosePhase, Injection, SideEffect
+from vitals.models.glp1 import DosePhase, Injection
 from vitals.models.hevy import HevyExercise, HevySet, HevyWorkout
 from vitals.models.labs import LabMarker, LabResult
 from vitals.models.milestones import Milestone, WeeklyDigest
 from vitals.models.nutrition import MealLog
-from vitals.models.skincare import SkincareLog, SkincareObservation, SkincareProduct
+from vitals.models.skincare import SkincareLog, SkincareProduct
 from vitals.models.supplements import Supplement
-from vitals.models.system_alert import SystemAlert
-from vitals.models.timeline import Annotation
-from vitals.models.weight import BodyMeasurement, NoiseMarker, WeightLog
-from vitals.services import conflict_catalog
-from vitals.services.modules_service import MODULE_REGISTRY
+from vitals.models.weight import BodyMeasurement, WeightLog
 from vitals.utils.timeutils import today_local
+
+random.seed(42)
 
 TODAY = today_local()
 
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 def _d(days_ago: int) -> date:
     return TODAY - timedelta(days=days_ago)
 
 
-def _weight(days_ago: int) -> float:
-    trend = 94.0 - (90 - days_ago) * (8.0 / 90)
-    noise = 0.24 * math.sin(days_ago * 1.71) + 0.11 * math.cos(days_ago * 0.47)
-    return round(trend + noise, 1)
+def _weight_curve(days_ago: int) -> float:
+    """94 kg at day -90, dropping to ~86 kg at day 0 with realistic noise."""
+    base = 94.0 - (90 - days_ago) * (8.0 / 90)
+    noise = random.uniform(-0.4, 0.4)
+    return round(base + noise, 1)
 
 
-async def _seed_supplements(session) -> int:
+# ---------------------------------------------------------------------------
+# Seed functions
+# ---------------------------------------------------------------------------
+
+async def seed_supplements(session):
     await session.execute(delete(Supplement))
-    rows = [
-        Supplement(name=name, key=key, dose=dose, timing=timing,
-                   evidence=evidence, active=active, note=note,
-                   domain=Domain.SUPPLEMENTS, source=Source.MANUAL)
-        for name, key, dose, timing, evidence, active, note in (
-            ("Креатин моногидрат", "creatine", "5 г", "утром", Evidence.A, True, "Без загрузочной фазы"),
-            ("Витамин D3", "vitamin_d", "4000 МЕ", "днём, во время обеда", Evidence.A, True, "До следующего анализа 25-OH D"),
-            ("Омега-3", "omega3", "2 г EPA+DHA", "днём, во время обеда", Evidence.A, True, None),
-            ("Магний глицинат", "magnesium", "400 мг", "вечером", Evidence.B, True, None),
-            ("Цинк пиколинат", "zinc", "15 мг", "вечером", Evidence.B, True, None),
-            ("Псиллиум", "psyllium", "8 г", "вечером, перед ужином", Evidence.A, True, None),
-            ("Электролиты", "electrolytes", "1 порция", "днём, во время тренировки", Evidence.B, True, None),
-            ("Мелатонин", "melatonin", "1 мг", "ночью, перед сном", Evidence.B, True, "Только при сбитом режиме"),
-            ("Железо бисглицинат", "iron", "36 мг", "утром", Evidence.B, False, "Приостановлено: ферритин нормализовался"),
-        )
+    items = [
+        Supplement(name="Creatine Monohydrate", key="creatine", dose="5 g",
+                   timing="утро", evidence=Evidence.A, active=True,
+                   domain=Domain.SUPPLEMENTS, source=Source.MANUAL),
+        Supplement(name="Vitamin D3", key="vitamin_d", dose="4000 IU",
+                   timing="день", evidence=Evidence.A, active=True,
+                   domain=Domain.SUPPLEMENTS, source=Source.MANUAL),
+        Supplement(name="Omega-3 Fish Oil", key="omega3", dose="2 g EPA+DHA",
+                   timing="день", evidence=Evidence.A, active=True,
+                   domain=Domain.SUPPLEMENTS, source=Source.MANUAL),
+        Supplement(name="Magnesium Glycinate", key="magnesium", dose="400 mg",
+                   timing="вечер", evidence=Evidence.B, active=True,
+                   domain=Domain.SUPPLEMENTS, source=Source.MANUAL),
+        Supplement(name="Zinc Picolinate", key="zinc", dose="25 mg",
+                   timing="вечер", evidence=Evidence.B, active=True,
+                   domain=Domain.SUPPLEMENTS, source=Source.MANUAL),
+        Supplement(name="Melatonin", key="melatonin", dose="3 mg",
+                   timing="ночь", evidence=Evidence.B, active=True,
+                   domain=Domain.SUPPLEMENTS, source=Source.MANUAL),
+        Supplement(name="Iron Bisglycinate", key="iron", dose="36 mg",
+                   timing="утро", evidence=Evidence.B, active=False,
+                   note="Paused — ferritin normalized",
+                   domain=Domain.SUPPLEMENTS, source=Source.MANUAL),
     ]
-    session.add_all(rows)
-    return len(rows)
+    session.add_all(items)
 
 
-async def _seed_genetics(session) -> int:
+async def seed_genetics(session):
     await session.execute(delete(GeneticVariant))
-    rows = [
-        ("MTHFR", "rs1801133", "CT", "mthfr_heterozygous", Domain.SUPPLEMENTS,
-         "Умеренно сниженный метаболизм фолатов", "Предпочитать пищевые фолаты; избегать мегадоз без врача"),
-        ("CYP1A2", "rs762551", "AC", "cyp1a2_slow_metabolizer", Domain.GARMIN,
-         "Промежуточная скорость метаболизма кофеина", "Не употреблять кофеин после 14:00"),
-        ("APOE", "rs429358", "CT", "apoe_e3e4", Domain.LABS,
-         "Один аллель ε4", "Контролировать LDL и ApoB"),
-        ("FTO", "rs9939609", "AT", "fto_risk_heterozygous", Domain.WEIGHT,
-         "Один аллель риска", "Белок и силовые тренировки снижают влияние"),
-        ("HFE", "rs1800562", "GG", "hfe_c282y_normal", Domain.LABS,
-         "Распространённый вариант", "Ориентироваться на ферритин как практический маркер"),
-        ("ACTN3", "rs1815739", "CT", "actn3_mixed", Domain.WORKOUTS,
-         "Смешанный силовой и выносливый профиль", "Подходит смешанная программа"),
+    items = [
+        GeneticVariant(gene="MTHFR", rsid="rs1801133", genotype="CT",
+                       marker="mthfr_heterozygous",
+                       impact="Reduced folate metabolism (~65% activity)",
+                       impact_domain=Domain.SUPPLEMENTS,
+                       interpretation="Heterozygous C677T — moderate effect",
+                       action_notes="Consider methylfolate over folic acid",
+                       domain=Domain.GENETICS, source=Source.VCF_IMPORT),
+        GeneticVariant(gene="CYP1A2", rsid="rs762551", genotype="AC",
+                       marker="cyp1a2_slow_metabolizer",
+                       impact="Slow caffeine metabolism",
+                       impact_domain=Domain.SUPPLEMENTS,
+                       interpretation="One slow allele — intermediate metabolizer",
+                       action_notes="Limit caffeine after 2 PM",
+                       domain=Domain.GENETICS, source=Source.VCF_IMPORT),
+        GeneticVariant(gene="APOE", rsid="rs429358", genotype="CT",
+                       marker="apoe_e3e4",
+                       impact="APOE ε3/ε4 — elevated cardiovascular risk",
+                       impact_domain=Domain.LABS,
+                       interpretation="One ε4 allele; monitor lipids closely",
+                       action_notes="Prioritize omega-3, minimize saturated fat",
+                       domain=Domain.GENETICS, source=Source.VCF_IMPORT),
+        GeneticVariant(gene="FTO", rsid="rs9939609", genotype="AT",
+                       marker="fto_risk_heterozygous",
+                       impact="Moderately increased obesity risk",
+                       impact_domain=Domain.WEIGHT,
+                       interpretation="One risk allele — ~1.3× risk vs TT",
+                       action_notes="Higher protein intake may counteract the effect",
+                       domain=Domain.GENETICS, source=Source.VCF_IMPORT),
     ]
-    session.add_all([
-        GeneticVariant(gene=gene, rsid=rsid, genotype=genotype, marker=marker,
-                       impact=interpretation, impact_domain=impact_domain,
-                       interpretation=interpretation, action_notes=action,
-                       domain=Domain.GENETICS, source=Source.VCF_IMPORT)
-        for gene, rsid, genotype, marker, impact_domain, interpretation, action in rows
-    ])
-    return len(rows)
+    session.add_all(items)
 
 
-async def _seed_digests(session) -> int:
-    await session.execute(delete(WeeklyDigest))
-    rows = [
-        WeeklyDigest(
-            date=_d(7),
-            content="""## Неделя в фокусе
-
-Вес продолжает плавно снижаться, а силовые показатели стабильны. Недавний
-перелёт добавил временный шум на весах, поэтому скользящая средняя сейчас
-важнее одного утреннего измерения.
-
-## Восстановление
-
-Сон стабильный; HRV немного ниже личной базы. Сегодня можно тренироваться
-по плану, но без проверки максимума.""",
-            context_json={"weight_trend_kg_week": -0.58, "sleep_avg_hours": 7.6,
-                          "hrv_avg": 49.8, "protein_avg_g": 145,
-                          "attention": ["vitamin_d"]},
-            model="anthropic/claude-sonnet-4.6",
-            domain=Domain.MILESTONES, source=Source.SCHEDULER,
-        ),
-        WeeklyDigest(
-            date=_d(14),
-            content="""## Хорошая динамика
-
-Талия уменьшается быстрее веса, а InBody показывает сохранение мышечной
-массы. Тренировочная нагрузка остаётся продуктивной и привычной.
-
-## Обратить внимание
-
-Лёгкая изжога была единичной и появилась после позднего ужина.""",
-            context_json={"waist_change_cm": -1.4, "muscle_mass_kg": 38.3,
-                          "training_status": "PRODUCTIVE"},
-            model="anthropic/claude-sonnet-4.6",
-            domain=Domain.MILESTONES, source=Source.SCHEDULER,
-        ),
-    ]
-    session.add_all(rows)
-    return len(rows)
-
-
-async def _seed_weight(session) -> int:
-    await session.execute(delete(NoiseMarker))
-    await session.execute(delete(BodyMeasurement))
-    await session.execute(delete(WeightLog))
-    weights = [
-        WeightLog(date=_d(day), weight_kg=_weight(day), superseded=False,
-                  domain=Domain.WEIGHT, source=Source.MANUAL)
-        for day in range(90, -1, -2)
-    ]
-    # Keep a losing Garmin row so provenance/priority states are represented.
-    weights.append(WeightLog(
-        date=_d(2), weight_kg=_weight(2) + 0.4, superseded=True,
-        note="Весы Garmin; запись заменена ручной проверкой",
-        domain=Domain.WEIGHT, source=Source.GARMIN_API,
-    ))
-    measurements = []
-    for day, neck, waist, fat in (
-        (90, 40.5, 95.0, 22.1), (75, 40.2, 93.8, 21.2),
-        (60, 39.9, 92.1, 20.4), (45, 39.6, 90.7, 19.6),
-        (30, 39.3, 89.2, 18.7), (15, 39.0, 87.8, 17.9),
-        (3, 38.8, 86.9, 17.2),
-    ):
-        measurements.append(BodyMeasurement(
-            date=_d(day), neck_cm=neck, waist_cm=waist, body_fat_pct=fat,
-            lbm_kg=round(_weight(day) * (1 - fat / 100), 1),
-            domain=Domain.WEIGHT, source=Source.MANUAL,
-        ))
-    noise = [
-        NoiseMarker(start_date=_d(74), end_date=_d(69),
-                    reason="Простуда и обезвоживание", direction=NoiseDirection.DOWN,
-                    domain=Domain.WEIGHT, source=Source.MANUAL),
-        NoiseMarker(start_date=_d(43), end_date=_d(34),
-                    reason="Старт креатина: задержка воды", direction=NoiseDirection.UP,
-                    domain=Domain.WEIGHT, source=Source.MANUAL),
-        NoiseMarker(start_date=_d(4), end_date=None,
-                    reason="Перелёт и солёная еда", direction=NoiseDirection.UP,
-                    domain=Domain.WEIGHT, source=Source.MANUAL),
-    ]
-    session.add_all([*weights, *measurements, *noise])
-    return len(weights) + len(measurements) + len(noise)
-
-
-def _metric(key, label, value, unit, category, low=None, high=None, segment=None):
-    return BodyScanMetric(
-        metric_key=key, label=label, value=value, unit=unit, category=category,
-        ref_low=low, ref_high=high, segment=segment,
-    )
-
-
-async def _seed_body_scans(session) -> int:
-    await session.execute(delete(BodyScanMetric))
-    await session.execute(delete(BodyScan))
-    scans = []
-    for day, weight, muscle, fat, lean, visceral, phase, ratio, score in (
-        (75, 92.5, 37.6, 21.4, 72.7, 93, 6.1, .383, 75),
-        (38, 89.4, 38.0, 19.2, 72.2, 82, 6.4, .380, 79),
-        (7, 86.7, 38.3, 17.3, 71.7, 72, 6.7, .377, 83),
-    ):
-        metrics = [
-            _metric("weight", "Масса тела", weight, "kg", "composition"),
-            _metric("skeletal_muscle_mass", "Скелетная мышечная масса", muscle, "kg", "composition", 33, 40),
-            _metric("body_fat_pct", "Процент жира", fat, "%", "composition", 10, 20),
-            _metric("lean_body_mass", "Безжировая масса", lean, "kg", "composition"),
-            _metric("body_fat_mass", "Жировая масса", round(weight * fat / 100, 1), "kg", "composition"),
-            _metric("visceral_fat_area", "Площадь висцерального жира", visceral, "cm²", "composition", 0, 100),
-            _metric("total_body_water", "Общая вода организма", round(lean * .72, 1), "L", "water"),
-            _metric("ecw_tbw_ratio", "Соотношение ECW/TBW", ratio, None, "water", .36, .39),
-            _metric("phase_angle", "Фазовый угол", phase, "°", "score", 5.5, 8),
-            _metric("inbody_score", "Оценка InBody", score, None, "score", 70, 100),
-            _metric("bmr", "Базовый обмен", 1690 + score, "kcal", "derived"),
-        ]
-        for segment, value in {
-            "right_arm": 3.75, "left_arm": 3.70, "trunk": 29.4,
-            "right_leg": 10.65, "left_leg": 10.58,
-        }.items():
-            metrics.append(_metric("segmental_lean", "Сегментарная безжировая масса", value, "kg", "segmental", segment=segment))
-        scans.append(BodyScan(
-            date=_d(day), device="InBody 770", note="Утром натощак, до тренировки",
-            domain=Domain.BODY_COMPOSITION, source=Source.BODY_SCAN, metrics=metrics,
-        ))
-    session.add_all(scans)
-    return len(scans)
-
-
-_STAGES = (
-    ("awake", 12), ("light", 48), ("deep", 76), ("light", 92),
-    ("rem", 34), ("light", 76), ("deep", 42), ("light", 54),
-    ("rem", 34), ("awake", 12),
-)
-
-
-def _sleep(start: datetime):
-    cursor, sleeping, awake, result = start, 0, 0, []
-    for stage, minutes in _STAGES:
-        end = cursor + timedelta(minutes=minutes)
-        result.append({"start": cursor.isoformat(timespec="seconds"),
-                       "end": end.isoformat(timespec="seconds"), "stage": stage})
-        if stage == "awake":
-            awake += minutes
-        else:
-            sleeping += minutes
-        cursor = end
-    return result, cursor, sleeping, awake
-
-
-def _whole_day_series(session, on_date: date) -> int:
-    battery = 26.0
-    for minute in range(0, 1440, 5):
-        ts = datetime.combine(on_date, time()) + timedelta(minutes=minute)
-        asleep = minute < 420 or minute >= 1380
-        stress = (13 if asleep else 31) + 12 * abs(math.sin(minute / 83))
-        if 1020 < minute < 1080:
-            stress += 18
-        battery = max(8, min(95, battery + (.72 if asleep else -(.1 + stress / 220))))
-        session.add_all([
-            GarminIntraday(date=on_date, series_type=SERIES_STRESS, ts=ts, value=round(stress, 1),
-                           domain=Domain.GARMIN, source=Source.GARMIN_API),
-            GarminIntraday(date=on_date, series_type=SERIES_BODY_BATTERY, ts=ts, value=round(battery, 1),
-                           domain=Domain.GARMIN, source=Source.GARMIN_API),
-        ])
-    return 576
-
-
-def _night_series(session, on_date: date, start: datetime, end: datetime) -> int:
-    kinds = (SERIES_SLEEP_HR, SERIES_SLEEP_SPO2, SERIES_SLEEP_RESPIRATION,
-             SERIES_SLEEP_STRESS, SERIES_SLEEP_BB, SERIES_SLEEP_HRV,
-             SERIES_SLEEP_MOVEMENT)
-    total = int((end - start).total_seconds() / 60)
-    count = 0
-    for minute in range(0, total + 1, 10):
-        phase = minute / 47
-        values = (
-            52 + 4 * math.sin(phase), 96.2 - .8 * abs(math.sin(phase * .7)),
-            14.1 + 1.1 * math.sin(phase * .9), 13 + 7 * abs(math.sin(phase * 1.3)),
-            28 + 56 * minute / total, 49 + 11 * math.sin(phase * 1.15),
-            max(0, 1.8 * math.sin(phase * 2.7)),
-        )
-        session.add_all([
-            GarminIntraday(date=on_date, series_type=kind,
-                           ts=start + timedelta(minutes=minute), value=round(value, 1),
-                           domain=Domain.GARMIN, source=Source.GARMIN_API)
-            for kind, value in zip(kinds, values)
-        ])
-        count += 7
-    return count
-
-
-async def _seed_garmin(session) -> int:
-    await session.execute(delete(GarminIntraday))
-    await session.execute(delete(GarminActivity))
-    await session.execute(delete(GarminDaily))
-    daily, bounds = [], {}
-    for day in range(29, -1, -1):
-        on_date = _d(day)
-        bedtime = datetime.combine(on_date - timedelta(days=1), time(23, 2))
-        bedtime += timedelta(minutes=round(12 * math.sin(day / 3)))
-        stages, wake, sleep_minutes, awake_minutes = _sleep(bedtime)
-        bounds[day] = bedtime, wake
-        score = max(62, min(93, round(81 + 7 * math.sin(day / 4.2))))
-        hrv = round(51 + 7 * math.sin(day / 5) - (3 if day < 3 else 0), 1)
-        daily.append(GarminDaily(
-            date=on_date, sleep_seconds=sleep_minutes * 60, sleep_score=score,
-            deep_sleep_seconds=118 * 60, light_sleep_seconds=270 * 60,
-            rem_sleep_seconds=68 * 60, awake_seconds=awake_minutes * 60,
-            sleep_start=bedtime, sleep_end=wake, awake_count=4,
-            restless_moments=round(9 + 3 * abs(math.sin(day))),
-            avg_sleep_stress=16, avg_sleep_hr=53, spo2_lowest=91 if day == 9 else 94,
-            respiration_lowest=12.3, respiration_highest=16.8,
-            body_battery_change=58, breathing_disruption="NONE", sleep_need_actual=480,
-            sleep_stages=stages,
-            breathing_events=[{"start": (bedtime + timedelta(hours=2)).isoformat(timespec="seconds"),
-                               "end": (bedtime + timedelta(hours=2, minutes=20)).isoformat(timespec="seconds"),
-                               "value": 0}],
-            resting_hr=round(56 - 2 * math.sin(day / 6)), avg_hr=74, max_hr=171, min_hr=47,
-            hrv_avg=hrv, hrv_status="BALANCED" if hrv >= 48 else "LOW",
-            avg_respiration=14.5, spo2_avg=96.4, avg_stress=round(31 + 5 * math.sin(day / 3)),
-            max_stress=78, body_battery_high=round(84 + 5 * math.sin(day / 4)),
-            body_battery_low=21, steps=round(8200 + 2600 * math.sin(day / 2.7)),
-            floors_climbed=8, active_calories=round(520 + 140 * math.sin(day / 2.2)),
-            bmr_calories=1840, total_calories=round(2360 + 140 * math.sin(day / 2.2)),
-            intensity_minutes_moderate=34, intensity_minutes_vigorous=18 if day % 3 == 1 else 6,
-            training_readiness=round(72 + 10 * math.sin(day / 4.5)), vo2max=47.2,
-            training_status="PRODUCTIVE" if day < 18 else "MAINTAINING",
-            acute_load=round(438 + 35 * math.sin(day / 5), 1),
-            load_ratio=round(102 + 8 * math.sin(day / 5), 1),
-            domain=Domain.GARMIN, source=Source.GARMIN_API,
-        ))
-    session.add_all(daily)
-    intraday = sum(_whole_day_series(session, _d(day)) for day in (1, 0))
-    intraday += sum(_night_series(session, _d(day), *bounds[day]) for day in (2, 1, 0))
-
-    templates = (
-        ("running", "Утренняя пробежка", 5200, 1760, 382, 148, 172, 38, 238, 3.4, 1.2),
-        ("strength_training", "Силовая тренировка", 0, 4380, 410, 126, 166, None, None, 2.5, 2.1),
-        ("cycling", "Велопрогулка", 18200, 3220, 536, 139, 169, 126, 204, 3.1, .8),
-    )
-    activities = []
-    for index, day in enumerate((27, 23, 19, 15, 11, 7, 4, 1)):
-        kind, name, distance, duration, calories, avg_hr, max_hr, elevation, power, aerobic, anaerobic = templates[index % 3]
-        split_count = 5 if kind == "running" else (4 if kind == "cycling" else 0)
-        splits = ([{"index": split + 1, "distance_m": distance / split_count,
-                    "duration_s": duration / split_count, "avg_hr": avg_hr + split,
-                    "max_hr": max_hr - 4 + split, "avg_speed_mps": distance / duration}
-                   for split in range(split_count)] or None)
-        activities.append(GarminActivity(
-            date=_d(day), external_id=f"demo-activity-{index + 1:03d}",
-            activity_type=kind, name=name, start_time=datetime.combine(_d(day), time(18, 15)),
-            duration_seconds=duration, distance_m=distance or None, calories=calories,
-            avg_hr=avg_hr, max_hr=max_hr, elevation_gain_m=elevation, avg_power=power,
-            training_effect_aerobic=aerobic, training_effect_anaerobic=anaerobic,
-            hr_zone_seconds=[{"zone": zone, "secs": round(duration * share), "low_hr": low}
-                             for zone, share, low in ((1, .08, 95), (2, .22, 115),
-                                                      (3, .38, 135), (4, .25, 153), (5, .07, 170))],
-            splits=splits, domain=Domain.GARMIN, source=Source.GARMIN_API,
-        ))
-    session.add_all(activities)
-    return len(daily) + intraday + len(activities)
-
-
-_LABS = {
-    "Glucose (fasting)": ("metabolic", "mmol/L", 3.9, 5.6, [5.5, 5.2, 4.9]),
-    "Insulin (fasting)": ("metabolic", "μIU/mL", 2.6, 24.9, [12.4, 9.7, 7.8]),
-    "HbA1c": ("metabolic", "%", 4, 5.7, [5.6, 5.4, 5.2]),
-    "Vitamin D (25-OH)": ("vitamins", "ng/mL", 30, 100, [21, 24, 28]),
-    "Ferritin": ("iron", "ng/mL", 30, 400, [58, 71, 84]),
-    "TSH": ("thyroid", "mIU/L", .4, 4, [2.6, 2.2, 1.9]),
-    "ALT": ("liver", "U/L", 0, 41, [38, 31, 26]),
-    "AST": ("liver", "U/L", 0, 40, [31, 27, 24]),
-    "Creatinine": ("kidney", "μmol/L", 62, 106, [96, 93, 89]),
-    "LDL cholesterol": ("lipids", "mmol/L", 0, 3, [3.5, 3.2, 2.8]),
-    "HDL cholesterol": ("lipids", "mmol/L", 1, 2.5, [1.15, 1.22, 1.31]),
-    "Triglycerides": ("lipids", "mmol/L", 0, 1.7, [1.62, 1.42, 1.18]),
-}
-
-
-async def _seed_labs(session) -> int:
-    await session.execute(delete(LabResult))
+async def seed_lab_markers(session):
     await session.execute(delete(LabMarker))
-    markers = [LabMarker(name=name, category=category, unit=unit, ref_low=low,
-                         ref_high=high, tier=1 if category in {"metabolic", "liver", "kidney", "thyroid"} else 2,
-                         retest_interval_days=90 if category in {"metabolic", "vitamins"} else 180,
-                         domain=Domain.LABS)
-               for name, (category, unit, low, high, _) in _LABS.items()]
-    results = []
-    for panel_index, day in enumerate((120, 60, 14)):
-        for name, (_, unit, low, high, values) in _LABS.items():
-            value = values[panel_index]
-            flag = LabFlag.LOW if value < low else (LabFlag.HIGH if value > high else LabFlag.NORMAL)
-            results.append(LabResult(date=_d(day), marker=name, value=value, unit=unit,
-                                     ref_low=low, ref_high=high, flag=flag,
-                                     lab_name="Invitro", domain=Domain.LABS,
-                                     source=Source.LAB_PARSER))
-    session.add_all([*markers, *results])
-    return len(markers) + len(results)
+    markers = [
+        LabMarker(name="Glucose (fasting)", category="metabolic",
+                  unit="mmol/L", ref_low=3.9, ref_high=5.6, tier=1,
+                  domain=Domain.LABS),
+        LabMarker(name="Insulin (fasting)", category="metabolic",
+                  unit="μIU/mL", ref_low=2.6, ref_high=24.9, tier=1,
+                  domain=Domain.LABS),
+        LabMarker(name="TSH", category="thyroid",
+                  unit="mIU/L", ref_low=0.4, ref_high=4.0, tier=1,
+                  retest_interval_days=180, domain=Domain.LABS),
+        LabMarker(name="Vitamin D (25-OH)", category="vitamins",
+                  unit="ng/mL", ref_low=30.0, ref_high=100.0, tier=2,
+                  retest_interval_days=90, domain=Domain.LABS),
+        LabMarker(name="HbA1c", category="metabolic",
+                  unit="%", ref_low=4.0, ref_high=5.7, tier=1,
+                  retest_interval_days=90, domain=Domain.LABS),
+        LabMarker(name="Triglycerides", category="lipids",
+                  unit="mg/dL", ref_low=0.0, ref_high=150.0, tier=2,
+                  domain=Domain.LABS),
+    ]
+    session.add_all(markers)
 
 
-async def _seed_glp1(session) -> int:
-    await session.execute(delete(SideEffect))
-    await session.execute(delete(Injection))
+async def seed_conflict_rules(session):
+    await session.execute(delete(ConflictRule))
+    rules = [
+        ConflictRule(
+            rule_type=RuleType.SOFT_WARN,
+            domain_a=Domain.SUPPLEMENTS, condition_a={"key": "iron", "active": True},
+            domain_b=Domain.GENETICS, condition_b={"marker": "hemochromatosis_carrier"},
+            severity=Severity.WARN,
+            message="Iron supplementation with hemochromatosis carrier status — monitor ferritin",
+            active=True,
+        ),
+        ConflictRule(
+            rule_type=RuleType.HARD_BLOCK,
+            domain_a=Domain.SKINCARE, condition_a={"retinoid": True},
+            domain_b=Domain.SKINCARE, condition_b={"peel": True},
+            severity=Severity.BLOCK,
+            message="Retinoid and chemical peel on the same day — high irritation risk",
+            active=True,
+        ),
+        ConflictRule(
+            rule_type=RuleType.TIMING_SEPARATION,
+            domain_a=Domain.SUPPLEMENTS, condition_a={"key": "iron", "active": True},
+            domain_b=Domain.SUPPLEMENTS, condition_b={"key": "zinc", "active": True},
+            severity=Severity.WARN,
+            message="Iron and zinc compete for absorption — take 2+ hours apart",
+            params={"hours": 2},
+            active=True,
+        ),
+    ]
+    session.add_all(rules)
+
+
+async def seed_dose_phases(session):
     await session.execute(delete(DosePhase))
     phases = [
-        DosePhase(start_date=_d(84), end_date=_d(57), drug=Drug.SEMAGLUTIDE, dose_mg=.25,
-                  note="Стартовая титрация", domain=Domain.GLP1, source=Source.MANUAL),
-        DosePhase(start_date=_d(56), end_date=_d(22), drug=Drug.SEMAGLUTIDE, dose_mg=.5,
-                  note="Хорошая переносимость", domain=Domain.GLP1, source=Source.MANUAL),
-        DosePhase(start_date=_d(21), end_date=None, drug=Drug.SEMAGLUTIDE, dose_mg=1,
-                  note="Текущая доза", domain=Domain.GLP1, source=Source.MANUAL),
+        DosePhase(
+            start_date=_d(84), end_date=_d(57),
+            drug=Drug.SEMAGLUTIDE, dose_mg=0.25,
+            note="Titration — starting dose",
+            domain=Domain.GLP1, source=Source.MANUAL,
+        ),
+        DosePhase(
+            start_date=_d(56), end_date=None,
+            drug=Drug.SEMAGLUTIDE, dose_mg=0.5,
+            note="Maintenance dose",
+            domain=Domain.GLP1, source=Source.MANUAL,
+        ),
     ]
-    sites = list(InjectionSite)
-    injections = []
-    for index, day in enumerate(range(77, -1, -7)):
-        dose = .25 if day >= 57 else (.5 if day >= 22 else 1)
-        injections.append(Injection(date=_d(day), drug=Drug.SEMAGLUTIDE, dose_mg=dose,
-                                    site=sites[index % len(sites)],
-                                    domain=Domain.GLP1, source=Source.MANUAL))
-    effects = [
-        SideEffect(date=_d(76), effect_type="Тошнота", severity=2,
-                   note="Только утром после первой инъекции", domain=Domain.GLP1, source=Source.MANUAL),
-        SideEffect(date=_d(52), effect_type="Запор", severity=3,
-                   note="Прошёл после коррекции воды и клетчатки", domain=Domain.GLP1, source=Source.MANUAL),
-        SideEffect(date=_d(14), effect_type="Изжога", severity=1,
-                   note="Однократно после позднего ужина", domain=Domain.GLP1, source=Source.MANUAL),
-    ]
-    session.add_all([*phases, *injections, *effects])
-    return len(phases) + len(injections) + len(effects)
+    session.add_all(phases)
 
 
-async def _seed_nutrition(session) -> int:
+async def seed_weight(session):
+    await session.execute(delete(WeightLog))
+    days = sorted(random.sample(range(1, 91), 20), reverse=True)
+    for d in days:
+        session.add(WeightLog(
+            date=_d(d), weight_kg=_weight_curve(d), superseded=False,
+            domain=Domain.WEIGHT, source=Source.MANUAL,
+        ))
+
+
+async def seed_measurements(session):
+    await session.execute(delete(BodyMeasurement))
+    data = [
+        (90, 40.5, 95.0, 22.1, None),
+        (60, 39.8, 92.0, 20.5, None),
+        (30, 39.2, 89.5, 19.0, None),
+        (7,  38.8, 87.0, 17.8, None),
+    ]
+    for days_ago, neck, waist, bf, lbm in data:
+        w = _weight_curve(days_ago)
+        computed_lbm = round(w * (1 - bf / 100), 1)
+        session.add(BodyMeasurement(
+            date=_d(days_ago), neck_cm=neck, waist_cm=waist,
+            body_fat_pct=bf, lbm_kg=computed_lbm,
+            domain=Domain.WEIGHT, source=Source.MANUAL,
+        ))
+
+
+def _seed_intraday_day(session, d):
+    """One day's stress / Body Battery curves at a 5-minute cadence (the real
+    device samples every ~3 min; coarser here just to keep the demo DB small).
+    Shaped like a real day — battery charges through the night and drains once
+    stress picks up — so the dashboard chart shows the relationship it exists for."""
+    battery = random.randint(20, 35)
+    for slot in range(0, 24 * 60, 5):
+        ts = datetime.combine(d, time(0, 0)) + timedelta(minutes=slot)
+        asleep = slot < 7 * 60 or slot > 23 * 60
+        stress = random.randint(8, 22) if asleep else random.randint(20, 75)
+        # Sleep recharges, waking hours drain roughly in step with stress.
+        battery += random.uniform(0.8, 1.6) if asleep else -stress / 60.0
+        battery = max(5.0, min(100.0, battery))
+        session.add(GarminIntraday(
+            date=d, series_type=SERIES_STRESS, ts=ts, value=float(stress),
+            domain=Domain.GARMIN, source=Source.GARMIN_API,
+        ))
+        session.add(GarminIntraday(
+            date=d, series_type=SERIES_BODY_BATTERY, ts=ts, value=round(battery, 1),
+            domain=Domain.GARMIN, source=Source.GARMIN_API,
+        ))
+
+
+async def seed_garmin(session):
+    await session.execute(delete(GarminIntraday))
+    await session.execute(delete(GarminDaily))
+    # Intraday curves only for the two most recent days: at ~576 rows a day they
+    # are the densest thing in the lake, and the dashboard only charts the latest.
+    for i in (2, 1):
+        _seed_intraday_day(session, _d(i))
+    for i in range(14, 0, -1):
+        d = _d(i)
+        sleep_h = random.uniform(6.5, 8.5)
+        session.add(GarminDaily(
+            date=d,
+            sleep_seconds=int(sleep_h * 3600),
+            sleep_score=random.randint(65, 92),
+            deep_sleep_seconds=int(random.uniform(0.8, 1.8) * 3600),
+            light_sleep_seconds=int(random.uniform(2.5, 4.0) * 3600),
+            rem_sleep_seconds=int(random.uniform(1.0, 2.0) * 3600),
+            awake_seconds=int(random.uniform(0.1, 0.5) * 3600),
+            resting_hr=random.randint(52, 62),
+            hrv_avg=round(random.uniform(35, 65), 1),
+            hrv_status=random.choice(["balanced", "balanced", "low", "optimal"]),
+            avg_stress=random.randint(25, 45),
+            body_battery_high=random.randint(75, 100),
+            body_battery_low=random.randint(10, 35),
+            steps=random.randint(5000, 13000),
+            active_calories=random.randint(300, 700),
+            training_readiness=random.randint(45, 85),
+            vo2max=round(random.uniform(42, 48), 1),
+            domain=Domain.GARMIN, source=Source.GARMIN_API,
+        ))
+
+
+async def seed_meals(session):
     await session.execute(delete(MealLog))
-    meals = (
-        ("Овсянка, банан и протеин", time(8, 20), 430, 34, 9, 58),
-        ("Греческий йогурт с ягодами", time(11, 10), 210, 21, 6, 20),
-        ("Курица, рис и овощи", time(14), 560, 49, 13, 61),
-        ("Лосось, батат и салат", time(19, 15), 520, 41, 20, 43),
-    )
-    rows = []
-    for day in range(13, -1, -1):
-        for index, (name, eaten_at, calories, protein, fat, carbs) in enumerate(meals):
-            scale = 1.08 if _d(day).weekday() >= 5 and index == 3 else 1 + .025 * math.sin(day + index)
-            rows.append(MealLog(date=_d(day), name=name, eaten_at=eaten_at,
-                                calories=round(calories * scale), protein_g=round(protein * scale, 1),
-                                fat_g=round(fat * scale, 1), carbs_g=round(carbs * scale, 1),
-                                domain=Domain.NUTRITION, source=Source.MANUAL))
-    session.add_all(rows)
-    return len(rows)
+    meal_templates = [
+        ("Oatmeal with banana and whey", time(8, 30), 420, 32, 8, 62),
+        ("Greek yogurt with berries", time(11, 0), 180, 18, 5, 16),
+        ("Chicken breast with rice and veggies", time(13, 30), 550, 48, 12, 58),
+        ("Protein shake (whey + milk)", time(16, 0), 220, 35, 4, 12),
+        ("Salmon with sweet potato", time(19, 0), 480, 38, 18, 42),
+        ("Cottage cheese with almonds", time(21, 0), 200, 24, 8, 6),
+        ("Eggs (3) with toast and avocado", time(8, 0), 450, 28, 24, 32),
+        ("Turkey wrap with hummus", time(13, 0), 380, 32, 12, 38),
+        ("Steak with broccoli", time(19, 30), 520, 45, 28, 8),
+        ("Casein shake before bed", time(22, 0), 130, 25, 1, 4),
+    ]
+    for i in range(8):  # 0 = today, 1..7 = past week
+        d = _d(i)
+        day_meals = random.sample(meal_templates, random.randint(3, 4))
+        for name, eaten_at, cal, prot, fat, carbs in day_meals:
+            noise = random.uniform(0.9, 1.1)
+            session.add(MealLog(
+                date=d, name=name, eaten_at=eaten_at,
+                calories=round(cal * noise),
+                protein_g=round(prot * noise, 1),
+                fat_g=round(fat * noise, 1),
+                carbs_g=round(carbs * noise, 1),
+                domain=Domain.NUTRITION, source=Source.MANUAL,
+            ))
 
 
-async def _seed_skincare(session) -> int:
-    await session.execute(delete(SkincareObservation))
+async def seed_skincare(session):
     await session.execute(delete(SkincareLog))
     await session.execute(delete(SkincareProduct))
-    logs = []
-    for day in range(13, -1, -1):
-        on_date = _d(day)
-        peel = on_date.weekday() == 5
-        retinoid = on_date.weekday() in (0, 2, 4) and not peel
-        logs.append(SkincareLog(date=on_date, retinoid=retinoid,
-                                azelaic=not peel and not retinoid, peel=peel,
-                                niacinamide_spf=True, moisturizer=True,
-                                vitamin_c=not retinoid and not peel,
-                                benzoyl_peroxide=day == 9,
-                                note="Кожа спокойная" if day < 3 else None,
-                                domain=Domain.SKINCARE, source=Source.MANUAL))
-    observations = [
-        SkincareObservation(date=_d(day), inflammation=infl, pih=pih, zone=zone, note=note,
-                            domain=Domain.SKINCARE, source=Source.MANUAL)
-        for day, infl, pih, zone, note in (
-            (13, 3, 4, "подбородок", "Два воспаления после поездки"),
-            (10, 3, 4, "щёки", "Без новых элементов"),
-            (7, 2, 3, "подбородок", "Краснота уменьшается"),
-            (4, 2, 3, "T-зона", "Барьер без сухости"),
-            (1, 1, 2, "щёки", "Активных воспалений нет"),
-        )
-    ]
-    all_days = list(range(7))
+    for i in range(7, 0, -1):
+        d = _d(i)
+        dow = d.weekday()
+        is_peel_day = dow in (1, 5)  # Tue, Sat
+        session.add(SkincareLog(
+            date=d,
+            retinoid=not is_peel_day,
+            azelaic=not is_peel_day,
+            peel=is_peel_day,
+            niacinamide_spf=True,
+            moisturizer=True,
+            domain=Domain.SKINCARE, source=Source.MANUAL,
+        ))
+    all_days = [0, 1, 2, 3, 4, 5, 6]
+    peel_days = [2, 6]  # Tue, Sat
+    non_peel = [0, 1, 3, 4, 5]  # Sun, Mon, Wed, Thu, Fri
     products = [
-        SkincareProduct(name="Differin 0.1%", type="Ретиноид", active_ingredient="Адапален 0.1%",
-                        description="Текстура и профилактика акне", default_time="evening",
-                        schedule_days=[0, 2, 4], active=True),
-        SkincareProduct(name="Azelik 20%", type="Азелаиновая кислота", active_ingredient="Azelaic acid 20%",
-                        description="Воспаления и постакне", default_time="evening",
-                        schedule_days=[1, 3, 6], active=True),
-        SkincareProduct(name="BHA 2%", type="Пилинг", active_ingredient="Salicylic acid 2%",
-                        description="Эксфолиация раз в неделю", default_time="evening",
-                        schedule_days=[5], active=True),
-        SkincareProduct(name="Vitamin C 15%", type="Антиоксидант", active_ingredient="L-ascorbic acid 15%",
-                        description="Тон и антиоксидантная защита", default_time="morning",
-                        schedule_days=all_days, active=True),
-        SkincareProduct(name="Niacinamide 5%", type="Сыворотка", active_ingredient="Niacinamide 5%",
-                        description="Поддержка барьера", default_time="morning",
-                        schedule_days=all_days, active=True),
-        SkincareProduct(name="CeraVe Lotion", type="Увлажнение", active_ingredient="Ceramides",
-                        description="Восстановление барьера", default_time="both",
-                        schedule_days=all_days, active=True),
-        SkincareProduct(name="Anthelios SPF 50+", type="SPF", active_ingredient="UV filters",
-                        description="Ежедневная UVA/UVB защита", default_time="morning",
-                        schedule_days=all_days, active=True),
+        SkincareProduct(
+            name="Differin 0.1%", type="Retinoid",
+            active_ingredient="Adapalene 0.1%",
+            description="Topical retinoid for acne and texture",
+            default_time="evening", schedule_days=non_peel, active=True,
+        ),
+        SkincareProduct(
+            name="Azelik 20%", type="Azelaic acid",
+            active_ingredient="Azelaic acid 20%",
+            description="Anti-inflammatory, PIH treatment",
+            default_time="evening", schedule_days=non_peel, active=True,
+        ),
+        SkincareProduct(
+            name="BHA Peel 2%", type="Chemical peel",
+            active_ingredient="Salicylic acid 2%",
+            description="Exfoliation, pore clearing",
+            default_time="evening", schedule_days=peel_days, active=True,
+        ),
+        SkincareProduct(
+            name="Niacinamide + Zinc Serum", type="Serum",
+            active_ingredient="Niacinamide 10%, Zinc PCA 1%",
+            description="Sebum control, barrier repair",
+            default_time="morning", schedule_days=all_days, active=True,
+        ),
+        SkincareProduct(
+            name="SPF 50 Sunscreen", type="Sunscreen",
+            active_ingredient="UV filters",
+            description="Daily UV protection",
+            default_time="morning", schedule_days=all_days, active=True,
+        ),
+        SkincareProduct(
+            name="CeraVe Moisturizer", type="Moisturizer",
+            active_ingredient="Ceramides, Hyaluronic acid",
+            description="Barrier repair, hydration",
+            default_time="both", schedule_days=all_days, active=True,
+        ),
     ]
-    session.add_all([*logs, *observations, *products])
-    return len(logs) + len(observations) + len(products)
+    session.add_all(products)
 
 
-async def _seed_workouts(session) -> int:
-    await session.execute(delete(HevySet))
-    await session.execute(delete(HevyExercise))
+async def seed_injections(session):
+    await session.execute(delete(Injection))
+    sites = list(InjectionSite)
+    for i in range(4):
+        days_ago = 7 * (4 - i)
+        dose = 0.25 if days_ago > 56 else 0.5
+        session.add(Injection(
+            date=_d(days_ago),
+            drug=Drug.SEMAGLUTIDE,
+            dose_mg=dose,
+            site=sites[i % len(sites)],
+            domain=Domain.GLP1, source=Source.MANUAL,
+        ))
+
+
+async def seed_labs(session):
+    await session.execute(delete(LabResult))
+    panel_date = _d(21)
+    results = [
+        ("Glucose (fasting)", 5.1, "mmol/L", 3.9, 5.6, LabFlag.NORMAL),
+        ("Insulin (fasting)", 8.3, "μIU/mL", 2.6, 24.9, LabFlag.NORMAL),
+        ("TSH", 2.1, "mIU/L", 0.4, 4.0, LabFlag.NORMAL),
+        ("Vitamin D (25-OH)", 28.0, "ng/mL", 30.0, 100.0, LabFlag.LOW),
+        ("HbA1c", 5.3, "%", 4.0, 5.7, LabFlag.NORMAL),
+        ("Triglycerides", 128.0, "mg/dL", 0.0, 150.0, LabFlag.NORMAL),
+    ]
+    for marker, val, unit, lo, hi, flag in results:
+        session.add(LabResult(
+            date=panel_date, marker=marker, value=val, unit=unit,
+            ref_low=lo, ref_high=hi, flag=flag,
+            lab_name="Invitro",
+            domain=Domain.LABS, source=Source.LAB_PARSER,
+        ))
+
+
+async def seed_workouts(session):
     await session.execute(delete(HevyWorkout))
-    programs = (
-        ("Жим", (("Bench Press", "bench", 82.5), ("Incline DB Press", "incline", 26),
-                  ("Lateral Raise", "lateral", 10))),
-        ("Тяга", (("Lat Pulldown", "pulldown", 57.5), ("Barbell Row", "row", 65),
-                  ("Dumbbell Curl", "curl", 14))),
-        ("Ноги", (("Back Squat", "squat", 90), ("Romanian Deadlift", "rdl", 72.5),
-                  ("Leg Press", "leg_press", 145))),
-    )
-    workouts = []
-    for index, day in enumerate((24, 21, 18, 14, 11, 8, 5, 2), start=1):
-        title, exercises = programs[(index - 1) % len(programs)]
-        workout = HevyWorkout(date=_d(day), external_id=f"demo-workout-{index:03d}",
-                              title=f"{title} · {chr(65 + ((index - 1) // 3) % 2)}",
-                              start_time=datetime.combine(_d(day), time(18, 30)),
-                              duration_seconds=3900 + index * 45, program="Рекомпозиция 3×",
-                              domain=Domain.WORKOUTS, source=Source.HEVY_API, exercises=[])
-        for exercise_index, (exercise_name, template, base_weight) in enumerate(exercises):
-            exercise = HevyExercise(exercise_index=exercise_index, title=exercise_name,
-                                    exercise_template_id=template)
-            exercise.sets = [
-                HevySet(set_index=set_index, set_type="normal",
-                        weight_kg=round(base_weight + index * .35 + set_index * .5, 1),
-                        reps=10 - set_index)
-                for set_index in range(3)
-            ]
+
+    programs = [
+        ("Push A", "A", [
+            ("Bench Press (Barbell)", "tmpl_bench", [
+                (60, 8, "warmup"), (80, 8, "normal"), (85, 6, "normal"), (85, 5, "normal"),
+            ]),
+            ("Overhead Press (Dumbbell)", "tmpl_ohp", [
+                (16, 10, "normal"), (18, 8, "normal"), (18, 7, "normal"),
+            ]),
+            ("Incline Dumbbell Press", "tmpl_incline_db", [
+                (24, 10, "normal"), (26, 8, "normal"), (26, 7, "normal"),
+            ]),
+            ("Lateral Raise", "tmpl_lateral", [
+                (8, 15, "normal"), (10, 12, "normal"), (10, 10, "normal"),
+            ]),
+            ("Tricep Pushdown", "tmpl_tri_push", [
+                (25, 12, "normal"), (30, 10, "normal"), (30, 8, "normal"),
+            ]),
+        ]),
+        ("Pull A", "A", [
+            ("Lat Pulldown", "tmpl_lat_pull", [
+                (50, 10, "normal"), (55, 8, "normal"), (57.5, 7, "normal"),
+            ]),
+            ("Barbell Row", "tmpl_bb_row", [
+                (50, 8, "warmup"), (60, 8, "normal"), (65, 6, "normal"), (65, 6, "normal"),
+            ]),
+            ("Face Pull", "tmpl_face_pull", [
+                (15, 15, "normal"), (17.5, 12, "normal"), (17.5, 12, "normal"),
+            ]),
+            ("Dumbbell Curl", "tmpl_db_curl", [
+                (12, 10, "normal"), (14, 8, "normal"), (14, 7, "normal"),
+            ]),
+        ]),
+        ("Legs", "B", [
+            ("Squat (Barbell)", "tmpl_squat", [
+                (60, 8, "warmup"), (80, 6, "normal"), (90, 5, "normal"), (90, 4, "normal"),
+            ]),
+            ("Romanian Deadlift", "tmpl_rdl", [
+                (60, 8, "normal"), (70, 8, "normal"), (70, 7, "normal"),
+            ]),
+            ("Leg Press", "tmpl_leg_press", [
+                (120, 10, "normal"), (140, 8, "normal"), (140, 8, "normal"),
+            ]),
+            ("Leg Curl (Machine)", "tmpl_leg_curl", [
+                (35, 12, "normal"), (40, 10, "normal"), (40, 9, "normal"),
+            ]),
+            ("Calf Raise", "tmpl_calf", [
+                (60, 15, "normal"), (70, 12, "normal"), (70, 12, "normal"),
+            ]),
+        ]),
+        ("Push B", "B", [
+            ("Bench Press (Barbell)", "tmpl_bench", [
+                (60, 8, "warmup"), (82.5, 7, "normal"), (87.5, 5, "normal"), (87.5, 5, "normal"),
+            ]),
+            ("Dumbbell Shoulder Press", "tmpl_db_shoulder", [
+                (18, 10, "normal"), (20, 8, "normal"), (20, 7, "normal"),
+            ]),
+            ("Cable Fly", "tmpl_cable_fly", [
+                (10, 12, "normal"), (12.5, 10, "normal"), (12.5, 10, "normal"),
+            ]),
+            ("Overhead Tricep Extension", "tmpl_tri_ext", [
+                (15, 12, "normal"), (17.5, 10, "normal"), (17.5, 9, "normal"),
+            ]),
+        ]),
+        ("Pull B", "A", [
+            ("Deadlift (Barbell)", "tmpl_deadlift", [
+                (80, 5, "warmup"), (100, 5, "normal"), (110, 3, "normal"), (110, 3, "normal"),
+            ]),
+            ("Seated Cable Row", "tmpl_cable_row", [
+                (50, 10, "normal"), (55, 8, "normal"), (55, 8, "normal"),
+            ]),
+            ("Lat Pulldown (Close Grip)", "tmpl_lat_close", [
+                (45, 10, "normal"), (50, 8, "normal"), (50, 8, "normal"),
+            ]),
+            ("Hammer Curl", "tmpl_hammer", [
+                (14, 10, "normal"), (16, 8, "normal"), (16, 7, "normal"),
+            ]),
+        ]),
+        ("Legs + Core", "B", [
+            ("Front Squat", "tmpl_front_squat", [
+                (40, 8, "warmup"), (60, 6, "normal"), (65, 5, "normal"), (65, 5, "normal"),
+            ]),
+            ("Bulgarian Split Squat", "tmpl_bss", [
+                (12, 10, "normal"), (14, 8, "normal"), (14, 8, "normal"),
+            ]),
+            ("Leg Extension", "tmpl_leg_ext", [
+                (40, 12, "normal"), (45, 10, "normal"), (45, 10, "normal"),
+            ]),
+            ("Cable Crunch", "tmpl_cable_crunch", [
+                (30, 15, "normal"), (35, 12, "normal"), (35, 12, "normal"),
+            ]),
+        ]),
+    ]
+
+    workout_days = [3, 5, 8, 10, 13, 15]
+    for idx, days_ago in enumerate(workout_days):
+        title, program, exercises = programs[idx % len(programs)]
+        d = _d(days_ago)
+        start_hour = random.choice([9, 10, 17, 18])
+
+        workout = HevyWorkout(
+            date=d,
+            external_id=f"demo-workout-{idx + 1:03d}",
+            title=title,
+            start_time=d.timetuple()[:3] and None,  # keep it simple — no datetime for SQLite
+            duration_seconds=random.randint(3600, 5400),
+            program=program,
+            domain=Domain.WORKOUTS, source=Source.HEVY_API,
+            exercises=[],
+        )
+
+        for ex_idx, (ex_title, tmpl_id, sets_data) in enumerate(exercises):
+            exercise = HevyExercise(
+                exercise_index=ex_idx,
+                title=ex_title,
+                exercise_template_id=tmpl_id,
+            )
+            for set_idx, (weight, reps, set_type) in enumerate(sets_data):
+                exercise.sets.append(HevySet(
+                    set_index=set_idx,
+                    set_type=set_type,
+                    weight_kg=weight,
+                    reps=reps,
+                ))
             workout.exercises.append(exercise)
-        workouts.append(workout)
-    session.add_all(workouts)
-    return len(workouts)
+
+        session.add(workout)
 
 
-async def _seed_timeline(session) -> int:
-    await session.execute(delete(Annotation))
-    rows = [
-        Annotation(date=_d(72), end_date=_d(67), kind=AnnotationKind.TRAVEL,
-                   title="Поездка в Стамбул", note="Другой режим сна и питания",
-                   domain=Domain.TIMELINE, source=Source.MANUAL),
-        Annotation(date=_d(56), kind=AnnotationKind.PROTOCOL_CHANGE,
-                   title="Переход на 0.5 мг", note="Аппетит стабилизировался",
-                   domain=Domain.GLP1, source=Source.MANUAL),
-        Annotation(date=_d(24), end_date=_d(20), kind=AnnotationKind.ILLNESS,
-                   title="ОРВИ", note="Четыре дня без тренировок",
-                   domain=Domain.TIMELINE, source=Source.MANUAL),
-        Annotation(date=_d(12), kind=AnnotationKind.LIFE_EVENT,
-                   title="Новый тренировочный блок", note="Фокус на сохранении силы",
-                   domain=Domain.WORKOUTS, source=Source.MANUAL),
-        Annotation(date=_d(4), kind=AnnotationKind.TRAVEL,
-                   title="Короткий перелёт", note="Временная задержка воды",
-                   domain=Domain.WEIGHT, source=Source.MANUAL),
-    ]
-    session.add_all(rows)
-    return len(rows)
-
-
-async def _seed_milestones(session) -> int:
+async def seed_milestones(session):
     await session.execute(delete(Milestone))
-    rows = [
-        Milestone(domain=Domain.WEIGHT, name="Достичь веса 85 кг", target_value=85,
-                  target_unit="кг", deadline=_d(-28), status=MilestoneStatus.ACTIVE),
-        Milestone(domain=Domain.WEIGHT, name="Жир ниже 15%", target_value=15,
-                  target_unit="%", deadline=_d(-60), status=MilestoneStatus.ACTIVE),
-        Milestone(domain=Domain.WORKOUTS, name="Жим лёжа 100 кг", target_value=100,
-                  target_unit="кг", deadline=_d(-75), status=MilestoneStatus.ACTIVE),
-        Milestone(domain=Domain.LABS, name="Витамин D выше 40", target_value=40,
-                  target_unit="нг/мл", deadline=_d(-55), status=MilestoneStatus.ACTIVE,
-                  note="Пересдать анализ через восемь недель"),
-        Milestone(domain=Domain.WEIGHT, name="Первые 5 кг сброшены", target_value=89,
-                  target_unit="кг", status=MilestoneStatus.ACHIEVED,
-                  note="Достигнуто без потери силовых показателей"),
-        Milestone(domain=Domain.GARMIN, name="Повысить VO₂max до 50", target_value=50,
-                  status=MilestoneStatus.PAUSED, note="Вернуться к цели после фазы дефицита"),
+    items = [
+        Milestone(domain=Domain.WEIGHT, name="Reach 85 kg",
+                  target_value=85.0, target_unit="kg",
+                  deadline=_d(-30),
+                  status=MilestoneStatus.ACTIVE),
+        Milestone(domain=Domain.WEIGHT, name="Body fat under 15%",
+                  target_value=15.0, target_unit="%",
+                  status=MilestoneStatus.ACTIVE),
+        Milestone(domain=Domain.WORKOUTS, name="Bench press 100 kg",
+                  target_value=100.0, target_unit="kg",
+                  status=MilestoneStatus.ACTIVE),
+        Milestone(domain=Domain.LABS, name="Vitamin D above 40 ng/mL",
+                  target_value=40.0, target_unit="ng/mL",
+                  status=MilestoneStatus.ACTIVE,
+                  note="Supplementing 4000 IU daily, retest in 3 months"),
     ]
-    session.add_all(rows)
-    return len(rows)
+    session.add_all(items)
 
 
-async def _seed_alerts(session) -> int:
-    await session.execute(delete(SystemAlert))
-    rows = [
-        SystemAlert(domain=Domain.LABS, severity=Severity.WARN,
-                    message="Vitamin D ниже целевого диапазона — ретест через 8 недель",
-                    alert_key="labs.demo.vitamin_d_low", entity_ref="marker:vitamin_d"),
-        SystemAlert(domain=Domain.GARMIN, severity=Severity.INFO,
-                    message="HRV немного ниже личной базы последние 3 дня",
-                    alert_key="garmin.demo.hrv_watch", entity_ref=""),
-    ]
-    session.add_all(rows)
-    return len(rows)
+async def seed_digests(session):
+    await session.execute(delete(WeeklyDigest))
+
+    digest_ru = (
+        "## \U0001f4c9 Вес: тренд есть, но смотреть надо на MA\n\n"
+        "Главное, что нужно понять про текущую картину с весом — она зашумлена. "
+        "Активен маркер **«Загрузка креатином»** (стартовал 2 недели назад), direction: up. "
+        "Это значит: часть снижения, которую ты видишь в цифрах, — артефакт. "
+        "Тело набирало воду от креатина, и на этом фоне реальная потеря жира выглядит "
+        "*лучше*, чем показывает тренд. Но как только маркер закроется, скользящее среднее "
+        "начнёт подтягиваться вверх — это не откат, это просто уход шума.\n\n"
+        "Теперь по цифрам. **MA7 = 88.2 кг** (7 дней назад). Latest = **87.1 кг** (сегодня). "
+        "Разрыв в 1.1 кг между ними — это не «я похудел на 1.1 за неделю», это просто то, что "
+        "MA считалась в другой момент. Реальный тренд по модели — **~0.7 кг/нед**, и это хорошая "
+        "цифра, особенно с учётом того, что шум направлен вверх.\n\n"
+        "## \U0001f3af Цель 85 кг: математика норм, но есть нюанс\n\n"
+        "**30 дней до дедлайна, нужно скинуть ещё ~2 кг.** При темпе ~0.7 кг/нед это ~2.8 кг "
+        "за 4 недели — запас есть. Но после завершения креатиновой загрузки видимый темп "
+        "снижения, скорее всего, замедлится — тело «вернёт» часть водного веса в MA. "
+        "Это создаст психологическое ощущение стагнации, хотя жир продолжит уходить. "
+        "Важно не паниковать в этот момент и не начинать резать калории ещё сильнее.\n\n"
+        "## \U0001f4aa Тренировки: прогрессия идёт\n\n"
+        "3 сессии за неделю (Push A, Pull A, Legs). Жим лёжа: 82.5 → 85 кг на 6 повторов — "
+        "солидно. Тяга верхнего блока +2.5 кг. Приседания стабильно на 90 кг. "
+        "Объём адекватный, RPE в пределах 7–8 — прогрессивная перегрузка работает.\n\n"
+        "## \U0001f6cc Восстановление: среднее, но объяснимо\n\n"
+        "Сон в среднем 7ч 12мин (score 78). HRV тренд слегка вниз последние 3 дня "
+        "(52 → 41 мс) — скорее всего, накопленная усталость после тренировок. "
+        "Body Battery восстанавливается нормально (low 20s → high 80s дневной цикл). "
+        "Training Readiness колеблется 55–70 — в зелёной зоне.\n\n"
+        "**Рекомендация:** восстановление достаточное, несмотря на снижение HRV. "
+        "Если HRV не восстановится за 2–3 дня — имеет смысл сделать deload-неделю. "
+        "Следующая тренировка: Pull B — можно проводить.\n\n"
+        "## \U0001f489 GLP-1: стабильно\n\n"
+        "5-я неделя на 0.5 мг семаглутида. Побочных эффектов нет. "
+        "Аппетит подавлен стабильно, без резких провалов энергии. "
+        "Плато не зафиксировано (`plateau: null`), всё ок.\n\n"
+        "## \U0001f372 Питание: в рамках\n\n"
+        "Среднее за неделю: 1,780 ккал/день, 158г белка — попадание в цели. "
+        "Небольшой профицит в субботу (cheat meal), но в рамках недельного дефицита "
+        "это не критично. Белок стабильно выше 150г — хорошо для сохранения LBM.\n\n"
+        "## \U0001f9ea Анализы: обратить внимание\n\n"
+        "Витамин D — 28 ng/mL (ниже референса 30–100). Сейчас на 4000 IU ежедневно. "
+        "Ретест через 2 месяца. Остальные маркеры (глюкоза, инсулин, ТТГ, HbA1c, "
+        "триглицериды) — в норме."
+    )
+
+    digest_en = (
+        "## \U0001f4c9 Weight: trend is there, but look at the MA\n\n"
+        "The key thing about the current weight picture — it's noisy. "
+        "**Creatine loading** noise marker is active (started 2 weeks ago), direction: up. "
+        "This means the scale is artificially inflated by water retention, so the real "
+        "fat loss is actually *better* than the raw numbers show. Once the marker closes, "
+        "the moving average will tick up briefly — that's not a reversal, just noise clearing.\n\n"
+        "Numbers: **MA7 = 88.2 kg** (7 days ago). Latest = **87.1 kg** (today). "
+        "The 1.1 kg gap is a timing artifact, not a weekly loss rate. "
+        "Model-estimated trend: **~0.7 kg/week** — solid, especially considering the "
+        "upward noise bias.\n\n"
+        "## \U0001f3af Goal 85 kg: math works, with a caveat\n\n"
+        "**30 days to deadline, ~2 kg left to lose.** At ~0.7 kg/week that's ~2.8 kg "
+        "over 4 weeks — buffer exists. But post-creatine loading, the visible rate will "
+        "likely slow as the body \"returns\" water weight into the MA. This will *feel* "
+        "like a plateau even though fat loss continues. Don't panic-cut calories.\n\n"
+        "## \U0001f4aa Training: progressing\n\n"
+        "3 sessions this week (Push A, Pull A, Legs). Bench press: 82.5 → 85 kg for "
+        "6 reps — solid progression. Lat pulldown +2.5 kg. Squat holding steady at 90 kg. "
+        "Volume appropriate, RPE 7–8 range — progressive overload is working.\n\n"
+        "## \U0001f6cc Recovery: moderate but explainable\n\n"
+        "Average sleep 7h 12min (score 78). HRV trending down over the last 3 days "
+        "(52 → 41 ms) — likely accumulated training fatigue. Body Battery recovering "
+        "normally (low 20s → high 80s daily cycle). Training Readiness 55–70 — green zone.\n\n"
+        "**Recommendation:** recovery is sufficient despite the HRV dip. If HRV doesn't "
+        "rebound within 2–3 days, consider a deload week. Next session: Pull B is fine "
+        "to proceed.\n\n"
+        "## \U0001f489 GLP-1: stable\n\n"
+        "Week 5 on 0.5 mg semaglutide. No side effects. Appetite suppression stable, "
+        "no energy crashes. Plateau not detected (`plateau: null`), all good.\n\n"
+        "## \U0001f372 Nutrition: on target\n\n"
+        "Weekly average: 1,780 kcal/day, 158g protein — hitting targets. "
+        "Slight surplus Saturday (cheat meal) but within the weekly deficit — not critical. "
+        "Protein consistently above 150g — good for LBM preservation.\n\n"
+        "## \U0001f9ea Labs: flag\n\n"
+        "Vitamin D at 28 ng/mL (below reference 30–100). Currently supplementing "
+        "4000 IU daily. Retest in 2 months. All other markers (glucose, insulin, TSH, "
+        "HbA1c, triglycerides) — normal."
+    )
+
+    session.add(WeeklyDigest(
+        date=_d(7),
+        content=digest_en,
+        model="anthropic/claude-sonnet-4.6",
+        domain=Domain.MILESTONES, source=Source.SCHEDULER,
+    ))
+    session.add(WeeklyDigest(
+        date=_d(14),
+        content=digest_ru,
+        model="anthropic/claude-sonnet-4.6",
+        domain=Domain.MILESTONES, source=Source.SCHEDULER,
+    ))
 
 
-async def _seed_settings(session) -> int:
+async def seed_app_settings(session):
     await session.execute(delete(AppSetting))
-    charts = [
-        {"id": "demo-recovery", "name": "Вес и восстановление", "normalize": True,
-         "series": [
-             {"domain": "weight", "metric_key": "weight.weight_kg", "param": None, "label": None, "color_slot": 0},
-             {"domain": "garmin", "metric_key": "garmin.hrv_avg", "param": None, "label": None, "color_slot": 1},
-             {"domain": "garmin", "metric_key": "garmin.sleep_score", "param": None, "label": None, "color_slot": 2},
-         ]},
-        {"id": "demo-composition", "name": "Рекомпозиция тела", "normalize": False,
-         "series": [
-             {"domain": "weight", "metric_key": "weight.body_fat_pct", "param": None, "label": "Navy", "color_slot": 0},
-             {"domain": "body_comp", "metric_key": "body_comp.metric", "param": "body_fat_pct", "label": "InBody", "color_slot": 1},
-             {"domain": "body_comp", "metric_key": "body_comp.metric", "param": "skeletal_muscle_mass", "label": "Мышцы", "color_slot": 2},
-         ]},
-    ]
     session.add_all([
-        AppSetting(key="enabled_modules", value={key: True for key in MODULE_REGISTRY}),
-        AppSetting(key="ui_language", value="ru"),
-        AppSetting(key="custom_charts", value=charts),
+        AppSetting(
+            key="enabled_modules",
+            value={
+                "glp1": True,
+                "hevy": True,
+                "supplements": True,
+                "genetics": True,
+                "skincare": True,
+                "nutrition": True,
+            },
+        ),
+        AppSetting(key="language", value="ru"),
     ])
-    return 3
 
 
-async def seed_all(session) -> dict[str, int]:
-    """Replace all demo-owned data and flush; safe to call on every local start."""
-    random.seed(42)
-    counts = {
-        "supplements": await _seed_supplements(session),
-        "genetics": await _seed_genetics(session),
-        "weight": await _seed_weight(session),
-        "body_scans": await _seed_body_scans(session),
-        "garmin": await _seed_garmin(session),
-        "labs": await _seed_labs(session),
-        "glp1": await _seed_glp1(session),
-        "nutrition": await _seed_nutrition(session),
-        "skincare": await _seed_skincare(session),
-        "workouts": await _seed_workouts(session),
-        "timeline": await _seed_timeline(session),
-        "milestones": await _seed_milestones(session),
-    }
-    counts["digests"] = await _seed_digests(session)
-    await session.execute(delete(ConflictRule))
-    await session.flush()
-    counts["conflict_rules"] = (await conflict_catalog.sync_catalog(session))["total"]
-    counts["alerts"] = await _seed_alerts(session)
-    counts["settings"] = await _seed_settings(session)
-    await session.flush()
-    return counts
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
-
-async def main() -> None:
+async def main():
     config = load_config()
     factory = create_session_factory(config)
+
     async with factory() as session:
-        print("Refreshing the current Vitals UI demo dataset...")
-        counts = await seed_all(session)
+        print("Seeding demo data (persona: Alex, 27, 185 cm, fat loss)...")
+
+        await seed_supplements(session)
+        print("  + Supplements (7)")
+
+        await seed_genetics(session)
+        print("  + Genetic variants (4)")
+
+        await seed_lab_markers(session)
+        print("  + Lab markers (6)")
+
+        await seed_conflict_rules(session)
+        print("  + Conflict rules (3)")
+
+        await seed_dose_phases(session)
+        print("  + GLP-1 dose phases (2)")
+
+        await seed_weight(session)
+        print("  + Weight logs (~20)")
+
+        await seed_measurements(session)
+        print("  + Body measurements (4)")
+
+        await seed_garmin(session)
+        print("  + Garmin daily (14 days)")
+
+        await seed_meals(session)
+        print("  + Meal logs (8 days incl. today)")
+
+        await seed_skincare(session)
+        print("  + Skincare logs (7 days) + products (6)")
+
+        await seed_injections(session)
+        print("  + GLP-1 injections (4)")
+
+        await seed_labs(session)
+        print("  + Lab results (1 panel, 6 markers)")
+
+        await seed_workouts(session)
+        print("  + Hevy workouts (6 sessions)")
+
+        await seed_milestones(session)
+        print("  + Milestones (4)")
+
+        await seed_digests(session)
+        print("  + Weekly digests (2: ru + en)")
+
+        await seed_app_settings(session)
+        print("  + App settings (all modules enabled)")
+
         await session.commit()
-        for name, count in counts.items():
-            print(f"  + {name}: {count}")
-        print("Done! Start the server: python run_local.py")
+        print("\nDone! Start the server: python run_local.py")
 
 
 if __name__ == "__main__":
