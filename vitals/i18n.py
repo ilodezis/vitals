@@ -281,6 +281,15 @@ _EN: dict[str, str] = {
     "garmin.activity.hiit": "HIIT",
     "garmin.activity.fitness_equipment": "Fitness equipment",
     "garmin.activity.other": "Other",
+    "garmin.day_strip_title": "Day snapshot",
+    "garmin.col_rhr": "RHR",
+    "garmin.col_hrv": "HRV",
+    "garmin.col_bb": "BB",
+    "garmin.duration": "Duration",
+    "garmin.distance": "Distance",
+    "garmin.calories": "Calories",
+    "garmin.avg_max_hr": "Avg / max HR",
+    "garmin.km": "km",
 
     # ── GLP-1 ─────────────────────────────────────────────────────────────
     "glp1.page_title": "GLP-1 — Vitals",
@@ -1293,6 +1302,15 @@ _RU: dict[str, str] = {
     "garmin.activity.hiit": "HIIT",
     "garmin.activity.fitness_equipment": "Тренажёры",
     "garmin.activity.other": "Другое",
+    "garmin.day_strip_title": "Сводка дня",
+    "garmin.col_rhr": "RHR",
+    "garmin.col_hrv": "HRV",
+    "garmin.col_bb": "BB",
+    "garmin.duration": "Длительность",
+    "garmin.distance": "Дистанция",
+    "garmin.calories": "Калории",
+    "garmin.avg_max_hr": "Средний / макс. пульс",
+    "garmin.km": "км",
 
     # ── GLP-1 ─────────────────────────────────────────────────────────────
     "glp1.page_title": "GLP-1 — Vitals",

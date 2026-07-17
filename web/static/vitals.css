@@ -550,6 +550,28 @@ html {
     margin-left: 2px;
 }
 
+/* Garmin overview "day strip" — 5 cells side by side on desktop. Written by
+   hand because lg:grid-cols-5 was never used before this, so it isn't in the
+   prebuilt tailwind.css (see the CLAUDE.md note on arbitrary/uncompiled
+   classes) — a real CSS rule always applies regardless of that build step. */
+.v-daystrip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+}
+
+@media (min-width: 768px) {
+    .v-daystrip {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .v-daystrip {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
 
 /* ── Buttons ───────────────────────────────────────────────────────────── */
 .v-btn {

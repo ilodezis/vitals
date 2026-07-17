@@ -2,8 +2,6 @@
 
 {% block title %}Garmin — Vitals{% endblock %}
 
-{% macro hm(seconds) %}{% if seconds %}{{ seconds // 3600 }}h {{ (seconds % 3600) // 60 }}m{% else %}—{% endif %}{% endmacro %}
-
 {% block content %}
 {% from "garmin/_tabs.html" import garmin_tabs %}
 {% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
@@ -21,6 +19,7 @@
                 {% if is_configured %}{{ t("common.synchronize") }}{% else %}{{ t("common.not_configured") }}{% endif %}
             </button>
         </form>
+        <span class="v-text-micro">{{ t("common.synced_label") }} <span class="font-medium text-[var(--fg-2)]">{{ last_sync or t("common.never_synced") }}</span></span>
     {% endcall %}
     {{ garmin_tabs('overview') }}
     {% else %}
@@ -94,55 +93,64 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("garmin.steps") }}</span>
-            <div class="flex items-baseline">
-                <span class="v-metric-value">{% if latest and latest.steps is not none %}{{ latest.steps | format_number }}{% else %}—{% endif %}</span>
-            </div>
+    <!-- Day strip: steps, stress, readiness, training status, active calories —
+         shared by both shells (classic used to bury these in a classic-only
+         grid, which is exactly how masthead lost them; see the plan). -->
+    <div class="v-card p-6 space-y-3">
+        <div class="flex items-center gap-2">
+            <span class="v-bar v-bar-sm"></span>
+            <span class="v-text-card">{{ t("garmin.day_strip_title") }}</span>
         </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("garmin.stress") }}</span>
-            <div class="flex items-baseline">
-                <span class="v-metric-value">{% if latest and latest.avg_stress is not none %}{{ latest.avg_stress }}{% else %}—{% endif %}</span>
+        <div class="v-daystrip">
+            <div class="v-card-inset p-3 space-y-1">
+                <span class="v-metric-label">{{ t("garmin.steps") }}</span>
+                <div class="flex items-baseline">
+                    <span class="v-metric-value">{% if latest and latest.steps is not none %}{{ latest.steps | format_number }}{% else %}—{% endif %}</span>
+                </div>
             </div>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("garmin.readiness") }}</span>
-            <div class="flex items-baseline">
-                {% if latest and latest.training_readiness is not none %}
-                <span class="v-metric-value">{{ latest.training_readiness }}</span>
-                {% else %}
-                <span class="v-metric-value" style="color: var(--muted)">—</span>
+            <div class="v-card-inset p-3 space-y-1">
+                <span class="v-metric-label">{{ t("garmin.stress") }}</span>
+                <div class="flex items-baseline">
+                    <span class="v-metric-value">{% if latest and latest.avg_stress is not none %}{{ latest.avg_stress }}{% else %}—{% endif %}</span>
+                </div>
+            </div>
+            <div class="v-card-inset p-3 space-y-1">
+                <span class="v-metric-label">{{ t("garmin.readiness") }}</span>
+                <div class="flex items-baseline">
+                    {% if latest and latest.training_readiness is not none %}
+                    <span class="v-metric-value">{{ latest.training_readiness }}</span>
+                    {% else %}
+                    <span class="v-metric-value" style="color: var(--muted)">—</span>
+                    {% endif %}
+                </div>
+                {% if not latest or latest.training_readiness is none %}<span class="v-text-micro">{{ t("garmin.no_readiness") }}</span>{% endif %}
+            </div>
+            <div class="v-card-inset p-3 space-y-1">
+                <span class="v-metric-label">{{ t("garmin.training_status") }}</span>
+                <div class="flex items-baseline">
+                    {% if latest and latest.training_status %}
+                    <span class="v-metric-value-text">{{ t("garmin.training_status." + latest.training_status.lower()) }}</span>
+                    {% else %}
+                    <span class="v-metric-value" style="color: var(--muted)">—</span>
+                    {% endif %}
+                </div>
+                {% if latest and latest.load_ratio is not none %}
+                <span class="v-text-micro">ACWR {{ latest.load_ratio | round(0) | int }}%</span>
+                {% elif not latest or not latest.training_status %}
+                <span class="v-text-micro">{{ t("garmin.no_training_status") }}</span>
                 {% endif %}
             </div>
-            {% if not latest or latest.training_readiness is none %}<span class="v-text-micro">{{ t("garmin.no_readiness") }}</span>{% endif %}
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("garmin.training_status") }}</span>
-            <div class="flex items-baseline">
-                {% if latest and latest.training_status %}
-                <span class="v-metric-value-text">{{ t("garmin.training_status." + latest.training_status.lower()) }}</span>
-                {% else %}
-                <span class="v-metric-value" style="color: var(--muted)">—</span>
-                {% endif %}
-            </div>
-            {% if latest and latest.load_ratio is not none %}
-            <span class="v-text-micro">ACWR {{ latest.load_ratio | round(0) | int }}%</span>
-            {% elif not latest or not latest.training_status %}
-            <span class="v-text-micro">{{ t("garmin.no_training_status") }}</span>
-            {% endif %}
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("garmin.active_cal") }}</span>
-            <div class="flex items-baseline">
-                <span class="v-metric-value">{% if latest and latest.active_calories is not none %}{{ latest.active_calories | format_number }}{% else %}—{% endif %}</span>
-                <span class="v-metric-unit">{{ t("common.kcal") }}</span>
+            <div class="v-card-inset p-3 space-y-1">
+                <span class="v-metric-label">{{ t("garmin.active_cal") }}</span>
+                <div class="flex items-baseline">
+                    <span class="v-metric-value">{% if latest and latest.active_calories is not none %}{{ latest.active_calories | format_number }}{% else %}—{% endif %}</span>
+                    <span class="v-metric-unit">{{ t("common.kcal") }}</span>
+                </div>
             </div>
         </div>
     </div>
-    {% endif %}
 
     <!-- Recovery advice + sync status -->
     {% if advice %}
@@ -180,129 +188,42 @@
     </div>
     {% endif %}
 
-    <!-- Workspace -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
-        <!-- Left: daily history -->
-        <div class="lg:col-span-8 v-card p-6 space-y-3">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <span class="v-bar v-bar-sm"></span>
-                    <span class="v-text-card">{{ t("garmin.history_title", count=count) }}</span>
-                </div>
-                <button @click="showHaeModal = true" class="v-btn-ghost text-xs" style="padding: 0.35rem 0.75rem">
-                    <svg style="width:0.85rem;height:0.85rem" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    <span>{{ t("common.import_json") }}</span>
-                </button>
+    <!-- Metrics history: full width now that activities live on their own tab -->
+    <div class="v-card p-6 space-y-3">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="v-bar v-bar-sm"></span>
+                <span class="v-text-card">{{ t("garmin.history_title", count=count) }}</span>
             </div>
-            <div class="max-h-[28rem] overflow-y-auto v-card-inset">
-                <div class="v-table-wrap">
-                    <table class="v-table">
-                    <thead>
-                        <tr><th class="v-col-date whitespace-nowrap">{{ t("common.date") }}</th><th>{{ t("garmin.sleep") }}</th><th class="text-right">{{ t("garmin.awake_count") }}</th><th class="text-right">RHR</th><th class="text-right">HRV</th><th class="text-right">{{ t("garmin.stress") }}</th><th class="text-right">BB</th><th class="text-right">{{ t("garmin.steps") }}</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for d in history %}
-                        <tr>
-                            <td class="v-num v-col-date" style="color: var(--fg)">{{ d.date | format_date }}</td>
-                            <td class="v-num">{% if d.sleep_stages %}<a href="/garmin/sleep/{{ d.date.isoformat() }}" style="color: var(--fg-2); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px">{{ hm(d.sleep_seconds) }}</a>{% else %}{{ hm(d.sleep_seconds) }}{% endif %}{% if d.sleep_score %} <span class="v-text-micro" style="color: var(--muted)">· {{ d.sleep_score }}</span>{% endif %}</td>
-                            <td class="v-num text-right">{{ d.awake_count if d.awake_count is not none else '—' }}</td>
-                            <td class="v-num text-right">{{ d.resting_hr or '—' }}</td>
-                            <td class="v-num text-right">{{ d.hrv_avg | round(0) | int if d.hrv_avg else '—' }}</td>
-                            <td class="v-num text-right">{{ d.avg_stress if d.avg_stress is not none else '—' }}</td>
-                            <td class="v-num text-right">{% if d.body_battery_high %}{{ d.body_battery_low or '?' }}–{{ d.body_battery_high }}{% else %}—{% endif %}</td>
-                            <td class="v-num text-right">{{ d.steps | format_number if d.steps is not none else '—' }}</td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="8" class="text-center" style="color: var(--muted)">{{ t("garmin.no_history") }}</td></tr>
-                        {% endfor %}
-                    </tbody>
-                    </table>
-                </div>
-            </div>
+            <button @click="showHaeModal = true" class="v-btn-ghost text-xs" style="padding: 0.35rem 0.75rem">
+                <svg style="width:0.85rem;height:0.85rem" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                <span>{{ t("common.import_json") }}</span>
+            </button>
         </div>
-
-        <!-- Right: activities -->
-        <div class="lg:col-span-4 space-y-6">
-            <div class="v-card p-6 space-y-3">
-                <div class="flex items-center gap-2">
-                    <span class="v-bar v-bar-sm"></span>
-                    <span class="v-text-card">{{ t("garmin.activities") }}</span>
-                </div>
-                {% set zone_colors = ['var(--cool)', 'var(--good)', 'var(--accent)', 'var(--warn)', 'var(--bad)'] %}
-                <ul class="space-y-2.5 max-h-[28rem] overflow-y-auto pr-1">
-                    {% for a in activities %}
-                    {% set type_label = t("garmin.activity." + (a.activity_type or "other")) %}
-                    {% set has_detail = a.hr_zone_seconds or (a.splits and a.splits | length > 1) or a.training_effect_aerobic is not none or a.training_effect_anaerobic is not none or a.elevation_gain_m is not none or a.avg_power is not none %}
-                    <li class="pb-2" style="border-bottom: 1px solid var(--line)" x-data="{ open: false }">
-                        <div class="flex justify-between items-start gap-2 {% if has_detail %}cursor-pointer{% endif %}" {% if has_detail %}@click="open = !open"{% endif %}>
-                            <div class="flex items-start gap-1.5 min-w-0">
-                                {% if has_detail %}<svg class="h-3.5 w-3.5 mt-1 shrink-0 transition-transform duration-200" :class="open ? 'rotate-180' : ''" style="color: var(--muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>{% endif %}
-                                <div class="min-w-0">
-                                    <div class="v-text-body truncate" style="color: var(--fg-2)">{{ a.name or type_label or t("garmin.activities") }}</div>
-                                    {% if type_label and type_label != (a.name or '') %}<div class="v-text-micro">{{ type_label }}</div>{% endif %}
-                                </div>
-                            </div>
-                            <div class="text-right v-num v-text-micro shrink-0">
-                                <div>{{ a.date | format_date }}</div>
-                                {% if a.duration_seconds %}<div>{{ a.duration_seconds // 60 }} {{ t("common.min_abbr") }}</div>{% endif %}
-                            </div>
-                        </div>
-                        {% if has_detail %}
-                        <div x-show="open" x-cloak class="mt-3 space-y-3" style="padding-left: 1.25rem">
-                            <!-- Scalar detail chips -->
-                            <div class="flex flex-wrap gap-x-4 gap-y-1">
-                                {% if a.training_effect_aerobic is not none %}<span class="v-text-micro">{{ t("garmin.te_aerobic") }} <span class="v-num" style="color: var(--fg-2)">{{ a.training_effect_aerobic | round(1) }}</span></span>{% endif %}
-                                {% if a.training_effect_anaerobic is not none %}<span class="v-text-micro">{{ t("garmin.te_anaerobic") }} <span class="v-num" style="color: var(--fg-2)">{{ a.training_effect_anaerobic | round(1) }}</span></span>{% endif %}
-                                {% if a.elevation_gain_m is not none %}<span class="v-text-micro">{{ t("garmin.elevation") }} <span class="v-num" style="color: var(--fg-2)">{{ a.elevation_gain_m | round(0) | int }} {{ t("garmin.m") }}</span></span>{% endif %}
-                                {% if a.avg_power is not none %}<span class="v-text-micro">{{ t("garmin.power") }} <span class="v-num" style="color: var(--fg-2)">{{ a.avg_power }} {{ t("garmin.watts") }}</span></span>{% endif %}
-                            </div>
-                            <!-- HR zones -->
-                            {% if a.hr_zone_seconds %}
-                            {% set zone_max = (a.hr_zone_seconds | map(attribute='secs') | map('float', 0) | list | max) or 1 %}
-                            <div class="space-y-1">
-                                <div class="v-text-micro" style="color: var(--muted)">{{ t("garmin.hr_zones") }}</div>
-                                {% for z in a.hr_zone_seconds %}
-                                <div class="flex items-center gap-2">
-                                    <span class="v-text-micro v-num shrink-0" style="width: 1.4rem">Z{{ z.zone }}</span>
-                                    <div class="flex-1 rounded-full overflow-hidden" style="height: 5px; background: var(--bg-inset)">
-                                        <div class="h-full rounded-full" style="width: {{ ((z.secs | float(0)) / zone_max * 100) | round(0) | int }}%; background: {{ zone_colors[z.zone - 1] if z.zone and 1 <= z.zone <= 5 else 'var(--muted)' }}"></div>
-                                    </div>
-                                    <span class="v-text-micro v-num shrink-0" style="width: 2.6rem; text-align: right">{{ (z.secs | float(0) / 60) | round(0) | int }}{{ t("common.min_abbr") }}</span>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-                            <!-- Per-lap splits (only when there is more than one lap) -->
-                            {% if a.splits and a.splits | length > 1 %}
-                            <div class="space-y-1">
-                                <div class="v-text-micro" style="color: var(--muted)">{{ t("garmin.splits") }}</div>
-                                <table class="v-table">
-                                    <thead>
-                                        <tr><th class="text-right">#</th><th class="text-right">{{ t("garmin.split_distance") }}</th><th class="text-right">{{ t("garmin.split_time") }}</th><th class="text-right">{{ t("garmin.split_hr") }}</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for s in a.splits %}
-                                        <tr>
-                                            <td class="v-num text-right">{{ s.index if s.index is not none else loop.index }}</td>
-                                            <td class="v-num text-right">{% if s.distance_m %}{{ (s.distance_m / 1000) | round(2) }}{% else %}—{% endif %}</td>
-                                            <td class="v-num text-right">{% if s.duration_s %}{{ (s.duration_s // 60) | int }}:{{ '%02d' | format((s.duration_s % 60) | int) }}{% else %}—{% endif %}</td>
-                                            <td class="v-num text-right">{{ s.avg_hr if s.avg_hr is not none else '—' }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                    </li>
+        <div class="max-h-[28rem] overflow-y-auto v-card-inset">
+            <div class="v-table-wrap">
+                <table class="v-table">
+                <thead>
+                    <tr><th class="v-col-date whitespace-nowrap">{{ t("common.date") }}</th><th class="text-right">{{ t("garmin.awake_count") }}</th><th class="text-right">{{ t("garmin.col_rhr") }}</th><th class="text-right">{{ t("garmin.col_hrv") }}</th><th class="text-right">{{ t("garmin.stress") }}</th><th class="text-right">{{ t("garmin.col_bb") }}</th><th class="text-right">{{ t("garmin.steps") }}</th></tr>
+                </thead>
+                <tbody>
+                    {% for d in history %}
+                    <tr>
+                        <td class="v-num v-col-date" style="color: var(--fg)">{{ d.date | format_date }}</td>
+                        <td class="v-num text-right">{{ d.awake_count if d.awake_count is not none else '—' }}</td>
+                        <td class="v-num text-right">{{ d.resting_hr or '—' }}</td>
+                        <td class="v-num text-right">{{ d.hrv_avg | round(0) | int if d.hrv_avg else '—' }}</td>
+                        <td class="v-num text-right">{{ d.avg_stress if d.avg_stress is not none else '—' }}</td>
+                        <td class="v-num text-right">{% if d.body_battery_high %}{{ d.body_battery_low or '?' }}–{{ d.body_battery_high }}{% else %}—{% endif %}</td>
+                        <td class="v-num text-right">{{ d.steps | format_number if d.steps is not none else '—' }}</td>
+                    </tr>
                     {% else %}
-                    <li class="text-center pt-2" style="color: var(--muted)">{{ t("garmin.no_activities") }}</li>
+                    <tr><td colspan="7" class="text-center" style="color: var(--muted)">{{ t("garmin.no_history") }}</td></tr>
                     {% endfor %}
-                </ul>
+                </tbody>
+                </table>
             </div>
         </div>
     </div>

@@ -31,11 +31,10 @@ async def garmin_dashboard(
     redis = Depends(get_redis),
     username: str = Depends(require_auth),
 ):
-    """Recovery + activity dashboard: latest day's metrics, recovery advice, recent
-    history, and recorded activities."""
+    """Recovery dashboard: latest day's metrics, recovery advice, and recent
+    history. Activities live on their own tab (see ``activities_list``)."""
     latest = await garmin_service.latest_daily(db)
     history = await garmin_service.list_daily(db, limit=30)
-    activities = await garmin_service.list_activities(db, limit=20)
     # The latest day's stress / Body Battery curves (empty dict on a day that has
     # only day-level scalars — the template then hides the chart card). Asked for
     # by name: the same date also holds the night's ~2k samples, which belong to
@@ -73,7 +72,6 @@ async def garmin_dashboard(
             "username": username,
             "latest": latest,
             "history": history,
-            "activities": activities,
             "intraday": intraday,
             "count": count,
             "advice": advice,

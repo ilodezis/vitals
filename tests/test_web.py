@@ -723,6 +723,99 @@ async def test_garmin_health_auto_export_upload(auth_client, db_session):
     assert row is not None and row.steps == 7200
 
 
+async def test_garmin_dashboard_day_strip_renders_in_masthead(auth_client, db_session):
+    """The day-strip (steps/stress/readiness/training status/active calories)
+    used to live only in a classic-only grid, so masthead lost 5 of 9 daily
+    metrics. It's now a shared card — regression-check it actually shows up
+    once the session is switched to masthead."""
+    from datetime import date
+
+    from vitals.models.garmin import GarminDaily
+
+    db_session.add(GarminDaily(
+        date=date(2026, 6, 15), domain="garmin", source="garmin_api",
+        steps=12345, avg_stress=33, training_readiness=71,
+        training_status="productive", load_ratio=95.4, active_calories=612,
+    ))
+    await db_session.commit()
+
+    await auth_client.post("/settings/ui-version", data={"ui_version": "masthead"})
+    response = await auth_client.get("/garmin", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "12 345" in response.text
+    assert "Продуктивно" in response.text
+    assert "ACWR 95%" in response.text
+
+
+async def test_garmin_dashboard_no_longer_lists_activities(auth_client, db_session):
+    """Activities moved to their own tab (run 2) — the overview page must not
+    render them a second time."""
+    from datetime import date, datetime
+
+    from vitals.models.garmin import GarminActivity
+
+    db_session.add(GarminActivity(
+        date=date(2026, 6, 10), domain="garmin", source="garmin_api",
+        external_id="act-overview-check", activity_type="running",
+        name="Контрольная пробежка", start_time=datetime(2026, 6, 10, 18, 0),
+        duration_seconds=1800,
+    ))
+    await db_session.commit()
+
+    response = await auth_client.get("/garmin", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "Контрольная пробежка" not in response.text
+
+
+async def test_garmin_history_table_drops_sleep_column(auth_client, db_session):
+    """The metrics-history table used to duplicate sleep duration (with its own
+    link into the night page); sleep now lives only on its own tab. Regression:
+    a history-only row's sleep duration must not render anywhere on /garmin."""
+    from datetime import date
+
+    from vitals.models.garmin import GarminDaily
+
+    db_session.add_all([
+        GarminDaily(
+            date=date(2026, 6, 9), domain="garmin", source="garmin_api",
+            sleep_seconds=9000, resting_hr=47,
+        ),
+        GarminDaily(
+            date=date(2026, 6, 16), domain="garmin", source="garmin_api",
+            sleep_seconds=None,
+        ),
+    ])
+    await db_session.commit()
+
+    response = await auth_client.get("/garmin", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "2h 30m" not in response.text
+
+
+async def test_garmin_activities_card_shows_distance_calories_hr(auth_client, db_session):
+    """The activity card's collapsed view must surface distance/calories/HR —
+    fields that were captured in the DB but had no home in the UI before."""
+    from datetime import date, datetime
+
+    from vitals.models.garmin import GarminActivity
+
+    db_session.add(GarminActivity(
+        date=date(2026, 6, 10), domain="garmin", source="garmin_api",
+        external_id="act-detail-check", activity_type="running", name="Темповый бег",
+        start_time=datetime(2026, 6, 10, 18, 0), duration_seconds=1800,
+        distance_m=5230.0, calories=412, avg_hr=142, max_hr=168,
+    ))
+    await db_session.commit()
+
+    response = await auth_client.get("/garmin/activities", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "10-06-2026 18:00" in response.text
+    assert "5.23" in response.text
+    assert "412" in response.text
+    assert "142" in response.text
+    assert "168" in response.text
+
+
 async def test_labs_dashboard_renders(auth_client, monkeypatch):
     """GET /labs returns the labs dashboard structure."""
     monkeypatch.setenv("VITALS_OPENROUTER_API_KEY", "")
