@@ -3,10 +3,9 @@
 {% block title %}{{ t("skincare.page_title") }}{% endblock %}
 
 {% block content %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+{% from "partials/masthead.html" import masthead_header with context %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="protocolForm()">
 
-    {% if request.state.ui_version == 'masthead' %}
     {% call masthead_header('skincare', t('nav.skincare'), [
         {'label': t('masthead.skincare.active'), 'primary': true, 'value': products | selectattr('active') | list | length},
         {'label': t('masthead.skincare.total'), 'value': products | length}
@@ -15,22 +14,6 @@
             <span>{{ t("skincare.add_product") }}</span>
         </button>
     {% endcall %}
-    {% else %}
-    <!-- Header -->
-    <div class="v-card p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div class="flex items-start gap-3.5">
-            <span class="v-bar mt-1"></span>
-            <div>
-                <h1 class="v-text-heading">{{ t("skincare.heading") }}</h1>
-                <p class="v-text-body mt-1">{{ t("skincare.subheading") }}</p>
-            </div>
-        </div>
-        <button @click="cancelEdit('form-skincare-product', '{{ t("common.save") }}'); showFormModal = true" class="v-btn-ghost">
-            <svg style="width:1.1rem;height:1.1rem" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
-            <span>{{ t("skincare.add_product") }}</span>
-        </button>
-    </div>
-    {% endif %}
 
     <!-- Weekly Schedule -->
     <div class="v-card p-6 space-y-4">

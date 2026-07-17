@@ -3,24 +3,12 @@
 {% block title %}{{ t("charts.page_title") }}{% endblock %}
 
 {% block content %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+{% from "partials/masthead.html" import masthead_header with context %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
 
-    {% if request.state.ui_version == 'masthead' %}
     {{ masthead_header('charts', t('nav.charts'), [
         {'label': t('charts.metric_count'), 'primary': true, 'value': charts | length}
     ]) }}
-    {% else %}
-    <!-- Header -->
-    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-        <div class="flex items-start gap-3.5">
-            <span class="v-bar mt-1"></span>
-            <div class="space-y-2">
-                <h1 class="v-text-heading">{{ t("charts.page_title") }}</h1>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
     {% if error == 'invalid' %}
     <div class="v-alert warn">{{ t("charts.error_invalid") }}</div>

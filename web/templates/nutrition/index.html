@@ -3,11 +3,10 @@
 {% block title %}{{ t("nutrition.page_title") }}{% endblock %}
 
 {% block content %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+{% from "partials/masthead.html" import masthead_header with context %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8"
      x-data="nutritionDashboard()">
 
-    {% if request.state.ui_version == 'masthead' %}
     {% call masthead_header('nutrition', t('nav.nutrition'), [
         {'label': t('nutrition.calories'), 'primary': true, 'tone': ('good' if summary.on_track.calories else ('bad' if summary.totals.calories > goals.calories_max else '')), 'value': summary.totals.calories | format_number, 'unit': ('/ ' ~ goals.calories_min ~ '–' ~ goals.calories_max)},
         {'label': t('nutrition.meals_title'), 'value': summary.meal_count}
@@ -131,95 +130,7 @@
             </div>
         </div>
     </div>
-    {% else %}
-    <!-- Header -->
-    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-        <div class="flex items-start gap-3.5">
-            <span class="v-bar mt-1"></span>
-            <div class="space-y-2">
-                <span class="v-tag good">{{ t("nutrition.tag") }}</span>
-                <h1 class="v-text-heading">{{ t("nutrition.heading") }}</h1>
-                <p class="v-text-body max-w-2xl">
-                    {{ t("nutrition.description") }}
-                </p>
-            </div>
-        </div>
-        <button @click="showForm = !showForm" class="v-btn-ghost w-full md:w-auto shrink-0">
-            <svg style="width:1.1rem;height:1.1rem" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-            </svg>
-            <span x-text="showForm ? '{{ t("nutrition.toggle_history") }}' : '{{ t("nutrition.toggle_form") }}'"></span>
-        </button>
-    </div>
 
-    <!-- Day nav: classic's equivalent of masthead's mh-date-nav (I2) — same
-         prev/next + date-input contract, styled with .v-icon-btn/.v-input
-         instead of mh-* classes (those only exist under body.ui-masthead). -->
-    <div class="flex items-center justify-between gap-2 flex-wrap">
-        <div class="flex items-center gap-1.5">
-            <a href="/nutrition?date={{ prev_date }}" class="v-icon-btn" title="{{ t('nutrition.prev_day') }}" aria-label="{{ t('nutrition.prev_day') }}">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
-            </a>
-            <input type="date" name="date" value="{{ selected_date }}" aria-label="{{ t('common.date') }}" class="v-input" onchange="window.location.href='/nutrition?date='+this.value">
-            <a href="/nutrition?date={{ next_date }}" class="v-icon-btn" title="{{ t('nutrition.next_day') }}" aria-label="{{ t('nutrition.next_day') }}">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
-            </a>
-        </div>
-        {% if not is_today %}
-        <a href="/nutrition" class="v-btn-ghost text-xs">{{ t("common.today") }}</a>
-        {% endif %}
-    </div>
-
-    <!-- Daily summary metrics -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div class="v-metric flex flex-col justify-between">
-            <div class="space-y-1">
-                <span class="v-metric-label">{{ t("nutrition.calories") }}</span>
-                <div class="flex items-baseline gap-1.5">
-                    <span class="v-metric-value" style="color: {% if summary.on_track.calories %}var(--good){% elif summary.totals.calories > goals.calories_max %}var(--bad){% else %}var(--warn){% endif %}">{{ summary.totals.calories | format_number }}</span>
-                    <span class="v-metric-unit">/ {{ goals.calories_min }}–{{ goals.calories_max }}</span>
-                </div>
-            </div>
-            <div class="w-full bg-[rgba(255,255,255,0.06)] rounded-full h-1.5 mt-2.5 overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-500" 
-                     style="width: {{ (summary.totals.calories / (goals.calories_max or 1) * 100) | round }}%; max-width: 100%; background-color: {% if summary.on_track.calories %}var(--good){% elif summary.totals.calories > goals.calories_max %}var(--bad){% else %}var(--warn){% endif %}"></div>
-            </div>
-        </div>
-        <div class="v-metric flex flex-col justify-between">
-            <div class="space-y-1">
-                <span class="v-metric-label">{{ t("nutrition.protein") }}</span>
-                <div class="flex items-baseline gap-1.5">
-                    <span class="v-metric-value" style="color: {% if summary.on_track.protein %}var(--good){% else %}var(--warn){% endif %}">{{ summary.totals.protein_g | format_number }}</span>
-                    <span class="v-metric-unit">/ {{ goals.protein_target_g | format_number }} {{ t("common.g") }}</span>
-                </div>
-            </div>
-            <div class="w-full bg-[rgba(255,255,255,0.06)] rounded-full h-1.5 mt-2.5 overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-500" 
-                     style="width: {{ (summary.totals.protein_g / (goals.protein_target_g or 1) * 100) | round }}%; max-width: 100%; background-color: {% if summary.on_track.protein %}var(--good){% else %}var(--warn){% endif %}"></div>
-            </div>
-        </div>
-        <div class="v-metric flex flex-col justify-between">
-            <div class="space-y-1">
-                <span class="v-metric-label">{{ t("nutrition.fat") }}</span>
-                <div class="flex items-baseline gap-1.5">
-                    <span class="v-metric-value">{{ summary.totals.fat_g | format_number }}</span>
-                    <span class="v-metric-unit">{{ t("common.g") }}</span>
-                </div>
-            </div>
-            <div class="w-full bg-transparent h-1.5 mt-2.5"></div>
-        </div>
-        <div class="v-metric flex flex-col justify-between">
-            <div class="space-y-1">
-                <span class="v-metric-label">{{ t("nutrition.carbs") }}</span>
-                <div class="flex items-baseline gap-1.5">
-                    <span class="v-metric-value">{{ summary.totals.carbs_g | format_number }}</span>
-                    <span class="v-metric-unit">{{ t("common.g") }}</span>
-                </div>
-            </div>
-            <div class="w-full bg-transparent h-1.5 mt-2.5"></div>
-        </div>
-    </div>
-    {% endif %}
 
     <!-- Workspace -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

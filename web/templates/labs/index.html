@@ -3,10 +3,9 @@
 {% block title %}{{ t("labs.page_title") }}{% endblock %}
 
 {% block content %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+{% from "partials/masthead.html" import masthead_header with context %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="labsUpload({% if latest %}false{% else %}true{% endif %})">
 
-    {% if request.state.ui_version == 'masthead' %}
     {% call masthead_header('labs', t('nav.labs'), [
         {'label': t('labs.metric_markers'), 'primary': true, 'value': markers | length},
         {'label': t('labs.metric_oor'), 'tone': ('bad' if out_of_range > 0 else ''), 'value': out_of_range},
@@ -17,51 +16,6 @@
             <span x-text="showUpload ? '{{ t("labs.toggle_results") }}' : '{{ t("labs.toggle_upload") }}'"></span>
         </button>
     {% endcall %}
-    {% else %}
-    <!-- Header -->
-    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-        <div class="flex items-start gap-3.5">
-            <span class="v-bar mt-1"></span>
-            <div class="space-y-2">
-                <span class="v-tag muted">🧪 {{ t("labs.tag") }}</span>
-                <h1 class="v-text-heading">{{ t("labs.heading") }}</h1>
-                <p class="v-text-body max-w-2xl">
-                    {{ t("labs.description") }}
-                </p>
-            </div>
-        </div>
-        <!-- Secondary action: ghost button — data consumption takes visual priority -->
-        <button @click="showUpload = !showUpload" class="v-btn-ghost w-full md:w-auto shrink-0">
-            <svg style="width:1.1rem;height:1.1rem" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            <span x-text="showUpload ? '{{ t("labs.toggle_results") }}' : '{{ t("labs.toggle_upload") }}'"></span>
-        </button>
-    </div>
-
-    <!-- Metrics -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("labs.metric_markers") }}</span>
-            <span class="v-metric-value">{{ markers | length }}</span>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("labs.metric_oor") }}</span>
-            <!-- If any markers are out of range, highlight value in warning red -->
-            <span class="v-metric-value {% if out_of_range > 0 %}bad{% endif %}">{{ out_of_range }}</span>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("labs.metric_selected") }}</span>
-            <span class="v-metric-value-text truncate">{{ selected or '—' }}</span>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("labs.metric_recognition") }}</span>
-            <span class="v-metric-value-text {% if llm_configured %}good{% endif %}">
-                {% if llm_configured %}{{ t("labs.llm_connected") }}{% else %}{{ t("labs.llm_not_configured") }}{% endif %}
-            </span>
-        </div>
-    </div>
-    {% endif %}
 
     {% if upload == 'ok' %}
         {% if failed and failed|int > 0 %}

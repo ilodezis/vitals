@@ -14,7 +14,7 @@ async def test_dashboard_renders_synced_catalog(auth_client, db_session):
 
     r = await auth_client.get("/interactions", headers={"Accept": "text/html"})
     assert r.status_code == 200
-    assert "Кросс-доменные взаимодействия" in r.text
+    assert "Взаимодействия" in r.text
     # A rule from each of the two dermatology seed codes should render somewhere.
     assert "Ретиноид и пилинг" in r.text
 

@@ -46,10 +46,8 @@ async def test_nutrition_dashboard_invalid_date_rejected(auth_client):
 
 
 async def test_nutrition_dashboard_masthead_day_nav_and_empty_state(auth_client, db_session):
-    """Masthead-only surface: prev/next day links, the ring/bars card, and the
-    date-aware empty state (distinct from classic's always-"today" copy)."""
-    await auth_client.post("/settings/ui-version", data={"ui_version": "masthead"})
-
+    """Masthead layout: prev/next day links, the ring/bars card, and the
+    date-aware empty state."""
     day_with_food = today_local() - timedelta(days=30)
     prev_day = day_with_food - timedelta(days=1)
     next_day = day_with_food + timedelta(days=1)
