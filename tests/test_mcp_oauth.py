@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy import select
 
 from vitals.enums import Source
-from vitals.models import WeightLog, GarminDaily, HevyWorkout, LabResult
+from vitals.models import WeightLog, GarminDaily, GarminActivity, HevyWorkout, LabResult
 from web.auth import create_session, read_session, _get_mcp_serializer, _get_serializer
 from web.config import SESSION_COOKIE, get_web_config
 
@@ -331,6 +331,18 @@ async def test_mcp_read_only_tools_execution(db_session, session_factory):
         domain="garmin",
         source=Source.GARMIN_API.value,
     )
+    garmin_activity = GarminActivity(
+        date=date(2026, 6, 15),
+        external_id="garmin-act-1",
+        activity_type="running",
+        name="Morning run",
+        avg_hr=140,
+        training_effect_aerobic=3.4,
+        hr_zone_seconds=[{"zone": 1, "secs": 120.0, "low_hr": 101}],
+        splits=[{"index": 1, "distance_m": 1000.0, "avg_hr": 150}],
+        domain="garmin",
+        source=Source.GARMIN_API.value,
+    )
     workout_log = HevyWorkout(
         date=date(2026, 6, 15),
         external_id="hevy-workout-1",
@@ -346,7 +358,7 @@ async def test_mcp_read_only_tools_execution(db_session, session_factory):
         domain="labs",
         source=Source.MANUAL.value,
     )
-    db_session.add_all([w_log, garmin_log, workout_log, lab_log])
+    db_session.add_all([w_log, garmin_log, garmin_activity, workout_log, lab_log])
     await db_session.commit()
 
     # Import mcp app tools
@@ -385,6 +397,12 @@ async def test_mcp_read_only_tools_execution(db_session, session_factory):
         assert garmin_data["daily_recovery"][0]["spo2_lowest"] == 91
         # New training-status column reflected automatically via serialize_row.
         assert garmin_data["daily_recovery"][0]["training_status"] == "PRODUCTIVE"
+        # Per-activity detail (run 3): scalar + JSONB columns serialize through.
+        assert len(garmin_data["activities"]) == 1
+        act = garmin_data["activities"][0]
+        assert act["training_effect_aerobic"] == 3.4
+        assert act["hr_zone_seconds"][0]["low_hr"] == 101
+        assert act["splits"][0]["distance_m"] == 1000.0
 
         # Test get_hevy_workouts tool
         workouts_data = await get_hevy_workouts(start_date="2026-06-10", end_date="2026-06-20")

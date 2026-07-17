@@ -97,6 +97,8 @@ REGISTRY: dict[str, MetricField] = {
         _d("garmin.activity_calories", "garmin", "Калории (тренировки)", "Activity calories", "ккал", model=GarminActivity, column="calories", aggregate="sum"),
         _d("garmin.activity_avg_hr", "garmin", "Средний пульс (тренировки)", "Activity avg HR", "уд/мин", model=GarminActivity, column="avg_hr", aggregate="avg"),
         _d("garmin.activity_duration", "garmin", "Длительность тренировок", "Activity duration", "мин", model=GarminActivity, column="duration_seconds", aggregate="sum", transform=lambda v: v / 60),
+        _d("garmin.activity_elevation", "garmin", "Набор высоты (тренировки)", "Activity elevation gain", "м", model=GarminActivity, column="elevation_gain_m", aggregate="sum"),
+        _d("garmin.activity_training_effect", "garmin", "Тренировочный эффект (аэробный)", "Training effect (aerobic)", None, model=GarminActivity, column="training_effect_aerobic", aggregate="max"),
         _d("garmin.avg_sleep_hr", "garmin", "Пульс во сне", "Sleep HR", "уд/мин", model=GarminDaily, column="avg_sleep_hr"),
         _d("garmin.spo2_lowest", "garmin", "SpO2 (мин. за ночь)", "SpO2 (night low)", "%", model=GarminDaily, column="spo2_lowest"),
         _d("garmin.avg_sleep_stress", "garmin", "Стресс во сне", "Sleep stress", None, model=GarminDaily, column="avg_sleep_stress"),

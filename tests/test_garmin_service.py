@@ -92,10 +92,32 @@ RAW_DAY = {
 }
 
 
+# Per-activity detail bundles (real shapes from get_activity_hr_zones /
+# get_activity_splits), keyed as the client merges them under ``_details``.
+HR_ZONES_DETAIL = [
+    {"zoneNumber": 1, "secsInZone": 1382.487, "zoneLowBoundary": 101},
+    {"zoneNumber": 2, "secsInZone": 1569.401, "zoneLowBoundary": 121},
+    {"zoneNumber": 3, "secsInZone": 433, "zoneLowBoundary": 141},
+    {"zoneNumber": 4, "secsInZone": 0, "zoneLowBoundary": 162},
+    {"zoneNumber": 5, "secsInZone": 0, "zoneLowBoundary": 182},
+]
+SPLITS_DETAIL = {
+    "activityId": 12345,
+    "lapDTOs": [
+        {"lapIndex": 1, "distance": 1000.0, "duration": 300.0,
+         "averageHR": 150, "maxHR": 165, "averageSpeed": 3.33},
+        {"lapIndex": 2, "distance": 1000.0, "duration": 310.0,
+         "averageHR": 155, "maxHR": 168, "averageSpeed": 3.22},
+    ],
+}
+ACTIVITY_DETAILS = {"hr_zones": HR_ZONES_DETAIL, "splits": SPLITS_DETAIL}
+
+
 class FakeGarminClient:
-    def __init__(self, *, daily=None, activities=None, raise_exc=None):
+    def __init__(self, *, daily=None, activities=None, details=None, raise_exc=None):
         self._daily = daily if daily is not None else {DAY: RAW_DAY}
         self._activities = activities or []
+        self._details = details or {}
         self._raise = raise_exc
         self.is_configured = True
 
@@ -106,6 +128,9 @@ class FakeGarminClient:
 
     async def fetch_activities(self, start, end):
         return list(self._activities)
+
+    async def fetch_activity_details(self, activity_id):
+        return self._details.get(activity_id, {})
 
 
 # ── Pure normalisation ────────────────────────────────────────────────────────
@@ -168,6 +193,44 @@ def test_strip_level_suffix_variants():
     assert strip("NO_STATUS_0") == "NO_STATUS"
     assert strip("PEAKING") == "PEAKING"
     assert strip(None) is None
+
+
+# ── Per-activity detail parsers (HR zones + splits) ───────────────────────────
+def test_normalize_hr_zones_from_detail_keeps_boundaries():
+    zones = garmin_service._normalize_hr_zones({"_details": {"hr_zones": HR_ZONES_DETAIL}})
+    assert zones is not None
+    assert len(zones) == 5
+    assert zones[0] == {"zone": 1, "secs": 1382.487, "low_hr": 101}
+    assert zones[2] == {"zone": 3, "secs": 433.0, "low_hr": 141}
+
+
+def test_normalize_hr_zones_falls_back_to_summary_fields():
+    raw = {"hrTimeInZone_1": 120.0, "hrTimeInZone_2": 300.0, "hrTimeInZone_3": 60.0}
+    zones = garmin_service._normalize_hr_zones(raw)
+    assert zones == [
+        {"zone": 1, "secs": 120.0, "low_hr": None},
+        {"zone": 2, "secs": 300.0, "low_hr": None},
+        {"zone": 3, "secs": 60.0, "low_hr": None},
+    ]
+
+
+def test_normalize_hr_zones_absent_is_none():
+    assert garmin_service._normalize_hr_zones({}) is None
+
+
+def test_normalize_splits_from_lap_dtos():
+    splits = garmin_service._normalize_splits({"_details": {"splits": SPLITS_DETAIL}})
+    assert splits is not None
+    assert len(splits) == 2
+    assert splits[0] == {
+        "index": 1, "distance_m": 1000.0, "duration_s": 300.0,
+        "avg_hr": 150, "max_hr": 165, "avg_speed_mps": 3.33,
+    }
+
+
+def test_normalize_splits_absent_is_none():
+    assert garmin_service._normalize_splits({}) is None
+    assert garmin_service._normalize_splits({"_details": {"splits": {"lapDTOs": []}}}) is None
 
 
 # ── Sleep boundary parsing (GMT vs Local epoch quirk) ─────────────────────────
@@ -312,6 +375,47 @@ async def test_ingest_activities_upserts_by_id(db_session):
     await db_session.commit()
     n = (await db_session.execute(select(func.count()).select_from(GarminActivity))).scalar()
     assert n == 1
+
+
+async def test_sync_persists_activity_detail_columns(db_session):
+    activity = {
+        "activityId": 12345,
+        "activityName": "Утренняя пробежка",
+        "activityType": {"typeKey": "running"},
+        "startTimeGMT": "2026-06-10 06:00:00",
+        "duration": 1800.0,
+        "distance": 5000.0,
+        "calories": 350,
+        "averageHR": 140,
+        "maxHR": 165,
+        "elevationGain": 42.0,
+        "avgPower": 210,
+        "aerobicTrainingEffect": 3.4,
+        "anaerobicTrainingEffect": 1.1,
+    }
+    client = FakeGarminClient(
+        daily={}, activities=[activity], details={12345: ACTIVITY_DETAILS}
+    )
+    await garmin_service.sync(db_session, client, days=1, on_date=DAY)
+    await db_session.commit()
+
+    row = (await db_session.execute(select(GarminActivity))).scalars().first()
+    assert row.elevation_gain_m == 42.0
+    assert row.avg_power == 210
+    assert row.training_effect_aerobic == 3.4
+    assert row.training_effect_anaerobic == 1.1
+    # HR zones from the detail call (with boundaries).
+    assert row.hr_zone_seconds[0] == {"zone": 1, "secs": 1382.487, "low_hr": 101}
+    assert len(row.hr_zone_seconds) == 5
+    # Per-lap splits from the detail call.
+    assert len(row.splits) == 2
+    assert row.splits[0]["distance_m"] == 1000.0
+    assert row.splits[1]["avg_hr"] == 155
+    # Full detail bundle also captured in the raw payload.
+    raw = (await db_session.execute(
+        select(RawPayload).where(RawPayload.external_id == "activity:12345")
+    )).scalars().first()
+    assert raw.payload["_details"]["hr_zones"][0]["zoneNumber"] == 1
 
 
 # ── MFA / auth alert path ─────────────────────────────────────────────────────

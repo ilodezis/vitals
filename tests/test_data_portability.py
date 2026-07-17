@@ -12,7 +12,7 @@ from datetime import date
 import pytest
 
 from vitals.models.app_settings import AppSetting
-from vitals.models.garmin import GarminDaily
+from vitals.models.garmin import GarminActivity, GarminDaily
 from vitals.models.glp1 import Injection
 from vitals.models.hevy import HevyExercise, HevySet, HevyWorkout
 from vitals.models.labs import LabResult
@@ -57,6 +57,14 @@ async def _seed(session) -> None:
                 date=date(2026, 4, 29), domain="garmin", source="garmin_api",
                 raw_payload_id=rp.id, steps=8000, sleep_seconds=27000,
                 sleep_score=80, resting_hr=55,
+            ),
+            # Per-activity detail — exercises JSONB round-trip stability.
+            GarminActivity(
+                date=date(2026, 4, 29), domain="garmin", source="garmin_api",
+                external_id="act1", activity_type="running", name="Run",
+                elevation_gain_m=42.0, training_effect_aerobic=3.4,
+                hr_zone_seconds=[{"zone": 1, "secs": 120.0, "low_hr": 101}],
+                splits=[{"index": 1, "distance_m": 1000.0, "avg_hr": 150}],
             ),
             LabResult(
                 date=date(2026, 4, 1), domain="labs", source="lab_parser",

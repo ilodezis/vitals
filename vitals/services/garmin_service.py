@@ -266,10 +266,85 @@ async def ingest_activities(session: AsyncSession, activities: Sequence[dict]) -
         row.calories = _intish(raw.get("calories"))
         row.avg_hr = _intish(raw.get("averageHR"))
         row.max_hr = _intish(raw.get("maxHR"))
+        # Per-activity detail (run 3). Scalars are already on the summary; the two
+        # arrays come from the best-effort detail bundle merged under ``_details``.
+        row.elevation_gain_m = _num(raw.get("elevationGain"))
+        row.avg_power = _intish(raw.get("avgPower"))
+        row.training_effect_aerobic = _num(raw.get("aerobicTrainingEffect"))
+        row.training_effect_anaerobic = _num(raw.get("anaerobicTrainingEffect"))
+        row.hr_zone_seconds = _normalize_hr_zones(raw)
+        row.splits = _normalize_splits(raw)
         await session.flush()
         raw_row.processed_at = now_local()
         written += 1
     return written
+
+
+def _normalize_hr_zones(raw: dict) -> Optional[list]:
+    """Seconds-in-HR-zone as a compact array. Prefers the per-activity
+    ``get_activity_hr_zones`` detail (carries each zone's low HR boundary); falls
+    back to the ``hrTimeInZone_N`` fields already on the activity summary."""
+    detail = _dig(raw, "_details", "hr_zones")
+    if isinstance(detail, list) and detail:
+        out = [
+            {
+                "zone": _intish(z.get("zoneNumber")),
+                "secs": _num(z.get("secsInZone")),
+                "low_hr": _intish(z.get("zoneLowBoundary")),
+            }
+            for z in detail
+            if isinstance(z, dict)
+        ]
+        if out:
+            return out
+    fallback = [
+        {"zone": n, "secs": _num(raw.get(f"hrTimeInZone_{n}")), "low_hr": None}
+        for n in range(1, 6)
+        if raw.get(f"hrTimeInZone_{n}") is not None
+    ]
+    return fallback or None
+
+
+def _normalize_splits(raw: dict) -> Optional[list]:
+    """Per-lap splits from the ``get_activity_splits`` detail (``lapDTOs``). Only
+    outdoor/interval activities carry more than one lap; strength has none."""
+    laps = _dig(raw, "_details", "splits", "lapDTOs")
+    if not isinstance(laps, list) or not laps:
+        return None
+    out = [
+        {
+            "index": _intish(lap.get("lapIndex")),
+            "distance_m": _num(lap.get("distance")),
+            "duration_s": _num(lap.get("duration")),
+            "avg_hr": _intish(lap.get("averageHR")),
+            "max_hr": _intish(lap.get("maxHR")),
+            "avg_speed_mps": _num(lap.get("averageSpeed")),
+        }
+        for lap in laps
+        if isinstance(lap, dict)
+    ]
+    return out or None
+
+
+async def _enrich_activity_details(client: Any, activities: Sequence[dict]) -> None:
+    """Fetch each in-window activity's detail bundle (HR zones + splits) and merge
+    it under a synthetic ``_details`` key so the whole thing lands in
+    ``raw_payloads`` and the normalizers can read it. Best-effort and bounded —
+    only the handful of activities in the sync window. A client without the
+    method (or a failing call) leaves the activity detail-less, not broken."""
+    fetch = getattr(client, "fetch_activity_details", None)
+    if not callable(fetch):
+        return
+    for act in activities:
+        if not isinstance(act, dict):
+            continue
+        activity_id = act.get("activityId") or act.get("activityid")
+        if activity_id is None:
+            continue
+        try:
+            act["_details"] = await fetch(activity_id)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Garmin activity-detail fetch failed for %s: %s", activity_id, e)
 
 
 def _parse_activity_start(raw: dict) -> Optional[datetime]:
@@ -308,6 +383,7 @@ async def sync(
             summary["days"] += 1
 
         activities = await client.fetch_activities(start, today)
+        await _enrich_activity_details(client, activities)
         summary["activities"] = await ingest_activities(session, activities)
 
         await alerts_service.resolve_by_key(session, alert_key=AUTH_ALERT_KEY)

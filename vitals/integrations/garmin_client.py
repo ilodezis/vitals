@@ -185,3 +185,26 @@ class GarminClient:
                 return []
 
         return await asyncio.to_thread(_blocking)
+
+    async def fetch_activity_details(self, activity_id: Any) -> dict:
+        """Per-activity detail: HR-zone boundaries + per-lap splits. Kept to two
+        calls to bound the request fan-out (only run for the handful of
+        activities inside a sync window). Best-effort — a failed sub-call yields
+        ``None`` rather than aborting the activity. The activity summary already
+        carries elevation/power/training-effect scalars, so those need no call."""
+        garmin = await self._ensure_login()
+
+        def _blocking() -> dict:
+            out: dict = {}
+            for key, method_name in (
+                ("hr_zones", "get_activity_hr_zones"),
+                ("splits", "get_activity_splits"),
+            ):
+                try:
+                    out[key] = getattr(garmin, method_name)(activity_id)
+                except Exception as e:  # noqa: BLE001
+                    logger.warning("Garmin %s(%s) failed: %s", method_name, activity_id, e)
+                    out[key] = None
+            return out
+
+        return await asyncio.to_thread(_blocking)

@@ -15,9 +15,10 @@ Two tables, both ``domain='garmin'`` via ``InsightsMixin``:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import (
+    JSON,
     DateTime,
     Float,
     ForeignKey,
@@ -25,6 +26,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from vitals.enums import Domain
@@ -32,6 +34,10 @@ from vitals.models.base import Base, TimestampMixin
 from vitals.models.mixins import InsightsMixin, insights_index
 
 DOMAIN = Domain.GARMIN.value
+
+# JSONB on Postgres, generic JSON on the SQLite fast-test path (mirrors
+# ``raw_payloads``). Used for the variable-shape per-activity detail arrays.
+_JSON_TYPE = JSONB().with_variant(JSON(), "sqlite")
 
 
 class GarminDaily(Base, InsightsMixin, TimestampMixin):
@@ -124,3 +130,16 @@ class GarminActivity(Base, InsightsMixin, TimestampMixin):
     calories: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     avg_hr: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     max_hr: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # ── Per-activity detail (run 3) ───────────────────────────────────────────
+    # Scalars read from the activity summary; the two JSONB arrays come from the
+    # best-effort per-activity detail calls (HR zones + splits). All nullable —
+    # a strength session has no elevation/power/splits, an outdoor run does.
+    elevation_gain_m: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    avg_power: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    training_effect_aerobic: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    training_effect_anaerobic: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    # ``[{"zone", "secs", "low_hr"}]`` — seconds spent in each HR zone.
+    hr_zone_seconds: Mapped[Optional[Any]] = mapped_column(_JSON_TYPE, nullable=True)
+    # ``[{"index", "distance_m", "duration_s", "avg_hr", "max_hr", "avg_speed_mps"}]``
+    splits: Mapped[Optional[Any]] = mapped_column(_JSON_TYPE, nullable=True)
