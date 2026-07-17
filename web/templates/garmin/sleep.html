@@ -4,12 +4,53 @@
 
 {% macro hm(seconds) %}{% if seconds %}{{ seconds // 3600 }}h {{ (seconds % 3600) // 60 }}m{% else %}—{% endif %}{% endmacro %}
 
+{# ‹ prev night · back to overview · next night ›, identical in both shells —
+   only the surrounding header markup differs between classic and masthead. #}
+{% macro night_nav(prev_date, next_date) %}
+<div class="flex items-center gap-1.5 shrink-0">
+    {% if prev_date %}
+    <a href="/garmin/sleep/{{ prev_date.isoformat() }}" class="v-icon-btn" title="{{ t('garmin.prev_night') }}" aria-label="{{ t('garmin.prev_night') }}">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
+    </a>
+    {% else %}
+    <span class="v-icon-btn is-disabled" aria-hidden="true">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
+    </span>
+    {% endif %}
+    <a href="/garmin" class="v-btn-ghost text-xs">
+        <svg style="width:0.85rem;height:0.85rem" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        <span>{{ t("garmin.back_to_overview") }}</span>
+    </a>
+    {% if next_date %}
+    <a href="/garmin/sleep/{{ next_date.isoformat() }}" class="v-icon-btn" title="{{ t('garmin.next_night') }}" aria-label="{{ t('garmin.next_night') }}">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
+    </a>
+    {% else %}
+    <span class="v-icon-btn is-disabled" aria-hidden="true">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
+    </span>
+    {% endif %}
+</div>
+{% endmacro %}
+
 {% block content %}
 {% from "garmin/_tabs.html" import garmin_tabs %}
-{# A sub-page of the Garmin module, not a section of its own: no masthead_header
-   and no entry in the nav registry — a back link is the whole wayfinding. #}
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
 
+    {% if request.state.ui_version == 'masthead' %}
+    {% call masthead_header('garmin', daily.date | format_date, [
+        {'label': t('garmin.sleep_score'), 'primary': true, 'value': daily.sleep_score if daily.sleep_score else '—'},
+        {'label': t('garmin.avg_sleep_hr'), 'unit': t('garmin.bpm'), 'value': daily.avg_sleep_hr if daily.avg_sleep_hr else '—'},
+        {'label': t('garmin.spo2_lowest'), 'unit': '%', 'value': daily.spo2_lowest if daily.spo2_lowest else '—'},
+        {'label': t('garmin.bb_change'), 'value': (('+' if daily.body_battery_change > 0 else '') ~ daily.body_battery_change) if daily.body_battery_change is not none else '—'}
+    ]) %}
+        {{ night_nav(prev_date, next_date) }}
+    {% endcall %}
+    {{ garmin_tabs('sleep') }}
+    {% else %}
     <!-- Header -->
     <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
         <div class="flex items-start gap-3.5">
@@ -26,15 +67,11 @@
                 </p>
             </div>
         </div>
-        <a href="/garmin" class="v-btn-ghost text-xs shrink-0">
-            <svg style="width:0.85rem;height:0.85rem" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            <span>{{ t("garmin.back_to_overview") }}</span>
-        </a>
+        {{ night_nav(prev_date, next_date) }}
     </div>
 
     {{ garmin_tabs('sleep') }}
+    {% endif %}
 
     <!-- Key figures -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -67,11 +104,11 @@
         <div class="v-metric">
             <span class="v-metric-label">{{ t("garmin.bb_change") }}</span>
             <div class="flex items-baseline">
-                <span class="v-metric-value">{% if daily.body_battery_change is not none %}+{{ daily.body_battery_change }}{% else %}—{% endif %}</span>
+                <span class="v-metric-value">{% if daily.body_battery_change is not none %}{{ '+' if daily.body_battery_change > 0 else '' }}{{ daily.body_battery_change }}{% else %}—{% endif %}</span>
             </div>
-            <span class="v-text-micro">{{ t("garmin.awake_count") }}: {{ daily.awake_count if daily.awake_count is not none else '—' }} · {{ t("garmin.restless") }}: {{ daily.restless_moments if daily.restless_moments is not none else '—' }}</span>
         </div>
     </div>
+    <p class="v-text-micro" style="color: var(--muted)">{{ t("garmin.awake_count") }}: {{ daily.awake_count if daily.awake_count is not none else '—' }} · {{ t("garmin.restless") }}: {{ daily.restless_moments if daily.restless_moments is not none else '—' }}</p>
 
     <!-- Hypnogram -->
     {% if stages %}

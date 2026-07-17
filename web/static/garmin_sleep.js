@@ -307,14 +307,22 @@
         var active = buttons.length ? buttons[0].dataset.sleepGroup : 'pulse';
         drawCurves(data, C, origin, spanMinutes, active);
 
-        Array.prototype.forEach.call(buttons, function (btn) {
-            btn.addEventListener('click', function () {
-                Array.prototype.forEach.call(buttons, function (b) {
+        // Delegated on the container and guarded per-node: this whole function
+        // reruns on every htmx:afterSettle, and a swap that leaves this same
+        // #garminSleepGroups element in the DOM (rather than a fresh one) would
+        // otherwise stack a second, third, ... click listener on top of the first.
+        if (groupBar && !groupBar._vitalsSleepGroupBound) {
+            groupBar._vitalsSleepGroupBound = true;
+            groupBar.addEventListener('click', function (e) {
+                var btn = e.target.closest('[data-sleep-group]');
+                if (!btn || !groupBar.contains(btn)) return;
+                var current = groupBar.querySelectorAll('[data-sleep-group]');
+                Array.prototype.forEach.call(current, function (b) {
                     b.classList.toggle('is-active', b === btn);
                 });
                 drawCurves(data, C, origin, spanMinutes, btn.dataset.sleepGroup);
             });
-        });
+        }
     }
 
     function initGarminSleepChartsSafe() {

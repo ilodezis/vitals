@@ -4,6 +4,21 @@
 
 {% macro hm(seconds) %}{% if seconds %}{{ seconds // 3600 }}h {{ (seconds % 3600) // 60 }}m{% else %}—{% endif %}{% endmacro %}
 
+{# Proportional deep/light/rem/awake bar, pure CSS flex (no Chart.js) — reused
+   at both the hero card's larger size and each row's mini size. Colors match
+   the per-night hypnogram (garmin_sleep.js) so the two views read as one
+   language: violet=deep, cool=light, good=rem, muted=awake. #}
+{% macro phase_bar(d, large=false) %}
+{% set total = (d.deep_sleep_seconds or 0) + (d.light_sleep_seconds or 0) + (d.rem_sleep_seconds or 0) + (d.awake_seconds or 0) %}
+<div class="v-phase-bar{% if large %} v-phase-bar-lg{% endif %}">
+    {% if total > 0 %}
+    {% for stage, seconds, tone in [('deep', d.deep_sleep_seconds, 'violet'), ('light', d.light_sleep_seconds, 'cool'), ('rem', d.rem_sleep_seconds, 'good'), ('awake', d.awake_seconds, 'muted')] %}
+    {% if seconds %}<span class="v-phase-seg {{ tone }}" style="flex-grow: {{ seconds }}" title="{{ t('garmin.stage.' + stage) }} {{ hm(seconds) }}"></span>{% endif %}
+    {% endfor %}
+    {% endif %}
+</div>
+{% endmacro %}
+
 {% block content %}
 {% from "garmin/_tabs.html" import garmin_tabs %}
 {% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
@@ -23,25 +38,67 @@
 
     {{ garmin_tabs('sleep') }}
 
+    {% if latest_night %}
+    <a href="/garmin/sleep/{{ latest_night.date.isoformat() }}" class="v-card p-6 space-y-4">
+        <div class="flex items-start justify-between gap-3">
+            <div class="space-y-1">
+                <span class="v-text-micro" style="color: var(--muted)">{{ t("garmin.sleep_last_night_title") }}</span>
+                <h2 class="v-text-heading">{{ latest_night.date | format_date }}</h2>
+                <p class="v-text-body" style="color: var(--muted)">
+                    {% if latest_night.sleep_start and latest_night.sleep_end %}
+                    {{ latest_night.sleep_start.strftime('%H:%M') }}–{{ latest_night.sleep_end.strftime('%H:%M') }} · {{ hm(latest_night.sleep_seconds) }}
+                    {% else %}
+                    {{ hm(latest_night.sleep_seconds) }}
+                    {% endif %}
+                </p>
+            </div>
+            <svg class="h-5 w-5 shrink-0 mt-1" style="color: var(--muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+        </div>
+        <div class="flex flex-wrap items-center gap-5">
+            <div>
+                <span class="v-metric-label">{{ t("garmin.sleep_score") }}</span>
+                <div class="v-metric-value">{{ latest_night.sleep_score if latest_night.sleep_score else '—' }}</div>
+            </div>
+            <div>
+                <span class="v-metric-label">{{ t("garmin.awake_count") }}</span>
+                <div class="v-metric-value">{{ latest_night.awake_count if latest_night.awake_count is not none else '—' }}</div>
+            </div>
+        </div>
+        {{ phase_bar(latest_night, true) }}
+    </a>
+    {% endif %}
+
     <div class="v-card p-6 space-y-3">
         <div class="flex items-center gap-2">
             <span class="v-bar v-bar-sm"></span>
-            <span class="v-text-card">{{ t("garmin.history_title", count=night_count) }}</span>
+            <span class="v-text-card">{{ t("garmin.sleep_history_title", count=night_count) }}</span>
         </div>
-        <ul class="space-y-2">
+        {% if nights %}
+        <div class="v-night-row-head">
+            <span>{{ t("common.date") }}</span>
+            <span>{{ t("garmin.duration") }}</span>
+            <span>{{ t("garmin.sleep_score") }}</span>
+            <span>{{ t("garmin.col_phases") }}</span>
+            <span class="hide-xs">{{ t("garmin.awake_count") }}</span>
+            <span class="hide-xs">ΔBB</span>
+            <span></span>
+        </div>
+        {% endif %}
+        <div class="space-y-1">
             {% for n in nights %}
-            <li>
-                <a href="/garmin/sleep/{{ n.date.isoformat() }}" class="v-card-tile block p-3">
-                    <div class="flex items-center justify-between gap-3">
-                        <span class="v-num" style="color: var(--fg)">{{ n.date | format_date }}</span>
-                        <span class="v-text-micro v-num">{{ hm(n.sleep_seconds) }}{% if n.sleep_score %} · {{ n.sleep_score }}{% endif %}</span>
-                    </div>
-                </a>
-            </li>
+            <a href="/garmin/sleep/{{ n.date.isoformat() }}" class="v-night-row">
+                <span class="v-num" style="color: var(--fg)">{{ n.date | format_date }}</span>
+                <span class="v-text-micro v-num">{{ hm(n.sleep_seconds) }}</span>
+                <span class="v-text-micro v-num">{{ n.sleep_score if n.sleep_score else '—' }}</span>
+                {{ phase_bar(n) }}
+                <span class="v-text-micro v-num hide-xs">{{ n.awake_count if n.awake_count is not none else '—' }}</span>
+                <span class="v-text-micro v-num hide-xs">{% if n.body_battery_change is not none %}{{ '+' if n.body_battery_change > 0 else '' }}{{ n.body_battery_change }}{% else %}—{% endif %}</span>
+                <svg class="h-3.5 w-3.5" style="color: var(--muted)" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </a>
             {% else %}
-            <li class="text-center pt-2" style="color: var(--muted)">{{ t("garmin.no_history") }}</li>
+            <div class="text-center pt-2" style="color: var(--muted)">{{ t("garmin.no_history") }}</div>
             {% endfor %}
-        </ul>
+        </div>
     </div>
 </div>
 {% endblock %}

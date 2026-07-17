@@ -658,6 +658,108 @@ async def test_garmin_sleep_list_renders(auth_client, db_session):
     assert "/garmin/sleep/2026-06-09" in response.text
 
 
+async def test_garmin_sleep_list_hero_card_and_rows(auth_client, db_session):
+    """The latest night gets a hero card (date, duration, score, phase bar);
+    every night below it is a full-row link with its own mini phase bar and a
+    correctly signed Body Battery delta (never the old force-prefixed "+-12")."""
+    from datetime import date
+
+    from vitals.models.garmin import GarminDaily
+
+    db_session.add_all([
+        GarminDaily(
+            date=date(2026, 6, 9), domain="garmin", source="garmin_api",
+            sleep_seconds=25200, sleep_score=70, awake_count=3,
+            body_battery_change=-12,
+        ),
+        GarminDaily(
+            date=date(2026, 6, 10), domain="garmin", source="garmin_api",
+            sleep_seconds=27000, sleep_score=78, awake_count=1,
+            body_battery_change=18,
+            deep_sleep_seconds=5400, light_sleep_seconds=14400,
+            rem_sleep_seconds=5400, awake_seconds=1800,
+        ),
+    ])
+    await db_session.commit()
+
+    response = await auth_client.get("/garmin/sleep", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "Прошлая ночь" in response.text
+    assert "v-phase-seg violet" in response.text
+    assert "v-phase-seg cool" in response.text
+    assert "v-phase-seg good" in response.text
+    assert "v-phase-seg muted" in response.text
+    assert "Фазы" in response.text
+    assert "+18" in response.text
+    assert "-12" in response.text
+    assert "+-12" not in response.text
+
+
+async def test_garmin_sleep_night_page_body_battery_sign(auth_client, db_session):
+    """Regression: a negative overnight Body Battery change renders as "-12",
+    never "+-12" (the sign used to be force-prefixed regardless). The
+    awakenings/restless caption moved off the BB tile's footer onto its own
+    line but must still render somewhere on the page."""
+    from datetime import date
+
+    from vitals.models.garmin import GarminDaily
+
+    db_session.add(GarminDaily(
+        date=date(2026, 6, 10), domain="garmin", source="garmin_api",
+        sleep_seconds=27000, body_battery_change=-12,
+        awake_count=2, restless_moments=15,
+    ))
+    await db_session.commit()
+
+    response = await auth_client.get("/garmin/sleep/2026-06-10", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "+-12" not in response.text
+    assert "-12" in response.text
+    assert "Пробуждения: 2" in response.text
+    assert "ворочания: 15" in response.text
+
+
+async def test_garmin_sleep_night_page_masthead_and_nav(auth_client, db_session):
+    """Masthead mode gets the shared editorial header (title = the night's own
+    date, metrics = score/HR/SpO2/BB) instead of the classic card, and the
+    prev/next night arrows link to the correct adjacent dates in both shells."""
+    from datetime import date
+
+    from vitals.models.garmin import GarminDaily
+
+    db_session.add_all([
+        GarminDaily(date=date(2026, 6, 9), domain="garmin", source="garmin_api", sleep_seconds=25200, sleep_score=70),
+        GarminDaily(
+            date=date(2026, 6, 10), domain="garmin", source="garmin_api",
+            sleep_seconds=27000, sleep_score=78, avg_sleep_hr=54, spo2_lowest=91, body_battery_change=18,
+        ),
+        GarminDaily(date=date(2026, 6, 11), domain="garmin", source="garmin_api", sleep_seconds=26000, sleep_score=80),
+    ])
+    await db_session.commit()
+
+    # Classic: same prev/next links, no masthead header markup.
+    r = await auth_client.get("/garmin/sleep/2026-06-10", headers={"Accept": "text/html"})
+    assert r.status_code == 200
+    assert 'href="/garmin/sleep/2026-06-09"' in r.text
+    assert 'href="/garmin/sleep/2026-06-11"' in r.text
+    assert 'class="mh-head"' not in r.text
+
+    # Masthead: editorial header with the night's own date as title + prev/next.
+    await auth_client.post("/settings/ui-version", data={"ui_version": "masthead"})
+    r = await auth_client.get("/garmin/sleep/2026-06-10", headers={"Accept": "text/html"})
+    assert r.status_code == 200
+    assert 'class="mh-head"' in r.text
+    assert "10-06-2026" in r.text
+    assert 'href="/garmin/sleep/2026-06-09"' in r.text
+    assert 'href="/garmin/sleep/2026-06-11"' in r.text
+
+    # Oldest night: no earlier neighbor, prev arrow renders disabled (no link).
+    r = await auth_client.get("/garmin/sleep/2026-06-09", headers={"Accept": "text/html"})
+    assert r.status_code == 200
+    assert 'href="/garmin/sleep/2026-06-08"' not in r.text
+    assert "is-disabled" in r.text
+
+
 async def test_garmin_activities_list_renders(auth_client, db_session):
     """GET /garmin/activities renders the full activity list (moved off the
     overview page onto its own full-width tab)."""

@@ -492,6 +492,21 @@ html {
     box-shadow: var(--shadow);
 }
 
+/* A whole .v-card that's also a link (Sleep tab's "last night" hero card) —
+   same hover-lift as .v-card-tile, but keeps .v-card's own surface tone since
+   it sits directly on the page, not nested inside another card. */
+a.v-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+a.v-card:hover {
+    border-color: var(--accent-line);
+    transform: translateY(-2px);
+}
+
 /* ── Metrics ───────────────────────────────────────────────────────────── */
 .v-metric {
     background: var(--surface);
@@ -660,6 +675,13 @@ html {
 .v-icon-btn.danger:hover {
     color: var(--bad);
     background: var(--bad-soft);
+}
+
+/* Prev/next night arrow with no adjacent night to go to — visible but inert,
+   rather than omitted, so the control's position doesn't jump around. */
+.v-icon-btn.is-disabled {
+    opacity: .25;
+    pointer-events: none;
 }
 
 /* ── Form controls ─────────────────────────────────────────────────────── */
@@ -854,6 +876,89 @@ html {
 a.v-seg-btn {
     display: block;
     text-decoration: none;
+}
+
+/* ── Night list row (Sleep tab) ────────────────────────────────────────────
+   A <tr> can't be wrapped in <a>, and anchoring each cell separately is the
+   broken hit-target this replaces — so the row itself is the <a>, laid out as
+   a CSS grid instead of a table. .v-night-row-head repeats the same column
+   template as a plain (non-link) header above the list. */
+.v-night-row-head,
+.v-night-row {
+    display: grid;
+    grid-template-columns: 5.5rem 4.5rem 2.75rem 1fr 3.5rem 3.75rem 1rem;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.v-night-row {
+    padding: .65rem .85rem;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    text-decoration: none;
+    color: inherit;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+
+.v-night-row:hover {
+    background: var(--bg-inset);
+    border-color: var(--accent-line);
+}
+
+.v-night-row-head {
+    padding: 0 .85rem;
+    color: var(--muted);
+    font-size: var(--text-micro);
+    font-weight: 500;
+}
+
+@media (max-width: 640px) {
+
+    .v-night-row-head,
+    .v-night-row {
+        grid-template-columns: 4.5rem 3.75rem 2.5rem 1fr 1rem;
+    }
+
+    .v-night-row-head .hide-xs,
+    .v-night-row .hide-xs {
+        display: none;
+    }
+}
+
+/* Sleep-stage proportional bar — pure CSS flex, segment widths set inline via
+   flex-grow from each stage's seconds (deep/light/rem/awake). No Chart.js:
+   this rides along on the Sleep tab's list/hero card, which must stay light. */
+.v-phase-bar {
+    display: flex;
+    height: 6px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--bg-inset);
+}
+
+.v-phase-bar-lg {
+    height: 10px;
+}
+
+.v-phase-seg {
+    height: 100%;
+}
+
+.v-phase-seg.violet {
+    background: var(--violet);
+}
+
+.v-phase-seg.cool {
+    background: var(--cool);
+}
+
+.v-phase-seg.good {
+    background: var(--good);
+}
+
+.v-phase-seg.muted {
+    background: var(--muted);
+    opacity: .55;
 }
 
 /* ── Pills / badges / chips ────────────────────────────────────────────── */
