@@ -11,7 +11,7 @@ import asyncio
 import os
 import sys
 import random
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -37,7 +37,12 @@ from vitals.enums import (
 )
 from vitals.models.app_settings import AppSetting
 from vitals.models.conflict_rule import ConflictRule
-from vitals.models.garmin import GarminDaily
+from vitals.models.garmin import (
+    SERIES_BODY_BATTERY,
+    SERIES_STRESS,
+    GarminDaily,
+    GarminIntraday,
+)
 from vitals.models.genetics import GeneticVariant
 from vitals.models.glp1 import DosePhase, Injection
 from vitals.models.hevy import HevyExercise, HevySet, HevyWorkout
@@ -241,8 +246,36 @@ async def seed_measurements(session):
         ))
 
 
+def _seed_intraday_day(session, d):
+    """One day's stress / Body Battery curves at a 5-minute cadence (the real
+    device samples every ~3 min; coarser here just to keep the demo DB small).
+    Shaped like a real day — battery charges through the night and drains once
+    stress picks up — so the dashboard chart shows the relationship it exists for."""
+    battery = random.randint(20, 35)
+    for slot in range(0, 24 * 60, 5):
+        ts = datetime.combine(d, time(0, 0)) + timedelta(minutes=slot)
+        asleep = slot < 7 * 60 or slot > 23 * 60
+        stress = random.randint(8, 22) if asleep else random.randint(20, 75)
+        # Sleep recharges, waking hours drain roughly in step with stress.
+        battery += random.uniform(0.8, 1.6) if asleep else -stress / 60.0
+        battery = max(5.0, min(100.0, battery))
+        session.add(GarminIntraday(
+            date=d, series_type=SERIES_STRESS, ts=ts, value=float(stress),
+            domain=Domain.GARMIN, source=Source.GARMIN_API,
+        ))
+        session.add(GarminIntraday(
+            date=d, series_type=SERIES_BODY_BATTERY, ts=ts, value=round(battery, 1),
+            domain=Domain.GARMIN, source=Source.GARMIN_API,
+        ))
+
+
 async def seed_garmin(session):
+    await session.execute(delete(GarminIntraday))
     await session.execute(delete(GarminDaily))
+    # Intraday curves only for the two most recent days: at ~576 rows a day they
+    # are the densest thing in the lake, and the dashboard only charts the latest.
+    for i in (2, 1):
+        _seed_intraday_day(session, _d(i))
     for i in range(14, 0, -1):
         d = _d(i)
         sleep_h = random.uniform(6.5, 8.5)

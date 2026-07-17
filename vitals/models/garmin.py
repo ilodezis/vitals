@@ -1,6 +1,6 @@
 """Module 6 — Garmin activity & recovery.
 
-Two tables, both ``domain='garmin'`` via ``InsightsMixin``:
+Three tables, all ``domain='garmin'`` via ``InsightsMixin``:
 
   * ``garmin_daily`` — one wide row per calendar date holding the day's recovery
     and activity metrics (sleep, HRV, RHR, stress, Body Battery, steps, calories,
@@ -11,6 +11,10 @@ Two tables, both ``domain='garmin'`` via ``InsightsMixin``:
     channel), upserted by date.
   * ``garmin_activities`` — recorded sport sessions, keyed by Garmin's activity id
     (the upsert key), for correlation with Hevy workouts.
+  * ``garmin_intraday`` — the within-day curves behind those day-level scalars
+    (stress and Body Battery every ~3 minutes). One row per sample, tall and
+    generic rather than a column per series, so a new series is a new
+    ``series_type`` value and never a migration.
 """
 from __future__ import annotations
 
@@ -22,6 +26,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
@@ -38,6 +43,11 @@ DOMAIN = Domain.GARMIN.value
 # JSONB on Postgres, generic JSON on the SQLite fast-test path (mirrors
 # ``raw_payloads``). Used for the variable-shape per-activity detail arrays.
 _JSON_TYPE = JSONB().with_variant(JSON(), "sqlite")
+
+# ``garmin_intraday.series_type`` values. Both come out of the one
+# ``get_stress_data`` payload the daily sync already downloads.
+SERIES_STRESS = "stress"
+SERIES_BODY_BATTERY = "body_battery"
 
 
 class GarminDaily(Base, InsightsMixin, TimestampMixin):
@@ -143,3 +153,39 @@ class GarminActivity(Base, InsightsMixin, TimestampMixin):
     hr_zone_seconds: Mapped[Optional[Any]] = mapped_column(_JSON_TYPE, nullable=True)
     # ``[{"index", "distance_m", "duration_s", "avg_hr", "max_hr", "avg_speed_mps"}]``
     splits: Mapped[Optional[Any]] = mapped_column(_JSON_TYPE, nullable=True)
+
+
+class GarminIntraday(Base, InsightsMixin, TimestampMixin):
+    """One within-day sample of one series (run 4).
+
+    ``garmin_daily`` keeps the day's *summary* of stress and Body Battery (avg,
+    max, high/low); this keeps the curve those numbers were reduced from — ~480
+    samples per series per day, which is what makes "when did the stress spike"
+    answerable at all.
+
+    Deliberately tall/generic (``series_type`` + ``ts`` + ``value``) rather than a
+    wide row: the sleep-detail series of run 5 (``sleep_hr``, ``sleep_spo2``, …)
+    reuse this table by adding ``series_type`` values only, with no schema change.
+    A day+series is rebuilt wholesale on re-import (delete then insert), which is
+    why there's no unique constraint to upsert against.
+    """
+
+    __tablename__ = "garmin_intraday"
+    __table_args__ = (
+        insights_index(__tablename__),
+        # "This series over a date range" — the chart/MCP read path.
+        Index("ix_garmin_intraday_series_date", "series_type", "date"),
+        # "Everything recorded on this day, in order" — the day-detail read path,
+        # and the (date, series_type) prefix the re-import delete scans.
+        Index("ix_garmin_intraday_date_ts", "date", "ts"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    raw_payload_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("raw_payloads.id", ondelete="SET NULL"), nullable=True
+    )
+    # One of the SERIES_* constants above.
+    series_type: Mapped[str] = mapped_column(String(24), nullable=False)
+    # Local naive wall-clock moment of the sample (Garmin ships epoch ms).
+    ts: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    value: Mapped[float] = mapped_column(Float, nullable=False)

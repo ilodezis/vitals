@@ -108,3 +108,59 @@ async def test_get_data_overview_reports_counts_and_range(db_session, session_fa
     # Config/catalog tables report a count too (zero here).
     assert overview["supplements"]["count"] == 0
     assert "milestones" in overview
+    # The overview's table list is hand-maintained (unlike serialize_row's
+    # reflection), so a new table has to be added to it explicitly.
+    assert "garmin_intraday" in overview
+
+
+# ── get_garmin_metrics: intraday series ───────────────────────────────────────
+async def test_get_garmin_metrics_intraday_off_by_default(db_session, session_factory, monkeypatch):
+    monkeypatch.setattr(mcp_router, "get_session_factory", lambda: session_factory)
+    await _seed_intraday(db_session)
+
+    default = await mcp_router.get_garmin_metrics(start_date="2026-06-10", end_date="2026-06-10")
+    assert "intraday" not in default
+
+    with_series = await mcp_router.get_garmin_metrics(
+        start_date="2026-06-10", end_date="2026-06-10", intraday=True
+    )
+    assert with_series["intraday_truncated"] is False
+    stress = with_series["intraday"]["stress"]
+    assert [p["value"] for p in stress] == [43.0, 37.0]
+    assert stress[0]["ts"] == "2026-06-10T08:00:00"
+    assert len(with_series["intraday"]["body_battery"]) == 1
+
+
+async def test_get_garmin_metrics_intraday_caps_and_flags_truncation(
+    db_session, session_factory, monkeypatch
+):
+    monkeypatch.setattr(mcp_router, "get_session_factory", lambda: session_factory)
+    monkeypatch.setattr(mcp_router, "INTRADAY_POINT_CAP", 2)
+    await _seed_intraday(db_session)
+
+    result = await mcp_router.get_garmin_metrics(intraday=True)
+    total = sum(len(points) for points in result["intraday"].values())
+    assert total == 2
+    assert result["intraday_truncated"] is True
+
+
+async def _seed_intraday(db_session):
+    from datetime import date, datetime
+
+    from vitals.models.garmin import GarminIntraday
+
+    db_session.add_all([
+        GarminIntraday(
+            date=date(2026, 6, 10), domain="garmin", source="garmin_api",
+            series_type="stress", ts=datetime(2026, 6, 10, 8, 0), value=43.0,
+        ),
+        GarminIntraday(
+            date=date(2026, 6, 10), domain="garmin", source="garmin_api",
+            series_type="stress", ts=datetime(2026, 6, 10, 8, 3), value=37.0,
+        ),
+        GarminIntraday(
+            date=date(2026, 6, 10), domain="garmin", source="garmin_api",
+            series_type="body_battery", ts=datetime(2026, 6, 10, 8, 0), value=72.0,
+        ),
+    ])
+    await db_session.commit()

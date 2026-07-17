@@ -34,6 +34,9 @@ async def garmin_dashboard(
     latest = await garmin_service.latest_daily(db)
     history = await garmin_service.list_daily(db, limit=30)
     activities = await garmin_service.list_activities(db, limit=20)
+    # The latest day's stress / Body Battery curves (empty dict on a day that has
+    # only day-level scalars — the template then hides the chart card).
+    intraday = await garmin_service.intraday_series_map(db, latest.date) if latest else {}
     count = await garmin_service.daily_count(db)
     advice = garmin_service.recovery_advice(latest)
     alerts = await alerts_service.list_active(db, domain=Domain.GARMIN.value)
@@ -61,6 +64,7 @@ async def garmin_dashboard(
             "latest": latest,
             "history": history,
             "activities": activities,
+            "intraday": intraday,
             "count": count,
             "advice": advice,
             "alerts": alerts,

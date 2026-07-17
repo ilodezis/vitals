@@ -7,12 +7,12 @@ Postgres sequence-reset behaviour is an ``@pytest.mark.integration`` test (SQLit
 can't exercise it).
 """
 import json
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
 from vitals.models.app_settings import AppSetting
-from vitals.models.garmin import GarminActivity, GarminDaily
+from vitals.models.garmin import GarminActivity, GarminDaily, GarminIntraday
 from vitals.models.glp1 import Injection
 from vitals.models.hevy import HevyExercise, HevySet, HevyWorkout
 from vitals.models.labs import LabResult
@@ -65,6 +65,17 @@ async def _seed(session) -> None:
                 elevation_gain_m=42.0, training_effect_aerobic=3.4,
                 hr_zone_seconds=[{"zone": 1, "secs": 120.0, "low_hr": 101}],
                 splits=[{"index": 1, "distance_m": 1000.0, "avg_hr": 150}],
+            ),
+            # Intraday samples — the tall series table backing the daily scalars.
+            GarminIntraday(
+                date=date(2026, 4, 29), domain="garmin", source="garmin_api",
+                raw_payload_id=rp.id, series_type="stress",
+                ts=datetime(2026, 4, 29, 8, 0), value=43.0,
+            ),
+            GarminIntraday(
+                date=date(2026, 4, 29), domain="garmin", source="garmin_api",
+                raw_payload_id=rp.id, series_type="body_battery",
+                ts=datetime(2026, 4, 29, 8, 0), value=72.0,
             ),
             LabResult(
                 date=date(2026, 4, 1), domain="labs", source="lab_parser",
@@ -128,6 +139,10 @@ async def test_full_roundtrip_replace_is_stable(db_session):
     assert stats.counts["weight_logs"] == 2
     assert stats.counts["hevy_exercises"] == 1
     assert stats.counts["hevy_sets"] == 2
+    # The intraday series is in the backup (it rides the generic sorted_tables
+    # walk, so this guards the walk actually reaching new tables).
+    assert stats.counts["garmin_intraday"] == 2
+    assert {r["series_type"] for r in snap1["garmin_intraday"]} == {"stress", "body_battery"}
 
 
 async def test_import_is_idempotent(db_session):

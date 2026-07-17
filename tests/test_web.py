@@ -191,7 +191,10 @@ def test_page_controller_scripts_load_once_from_head():
     templates_dir = Path(__file__).resolve().parent.parent / "web" / "templates"
     base_html = (templates_dir / "base.html").read_text(encoding="utf-8")
 
-    scripts = ["app.js", "glp1.js", "nutrition.js", "protocol.js", "charts.js", "labs_upload.js"]
+    scripts = [
+        "app.js", "glp1.js", "nutrition.js", "protocol.js", "charts.js",
+        "garmin.js", "labs_upload.js",
+    ]
     alpine_pos = base_html.index('id="alpine-script"')
     for filename in scripts:
         tag = f"<script defer src=\"{{{{ static_version('/static/{filename}') }}}}\">"
@@ -208,6 +211,7 @@ def test_page_controller_scripts_load_once_from_head():
         "skincare/index.html",
         "supplements/index.html",
         "charts/index.html",
+        "garmin/index.html",
     ]
     for rel_path in page_templates:
         html = (templates_dir / rel_path).read_text(encoding="utf-8")

@@ -36,6 +36,7 @@ from vitals.models import (
     DosePhase,
     GarminActivity,
     GarminDaily,
+    GarminIntraday,
     GeneticVariant,
     HevyExercise,
     HevyWorkout,
@@ -201,12 +202,31 @@ async def get_glp1_logs(
         }
 
 
+# Ceiling on intraday points in one get_garmin_metrics response (~5 days of a
+# single series at Garmin's 3-minute cadence). The table is the densest in the
+# project — a year is ~350k rows — so an unbounded read would blow the context.
+INTRADAY_POINT_CAP = 5000
+
+
 @mcp.tool()
 async def get_garmin_metrics(
-    start_date: Optional[str] = None, end_date: Optional[str] = None, limit: int = 100
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    limit: int = 100,
+    intraday: bool = False,
 ) -> dict:
     """Retrieves daily Garmin recovery/sleep scores and recorded activity sessions.
-    Each series defaults to the most recent 100 rows."""
+    Each series defaults to the most recent 100 rows.
+
+    Set ``intraday=True`` to also get the within-day curves behind the daily
+    stress / Body Battery summaries (a sample every ~3 minutes, so ~480 points per
+    series per day) as ``intraday: {series_type: [{ts, value}]}``. Off by default
+    because it is orders of magnitude more data than the daily rows: use it to
+    answer *when* inside a day something happened (a stress spike, a Body Battery
+    drain), always with a narrow start_date/end_date window. The response caps at
+    5000 points (~5 days of one series) and sets ``intraday_truncated`` to true
+    when the window held more than that.
+    """
     session_factory = get_session_factory()
     start = date_type.fromisoformat(start_date) if start_date else None
     end = date_type.fromisoformat(end_date) if end_date else None
@@ -230,10 +250,32 @@ async def get_garmin_metrics(
         a_stmt = a_stmt.order_by(GarminActivity.date.desc(), GarminActivity.start_time.desc()).limit(limit)
         activities = (await session.execute(a_stmt)).scalars().all()
 
-        return {
+        result = {
             "daily_recovery": [serialize_row(d) for d in daily],
             "activities": [serialize_row(a) for a in activities],
         }
+
+        if intraday:
+            # Grouped per series and trimmed to {ts, value} rather than run through
+            # serialize_row: at thousands of rows the per-row id/domain/source/
+            # timestamps would dwarf the actual curve. Fetch one over the cap to
+            # tell "exactly full" from "truncated".
+            i_stmt = select(GarminIntraday)
+            if start:
+                i_stmt = i_stmt.where(GarminIntraday.date >= start)
+            if end:
+                i_stmt = i_stmt.where(GarminIntraday.date <= end)
+            i_stmt = i_stmt.order_by(GarminIntraday.ts).limit(INTRADAY_POINT_CAP + 1)
+            points = (await session.execute(i_stmt)).scalars().all()
+            result["intraday_truncated"] = len(points) > INTRADAY_POINT_CAP
+            series: dict[str, list[dict]] = {}
+            for p in points[:INTRADAY_POINT_CAP]:
+                series.setdefault(p.series_type, []).append(
+                    {"ts": p.ts.isoformat(), "value": p.value}
+                )
+            result["intraday"] = series
+
+        return result
 
 
 @mcp.tool()
@@ -1183,6 +1225,7 @@ async def get_data_overview() -> dict:
         ("side_effects", SideEffect, SideEffect.date),
         ("garmin_daily", GarminDaily, GarminDaily.date),
         ("garmin_activities", GarminActivity, GarminActivity.date),
+        ("garmin_intraday", GarminIntraday, GarminIntraday.date),
         ("workouts", HevyWorkout, HevyWorkout.date),
         ("labs", LabResult, LabResult.date),
         ("nutrition", MealLog, MealLog.date),

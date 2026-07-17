@@ -152,6 +152,26 @@
     <div class="v-alert warn">{{ t("garmin.sync_auth") }}</div>
     {% endif %}
 
+    <!-- Intraday curves for the latest day (hidden when only day-level scalars exist) -->
+    {% if intraday %}
+    <div class="v-card p-6 space-y-3">
+        <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <span class="v-bar v-bar-sm"></span>
+                <span class="v-text-card">{{ t("garmin.intraday_title") }}</span>
+            </div>
+            <span class="v-text-micro">{{ latest.date | format_date }}</span>
+        </div>
+        <!-- h-[280px]: an arbitrary utility already in the prebuilt tailwind.css
+             (charts/labs use it). A fresh value like h-[240px] compiles to nothing
+             until the bundle is rebuilt, and the canvas silently collapses to
+             Chart.js's 150px default. -->
+        <div class="h-[280px] w-full relative">
+            <canvas id="garminIntradayChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Workspace -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
@@ -278,6 +298,13 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // Data only — the renderer lives in /static/garmin.js, loaded from <head>
+        // so it survives boosted navigation (a <script src> here would be a fresh
+        // element on every swap; see the notes in base.html).
+        window.vitalsGarminIntraday = {{ intraday | tojson | safe }};
+    </script>
 
     <!-- HAE Modal -->
     <div x-show="showHaeModal" class="v-backdrop" x-cloak>

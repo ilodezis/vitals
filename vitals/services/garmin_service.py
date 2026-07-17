@@ -6,6 +6,9 @@ Owns the garmin domain:
     ``raw_payloads``, and normalise the wide ``garmin_daily`` row (sleep, HRV,
     RHR, stress, Body Battery, steps, calories, HR, intensity minutes, training
     readiness, …). Upsert by date, so re-syncing a day refreshes it.
+  * **Intraday series** — the stress / Body Battery curves inside the same
+    payload (~480 samples each per day) land in ``garmin_intraday``, one row per
+    sample. Re-import rebuilds a day+series wholesale.
   * **Weight bridge** — a Garmin weigh-in for a date is pushed into the weight
     domain as a ``garmin_api`` row, where the weight service's manual-over-Garmin
     priority already lets a manual entry supersede it.
@@ -32,7 +35,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from vitals.enums import Severity, Source
 from vitals.i18n import t
 from vitals.integrations.garmin_client import GarminAuthError, GarminMFARequired
-from vitals.models.garmin import DOMAIN, GarminActivity, GarminDaily
+from vitals.models.garmin import (
+    DOMAIN,
+    SERIES_BODY_BATTERY,
+    SERIES_STRESS,
+    GarminActivity,
+    GarminDaily,
+    GarminIntraday,
+)
 from vitals.services import alerts_service, raw_payload_service, weight_service
 from vitals.utils.timeutils import now_local, to_local_naive
 
@@ -103,6 +113,144 @@ def _parse_sleep_boundary(sleep_dto: dict, prefix: str) -> Optional[datetime]:
     if local_ms is not None:
         return datetime.fromtimestamp(local_ms / 1000, tz=timezone.utc).replace(tzinfo=None)
     return None
+
+
+# ── Intraday series (stress / Body Battery curves) ────────────────────────────
+def _epoch_ms_to_local(value: Any) -> Optional[datetime]:
+    """Garmin's intraday timestamps are true UTC epoch **milliseconds** (unlike
+    the sleep DTO's ``*Local`` variant, which pre-bakes the offset)."""
+    ms = _num(value)
+    if ms is None:
+        return None
+    return to_local_naive(datetime.fromtimestamp(ms / 1000, tz=timezone.utc))
+
+
+def _descriptor_index(descriptors: Any, wanted_key: str) -> Optional[int]:
+    """Column position of ``wanted_key`` in a positional intraday array, read from
+    the descriptor list Garmin ships next to it.
+
+    Worth the indirection because the shapes genuinely differ per endpoint:
+    ``get_stress_data`` returns Body Battery as ``[ts, status, level, version]``
+    while ``get_body_battery`` returns ``[ts, level]`` — hard-coding a position
+    would silently store the *status* column for one of them. Both the key and
+    index field names also vary (``key``/``index`` for stress,
+    ``bodyBatteryValueDescriptor*`` for Body Battery), hence the fallbacks."""
+    if not isinstance(descriptors, list):
+        return None
+    for item in descriptors:
+        if not isinstance(item, dict):
+            continue
+        key = _first(item.get("key"), item.get("bodyBatteryValueDescriptorKey"))
+        if key == wanted_key:
+            return _intish(_first(
+                item.get("index"), item.get("bodyBatteryValueDescriptorIndex")
+            ))
+    return None
+
+
+def _parse_intraday_points(
+    rows: Any, *, value_index: Optional[int] = None
+) -> list[tuple[datetime, float]]:
+    """``[[epoch_ms, value, …], …]`` → ``[(local_ts, value), …]``, sorted by time.
+
+    ``value_index`` comes from the descriptor list; without one we take the first
+    numeric column after the timestamp, which lands on the value in every shape
+    Garmin has been seen to return. Negative readings are Garmin's sentinels
+    (stress ``-1`` = no reading, ``-2`` = watch off the wrist) and are dropped —
+    they are absence of data, not a measurement, and would drag any average down.
+    The raw array is kept whole in ``raw_payloads`` regardless."""
+    out: list[tuple[datetime, float]] = []
+    if not isinstance(rows, list):
+        return out
+    for row in rows:
+        if not isinstance(row, (list, tuple)) or len(row) < 2:
+            continue
+        ts = _epoch_ms_to_local(row[0])
+        if ts is None:
+            continue
+        if value_index is not None and 0 <= value_index < len(row):
+            value = _num(row[value_index])
+        else:
+            value = next((v for v in (_num(c) for c in row[1:]) if v is not None), None)
+        if value is None or value < 0:
+            continue
+        out.append((ts, value))
+    out.sort(key=lambda p: p[0])
+    return out
+
+
+def _intraday_series(raw: dict) -> dict[str, list[tuple[datetime, float]]]:
+    """Every intraday curve in the day's bundle, keyed by ``series_type``. Pure.
+
+    Both series ride in the one ``get_stress_data`` payload at full ~3-minute
+    resolution; the separate ``get_body_battery`` payload only carries inflection
+    points, so it's a fallback for when the stress payload came back without the
+    array."""
+    stress_payload = raw.get("stress") or {}
+
+    stress_rows = stress_payload.get("stressValuesArray")
+    stress_index = _descriptor_index(
+        stress_payload.get("stressValueDescriptorsDTOList"), "stressLevel"
+    )
+
+    bb_rows = stress_payload.get("bodyBatteryValuesArray")
+    bb_descriptors = stress_payload.get("bodyBatteryValueDescriptorsDTOList")
+    if not bb_rows:
+        bb_payload = raw.get("body_battery")
+        bb0 = bb_payload[0] if isinstance(bb_payload, list) and bb_payload else bb_payload
+        if isinstance(bb0, dict):
+            bb_rows = bb0.get("bodyBatteryValuesArray")
+            bb_descriptors = _first(
+                bb0.get("bodyBatteryValueDescriptorDTOList"),
+                bb0.get("bodyBatteryValueDescriptorsDTOList"),
+            )
+    bb_index = _descriptor_index(bb_descriptors, "bodyBatteryLevel")
+
+    return {
+        SERIES_STRESS: _parse_intraday_points(stress_rows, value_index=stress_index),
+        SERIES_BODY_BATTERY: _parse_intraday_points(bb_rows, value_index=bb_index),
+    }
+
+
+async def ingest_intraday(
+    session: AsyncSession,
+    on_date: date_type,
+    series_type: str,
+    points: Sequence[tuple[datetime, float]],
+    *,
+    raw_payload_id: Optional[int] = None,
+    source: str = Source.GARMIN_API.value,
+) -> int:
+    """Replace the day's samples for one ``series_type``. Returns rows written.
+
+    Rebuild-on-reimport (delete + insert, like ``hevy_service._upsert_workout``
+    does with its children) rather than a per-sample upsert: Garmin re-models the
+    whole curve as later readings arrive, so the array is the unit of truth, not
+    the point. An **empty** ``points`` is a no-op — a poll that came back without
+    the array is a hiccup, and must not delete samples already captured. Does not
+    commit."""
+    if not points:
+        return 0
+    await session.execute(
+        GarminIntraday.__table__.delete().where(
+            GarminIntraday.date == on_date,
+            GarminIntraday.series_type == series_type,
+        )
+    )
+    session.add_all([
+        GarminIntraday(
+            date=on_date,
+            domain=DOMAIN,
+            source=source,
+            raw_payload_id=raw_payload_id,
+            series_type=series_type,
+            ts=ts,
+            value=value,
+        )
+        for ts, value in points
+    ])
+    await session.flush()
+    return len(points)
 
 
 def _normalize_daily(raw: dict) -> dict:
@@ -201,8 +349,9 @@ async def ingest_daily(
     *,
     source: str = Source.GARMIN_API.value,
 ) -> GarminDaily:
-    """Store the raw bundle, upsert the normalized daily row, and bridge any
-    weigh-in into the weight domain. Does not commit."""
+    """Store the raw bundle, upsert the normalized daily row, rebuild the day's
+    intraday series, and bridge any weigh-in into the weight domain. Does not
+    commit."""
     raw_row = await raw_payload_service.upsert_raw_payload(
         session,
         domain=DOMAIN,
@@ -222,6 +371,12 @@ async def ingest_daily(
         setattr(row, key, value)
     await session.flush()
     raw_row.processed_at = now_local()
+
+    for series_type, points in _intraday_series(raw).items():
+        await ingest_intraday(
+            session, on_date, series_type, points,
+            raw_payload_id=raw_row.id, source=source,
+        )
 
     weight_kg = _extract_weight_kg(raw)
     if weight_kg is not None:
@@ -514,6 +669,48 @@ async def list_activities(
         select(GarminActivity).order_by(GarminActivity.date.desc(), GarminActivity.start_time.desc()).limit(limit)
     )
     return result.scalars().all()
+
+
+async def list_intraday(
+    session: AsyncSession,
+    *,
+    start: Optional[date_type] = None,
+    end: Optional[date_type] = None,
+    series_types: Optional[Sequence[str]] = None,
+    limit: Optional[int] = None,
+) -> Sequence[GarminIntraday]:
+    """Intraday samples over a date window, oldest first (a curve reads in time
+    order). A day holds ~480 samples per series, so callers cap the window."""
+    stmt = select(GarminIntraday)
+    if start is not None:
+        stmt = stmt.where(GarminIntraday.date >= start)
+    if end is not None:
+        stmt = stmt.where(GarminIntraday.date <= end)
+    if series_types:
+        stmt = stmt.where(GarminIntraday.series_type.in_(list(series_types)))
+    stmt = stmt.order_by(GarminIntraday.ts, GarminIntraday.series_type)
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    result = await session.execute(stmt)
+    return result.scalars().all()
+
+
+async def intraday_series_map(
+    session: AsyncSession,
+    on_date: date_type,
+    *,
+    series_types: Optional[Sequence[str]] = None,
+) -> dict[str, list[dict]]:
+    """One day's curves as ``{series_type: [{"ts", "value"}, …]}`` — the shape the
+    dashboard chart and the MCP tool both consume. Series with no samples are
+    absent rather than empty, so a caller can just check for the key."""
+    rows = await list_intraday(session, start=on_date, end=on_date, series_types=series_types)
+    out: dict[str, list[dict]] = {}
+    for row in rows:
+        out.setdefault(row.series_type, []).append(
+            {"ts": row.ts.isoformat(), "value": row.value}
+        )
+    return out
 
 
 async def latest_daily(

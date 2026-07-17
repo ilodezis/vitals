@@ -1,6 +1,6 @@
 """Garmin service tests — daily normalisation/upsert, the weight bridge with
-manual-over-Garmin priority, activities, recovery advice, the MFA alert path,
-and the Health Auto Export backup channel."""
+manual-over-Garmin priority, activities, intraday stress/Body Battery series,
+recovery advice, the MFA alert path, and the Health Auto Export backup channel."""
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
@@ -9,7 +9,13 @@ import pytest
 from sqlalchemy import func, select
 
 from vitals.integrations.garmin_client import GarminMFARequired
-from vitals.models.garmin import GarminActivity, GarminDaily
+from vitals.models.garmin import (
+    SERIES_BODY_BATTERY,
+    SERIES_STRESS,
+    GarminActivity,
+    GarminDaily,
+    GarminIntraday,
+)
 from vitals.models.raw_payload import RawPayload
 from vitals.models.weight import WeightLog
 from vitals.services import garmin_service, weight_service
@@ -23,6 +29,11 @@ DAY = date(2026, 6, 10)
 # GMT epoch ms for the sleep window used below (night of 2026-06-09 -> 06-10).
 _SLEEP_START_GMT_MS = int(datetime(2026, 6, 9, 23, 0, tzinfo=timezone.utc).timestamp() * 1000)
 _SLEEP_END_GMT_MS = int(datetime(2026, 6, 10, 6, 30, tzinfo=timezone.utc).timestamp() * 1000)
+
+
+def _ms(hour: int, minute: int = 0) -> int:
+    """GMT epoch ms for a moment on DAY (Garmin's intraday arrays are epoch-ms)."""
+    return int(datetime(2026, 6, 10, hour, minute, tzinfo=timezone.utc).timestamp() * 1000)
 
 RAW_DAY = {
     "summary": {
@@ -87,7 +98,50 @@ RAW_DAY = {
         },
         "heatAltitudeAcclimationDTO": None,
     },
-    "body_battery": [{"charged": 60, "drained": 40}],
+    # get_stress_data carries BOTH intraday arrays (real shape, 3-min cadence).
+    # Stress sentinels: -1 = no reading, -2 = watch off the wrist.
+    "stress": {
+        "calendarDate": "2026-06-10",
+        "maxStressLevel": 88,
+        "avgStressLevel": 30,
+        "stressValueDescriptorsDTOList": [
+            {"index": 0, "key": "timestamp"},
+            {"index": 1, "key": "stressLevel"},
+        ],
+        "stressValuesArray": [
+            [_ms(0, 0), -1],
+            [_ms(0, 3), -2],
+            [_ms(0, 6), 43],
+            [_ms(0, 9), 37],
+        ],
+        # [timestamp, status, level, version] — the level is NOT the 2nd column.
+        "bodyBatteryValueDescriptorsDTOList": [
+            {"bodyBatteryValueDescriptorIndex": 0, "bodyBatteryValueDescriptorKey": "timestamp"},
+            {"bodyBatteryValueDescriptorIndex": 1, "bodyBatteryValueDescriptorKey": "bodyBatteryStatus"},
+            {"bodyBatteryValueDescriptorIndex": 2, "bodyBatteryValueDescriptorKey": "bodyBatteryLevel"},
+            {"bodyBatteryValueDescriptorIndex": 3, "bodyBatteryValueDescriptorKey": "bodyBatteryVersion"},
+        ],
+        "bodyBatteryValuesArray": [
+            [_ms(0, 0), "MODELED", 25, 3],
+            [_ms(0, 3), "MEASURED", 27, 3],
+            [_ms(0, 6), "MEASURED", 30, 3],
+            [_ms(0, 9), "MEASURED", 34, 3],
+        ],
+    },
+    # get_body_battery(ds, ds) — the same series, but inflection points only and a
+    # [timestamp, level] shape. Only a fallback when the stress payload has none.
+    "body_battery": [
+        {
+            "date": "2026-06-10",
+            "charged": 60,
+            "drained": 40,
+            "bodyBatteryValueDescriptorDTOList": [
+                {"bodyBatteryValueDescriptorIndex": 0, "bodyBatteryValueDescriptorKey": "timestamp"},
+                {"bodyBatteryValueDescriptorIndex": 1, "bodyBatteryValueDescriptorKey": "bodyBatteryLevel"},
+            ],
+            "bodyBatteryValuesArray": [[_ms(0, 0), 25], [_ms(8, 0), 82]],
+        }
+    ],
     "body_composition": {"totalAverage": {"weight": 85000.0}},
 }
 
@@ -231,6 +285,112 @@ def test_normalize_splits_from_lap_dtos():
 def test_normalize_splits_absent_is_none():
     assert garmin_service._normalize_splits({}) is None
     assert garmin_service._normalize_splits({"_details": {"splits": {"lapDTOs": []}}}) is None
+
+
+# ── Intraday series parsing (stress + Body Battery) ───────────────────────────
+def test_intraday_stress_drops_sentinel_readings():
+    series = garmin_service._intraday_series(RAW_DAY)
+    stress = series[SERIES_STRESS]
+    # -1 (no reading) and -2 (off-wrist) are Garmin's sentinels, not stress of -1.
+    assert len(stress) == 2
+    assert stress[0] == (to_local_naive(datetime(2026, 6, 10, 0, 6, tzinfo=timezone.utc)), 43.0)
+    assert stress[1][1] == 37.0
+
+
+def test_intraday_body_battery_reads_level_column_not_second():
+    series = garmin_service._intraday_series(RAW_DAY)
+    bb = series[SERIES_BODY_BATTERY]
+    # 4 points from the stress payload (full resolution), NOT the 2 inflection
+    # points of the body_battery payload; values are the levels, not the status.
+    assert len(bb) == 4
+    assert [v for _, v in bb] == [25.0, 27.0, 30.0, 34.0]
+    assert bb[0][0] == to_local_naive(datetime(2026, 6, 10, 0, 0, tzinfo=timezone.utc))
+
+
+def test_intraday_body_battery_falls_back_to_range_payload_shape():
+    raw = {"stress": {"stressValuesArray": []}, "body_battery": RAW_DAY["body_battery"]}
+    bb = garmin_service._intraday_series(raw)[SERIES_BODY_BATTERY]
+    # [timestamp, level] shape — the level sits in the 2nd column here.
+    assert [v for _, v in bb] == [25.0, 82.0]
+
+
+def test_intraday_reads_value_position_without_descriptors():
+    # A firmware/endpoint variant with no descriptor list still parses: the first
+    # numeric column after the timestamp is the value.
+    raw = {"stress": {"bodyBatteryValuesArray": [[_ms(1, 0), "MEASURED", 40, 3]]}}
+    bb = garmin_service._intraday_series(raw)[SERIES_BODY_BATTERY]
+    assert [v for _, v in bb] == [40.0]
+
+
+def test_intraday_series_absent_is_empty():
+    series = garmin_service._intraday_series({"summary": {}})
+    assert series[SERIES_STRESS] == []
+    assert series[SERIES_BODY_BATTERY] == []
+
+
+# ── Intraday persistence ──────────────────────────────────────────────────────
+async def test_sync_persists_intraday_series(db_session):
+    client = FakeGarminClient()
+    await garmin_service.sync(db_session, client, days=1, on_date=DAY)
+    await db_session.commit()
+
+    rows = (await db_session.execute(
+        select(GarminIntraday).where(GarminIntraday.series_type == SERIES_STRESS)
+        .order_by(GarminIntraday.ts)
+    )).scalars().all()
+    assert len(rows) == 2
+    assert rows[0].value == 43.0
+    assert rows[0].date == DAY
+    assert rows[0].domain == "garmin"
+    assert rows[0].source == "garmin_api"
+    assert rows[0].raw_payload_id is not None
+
+    bb = (await db_session.execute(
+        select(GarminIntraday).where(GarminIntraday.series_type == SERIES_BODY_BATTERY)
+    )).scalars().all()
+    assert len(bb) == 4
+
+
+async def test_intraday_reimport_replaces_without_duplicating(db_session):
+    client = FakeGarminClient()
+    await garmin_service.sync(db_session, client, days=1, on_date=DAY)
+    await db_session.commit()
+    await garmin_service.sync(db_session, client, days=1, on_date=DAY)
+    await db_session.commit()
+
+    n = (await db_session.execute(
+        select(func.count()).select_from(GarminIntraday)
+        .where(GarminIntraday.series_type == SERIES_STRESS)
+    )).scalar()
+    assert n == 2
+
+
+async def test_intraday_empty_series_keeps_existing_rows(db_session):
+    """A day whose fetch came back without the array (a Garmin hiccup) must not
+    wipe the samples already captured — the lake never loses data to a bad poll."""
+    await garmin_service.sync(db_session, FakeGarminClient(), days=1, on_date=DAY)
+    await db_session.commit()
+
+    empty_day = dict(RAW_DAY, stress={"stressValuesArray": []}, body_battery=None)
+    await garmin_service.ingest_daily(db_session, DAY, empty_day)
+    await db_session.commit()
+
+    n = (await db_session.execute(select(func.count()).select_from(GarminIntraday))).scalar()
+    assert n == 6  # 2 stress + 4 body battery, still there
+
+
+async def test_intraday_series_map_groups_by_type(db_session):
+    await garmin_service.sync(db_session, FakeGarminClient(), days=1, on_date=DAY)
+    await db_session.commit()
+
+    series = await garmin_service.intraday_series_map(db_session, DAY)
+    assert set(series) == {SERIES_STRESS, SERIES_BODY_BATTERY}
+    assert series[SERIES_STRESS][0]["value"] == 43.0
+    # Points carry a local wall-clock timestamp the chart plots directly.
+    assert series[SERIES_STRESS][0]["ts"].endswith(":06:00")
+    assert len(series[SERIES_BODY_BATTERY]) == 4
+
+    assert await garmin_service.intraday_series_map(db_session, date(2020, 1, 1)) == {}
 
 
 # ── Sleep boundary parsing (GMT vs Local epoch quirk) ─────────────────────────
