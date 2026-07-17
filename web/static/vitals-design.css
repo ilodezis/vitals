@@ -230,6 +230,23 @@ body.ui-vitals .mh-shell {
     background: var(--bg);
 }
 
+/* Content column hugs the sidebar instead of centering in the workspace. The
+   page wrappers carry Tailwind's `max-w-6xl mx-auto`, which centers the bounded
+   column in whatever width is left of the rail. At the 1440px reference width
+   that gutter is ~20px (invisible), but on a wide monitor (>=1680px) it grows to
+   200-300px, so the rail sits hard-left while the content drifts to the middle
+   with a large empty band between them. Pinning the left margin to 0 keeps the
+   bounded column next to the rail (an editorial rail layout) at every width;
+   it is a no-op at <=1440 where mx-auto already left the column effectively
+   flush. */
+body.ui-vitals main .v-data-page,
+body.ui-vitals main .v-context-page,
+body.ui-vitals main .settings-page,
+body.ui-vitals main #alerts-container {
+    margin-left: 0;
+    margin-right: auto;
+}
+
 body.ui-vitals .mh-rail {
     position: fixed;
     inset: 0 auto 0 0;

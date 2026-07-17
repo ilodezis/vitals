@@ -132,6 +132,32 @@ async def test_boosted_swap_reliability_guards(auth_client):
     assert "_x_dataStack" in html  # guard against Alpine double-init
 
 
+async def test_mobile_drawer_defaults_hidden_and_desktop_gated(auth_client):
+    """Regression lock for the "switching sections pops open a full-screen nav/
+    settings panel that can't be closed without a reload" bug. The mobile drawer
+    is a position:fixed overlay whose visibility is driven by Alpine ``x-show``.
+    On an hx-boost body swap the drawer is a brand-new node re-initialised by
+    Alpine's observer, and that re-init intermittently fails to (re)apply the
+    initial ``display:none`` — so the ``.flex`` base class left the panel visible
+    on top of every page after the first boosted navigation, desktop included.
+
+    Two rAF-independent safety nets must stay in the served markup so the CLOSED
+    state never depends on Alpine winning that race:
+      1. a static inline ``display:none`` default — the server always renders the
+         drawer closed, so a missed x-show re-init keeps it hidden (x-show still
+         strips the inline display to open it);
+      2. ``md:hidden`` — its only trigger (the bottom-nav "More" button) is itself
+         ``md:hidden``, so the drawer must never render at >=768px, whatever the
+         Alpine state.
+    """
+    html = (await auth_client.get("/weight", headers={"Accept": "text/html"})).text
+    start = html.index('id="mobile-navigation-drawer"')
+    opening_tag = html[start:html.index(">", start) + 1]
+    assert 'x-show="mobileMenuOpen"' in opening_tag  # still Alpine-driven
+    assert "display: none" in opening_tag  # default-closed, race-proof
+    assert "md:hidden" in opening_tag  # never shown on desktop/tablet
+
+
 def test_body_script_const_is_iife_scoped():
     """Regression lock for a second, sharper cause of the same "randomly dead
     until reload" bug: the <script> in base.html's <body> (toast/confirm/loader/
