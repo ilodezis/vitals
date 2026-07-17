@@ -10,7 +10,8 @@
 module.exports = {
   content: [
     "./templates/**/*.html",
-    "./static/**/*.js"
+    "./static/**/*.js",
+    "!./static/vendor/**"
   ],
   theme: {
     extend: {
