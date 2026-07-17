@@ -1,0 +1,1028 @@
+# Curated compound reference for the HRT/TRT domain — the pharmacological
+# "база" behind HrtCompound. Seeded (upserted by `key`) into the compounds
+# catalog; a user's dose log references one of these by key.
+#
+# This file describes MOLECULES, not products. Brand / underground-lab (UGL) /
+# batch / actual measured concentration are tracked per-vial on the user's side
+# (HrtVial → HrtDose), NOT here — one molecule (e.g. testosterone enanthate) is
+# sold under dozens of brands, so brand never belongs on the shared reference.
+#
+# Fields per entry:
+#   key                 stable slug (never renamed; renaming orphans user rows)
+#   name                canonical English name
+#   name_ru             Russian display name
+#   compound_class      one of: testosterone, nandrolone, trenbolone, boldenone,
+#                       drostanolone, methenolone, dhb, trestolone, oral_aas,
+#                       ai, serm, support, gh, igf, peptide
+#   ester               esterification (null for base hormone / orals / blends)
+#   route               intramuscular | subcutaneous | oral | transdermal
+#   dose_unit           mg (default) | iu | mcg — the unit the user logs a dose
+#                       in. GH/gonadotropins are dosed in IU, most peptides and
+#                       IGF-1 analogs in mcg; omit for ordinary mg compounds.
+#   conc_mg_ml          typical vial concentration, mg/ml (injectables only)
+#   tablet_mg           typical tablet strength, mg (orals only)
+#   half_life_hours     approximate elimination/depot half-life (see caveat)
+#   active_fraction     mass of parent hormone per mg of esterified compound —
+#                       used to convert an injected mg of "test enanthate" into
+#                       mg of actual testosterone for the active-release graph.
+#                       1.0 for base hormones and orals.
+#   aromatizes          true | false | partial — informational (E2 management)
+#   aliases             common street/short names, for search & log matching
+#                       (NOT brands — those are per-vial)
+#   note                short free text
+#
+# CAVEAT: half-lives are population averages from the literature and vary by
+# source, injection site, and depot volume. They drive an ILLUSTRATIVE active-
+# release estimate only — real hormone levels come from Labs. This catalog does
+# not, and must not, prescribe or recommend doses.
+
+# ── Testosterone esters ──────────────────────────────────────────────────────
+testosterone_propionate:
+  name: Testosterone propionate
+  name_ru: Тестостерон пропионат
+  compound_class: testosterone
+  ester: propionate
+  route: intramuscular
+  conc_mg_ml: 100
+  half_life_hours: 20
+  active_fraction: 0.84
+  aromatizes: true
+  aliases: [test p, prop, тестостерон п, тест п, пропик]
+  note: Short ester, frequent injections (EOD).
+
+testosterone_phenylpropionate:
+  name: Testosterone phenylpropionate
+  name_ru: Тестостерон фенилпропионат
+  compound_class: testosterone
+  ester: phenylpropionate
+  route: intramuscular
+  conc_mg_ml: 100
+  half_life_hours: 40
+  active_fraction: 0.69
+  aromatizes: true
+  aliases: [test pp, tpp]
+  note: Component of Sustanon.
+
+testosterone_isocaproate:
+  name: Testosterone isocaproate
+  name_ru: Тестостерон изокапроат
+  compound_class: testosterone
+  ester: isocaproate
+  route: intramuscular
+  conc_mg_ml: 60
+  half_life_hours: 96
+  active_fraction: 0.75
+  aromatizes: true
+  aliases: [test iso]
+  note: Component of Sustanon.
+
+testosterone_enanthate:
+  name: Testosterone enanthate
+  name_ru: Тестостерон энантат
+  compound_class: testosterone
+  ester: enanthate
+  route: intramuscular
+  conc_mg_ml: 250
+  half_life_hours: 108
+  active_fraction: 0.72
+  aromatizes: true
+  aliases: [test e, enanthate, тестостерон э, тест е, энка, эфир]
+  note: Classic TRT/blast base ester; E3.5D–weekly.
+
+testosterone_cypionate:
+  name: Testosterone cypionate
+  name_ru: Тестостерон ципионат
+  compound_class: testosterone
+  ester: cypionate
+  route: intramuscular
+  conc_mg_ml: 250
+  half_life_hours: 120
+  active_fraction: 0.70
+  aromatizes: true
+  aliases: [test c, cyp, ципа, тест ц]
+  note: Interchangeable with enanthate for TRT.
+
+testosterone_decanoate:
+  name: Testosterone decanoate
+  name_ru: Тестостерон деканоат
+  compound_class: testosterone
+  ester: decanoate
+  route: intramuscular
+  conc_mg_ml: 100
+  half_life_hours: 180
+  active_fraction: 0.65
+  aromatizes: true
+  aliases: [test d]
+  note: Long ester, component of Sustanon/Omnadren.
+
+testosterone_undecanoate:
+  name: Testosterone undecanoate (injectable)
+  name_ru: Тестостерон ундеканоат (инъекционный)
+  compound_class: testosterone
+  ester: undecanoate
+  route: intramuscular
+  conc_mg_ml: 250
+  half_life_hours: 480
+  active_fraction: 0.63
+  aromatizes: true
+  aliases: [nebido, aveed, ундеканоат]
+  note: Ultra-long depot, dosed every 10–14 weeks.
+
+testosterone_undecanoate_oral:
+  name: Testosterone undecanoate (oral)
+  name_ru: Тестостерон ундеканоат (оральный)
+  compound_class: testosterone
+  ester: undecanoate
+  route: oral
+  tablet_mg: 40
+  half_life_hours: 4
+  active_fraction: 0.63
+  aromatizes: true
+  aliases: [andriol, jatenzo, andriol testocaps, андриол]
+  note: Lymphatic absorption; NOT 17aa. Distinct from the injectable depot.
+
+testosterone_acetate:
+  name: Testosterone acetate
+  name_ru: Тестостерон ацетат
+  compound_class: testosterone
+  ester: acetate
+  route: intramuscular
+  conc_mg_ml: 100
+  half_life_hours: 12
+  active_fraction: 0.83
+  aromatizes: true
+  aliases: [test a, тестостерон ацетат]
+  note: Very short ester, uncommon; frequent injections.
+
+testosterone_base:
+  name: Testosterone (unesterified / suspension)
+  name_ru: Тестостерон база (суспензия)
+  compound_class: testosterone
+  ester: null
+  route: intramuscular
+  conc_mg_ml: 100
+  half_life_hours: 4
+  active_fraction: 1.0
+  aromatizes: true
+  aliases: [test base, suspension, суспензия]
+  note: Water-based, very short acting; pre-workout use.
+
+sustanon_250:
+  name: Sustanon 250 (testosterone blend)
+  name_ru: Сустанон 250 (микс эфиров)
+  compound_class: testosterone
+  ester: blend
+  route: intramuscular
+  conc_mg_ml: 250
+  half_life_hours: 120
+  active_fraction: 0.70
+  aromatizes: true
+  aliases: [sust, sustanon, omnadren, сустанон, сустак, омнадрен]
+  components:                 # mg per ml — drives multi-ester release curve
+    - {ester: propionate, mg: 30}
+    - {ester: phenylpropionate, mg: 60}
+    - {ester: isocaproate, mg: 60}
+    - {ester: decanoate, mg: 100}
+  note: 4-ester blend; Omnadren 250 is equivalent.
+
+clostebol_acetate:
+  name: Clostebol acetate (4-chlorotestosterone)
+  name_ru: Клостебол ацетат (4-хлортестостерон)
+  compound_class: testosterone
+  ester: acetate
+  route: intramuscular
+  conc_mg_ml: 50
+  half_life_hours: 12
+  active_fraction: 0.83
+  aromatizes: false
+  aliases: [clostebol, steranabol, megagrisevit, клостебол, стеранабол]
+  note: 4-chloro testosterone; notorious in doping cases (topical contamination).
+
+# ── Nandrolone ───────────────────────────────────────────────────────────────
+nandrolone_decanoate:
+  name: Nandrolone decanoate
+  name_ru: Нандролон деканоат
+  compound_class: nandrolone
+  ester: decanoate
+  route: intramuscular
+  conc_mg_ml: 250
+  half_life_hours: 168
+  active_fraction: 0.64
+  aromatizes: partial
+  aliases: [deca, deca-durabolin, дека, дека-дураболин, нандролон д]
+  note: 19-nor; prolactin/progestin sides; needs Labs LH/prolactin watch.
+
+nandrolone_phenylpropionate:
+  name: Nandrolone phenylpropionate
+  name_ru: Нандролон фенилпропионат
+  compound_class: nandrolone
+  ester: phenylpropionate
+  route: intramuscular
+  conc_mg_ml: 100
+  half_life_hours: 65
+  active_fraction: 0.67
+  aromatizes: partial
+  aliases: [npp, нпп, нандролон фф]
+  note: Shorter nandrolone, faster clearance than deca.
+
+nandrolone_laurate:
+  name: Nandrolone laurate
+  name_ru: Нандролон лаурат
+  compound_class: nandrolone
+  ester: laurate
+  route: intramuscular
+  conc_mg_ml: 100
+  half_life_hours: 240
+  active_fraction: 0.60
+  aromatizes: partial
+  aliases: [laurabolin, лаураболин, нандролон лаурат]
+  note: Very long nandrolone ester, originally veterinary (Laurabolin).
+
+# ── Trenbolone ───────────────────────────────────────────────────────────────
+trenbolone_acetate:
+  name: Trenbolone acetate
+  name_ru: Тренболон ацетат
+  compound_class: trenbolone
+  ester: acetate
+  route: intramuscular
+  conc_mg_ml: 100
+  half_life_hours: 24
+  active_fraction: 0.87
+  aromatizes: false
+  aliases: [tren a, tren ace, трен а, трен ацетат, трена]
+  note: Progestin; strong prolactin/night-sweat sides; no aromatization.
+
+trenbolone_enanthate:
+  name: Trenbolone enanthate
+  name_ru: Тренболон энантат
+  compound_class: trenbolone
+  ester: enanthate
+  route: intramuscular
+  conc_mg_ml: 200
+  half_life_hours: 108
+  active_fraction: 0.71
+  aromatizes: false
+  aliases: [tren e, трен е, трен энантат]
+  note: Longer trenbolone ester.
+
+trenbolone_hexa:
+  name: Trenbolone hexahydrobenzylcarbonate
+  name_ru: Тренболон гексагидробензилкарбонат
+  compound_class: trenbolone
+  ester: hexahydrobenzylcarbonate
+  route: intramuscular
+  conc_mg_ml: 76
+  half_life_hours: 168
+  active_fraction: 0.66
+  aromatizes: false
+  aliases: [parabolan, para, параболан]
+  note: Parabolan; classic 76 mg/1.5 ml presentation.
+
+# ── Boldenone ────────────────────────────────────────────────────────────────
+boldenone_undecylenate:
+  name: Boldenone undecylenate
+  name_ru: Болденон ундесиленат
+  compound_class: boldenone
+  ester: undecylenate
+  route: intramuscular
+  conc_mg_ml: 250
+  half_life_hours: 336
+  active_fraction: 0.63
+  aromatizes: partial
+  aliases: [eq, equipoise, bold, эквипойз, болда, бол]
+  note: Very long ester; raises hematocrit — Labs HCT watch.
+
+boldenone_cypionate:
+  name: Boldenone cypionate
+  name_ru: Болденон ципионат
+  compound_class: boldenone
+  ester: cypionate
+  route: intramuscular
+  conc_mg_ml: 200
+  half_life_hours: 120
+  active_fraction: 0.70
+  aromatizes: partial
+  aliases: [bold c]
+  note: Shorter boldenone ester, less common.
+
+# ── Drostanolone (Masteron) ──────────────────────────────────────────────────
+drostanolone_propionate:
+  name: Drostanolone propionate
+  name_ru: Дростанолон пропионат
+  compound_class: drostanolone
+  ester: propionate
+  route: intramuscular
+  conc_mg_ml: 100
+  half_life_hours: 48
+  active_fraction: 0.84
+  aromatizes: false
+  aliases: [masteron p, mast p, мастерон п, маст п]
+  note: DHT-derived; no aromatization; anti-estrogenic tendency.
+
+drostanolone_enanthate:
+  name: Drostanolone enanthate
+  name_ru: Дростанолон энантат
+  compound_class: drostanolone
+  ester: enanthate
+  route: intramuscular
+  conc_mg_ml: 200
+  half_life_hours: 120
+  active_fraction: 0.73
+  aromatizes: false
+  aliases: [masteron e, mast e, мастерон е, маст е]
+  note: Longer masteron ester.
+
+# ── Methenolone (Primobolan) ─────────────────────────────────────────────────
+methenolone_enanthate:
+  name: Methenolone enanthate
+  name_ru: Метенолон энантат
+  compound_class: methenolone
+  ester: enanthate
+  route: intramuscular
+  conc_mg_ml: 100
+  half_life_hours: 120
+  active_fraction: 0.73
+  aromatizes: false
+  aliases: [primo, primobolan, примо, примоболан]
+  note: Mild DHT-derivative; frequently counterfeited (Labs to confirm).
+
+methenolone_acetate:
+  name: Methenolone acetate (oral)
+  name_ru: Метенолон ацетат (оральный)
+  compound_class: methenolone
+  ester: acetate
+  route: oral
+  tablet_mg: 25
+  half_life_hours: 5
+  active_fraction: 0.88
+  aromatizes: false
+  aliases: [primo oral, оральный примо]
+  note: Oral primobolan; not 17-alpha-alkylated, low liver load.
+
+# ── DHB / Trestolone (specialty injectables) ─────────────────────────────────
+dihydroboldenone_cypionate:
+  name: Dihydroboldenone (1-testosterone) cypionate
+  name_ru: Дигидроболденон (1-тестостерон) ципионат
+  compound_class: dhb
+  ester: cypionate
+  route: intramuscular
+  conc_mg_ml: 100
+  half_life_hours: 120
+  active_fraction: 0.70
+  aromatizes: false
+  aliases: [dhb, 1-test, дигидроболденон]
+  note: Notorious for post-injection pain (PIP).
+
+trestolone_acetate:
+  name: Trestolone acetate (MENT)
+  name_ru: Трестолон ацетат (MENT)
+  compound_class: trestolone
+  ester: acetate
+  route: intramuscular
+  conc_mg_ml: 50
+  half_life_hours: 12
+  active_fraction: 0.87
+  aromatizes: true
+  aliases: [ment, трестолон, мент]
+  note: Very potent 19-nor; strong aromatization to a potent estrogen.
+
+# ── Oral AAS (mostly 17-alpha-alkylated — hepatotoxic, Labs ALT/AST watch) ────
+methandienone:
+  name: Methandienone
+  name_ru: Метандиенон
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 10
+  half_life_hours: 5
+  active_fraction: 1.0
+  aromatizes: true
+  aliases: [dbol, dianabol, methan, метан, метандростенолон, данабол, нап]
+  note: 17aa. Also exists as injectable suspension.
+
+oxymetholone:
+  name: Oxymetholone
+  name_ru: Оксиметолон
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 50
+  half_life_hours: 8.5
+  active_fraction: 1.0
+  aromatizes: partial
+  aliases: [anadrol, adrol, oxy, анадрол, оксиметолон, оксик]
+  note: 17aa. Strong on blood pressure and liver.
+
+oxandrolone:
+  name: Oxandrolone
+  name_ru: Оксандролон
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 10
+  half_life_hours: 9
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [anavar, var, oxa, анавар, оксандролон, вар]
+  note: 17aa DHT-derivative; mild but suppressive; lipid impact.
+
+stanozolol_oral:
+  name: Stanozolol (oral)
+  name_ru: Станозолол (оральный)
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 10
+  half_life_hours: 9
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [winstrol, winny, stano, винстрол, станозолол, станал, вини]
+  note: 17aa; harsh on lipids and joints.
+
+stanozolol_inject:
+  name: Stanozolol (injectable suspension)
+  name_ru: Станозолол (инъекционная суспензия)
+  compound_class: oral_aas
+  ester: null
+  route: intramuscular
+  conc_mg_ml: 50
+  half_life_hours: 24
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [winstrol depot, инъекционный станозолол]
+  note: Same molecule, micronized water suspension; still 17aa/hepatotoxic.
+
+turinabol:
+  name: 4-Chlorodehydromethyltestosterone
+  name_ru: Туринабол
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 10
+  half_life_hours: 16
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [tbol, turinabol, oral turinabol, туринабол, тбол, туря]
+  note: 17aa; no aromatization, dry gains.
+
+methasterone:
+  name: Methasterone
+  name_ru: Метастерон
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 10
+  half_life_hours: 8
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [superdrol, sdrol, супердрол, метадростенол]
+  note: 17aa; very hepatotoxic, tight Labs ALT/AST cadence.
+
+fluoxymesterone:
+  name: Fluoxymesterone
+  name_ru: Флуоксиместерон
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 10
+  half_life_hours: 9
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [halotestin, halo, халотестин, гало]
+  note: 17aa; strongly androgenic, notable liver/lipid strain.
+
+methyltestosterone:
+  name: Methyltestosterone
+  name_ru: Метилтестостерон
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 10
+  half_life_hours: 4
+  active_fraction: 1.0
+  aromatizes: true
+  aliases: [methyltest, метилтестостерон]
+  note: 17aa; largely obsolete, high liver load.
+
+mesterolone:
+  name: Mesterolone
+  name_ru: Местеролон
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 25
+  half_life_hours: 12
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [proviron, провирон, местеролон]
+  note: Oral DHT, NOT 17aa (low liver load); acts as mild AI/SHBG-binder.
+
+methyltrienolone:
+  name: Methyltrienolone (metribolone)
+  name_ru: Метилтренолон (метриболон)
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 0.5
+  half_life_hours: 4.5
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [metribolone, methyltren, r1881, метриболон, метилтрен]
+  note: 17aa oral trenbolone; extraordinarily potent and hepatotoxic — µg doses.
+
+mibolerone:
+  name: Mibolerone
+  name_ru: Миболерон
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 0.1
+  half_life_hours: 3.7
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [cheque drops, cheque, миболерон, чек дропс]
+  note: 17aa 19-nor; extremely potent/androgenic, taken pre-competition in µg.
+
+mestanolone:
+  name: Mestanolone
+  name_ru: Местанолон
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 10
+  half_life_hours: 8
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [mestanolone, местанолон, оральный местеролон]
+  note: 17aa DHT (methylated mesterolone); dry/hard look, liver load.
+
+epistane:
+  name: Epistane (methylepitiostanol)
+  name_ru: Эпистан (метилэпитиостанол)
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 10
+  half_life_hours: 8
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [epistane, epi, havoc, hemapexin, эпистан]
+  note: 17aa designer/prohormone; anti-estrogenic, hepatotoxic.
+
+halodrol:
+  name: Halodrol (chlorodehydromethylandrostenediol)
+  name_ru: Халодрол
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 25
+  half_life_hours: 16
+  active_fraction: 1.0
+  aromatizes: partial
+  aliases: [halodrol, cdma, h-drol, халодрол]
+  note: 17aa designer steroid; oral-turinabol-like, hepatotoxic.
+
+methylstenbolone:
+  name: Methylstenbolone
+  name_ru: Метилстенболон
+  compound_class: oral_aas
+  ester: null
+  route: oral
+  tablet_mg: 8
+  half_life_hours: 8
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [methylstenbolone, m-sten, ultradrol, метилстенболон]
+  note: 17aa designer steroid; very hepatotoxic, no aromatization.
+
+# ── Aromatase inhibitors (estrogen control) ──────────────────────────────────
+anastrozole:
+  name: Anastrozole
+  name_ru: Анастрозол
+  compound_class: ai
+  ester: null
+  route: oral
+  tablet_mg: 1
+  half_life_hours: 46
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [arimidex, adex, ana, анастрозол, аримидекс]
+  note: Reversible AI; over-suppressing E2 harms lipids/joints/libido.
+
+exemestane:
+  name: Exemestane
+  name_ru: Экземестан
+  compound_class: ai
+  ester: null
+  route: oral
+  tablet_mg: 25
+  half_life_hours: 27
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [aromasin, exe, аромазин, экземестан]
+  note: Suicidal (irreversible) AI; no estrogen rebound.
+
+letrozole:
+  name: Letrozole
+  name_ru: Летрозол
+  compound_class: ai
+  ester: null
+  route: oral
+  tablet_mg: 2.5
+  half_life_hours: 48
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [femara, letro, летрозол, фемара]
+  note: Most potent AI; easy to crash E2 — small doses.
+
+# ── SERMs (PCT / gyno management) ────────────────────────────────────────────
+tamoxifen:
+  name: Tamoxifen
+  name_ru: Тамоксифен
+  compound_class: serm
+  ester: null
+  route: oral
+  tablet_mg: 20
+  half_life_hours: 130
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [nolvadex, nolva, tamox, тамоксифен, нолвадекс]
+  note: SERM; gyno management and PCT (restarts LH/FSH).
+
+clomiphene:
+  name: Clomiphene citrate
+  name_ru: Кломифен цитрат
+  compound_class: serm
+  ester: null
+  route: oral
+  tablet_mg: 50
+  half_life_hours: 130
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [clomid, clomi, кломид, кломифен]
+  note: SERM; PCT LH/FSH restart. Zuclomiphene isomer very long-lived.
+
+enclomiphene:
+  name: Enclomiphene citrate
+  name_ru: Энкломифен цитрат
+  compound_class: serm
+  ester: null
+  route: oral
+  tablet_mg: 12.5
+  half_life_hours: 10
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [enclo, энкломифен]
+  note: Trans-isomer of clomiphene; cleaner side profile.
+
+raloxifene:
+  name: Raloxifene
+  name_ru: Ралоксифен
+  compound_class: serm
+  ester: null
+  route: oral
+  tablet_mg: 60
+  half_life_hours: 27
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [ralox, ралоксифен]
+  note: SERM; preferred over tamoxifen for established gyno.
+
+# ── Support / ancillaries (HPTA, prolactin, DHT, fertility) ───────────────────
+hcg:
+  name: Human chorionic gonadotropin
+  name_ru: Хорионический гонадотропин (ХГЧ)
+  compound_class: support
+  ester: null
+  route: subcutaneous
+  dose_unit: iu
+  conc_mg_ml: null
+  half_life_hours: 33
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [hcg, pregnyl, хгч, гонадотропин, прегнил]
+  note: Maintains testicular function on-cycle / kickstarts PCT.
+
+hmg:
+  name: Human menopausal gonadotropin
+  name_ru: Менопаузальный гонадотропин (ЧМГ)
+  compound_class: support
+  ester: null
+  route: subcutaneous
+  dose_unit: iu
+  conc_mg_ml: null
+  half_life_hours: 60
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [hmg, menopur, чмг, менопур]
+  note: FSH+LH activity; fertility/PCT support.
+
+cabergoline:
+  name: Cabergoline
+  name_ru: Каберголин
+  compound_class: support
+  ester: null
+  route: oral
+  tablet_mg: 0.5
+  half_life_hours: 65
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [caber, dostinex, каберголин, достинекс]
+  note: Dopamine agonist; controls prolactin from 19-nors (Labs prolactin).
+
+pramipexole:
+  name: Pramipexole
+  name_ru: Прамипексол
+  compound_class: support
+  ester: null
+  route: oral
+  tablet_mg: 0.25
+  half_life_hours: 10
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [prami, прамипексол]
+  note: Dopamine agonist alternative for prolactin control.
+
+finasteride:
+  name: Finasteride
+  name_ru: Финастерид
+  compound_class: support
+  ester: null
+  route: oral
+  tablet_mg: 1
+  half_life_hours: 6
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [fin, propecia, финастерид, пропеция]
+  note: 5-alpha-reductase inhibitor; hair/prostate. Ineffective vs DHT-derived AAS.
+
+dutasteride:
+  name: Dutasteride
+  name_ru: Дутастерид
+  compound_class: support
+  ester: null
+  route: oral
+  tablet_mg: 0.5
+  half_life_hours: 840
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [dut, avodart, дутастерид, аводарт]
+  note: Dual 5-AR inhibitor; very long half-life (~5 weeks).
+
+# ── Growth hormone ───────────────────────────────────────────────────────────
+# Dosed in IU (≈3 IU per mg of somatropin). Half-life below is the subcutaneous
+# depot value; endogenous action outlasts plasma clearance.
+somatropin:
+  name: Somatropin (recombinant human growth hormone)
+  name_ru: Соматропин (рекомбинантный гормон роста)
+  compound_class: gh
+  ester: null
+  route: subcutaneous
+  dose_unit: iu
+  conc_mg_ml: null
+  half_life_hours: 3
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [hgh, gh, somatropin, гр, гормон роста, соматропин, джинтропин]
+  note: Raises IGF-1; affects glucose/insulin sensitivity — Labs glucose watch.
+
+# ── IGF-1 analogs (dosed in mcg) ─────────────────────────────────────────────
+igf1_lr3:
+  name: IGF-1 LR3 (Long R3 IGF-1)
+  name_ru: IGF-1 LR3
+  compound_class: igf
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 24
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [igf-1 lr3, igf1 lr3, lr3, лр3, игф]
+  note: Long-acting IGF-1; systemic hypoglycemia risk.
+
+igf1_des:
+  name: IGF-1 DES (1-3)
+  name_ru: IGF-1 DES (1-3)
+  compound_class: igf
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 0.4
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [igf-1 des, des, дес]
+  note: Very short-acting IGF-1; site-specific/local use.
+
+mecasermin:
+  name: Mecasermin (recombinant human IGF-1)
+  name_ru: Мекасермин (рекомбинантный IGF-1)
+  compound_class: igf
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 6
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [mecasermin, increlex, rhigf-1, мекасермин, инкрелекс]
+  note: Pharmaceutical IGF-1 (Increlex); hypoglycemia risk, take with food.
+
+# ── GH secretagogues (GHRH analogs + ghrelin mimetics; dosed in mcg unless oral)
+cjc1295_dac:
+  name: CJC-1295 with DAC
+  name_ru: CJC-1295 с DAC
+  compound_class: peptide
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 168
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [cjc-1295 dac, cjc dac, cjc, цжс дак]
+  note: Long-acting GHRH analog (albumin-bound); ~weekly dosing.
+
+cjc1295_no_dac:
+  name: CJC-1295 without DAC (Mod GRF 1-29)
+  name_ru: CJC-1295 без DAC (Mod GRF 1-29)
+  compound_class: peptide
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 0.5
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [cjc-1295 no dac, mod grf 1-29, mod grf, модгрф]
+  note: Short GHRH analog; pulsatile, paired with a GHRP.
+
+sermorelin:
+  name: Sermorelin
+  name_ru: Серморелин
+  compound_class: peptide
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 0.3
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [sermorelin, geref, серморелин]
+  note: GHRH analog; formerly FDA-approved (Geref).
+
+tesamorelin:
+  name: Tesamorelin
+  name_ru: Тесаморелин
+  compound_class: peptide
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 0.5
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [tesamorelin, egrifta, тесаморелин]
+  note: GHRH analog; FDA-approved (Egrifta) for visceral fat.
+
+ipamorelin:
+  name: Ipamorelin
+  name_ru: Ипаморелин
+  compound_class: peptide
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 2
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [ipamorelin, ipa, ипаморелин]
+  note: Selective ghrelin mimetic; minimal prolactin/cortisol bump.
+
+ghrp_2:
+  name: GHRP-2
+  name_ru: GHRP-2
+  compound_class: peptide
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 0.5
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [ghrp-2, ghrp2, грп-2]
+  note: Ghrelin mimetic; stronger GH pulse, some prolactin/hunger rise.
+
+ghrp_6:
+  name: GHRP-6
+  name_ru: GHRP-6
+  compound_class: peptide
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 0.4
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [ghrp-6, ghrp6, грп-6]
+  note: Ghrelin mimetic; marked hunger stimulation.
+
+hexarelin:
+  name: Hexarelin
+  name_ru: Гексарелин
+  compound_class: peptide
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 0.9
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [hexarelin, гексарелин]
+  note: Potent ghrelin mimetic; fastest receptor desensitization.
+
+mk_677:
+  name: MK-677 (ibutamoren)
+  name_ru: MK-677 (ибутаморен)
+  compound_class: peptide
+  ester: null
+  route: oral
+  dose_unit: mg
+  tablet_mg: 10
+  half_life_hours: 24
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [mk-677, mk677, ibutamoren, nutrobal, ибутаморен, мк-677]
+  note: Oral ghrelin mimetic; raises appetite/water, affects insulin sensitivity.
+
+# ── Other peptides (healing / melanocortin; dosed in mcg-mg) ──────────────────
+bpc_157:
+  name: BPC-157
+  name_ru: BPC-157
+  compound_class: peptide
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 4
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [bpc-157, bpc157, bpc, бпс-157]
+  note: Cytoprotective/healing peptide; also used orally.
+
+tb_500:
+  name: TB-500 (thymosin beta-4 fragment)
+  name_ru: TB-500 (фрагмент тимозина бета-4)
+  compound_class: peptide
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 3
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [tb-500, tb500, thymosin beta-4, тб-500, тимозин]
+  note: Tissue-repair/angiogenesis peptide; effects outlast plasma half-life.
+
+melanotan_2:
+  name: Melanotan II
+  name_ru: Меланотан II
+  compound_class: peptide
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 33
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [melanotan ii, mt-2, mt2, меланотан, мт-2]
+  note: Melanocortin agonist; tanning/libido, nausea and mole darkening.
+
+pt_141:
+  name: PT-141 (bremelanotide)
+  name_ru: PT-141 (бремеланотид)
+  compound_class: peptide
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 2
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [pt-141, pt141, bremelanotide, vyleesi, бремеланотид]
+  note: Melanocortin agonist for libido; transient BP rise/nausea.
+
+aod_9604:
+  name: AOD-9604 (HGH fragment 176-191)
+  name_ru: AOD-9604 (фрагмент ГР 176-191)
+  compound_class: peptide
+  ester: null
+  route: subcutaneous
+  dose_unit: mcg
+  conc_mg_ml: null
+  half_life_hours: 0.5
+  active_fraction: 1.0
+  aromatizes: false
+  aliases: [aod-9604, aod9604, aod, аод-9604]
+  note: HGH fragment marketed for fat loss; no IGF-1/glucose effect.

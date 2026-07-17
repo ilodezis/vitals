@@ -44,6 +44,16 @@ from vitals.models.labs import LabResult, LabMarker
 # Nutrition — meal logging with macros.
 from vitals.models.nutrition import MealLog
 
+# HRT / TRT — hormone & anabolic-steroid cycle tracking.
+from vitals.models.hrt import (
+    HrtCompound,
+    HrtCompoundComponent,
+    HrtCycle,
+    HrtCycleItem,
+    HrtDose,
+    HrtSideEffect,
+)
+
 # Module 10 — Milestones & weekly reporting.
 from vitals.models.milestones import Milestone, WeeklyDigest
 
@@ -82,6 +92,12 @@ __all__ = [
     "LabResult",
     "LabMarker",
     "MealLog",
+    "HrtCompound",
+    "HrtCompoundComponent",
+    "HrtCycle",
+    "HrtCycleItem",
+    "HrtDose",
+    "HrtSideEffect",
     "Milestone",
     "WeeklyDigest",
     "Annotation",

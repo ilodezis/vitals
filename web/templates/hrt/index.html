@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("hrt.page_title") }}{% endblock %}
+
+{% block content %}
+{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showForm: false }">
+
+    {% if request.state.ui_version == 'masthead' %}
+    {% call masthead_header('hrt', t('hrt.heading'), [
+        {'label': t('hrt.last_dose'), 'primary': true, 'value': compound_names.get(last_dose.compound_key, last_dose.compound_key) if last_dose else '—'},
+        {'label': t('hrt.date'), 'value': (last_dose.date) if last_dose else '—'},
+        {'label': t('hrt.compounds_count'), 'value': compounds | length},
+        {'label': t('hrt.side_effects'), 'value': side_effects | length}
+    ]) %}
+        <button @click="showForm = !showForm" class="v-btn-ghost text-xs">
+            <span x-text="showForm ? '{{ t('hrt.toggle_history') }}' : '{{ t('hrt.add_dose') }}'"></span>
+        </button>
+    {% endcall %}
+    {% else %}
+    <!-- Header (classic) -->
+    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+        <div class="flex items-start gap-3.5">
+            <span class="v-bar mt-1"></span>
+            <div class="space-y-2">
+                <span class="v-tag violet">💉 {{ t("hrt.tag") }}</span>
+                <h1 class="v-text-heading">{{ t("hrt.heading") }}</h1>
+                <p class="v-text-body max-w-2xl">{{ t("hrt.description") }}</p>
+            </div>
+        </div>
+        <button @click="showForm = !showForm" class="v-btn-ghost w-full md:w-auto shrink-0">
+            <svg style="width:1.1rem;height:1.1rem" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+            </svg>
+            <span x-text="showForm ? '{{ t('hrt.toggle_history') }}' : '{{ t('hrt.add_dose') }}'"></span>
+        </button>
+    </div>
+
+    <!-- Metrics (classic) -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("hrt.last_dose") }}</span>
+            <span class="v-metric-value-text truncate">
+                {% if last_dose %}{{ compound_names.get(last_dose.compound_key, last_dose.compound_key) }}{% else %}—{% endif %}
+            </span>
+        </div>
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("hrt.date") }}</span>
+            <span class="v-metric-value-text">
+                {% if last_dose %}{{ last_dose.date }}{% else %}—{% endif %}
+            </span>
+        </div>
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("hrt.compounds_count") }}</span>
+            <span class="v-metric-value">{{ compounds | length }}</span>
+        </div>
+        <div class="v-metric">
+            <span class="v-metric-label">{{ t("hrt.side_effects") }}</span>
+            <span class="v-metric-value">{{ side_effects | length }}</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Cycle + release -->
+    <div class="v-card p-6 space-y-5">
+        <div class="flex items-center justify-between">
+            <h2 class="v-text-heading">{{ t("hrt.active_cycle") }}</h2>
+            {% if active_cycle %}
+            <form method="post" action="/hrt/cycle/{{ active_cycle.id }}/close" class="inline">
+                <button type="submit" class="v-btn-ghost text-xs">{{ t("hrt.close_cycle") }}</button>
+            </form>
+            {% endif %}
+        </div>
+
+        {% if active_cycle %}
+        <div class="space-y-1">
+            <span class="v-tag violet">{{ t("enum.cycle_kind." + active_cycle.kind) }}</span>
+            <span class="v-text-body">{{ active_cycle.name or '' }} · {{ active_cycle.start_date }}{% if active_cycle.end_date %} — {{ active_cycle.end_date }}{% endif %}</span>
+        </div>
+
+        <!-- Release sparkline (server-rendered, active mg over 90 days) -->
+        {% if release_sparkline.points %}
+        <div>
+            <div class="flex items-baseline justify-between">
+                <span class="v-label">{{ t("hrt.release_curve") }}</span>
+                <span class="v-text-body">{{ t("hrt.release_peak") }}: {{ release_sparkline.peak }} {{ t("common.mg") }}</span>
+            </div>
+            <svg viewBox="0 0 640 90" preserveAspectRatio="none" class="w-full" style="height:90px">
+                <line x1="{{ release_sparkline.today_x }}" y1="0" x2="{{ release_sparkline.today_x }}" y2="90"
+                      stroke="var(--accent-line)" stroke-width="1" stroke-dasharray="3 3" />
+                <polyline fill="none" stroke="var(--accent)" stroke-width="2" points="{{ release_sparkline.points }}" />
+            </svg>
+        </div>
+        {% endif %}
+
+        <!-- Plan items -->
+        {% if active_cycle.items %}
+        <div class="flex flex-col gap-2">
+            {% for it in active_cycle.items %}
+            <div class="flex items-center justify-between border-t border-[var(--line)] pt-2">
+                <span class="v-text-body">
+                    {{ compound_names.get(it.compound_key, it.compound_key) }} ·
+                    {% for seg in it.schedule %}{{ seg.dose }} {{ it.unit }} / {{ seg.interval_days }}д{% if not loop.last %} → {% endif %}{% endfor %}
+                </span>
+                <form method="post" action="/hrt/cycle/item/{{ it.id }}/delete" class="inline">
+                    <button type="submit" class="v-btn-ghost text-xs">{{ t("hrt.delete") }}</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="v-text-body">{{ t("hrt.no_plan") }}</p>
+        {% endif %}
+
+        <!-- Add compound to the active cycle -->
+        <form method="post" action="/hrt/cycle/{{ active_cycle.id }}/item"
+              class="grid grid-cols-2 md:grid-cols-5 gap-3 items-end border-t border-[var(--line)] pt-4">
+            <div class="col-span-2 md:col-span-1">
+                <label class="v-label">{{ t("hrt.compound") }}</label>
+                <select name="compound_key" required class="v-select">
+                    {% for c in compounds %}<option value="{{ c.key }}">{{ compound_names.get(c.key, c.name) }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="v-label">{{ t("hrt.dose") }}</label>
+                <input type="number" name="dose" step="0.001" min="0" required class="v-input">
+            </div>
+            <div>
+                <label class="v-label">{{ t("hrt.interval_days") }}</label>
+                <input type="number" name="interval_days" step="0.5" min="0.5" value="3.5" required class="v-input">
+            </div>
+            <div>
+                <label class="v-label">{{ t("hrt.duration_days") }}</label>
+                <input type="number" name="duration_days" step="1" min="1" class="v-input">
+            </div>
+            <button type="submit" class="v-btn">{{ t("hrt.add_item") }}</button>
+        </form>
+
+        <!-- Upcoming planned administrations -->
+        {% if planned %}
+        <div class="border-t border-[var(--line)] pt-4 space-y-2">
+            <span class="v-label">{{ t("hrt.planned_upcoming") }}</span>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-[var(--fg-2)]">
+                            <th class="py-1.5 pr-4">{{ t("hrt.date") }}</th>
+                            <th class="py-1.5 pr-4">{{ t("hrt.compound") }}</th>
+                            <th class="py-1.5 pr-4">{{ t("hrt.dose") }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in planned %}
+                        <tr class="border-t border-[var(--line)]">
+                            <td class="py-1.5 pr-4 whitespace-nowrap">{{ p.date }}</td>
+                            <td class="py-1.5 pr-4">{{ compound_names.get(p.compound_key, p.compound_key) }}</td>
+                            <td class="py-1.5 pr-4 whitespace-nowrap">{{ p.dose }} {{ p.unit }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <p class="v-text-body">{{ t("hrt.no_active_cycle") }}</p>
+        {% endif %}
+
+        <!-- Create / switch cycle — always available so any kind can be started -->
+        <div class="border-t border-[var(--line)] pt-4 space-y-3">
+            <span class="v-label">{{ t("hrt.new_cycle") }}</span>
+            {% if active_cycle %}<p class="v-text-body">{{ t("hrt.new_cycle_note") }}</p>{% endif %}
+            <form method="post" action="/hrt/cycle"
+                  class="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <label class="v-label">{{ t("hrt.cycle_kind") }}</label>
+                        <span class="relative inline-flex" x-data="{ open: false }"
+                              @mouseenter="open = true" @mouseleave="open = false">
+                            <button type="button" tabindex="0"
+                                    @focus="open = true" @blur="open = false"
+                                    aria-label="{{ t('hrt.kinds_help_aria') }}"
+                                    class="inline-flex items-center justify-center w-4 h-4 rounded-full border border-[var(--line)] text-[10px] leading-none text-[var(--fg-2)] hover:text-[var(--fg-1)] hover:border-[var(--accent-line)] transition">?</button>
+                            <div x-show="open" x-cloak
+                                 class="absolute left-0 top-full mt-2 z-50 w-80 max-w-[80vw] v-card p-4 space-y-1.5 text-left shadow-xl">
+                                {% for k in cycle_kinds %}
+                                <p class="v-text-body"><span class="font-bold text-[var(--fg-1)]">{{ t("enum.cycle_kind." + k) }}</span> — {{ t("hrt.kind_help." + k) }}</p>
+                                {% endfor %}
+                            </div>
+                        </span>
+                    </div>
+                    <select name="kind" required class="v-select">
+                        {% for k in cycle_kinds %}<option value="{{ k }}">{{ t("enum.cycle_kind." + k) }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="v-label">{{ t("hrt.cycle_name") }}</label>
+                    <input type="text" name="name" maxlength="128" class="v-input">
+                </div>
+                <div>
+                    <label class="v-label">{{ t("hrt.start") }}</label>
+                    <input type="date" name="start_date" value="{{ today }}" required class="v-input">
+                </div>
+                <button type="submit" class="v-btn">{{ t("hrt.create_cycle") }}</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dose form -->
+    <div class="v-card p-6" x-show="showForm" x-cloak>
+        <form method="post" action="/hrt/dose" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="v-label">{{ t("hrt.compound") }}</label>
+                    <select name="compound_key" required class="v-select">
+                        <option value="" disabled selected>{{ t("hrt.compound_hint") }}</option>
+                        {% for cls, items in compounds | groupby('compound_class') %}
+                        <optgroup label="{{ t('enum.compound_class.' + cls) }}">
+                            {% for c in items %}
+                            <option value="{{ c.key }}">
+                                {{ compound_names.get(c.key, c.name) }}{% if c.ester %} · {{ c.ester }}{% endif %} ({{ c.dose_unit }})
+                            </option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="v-label">{{ t("hrt.date") }}</label>
+                    <input type="date" name="date" value="{{ today }}" required class="v-input">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="v-label">{{ t("hrt.dose") }}</label>
+                    <input type="number" name="dose" step="0.001" min="0" placeholder="250" class="v-input">
+                </div>
+                <div>
+                    <label class="v-label">{{ t("hrt.unit") }}</label>
+                    <select name="unit" class="v-select">
+                        {% for u in units %}<option value="{{ u }}">{{ u }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="v-label">{{ t("hrt.volume_ml") }}</label>
+                    <input type="number" name="volume_ml" step="0.01" min="0" placeholder="1.0" class="v-input">
+                </div>
+                <div>
+                    <label class="v-label">{{ t("hrt.concentration") }}</label>
+                    <input type="number" name="concentration_mg_ml" step="0.1" min="0" placeholder="250" class="v-input">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="v-label">{{ t("hrt.brand") }}</label>
+                    <input type="text" name="brand" maxlength="64" class="v-input">
+                </div>
+                <div>
+                    <label class="v-label">{{ t("hrt.lab") }}</label>
+                    <input type="text" name="lab" maxlength="64" class="v-input">
+                </div>
+                <div>
+                    <label class="v-label">{{ t("hrt.batch") }}</label>
+                    <input type="text" name="batch" maxlength="64" class="v-input">
+                </div>
+                <div>
+                    <label class="v-label">{{ t("hrt.site") }}</label>
+                    <select name="site" class="v-select">
+                        <option value="">—</option>
+                        {% for s in sites %}
+                        <option value="{{ s }}">{{ s | replace('_', ' ') }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="v-label">{{ t("hrt.note") }}</label>
+                <input type="text" name="note" class="v-input">
+            </div>
+
+            <button type="submit" class="v-btn">{{ t("hrt.save") }}</button>
+        </form>
+    </div>
+
+    <!-- Dose log -->
+    <div class="v-card p-6 space-y-4">
+        <h2 class="v-text-heading">{{ t("hrt.log_title") }}</h2>
+        {% if doses %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-[var(--fg-2)]">
+                        <th class="py-2 pr-4">{{ t("hrt.date") }}</th>
+                        <th class="py-2 pr-4">{{ t("hrt.compound") }}</th>
+                        <th class="py-2 pr-4">{{ t("hrt.dose") }}</th>
+                        <th class="py-2 pr-4">{{ t("hrt.brand") }}</th>
+                        <th class="py-2 pr-4">{{ t("hrt.site") }}</th>
+                        <th class="py-2 pr-4"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in doses %}
+                    <tr class="border-t border-[var(--line)]">
+                        <td class="py-2 pr-4 whitespace-nowrap">{{ d.date }}</td>
+                        <td class="py-2 pr-4">{{ compound_names.get(d.compound_key, d.compound_key) }}</td>
+                        <td class="py-2 pr-4 whitespace-nowrap">
+                            {{ d.dose | round(2) }} {{ d.unit }}{% if d.volume_ml %} · {{ d.volume_ml | round(2) }} мл{% endif %}
+                        </td>
+                        <td class="py-2 pr-4">
+                            {{ d.brand or '' }}{% if d.lab %} / {{ d.lab }}{% endif %}{% if d.batch %} · {{ d.batch }}{% endif %}
+                        </td>
+                        <td class="py-2 pr-4 whitespace-nowrap">{{ (d.site or '') | replace('_', ' ') }}</td>
+                        <td class="py-2 pr-4 text-right">
+                            <form method="post" action="/hrt/dose/{{ d.id }}/delete" class="inline">
+                                <button type="submit" class="v-btn-ghost text-xs">{{ t("hrt.delete") }}</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="v-text-body">{{ t("hrt.no_doses") }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Site rotation -->
+    {% if site_counts %}
+    <div class="v-card p-6 space-y-3">
+        <h2 class="v-text-heading">{{ t("hrt.site_rotation") }}</h2>
+        <div class="flex flex-wrap gap-2">
+            {% for s, n in site_counts.items() %}
+            <span class="v-tag">{{ s | replace('_', ' ') }} · {{ n }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Side effects -->
+    <div class="v-card p-6 space-y-4">
+        <h2 class="v-text-heading">{{ t("hrt.side_effects") }}</h2>
+        <form method="post" action="/hrt/side-effect" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+                <label class="v-label">{{ t("hrt.date") }}</label>
+                <input type="date" name="date" value="{{ today }}" required class="v-input">
+            </div>
+            <div>
+                <label class="v-label">{{ t("hrt.effect_type") }}</label>
+                <input type="text" name="effect_type" required class="v-input">
+            </div>
+            <div>
+                <label class="v-label">{{ t("hrt.severity") }}</label>
+                <input type="number" name="severity" min="1" max="5" value="3" required class="v-input">
+            </div>
+            <button type="submit" class="v-btn">{{ t("hrt.add_side_effect") }}</button>
+        </form>
+
+        {% if side_effects %}
+        <div class="flex flex-col gap-2">
+            {% for e in side_effects %}
+            <div class="flex items-center justify-between border-t border-[var(--line)] pt-2">
+                <span class="v-text-body">{{ e.date }} · {{ e.effect_type }} · {{ e.severity }}/5</span>
+                <form method="post" action="/hrt/side-effect/{{ e.id }}/delete" class="inline">
+                    <button type="submit" class="v-btn-ghost text-xs">{{ t("hrt.delete") }}</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="v-text-body">{{ t("hrt.no_side_effects") }}</p>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

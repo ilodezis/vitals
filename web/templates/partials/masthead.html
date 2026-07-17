@@ -17,7 +17,7 @@
    rubric's eyebrow category for one section (reports → "AI digest"). #}
 {% set MH_RUBRICS = [
     {'id': 'main',      'cat': 'masthead.rubric.health',    'members': ['weight', 'garmin', 'hevy', 'nutrition', 'timeline', 'reports', 'charts']},
-    {'id': 'markers',   'cat': 'masthead.rubric.markers',   'members': ['glp1', 'labs', 'genetics']},
+    {'id': 'markers',   'cat': 'masthead.rubric.markers',   'members': ['glp1', 'hrt', 'labs', 'genetics']},
     {'id': 'lifestyle', 'cat': 'masthead.rubric.lifestyle', 'members': ['supplements', 'skincare', 'interactions']},
 ] %}
 
@@ -30,6 +30,7 @@
     'reports':     {'href': '/reports',     'label': 'nav.reports',     'gate': none,          'cat': 'masthead.rubric.digest'},
     'charts':      {'href': '/charts',      'label': 'nav.charts',      'gate': none,          'cat': none},
     'glp1':        {'href': '/glp1',        'label': 'nav.glp1',        'gate': 'glp1',        'cat': none},
+    'hrt':         {'href': '/hrt',         'label': 'nav.hrt',         'gate': 'hrt',         'cat': none},
     'labs':        {'href': '/labs',        'label': 'nav.labs',        'gate': none,          'cat': none},
     'genetics':    {'href': '/genetics',    'label': 'nav.genetics',    'gate': 'genetics',    'cat': none},
     'supplements': {'href': '/supplements', 'label': 'nav.supplements', 'gate': 'supplements', 'cat': none},
@@ -55,6 +56,8 @@
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3h6M12 3v3M8 6h8v6a2 2 0 01-2 2h-4a2 2 0 01-2-2V6z M12 14v7M10 9h4" /></svg>
 {%- elif key == 'labs' -%}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+{%- elif key == 'hrt' -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 20l6-6M14 4l6 6M15 5l4 4M9 11l4 4M13 7l4 4" /></svg>
 {%- elif key == 'genetics' -%}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 3C12 3 12 7 17 7C12 7 12 11 7 11C12 11 12 15 17 15C12 15 12 19 7 19" /><path stroke-linecap="round" stroke-linejoin="round" d="M17 3C12 3 12 7 7 7C12 7 12 11 17 11C12 11 12 15 7 15C12 15 12 19 17 19" /></svg>
 {%- elif key == 'supplements' -%}

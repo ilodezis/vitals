@@ -704,6 +704,172 @@ async def log_glp1(
         return await serialize_written(session, row)
 
 
+# ── HRT / TRT tools ─────────────────────────────────────────────────────────
+
+@mcp.tool()
+async def get_hrt_logs(
+    start_date: Optional[str] = None, end_date: Optional[str] = None, limit: int = 100
+) -> dict:
+    """Retrieves HRT/TRT dose administrations, side effects, and the active cycle
+    with its per-compound plan. Doses/side effects default to the most recent 100.
+    READ tool."""
+    from vitals.models.hrt import HrtDose, HrtSideEffect
+    from vitals.services import hrt_cycle_service
+
+    session_factory = get_session_factory()
+    start = date_type.fromisoformat(start_date) if start_date else None
+    end = date_type.fromisoformat(end_date) if end_date else None
+
+    async with session_factory() as session:
+        d_stmt = select(HrtDose)
+        if start:
+            d_stmt = d_stmt.where(HrtDose.date >= start)
+        if end:
+            d_stmt = d_stmt.where(HrtDose.date <= end)
+        d_stmt = d_stmt.order_by(HrtDose.date.desc()).limit(limit)
+        doses = (await session.execute(d_stmt)).scalars().all()
+
+        s_stmt = select(HrtSideEffect).order_by(HrtSideEffect.date.desc()).limit(limit)
+        effects = (await session.execute(s_stmt)).scalars().all()
+
+        active = await hrt_cycle_service.active_cycle(session)
+        active_cycle = None
+        if active is not None:
+            active_cycle = serialize_row(active)
+            active_cycle["items"] = [serialize_row(it) for it in active.items]
+
+        return {
+            "doses": [serialize_row(d) for d in doses],
+            "side_effects": [serialize_row(e) for e in effects],
+            "active_cycle": active_cycle,
+        }
+
+
+@mcp.tool()
+async def log_hrt_dose(
+    compound_key: str,
+    dose: Optional[float] = None,
+    unit: Optional[str] = None,
+    volume_ml: Optional[float] = None,
+    concentration_mg_ml: Optional[float] = None,
+    on_date: Optional[str] = None,
+    brand: Optional[str] = None,
+    lab: Optional[str] = None,
+    batch: Optional[str] = None,
+    site: Optional[str] = None,
+    note: Optional[str] = None,
+    override: bool = False,
+) -> dict:
+    """Records an HRT/TRT administration. ``compound_key`` is a catalog slug (e.g.
+    'testosterone_enanthate'). Give either ``dose`` (in ``unit`` — mg/iu/mcg) or a
+    ``volume_ml`` with ``concentration_mg_ml`` (or the catalog concentration) to
+    compute mg. Grey-market ``brand``/``lab``/``batch`` are optional. WRITE tool —
+    on a hard block returns ``{"blocked": true, ...}``; retry with
+    ``override=True``."""
+    from vitals.services import hrt_service
+    from vitals.utils.timeutils import today_local
+
+    session_factory = get_session_factory()
+    parsed_date = date_type.fromisoformat(on_date) if on_date else today_local()
+
+    async with session_factory() as session:
+        try:
+            row = await hrt_service.log_dose(
+                session, compound_key=compound_key, on_date=parsed_date, dose=dose,
+                unit=unit, volume_ml=volume_ml, concentration_mg_ml=concentration_mg_ml,
+                brand=brand, lab=lab, batch=batch, site=site, note=note, override=override,
+            )
+        except ConflictBlocked as e:
+            return _conflict_payload(e)
+        except ValueError as e:
+            return {"error": str(e)}
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def add_hrt_cycle(
+    kind: str,
+    start_date: Optional[str] = None,
+    name: Optional[str] = None,
+    end_date: Optional[str] = None,
+    note: Optional[str] = None,
+) -> dict:
+    """Starts an HRT cycle (``kind``: trt_baseline | blast | cruise | pct |
+    bridge). An open-ended cycle closes the previous open one. WRITE tool. Add
+    compounds with ``add_hrt_cycle_item``."""
+    from vitals.services import hrt_cycle_service
+    from vitals.utils.timeutils import today_local
+
+    session_factory = get_session_factory()
+    start = date_type.fromisoformat(start_date) if start_date else today_local()
+    end = date_type.fromisoformat(end_date) if end_date else None
+
+    async with session_factory() as session:
+        cycle = await hrt_cycle_service.add_cycle(
+            session, kind=kind, start_date=start, name=name, end_date=end, note=note,
+        )
+        await session.commit()
+        return await serialize_written(session, cycle)
+
+
+@mcp.tool()
+async def add_hrt_cycle_item(
+    cycle_id: int,
+    compound_key: str,
+    schedule: Optional[list] = None,
+    dose: Optional[float] = None,
+    interval_days: Optional[float] = None,
+    duration_days: Optional[int] = None,
+    unit: Optional[str] = None,
+    note: Optional[str] = None,
+) -> dict:
+    """Adds a compound plan to a cycle. Pass a full ``schedule`` (a list of
+    segments — flat ``{dose, interval_days, duration_days}`` or a linear ramp
+    ``{dose_start, dose_end, step, step_every_days, interval_days, duration_days}``)
+    for titration/ramps, or the simple ``dose``+``interval_days`` for one flat
+    segment. WRITE tool."""
+    from vitals.services import hrt_cycle_service
+
+    if not schedule:
+        if dose is None or interval_days is None:
+            return {"error": "provide schedule, or both dose and interval_days"}
+        segment: dict = {"dose": dose, "interval_days": interval_days}
+        if duration_days:
+            segment["duration_days"] = int(duration_days)
+        schedule = [segment]
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        try:
+            item = await hrt_cycle_service.add_cycle_item(
+                session, cycle_id, compound_key=compound_key, schedule=schedule,
+                unit=unit, note=note,
+            )
+        except ValueError as e:
+            return {"error": str(e)}
+        if item is None:
+            return {"error": f"cycle {cycle_id} not found"}
+        await session.commit()
+        return await serialize_written(session, item)
+
+
+@mcp.tool()
+async def get_hrt_cycles() -> dict:
+    """Lists all HRT cycles (newest first) with their per-compound plans. READ tool."""
+    from vitals.services import hrt_cycle_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        cycles = await hrt_cycle_service.list_cycles(session)
+        out = []
+        for c in cycles:
+            row = serialize_row(c)
+            row["items"] = [serialize_row(it) for it in c.items]
+            out.append(row)
+        return {"cycles": out}
+
+
 # ── Skincare tools ──────────────────────────────────────────────────────────
 
 @mcp.tool()
