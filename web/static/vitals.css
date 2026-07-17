@@ -977,6 +977,13 @@ a.v-seg-btn {
     font-variant-numeric: tabular-nums;
 }
 
+/* Compact size — status badges inline with a label (e.g. "key set"), where
+   the default .v-chip padding/type reads too heavy. */
+.v-chip-sm {
+    font-size: 10px;
+    padding: 2px 6px;
+}
+
 /* No .accent modifier — dosage/info chips stay neutral gray by default. */
 .v-chip.good {
     background: var(--good-soft);

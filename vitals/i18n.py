@@ -223,7 +223,6 @@ _EN: dict[str, str] = {
     "garmin.power": "Avg power",
     "garmin.watts": "W",
     "garmin.m": "m",
-    "garmin.no_detail": "No detail captured.",
     # Per-night sleep detail page
     "garmin.sleep_night_tag": "Night",
     "garmin.sleep_night_heading": "Sleep detail",
@@ -627,6 +626,9 @@ _EN: dict[str, str] = {
 
     # ── Reports ───────────────────────────────────────────────────────────
     "reports.page_title": "Reports — Vitals",
+    "reports.tag": "Reports",
+    "reports.heading": "Weekly digest & goals",
+    "reports.description": "AI-generated weekly summaries and long-term goal tracking across every domain.",
     "reports.goals_title": "Goals",
     "reports.add_goal": "+ Goal",
     "reports.goal_name": "Name",
@@ -1249,7 +1251,6 @@ _RU: dict[str, str] = {
     "garmin.power": "Средняя мощность",
     "garmin.watts": "Вт",
     "garmin.m": "м",
-    "garmin.no_detail": "Деталей нет.",
     # Страница детализации ночи
     "garmin.sleep_night_tag": "Ночь",
     "garmin.sleep_night_heading": "Детали сна",
@@ -1653,6 +1654,9 @@ _RU: dict[str, str] = {
 
     # ── Reports ───────────────────────────────────────────────────────────
     "reports.page_title": "Отчёты — Vitals",
+    "reports.tag": "Отчёты",
+    "reports.heading": "Еженедельный дайджест и цели",
+    "reports.description": "ИИ-дайджесты по неделям и отслеживание долгосрочных целей по всем доменам.",
     "reports.goals_title": "Цели",
     "reports.add_goal": "+ Цель",
     "reports.goal_name": "Название",

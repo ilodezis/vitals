@@ -164,7 +164,7 @@
                 <p class="v-text-micro mt-1">{{ t("settings.goals_hint") }}</p>
             </div>
             <div class="pt-3 space-y-1.5" style="border-top: 1px solid var(--line)">
-                <span class="v-text-card" style="font-size: 0.8rem;">{{ t("settings.nutrition_title") }}</span>
+                <span class="v-text-label">{{ t("settings.nutrition_title") }}</span>
                 <p class="v-text-micro" style="color: var(--muted)">{{ t("settings.nutrition_hint") }}</p>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -204,9 +204,9 @@
                 <label for="s-or-key" class="v-label">
                     {{ t("settings.api_key") }}
                     {% if openrouter_api_key_set %}
-                    <span class="v-chip good ml-1.5" style="font-size: 10px; padding: 2px 6px;">{{ t("settings.key_set") }}</span>
+                    <span class="v-chip v-chip-sm good ml-1.5">{{ t("settings.key_set") }}</span>
                     {% else %}
-                    <span class="v-chip bad ml-1.5" style="font-size: 10px; padding: 2px 6px;">{{ t("settings.key_not_set") }}</span>
+                    <span class="v-chip v-chip-sm bad ml-1.5">{{ t("settings.key_not_set") }}</span>
                     {% endif %}
                 </label>
                 <input id="s-or-key" name="openrouter_api_key" type="password"
@@ -259,9 +259,9 @@
                 <label for="s-hevy-key" class="v-label">
                     {{ t("settings.hevy_key") }}
                     {% if hevy_api_key_set %}
-                    <span class="v-chip good ml-1.5" style="font-size: 10px; padding: 2px 6px;">{{ t("settings.key_set") }}</span>
+                    <span class="v-chip v-chip-sm good ml-1.5">{{ t("settings.key_set") }}</span>
                     {% else %}
-                    <span class="v-chip bad ml-1.5" style="font-size: 10px; padding: 2px 6px;">{{ t("settings.key_not_set") }}</span>
+                    <span class="v-chip v-chip-sm bad ml-1.5">{{ t("settings.key_not_set") }}</span>
                     {% endif %}
                 </label>
                 <input id="s-hevy-key" name="hevy_api_key" type="password"
@@ -296,7 +296,7 @@
                     <label for="s-garmin-pass" class="v-label">
                         {{ t("settings.garmin_password") }}
                         {% if garmin_password_set %}
-                        <span class="v-chip good ml-1.5" style="font-size: 10px; padding: 2px 6px;">{{ t("settings.key_set") }}</span>
+                        <span class="v-chip v-chip-sm good ml-1.5">{{ t("settings.key_set") }}</span>
                         {% endif %}
                     </label>
                     <input id="s-garmin-pass" name="garmin_password" type="password"
@@ -332,7 +332,7 @@
                     <label for="s-mcp-secret" class="v-label">
                         Client Secret
                         {% if mcp_client_secret_set %}
-                        <span class="v-chip good ml-1.5" style="font-size: 10px; padding: 2px 6px;">{{ t("settings.key_set") }}</span>
+                        <span class="v-chip v-chip-sm good ml-1.5">{{ t("settings.key_set") }}</span>
                         {% endif %}
                     </label>
                     <input id="s-mcp-secret" name="mcp_client_secret" type="password"

@@ -2,8 +2,6 @@
 
 {% block title %}{{ t("garmin.sleep_night_heading") }} — Vitals{% endblock %}
 
-{% macro hm(seconds) %}{% if seconds %}{{ seconds // 3600 }}h {{ (seconds % 3600) // 60 }}m{% else %}—{% endif %}{% endmacro %}
-
 {# ‹ prev night · back to overview · next night ›, identical in both shells —
    only the surrounding header markup differs between classic and masthead. #}
 {% macro night_nav(prev_date, next_date) %}
@@ -60,7 +58,7 @@
                 <h1 class="v-text-heading">{{ t("garmin.sleep_night_heading") }} · {{ daily.date | format_date }}</h1>
                 <p class="v-text-body" style="color: var(--muted)">
                     {% if daily.sleep_start and daily.sleep_end %}
-                    {{ daily.sleep_start.strftime('%H:%M') }}–{{ daily.sleep_end.strftime('%H:%M') }} · {{ hm(daily.sleep_seconds) }}
+                    {{ daily.sleep_start.strftime('%H:%M') }}–{{ daily.sleep_end.strftime('%H:%M') }} · {{ daily.sleep_seconds | format_hm }}
                     {% else %}
                     {{ t("garmin.no_sleep_window") }}
                     {% endif %}
@@ -123,7 +121,7 @@
                 {% if seconds %}
                 <span class="v-text-micro flex items-center gap-1.5">
                     <span class="v-dot {{ {'deep': 'violet', 'light': 'cool', 'rem': 'good'}.get(stage, '') }}"></span>
-                    {{ t("garmin.stage." + stage) }} <span class="v-num" style="color: var(--fg-2)">{{ hm(seconds) }}</span>
+                    {{ t("garmin.stage." + stage) }} <span class="v-num" style="color: var(--fg-2)">{{ seconds | format_hm }}</span>
                 </span>
                 {% endif %}
                 {% endfor %}

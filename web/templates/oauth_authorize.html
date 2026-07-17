@@ -104,6 +104,7 @@
         .logo-wrap.vitals {
             background: rgba(245,166,35,0.08);
             border-color: rgba(245,166,35,0.2);
+            color: var(--accent);
         }
 
         .logo-wrap img {
@@ -225,7 +226,8 @@
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.18s ease;
+            transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease,
+                        filter 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
             text-align: center;
             text-decoration: none;
             display: block;
@@ -269,7 +271,7 @@
         <!-- Logos -->
         <div class="logos">
             <div class="logo-wrap vitals">
-                <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#f5a623" stroke-width="3">
+                <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h2.5l2.5-6 3.5 12 2.5-9 1.5 3h3" />
                 </svg>
             </div>

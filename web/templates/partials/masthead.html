@@ -94,14 +94,21 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg><span class="mh-rail-label">{{ t('nav.settings') }}</span>
         </a>
         <a href="/settings" class="mh-rail-avatar" title="{{ username or 'Vitals' }}">{{ (username or 'V')[0] | upper }}</a>
+        <form action="/logout" method="POST" hx-boost="false" class="contents">
+            <button type="submit" class="mh-rail-btn" title="{{ t('nav.logout') }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V6a3 3 0 013-3h4a3 3 0 013 3v1" /></svg><span class="mh-rail-label">{{ t('nav.logout') }}</span>
+            </button>
+        </form>
     </div>
 </aside>
 {% endmacro %}
 
 {# ── Editorial header ────────────────────────────────────────────────────────
    eyebrow → rubric tabs → H1 → key-figures row. `metrics` is a list of dicts:
-   {value, unit?, label, tone? ('good'|'bad'|''), primary? (bool)}. Wrap the
-   call in {% call %} to slot section actions (sync/upload buttons) top-right. #}
+   {value, unit?, label, tone? ('good'|'bad'|''), primary? (bool), href? (str)}.
+   A metric with `href` renders as a link (e.g. straight to a detail page).
+   Wrap the call in {% call %} to slot section actions (sync/upload buttons)
+   top-right. #}
 {% macro masthead_header(section, title, metrics) %}
 {% set em = request.state.enabled_modules or {} %}
 {% set rb = namespace(cat=none, members=[], num=0) %}
@@ -121,13 +128,13 @@
     <div class="mh-metrics">
         {% for m in metrics %}
         {% if not loop.first %}<div class="mh-metric-div"></div>{% endif %}
-        <div class="mh-metric {{ m.tone or '' }}">
+        <{{ 'a' if m.href else 'div' }} class="mh-metric {{ m.tone or '' }}"{% if m.href %} href="{{ m.href }}"{% endif %}>
             <div style="display:flex;align-items:baseline;">
                 <span class="mh-metric-value {% if m.primary %}is-primary{% endif %}">{{ m.value }}</span>
                 {% if m.unit %}<span class="mh-metric-unit">{{ m.unit }}</span>{% endif %}
             </div>
             <div class="mh-metric-label">{{ m.label }}</div>
-        </div>
+        </{{ 'a' if m.href else 'div' }}>
         {% endfor %}
     </div>
     {% endif %}

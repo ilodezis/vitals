@@ -72,7 +72,7 @@
                         <span>{% if r.rule_type == 'hard_block' %}🚫{% elif r.rule_type == 'timing_separation' %}⏱️{% else %}⚠️{% endif %}</span>
                         <span>{{ t("interactions.rule_type." + r.rule_type) }}</span>
                         {% if r.rule_type == 'timing_separation' and r.params and r.params.hours %}
-                        <span class="v-chip" style="font-size:10px; padding:2px 6px;">{{ t("interactions.hours_apart", n=r.params.hours) }}</span>
+                        <span class="v-chip v-chip-sm">{{ t("interactions.hours_apart", n=r.params.hours) }}</span>
                         {% endif %}
                     </div>
                     <label class="v-switch shrink-0" title="{{ r.code or '' }}">

@@ -89,6 +89,14 @@ def format_date(value: Any) -> str:
     return str(value)
 
 
+def format_hm(seconds: Any) -> str:
+    """Format a duration in seconds as "7h 18m"; falsy input renders as an em dash."""
+    if not seconds:
+        return "—"
+    seconds = int(seconds)
+    return f"{seconds // 3600}h {(seconds % 3600) // 60}m"
+
+
 def meal_word(n: Any) -> str:
     """Russian plural for meal count: 1 приём, 2 приёма, 5 приёмов."""
     return plural_ru(n, "приём", "приёма", "приёмов")
@@ -105,6 +113,7 @@ def format_unit(value: Any) -> Markup:
 # Register filters and globals
 templates.env.filters["format_number"] = format_number
 templates.env.filters["format_date"] = format_date
+templates.env.filters["format_hm"] = format_hm
 templates.env.filters["plural_ru"] = plural_ru
 templates.env.filters["plural"] = lambda n, *args: plural(n, *args)
 templates.env.filters["meal_word"] = meal_word

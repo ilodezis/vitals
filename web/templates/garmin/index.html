@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Garmin — Vitals{% endblock %}
+{% block title %}{{ t("garmin.page_title") }}{% endblock %}
 
 {% block content %}
 {% from "garmin/_tabs.html" import garmin_tabs %}
@@ -10,7 +10,7 @@
     {% if request.state.ui_version == 'masthead' %}
     {% call masthead_header('garmin', t('nav.organism'), [
         {'label': t('masthead.metric.body_battery'), 'primary': true, 'value': ((latest.body_battery_low or '—') ~ '–' ~ latest.body_battery_high) if (latest and latest.body_battery_high) else '—'},
-        {'label': t('garmin.sleep'), 'value': ((latest.sleep_seconds // 3600) ~ 'h ' ~ ((latest.sleep_seconds % 3600) // 60) ~ 'm') if (latest and latest.sleep_seconds) else '—'},
+        {'label': t('garmin.sleep'), 'value': ((latest.sleep_seconds // 3600) ~ 'h ' ~ ((latest.sleep_seconds % 3600) // 60) ~ 'm') if (latest and latest.sleep_seconds) else '—', 'href': ('/garmin/sleep/' ~ latest.date.isoformat()) if (latest and latest.sleep_stages) else none},
         {'label': t('garmin.hrv'), 'unit': t('garmin.ms'), 'value': (latest.hrv_avg | round(0) | int) if (latest and latest.hrv_avg) else '—'},
         {'label': t('garmin.resting_hr'), 'unit': t('garmin.bpm'), 'value': latest.resting_hr if (latest and latest.resting_hr) else '—'}
     ]) %}

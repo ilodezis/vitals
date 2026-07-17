@@ -54,16 +54,16 @@
                     <svg class="mh-ring-svg" viewBox="0 0 120 120" aria-hidden="true" shape-rendering="geometricPrecision">
                         <defs>
                             <linearGradient id="calGradGood" x1="0%" y1="100%" x2="100%" y2="0%">
-                                <stop offset="0%" stop-color="#4FB97A" />
-                                <stop offset="100%" stop-color="#8CE6B0" />
+                                <stop offset="0%" style="stop-color: var(--good)" />
+                                <stop offset="100%" style="stop-color: color-mix(in srgb, var(--good) 55%, white)" />
                             </linearGradient>
                             <linearGradient id="calGradWarn" x1="0%" y1="100%" x2="100%" y2="0%">
-                                <stop offset="0%" stop-color="#EAA12B" />
-                                <stop offset="100%" stop-color="#FCD370" />
+                                <stop offset="0%" style="stop-color: var(--warn)" />
+                                <stop offset="100%" style="stop-color: color-mix(in srgb, var(--warn) 55%, white)" />
                             </linearGradient>
                             <linearGradient id="calGradBad" x1="0%" y1="100%" x2="100%" y2="0%">
-                                <stop offset="0%" stop-color="#D9573C" />
-                                <stop offset="100%" stop-color="#FF9B85" />
+                                <stop offset="0%" style="stop-color: var(--bad)" />
+                                <stop offset="100%" style="stop-color: color-mix(in srgb, var(--bad) 55%, white)" />
                             </linearGradient>
                         </defs>
                         <circle class="mh-ring-track" cx="60" cy="60" r="52"></circle>
@@ -137,7 +137,7 @@
         <div class="flex items-start gap-3.5">
             <span class="v-bar mt-1"></span>
             <div class="space-y-2">
-                <span class="v-tag green">{{ t("nutrition.tag") }}</span>
+                <span class="v-tag good">{{ t("nutrition.tag") }}</span>
                 <h1 class="v-text-heading">{{ t("nutrition.heading") }}</h1>
                 <p class="v-text-body max-w-2xl">
                     {{ t("nutrition.description") }}
@@ -150,6 +150,24 @@
             </svg>
             <span x-text="showForm ? '{{ t("nutrition.toggle_history") }}' : '{{ t("nutrition.toggle_form") }}'"></span>
         </button>
+    </div>
+
+    <!-- Day nav: classic's equivalent of masthead's mh-date-nav (I2) — same
+         prev/next + date-input contract, styled with .v-icon-btn/.v-input
+         instead of mh-* classes (those only exist under body.ui-masthead). -->
+    <div class="flex items-center justify-between gap-2 flex-wrap">
+        <div class="flex items-center gap-1.5">
+            <a href="/nutrition?date={{ prev_date }}" class="v-icon-btn" title="{{ t('nutrition.prev_day') }}" aria-label="{{ t('nutrition.prev_day') }}">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
+            </a>
+            <input type="date" name="date" value="{{ selected_date }}" aria-label="{{ t('common.date') }}" class="v-input" onchange="window.location.href='/nutrition?date='+this.value">
+            <a href="/nutrition?date={{ next_date }}" class="v-icon-btn" title="{{ t('nutrition.next_day') }}" aria-label="{{ t('nutrition.next_day') }}">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
+            </a>
+        </div>
+        {% if not is_today %}
+        <a href="/nutrition" class="v-btn-ghost text-xs">{{ t("common.today") }}</a>
+        {% endif %}
     </div>
 
     <!-- Daily summary metrics -->
@@ -260,7 +278,7 @@
             <div class="v-card p-6 space-y-3">
                 <div class="flex items-center gap-2">
                     <span class="v-bar v-bar-sm"></span>
-                    <span class="v-text-card">{% if request.state.ui_version == 'masthead' %}{{ t("nutrition.meals_title") }}{% else %}{{ t("nutrition.today_title") }}{% endif %}</span>
+                    <span class="v-text-card">{% if is_today %}{{ t("nutrition.today_title") }}{% else %}{{ t("nutrition.meals_title") }}{% endif %}</span>
                     <span class="v-text-micro ml-auto">{{ summary.meal_count }} {{ summary.meal_count | meal_word }}</span>
                 </div>
                 <div class="max-h-[28rem] overflow-y-auto v-card-inset">
@@ -309,7 +327,7 @@
                                 </td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="7" class="text-center" style="color: var(--muted)">{% if request.state.ui_version == 'masthead' and not is_today %}{{ t("nutrition.no_meals_day") }}{% else %}{{ t("nutrition.no_meals_today") }}{% endif %}</td></tr>
+                            <tr><td colspan="7" class="text-center" style="color: var(--muted)">{% if not is_today %}{{ t("nutrition.no_meals_day") }}{% else %}{{ t("nutrition.no_meals_today") }}{% endif %}</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>

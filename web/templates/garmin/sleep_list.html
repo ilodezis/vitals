@@ -2,8 +2,6 @@
 
 {% block title %}{{ t("garmin.tab_sleep") }} — Vitals{% endblock %}
 
-{% macro hm(seconds) %}{% if seconds %}{{ seconds // 3600 }}h {{ (seconds % 3600) // 60 }}m{% else %}—{% endif %}{% endmacro %}
-
 {# Proportional deep/light/rem/awake bar, pure CSS flex (no Chart.js) — reused
    at both the hero card's larger size and each row's mini size. Colors match
    the per-night hypnogram (garmin_sleep.js) so the two views read as one
@@ -13,7 +11,7 @@
 <div class="v-phase-bar{% if large %} v-phase-bar-lg{% endif %}">
     {% if total > 0 %}
     {% for stage, seconds, tone in [('deep', d.deep_sleep_seconds, 'violet'), ('light', d.light_sleep_seconds, 'cool'), ('rem', d.rem_sleep_seconds, 'good'), ('awake', d.awake_seconds, 'muted')] %}
-    {% if seconds %}<span class="v-phase-seg {{ tone }}" style="flex-grow: {{ seconds }}" title="{{ t('garmin.stage.' + stage) }} {{ hm(seconds) }}"></span>{% endif %}
+    {% if seconds %}<span class="v-phase-seg {{ tone }}" style="flex-grow: {{ seconds }}" title="{{ t('garmin.stage.' + stage) }} {{ seconds | format_hm }}"></span>{% endif %}
     {% endfor %}
     {% endif %}
 </div>
@@ -46,9 +44,9 @@
                 <h2 class="v-text-heading">{{ latest_night.date | format_date }}</h2>
                 <p class="v-text-body" style="color: var(--muted)">
                     {% if latest_night.sleep_start and latest_night.sleep_end %}
-                    {{ latest_night.sleep_start.strftime('%H:%M') }}–{{ latest_night.sleep_end.strftime('%H:%M') }} · {{ hm(latest_night.sleep_seconds) }}
+                    {{ latest_night.sleep_start.strftime('%H:%M') }}–{{ latest_night.sleep_end.strftime('%H:%M') }} · {{ latest_night.sleep_seconds | format_hm }}
                     {% else %}
-                    {{ hm(latest_night.sleep_seconds) }}
+                    {{ latest_night.sleep_seconds | format_hm }}
                     {% endif %}
                 </p>
             </div>
@@ -88,7 +86,7 @@
             {% for n in nights %}
             <a href="/garmin/sleep/{{ n.date.isoformat() }}" class="v-night-row">
                 <span class="v-num" style="color: var(--fg)">{{ n.date | format_date }}</span>
-                <span class="v-text-micro v-num">{{ hm(n.sleep_seconds) }}</span>
+                <span class="v-text-micro v-num">{{ n.sleep_seconds | format_hm }}</span>
                 <span class="v-text-micro v-num">{{ n.sleep_score if n.sleep_score else '—' }}</span>
                 {{ phase_bar(n) }}
                 <span class="v-text-micro v-num hide-xs">{{ n.awake_count if n.awake_count is not none else '—' }}</span>

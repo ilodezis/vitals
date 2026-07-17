@@ -396,6 +396,11 @@ body.ui-masthead .mh-metric-div {
     align-self: center;
 }
 
+a.mh-metric {
+    text-decoration: none;
+    cursor: pointer;
+}
+
 body.ui-masthead .mh-metric-value {
     font: 600 21px 'Inter', sans-serif;
     color: var(--fg);

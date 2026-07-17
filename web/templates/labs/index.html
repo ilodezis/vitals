@@ -10,7 +10,8 @@
     {% call masthead_header('labs', t('nav.labs'), [
         {'label': t('labs.metric_markers'), 'primary': true, 'value': markers | length},
         {'label': t('labs.metric_oor'), 'tone': ('bad' if out_of_range > 0 else ''), 'value': out_of_range},
-        {'label': t('labs.metric_selected'), 'value': selected or '—'}
+        {'label': t('labs.metric_selected'), 'value': selected or '—'},
+        {'label': t('labs.metric_recognition'), 'tone': ('good' if llm_configured else ''), 'value': t('labs.llm_connected') if llm_configured else t('labs.llm_not_configured')}
     ]) %}
         <button @click="showUpload = !showUpload" class="v-btn-ghost text-xs">
             <span x-text="showUpload ? '{{ t("labs.toggle_results") }}' : '{{ t("labs.toggle_upload") }}'"></span>

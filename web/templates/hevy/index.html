@@ -17,6 +17,7 @@
                 {% if is_configured %}{{ t("common.synchronize") }}{% else %}{{ t("common.not_configured") }}{% endif %}
             </button>
         </form>
+        <span class="v-text-micro">{{ t("common.synced_label") }} <span class="font-medium text-[var(--fg-2)]">{{ last_sync or t("common.never_synced") }}</span></span>
     {% endcall %}
     {% else %}
     <!-- Header -->
