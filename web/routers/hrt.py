@@ -299,6 +299,52 @@ async def delete_cycle(
     return _redirect(request)
 
 
+@router.post("/cycle/item/{item_id}/edit")
+async def edit_cycle_item(
+    request: Request,
+    item_id: int,
+    dose: Optional[str] = Form(None),
+    interval_days: Optional[str] = Form(None),
+    duration_days: Optional[str] = Form(None),
+    start_week: Optional[str] = Form(None),
+    db: AsyncSession = Depends(get_session),
+    username: str = Depends(require_auth),
+):
+    """Inline edit of a plan item. Dose/interval/duration rebuild the schedule
+    only when both dose and interval are supplied (the form only offers them for
+    single flat-segment items — a multi-segment/ramp schedule is edited via MCP,
+    here only the start week changes)."""
+    try:
+        week = _optional_float(start_week)
+        if week is not None and (week < 1 or week != int(week)):
+            raise ValueError("start_week must be a whole number >= 1")
+        offset = int((week - 1) * 7) if week is not None else None
+
+        d = _optional_float(dose)
+        interval = _optional_float(interval_days)
+        schedule: Optional[list[dict]] = None
+        if d is not None and interval is not None:
+            segment: dict = {"dose": d, "interval_days": interval}
+            dur = _optional_float(duration_days)
+            if dur:
+                segment["duration_days"] = int(dur)
+            schedule = [segment]
+
+        item = await hrt_cycle_service.update_cycle_item(
+            db, item_id, schedule=schedule, start_offset_days=offset,
+        )
+        if item is None:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND, content={"error": "item not found"}
+            )
+        await db.commit()
+    except ValueError as e:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"error": str(e)}
+        )
+    return _redirect(request)
+
+
 @router.post("/cycle/item/{item_id}/delete")
 async def delete_cycle_item(
     request: Request,

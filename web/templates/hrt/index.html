@@ -56,14 +56,44 @@
         {% if active_cycle.items %}
         <div class="flex flex-col gap-2">
             {% for it in active_cycle.items %}
-            <div class="flex items-center justify-between border-t border-[var(--line)] pt-2">
-                <span class="v-text-body">
-                    {{ compound_names.get(it.compound_key, it.compound_key) }} ·
-                    {% for seg in it.schedule %}{{ seg.dose }} {{ it.unit }} / {{ seg.interval_days }}д{% if not loop.last %} → {% endif %}{% endfor %}
-                    {%- if it.start_offset_days %} · {{ t("hrt.from_week") }} {{ it.start_offset_days // 7 + 1 }}{% endif %}
-                </span>
-                <form method="post" action="/hrt/cycle/item/{{ it.id }}/delete" class="inline">
-                    <button type="submit" class="v-btn-ghost text-xs">{{ t("hrt.delete") }}</button>
+            {% set flat = it.schedule | length == 1 and it.schedule[0].get('dose') is not none %}
+            <div class="border-t border-[var(--line)] pt-2" x-data="{ edit: false }">
+                <div class="flex items-center justify-between">
+                    <span class="v-text-body">
+                        {{ compound_names.get(it.compound_key, it.compound_key) }} ·
+                        {% for seg in it.schedule %}{% if seg.get('dose') is not none %}{{ seg.dose }}{% else %}{{ seg.dose_start }}→{{ seg.dose_end }}{% endif %} {{ it.unit }} / {{ seg.interval_days }}д{% if not loop.last %} → {% endif %}{% endfor %}
+                        {%- if it.start_offset_days %} · {{ t("hrt.from_week") }} {{ it.start_offset_days // 7 + 1 }}{% endif %}
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" @click="edit = !edit" class="v-btn-ghost text-xs">{{ t("common.edit") }}</button>
+                        <form method="post" action="/hrt/cycle/item/{{ it.id }}/delete" class="inline">
+                            <button type="submit" class="v-btn-ghost text-xs">{{ t("hrt.delete") }}</button>
+                        </form>
+                    </div>
+                </div>
+                <form x-show="edit" x-cloak method="post" action="/hrt/cycle/item/{{ it.id }}/edit"
+                      class="grid grid-cols-2 md:grid-cols-5 gap-3 items-end pt-2 pb-1">
+                    {% if flat %}
+                    <div>
+                        <label class="v-label">{{ t("hrt.dose") }}</label>
+                        <input type="number" name="dose" step="0.001" min="0" value="{{ it.schedule[0].dose }}" required class="v-input">
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("hrt.interval_days") }}</label>
+                        <input type="number" name="interval_days" step="0.5" min="0.5" value="{{ it.schedule[0].interval_days }}" required class="v-input">
+                    </div>
+                    <div>
+                        <label class="v-label">{{ t("hrt.duration_days") }}</label>
+                        <input type="number" name="duration_days" step="1" min="1" value="{{ it.schedule[0].get('duration_days') or '' }}" class="v-input">
+                    </div>
+                    {% else %}
+                    <p class="v-text-body col-span-2 md:col-span-3">{{ t("hrt.item_complex_note") }}</p>
+                    {% endif %}
+                    <div>
+                        <label class="v-label">{{ t("hrt.start_week") }}</label>
+                        <input type="number" name="start_week" step="1" min="1" value="{{ it.start_offset_days // 7 + 1 }}" class="v-input">
+                    </div>
+                    <button type="submit" class="v-btn">{{ t("hrt.save") }}</button>
                 </form>
             </div>
             {% endfor %}

@@ -270,6 +270,36 @@ async def add_cycle_item(
     return item
 
 
+async def update_cycle_item(
+    session: AsyncSession,
+    item_id: int,
+    *,
+    schedule: Optional[list[dict]] = None,
+    unit: Optional[str] = None,
+    start_offset_days: Optional[int] = None,
+    note: Optional[str] = None,
+) -> Optional[HrtCycleItem]:
+    """Edit an item in place — dose tweaks mid-course shouldn't require
+    delete + re-add. ``None`` keeps the current value; a new ``schedule`` goes
+    through the same validation as on create."""
+    item = await session.get(HrtCycleItem, item_id)
+    if item is None:
+        return None
+    if schedule is not None:
+        item.schedule = validate_schedule(schedule)
+    if unit is not None:
+        item.unit = unit
+    if start_offset_days is not None:
+        offset = int(start_offset_days)
+        if offset < 0:
+            raise ValueError("start_offset_days must be >= 0")
+        item.start_offset_days = offset
+    if note is not None:
+        item.note = note or None
+    await session.flush()
+    return item
+
+
 async def close_cycle(
     session: AsyncSession, cycle_id: int, *, end_date: date_type
 ) -> Optional[HrtCycle]:

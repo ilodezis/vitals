@@ -144,6 +144,22 @@ async def create_cycle_from_template(
     return cycle
 
 
+def _signature(kind: str, items: Sequence[HrtCycleTemplateItem]) -> tuple:
+    """Content identity of a template — what makes two imports 'the same'."""
+    return (
+        kind,
+        tuple(
+            (
+                it.compound_key,
+                it.unit,
+                int(it.start_offset_days or 0),
+                json.dumps(it.schedule, sort_keys=True),
+            )
+            for it in items
+        ),
+    )
+
+
 # ── Share: portable JSON ──────────────────────────────────────────────────────
 def export_template(template: HrtCycleTemplate) -> dict:
     """A template as a portable dict — self-describing envelope, relative items
@@ -247,6 +263,22 @@ async def import_template(
         raise ValueError(
             "unknown compound keys (not in this instance's catalog): " + ", ".join(missing)
         )
+
+    # Duplicate handling: pasting the same share code twice is a mistake, not a
+    # request for a copy — reject an exact duplicate. A mere name clash with
+    # different content gets a numbered name instead of silently shadowing.
+    existing = await list_templates(session)
+    new_sig = _signature(kind, clean_items)
+    for tp in existing:
+        if tp.name == name and _signature(tp.kind, tp.items) == new_sig:
+            raise ValueError(f"an identical template '{name}' is already imported")
+    taken = {tp.name for tp in existing}
+    if name in taken:
+        base = name[:118]
+        n = 2
+        while f"{base} ({n})" in taken:
+            n += 1
+        name = f"{base} ({n})"
 
     note = payload.get("note")
     template = HrtCycleTemplate(

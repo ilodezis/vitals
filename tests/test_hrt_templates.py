@@ -150,13 +150,15 @@ async def test_import_round_trip(db_session):
     )
     await db_session.commit()
     await db_session.refresh(template)
-    shared = hrt_template_service.export_template_json(template)
+    shared = json.loads(hrt_template_service.export_template_json(template))
+    # An untouched re-import is rejected as a duplicate, so share under a new name.
+    shared["name"] = "Cut v1 (import)"
 
     imported = await hrt_template_service.import_template(db_session, shared)
     await db_session.commit()
     await db_session.refresh(imported)
     assert imported.id != template.id
-    assert imported.name == "Cut v1" and imported.kind == "course"
+    assert imported.name == "Cut v1 (import)" and imported.kind == "course"
     by_key = {it.compound_key: it for it in imported.items}
     assert by_key["stanozolol_oral"].start_offset_days == 28
     assert by_key["testosterone_enanthate"].schedule[0]["interval_days"] == 3.5
@@ -262,12 +264,20 @@ async def test_route_export_download_and_import(auth_client, db_session):
     payload = r.json()
     assert payload["format"] == hrt_template_service.EXPORT_FORMAT
 
+    # Re-importing the very payload we exported is flagged as a duplicate...
+    r = await auth_client.post(
+        "/hrt/template/import", data={"payload": json.dumps(payload)},
+    )
+    assert r.status_code == 422
+    assert "already imported" in r.json()["error"]
+    # ...but the same content under another name imports fine.
+    payload["name"] = "Shared by a friend"
     r = await auth_client.post(
         "/hrt/template/import", data={"payload": json.dumps(payload)},
     )
     assert r.status_code == 303
     names = [tp.name for tp in await hrt_template_service.list_templates(db_session)]
-    assert names.count("Shared") == 2  # original + imported copy
+    assert sorted(names) == ["Shared", "Shared by a friend"]
 
 
 async def test_route_import_invalid_payload_is_422(auth_client):
@@ -322,3 +332,161 @@ async def test_route_create_from_template_garbage_date_is_422(auth_client, db_se
     )
     assert r.status_code == 422
     assert "invalid date" in r.json()["error"]
+
+
+# ── Backlog pack: import boundaries, dedup, EN locale, item editing ───────────
+def _payload(name="P", kind="course", items=None):
+    return {
+        "format": hrt_template_service.EXPORT_FORMAT, "version": 1,
+        "name": name, "kind": kind,
+        "items": items if items is not None else [
+            {"compound_key": "oxandrolone",
+             "schedule": [{"dose": 20, "interval_days": 1}]}
+        ],
+    }
+
+
+async def test_import_rejects_empty_name(db_session):
+    await hrt_catalog.sync_catalog(db_session)
+    await db_session.commit()
+    with pytest.raises(ValueError, match="name"):
+        await hrt_template_service.import_template(db_session, _payload(name="   "))
+
+
+async def test_import_rejects_too_many_items(db_session):
+    await hrt_catalog.sync_catalog(db_session)
+    await db_session.commit()
+    item = {"compound_key": "oxandrolone", "schedule": [{"dose": 20, "interval_days": 1}]}
+    with pytest.raises(ValueError, match="too many"):
+        await hrt_template_service.import_template(
+            db_session, _payload(items=[item] * 51),
+        )
+
+
+async def test_import_rejects_unknown_unit(db_session):
+    await hrt_catalog.sync_catalog(db_session)
+    await db_session.commit()
+    bad = _payload(items=[{"compound_key": "oxandrolone", "unit": "pills",
+                           "schedule": [{"dose": 20, "interval_days": 1}]}])
+    with pytest.raises(ValueError, match="unit"):
+        await hrt_template_service.import_template(db_session, bad)
+
+
+async def test_import_preserves_notes(db_session):
+    await hrt_catalog.sync_catalog(db_session)
+    await db_session.commit()
+    payload = _payload(name="Noted")
+    payload["note"] = "template-level note"
+    payload["items"][0]["note"] = "item-level note"
+    imported = await hrt_template_service.import_template(db_session, payload)
+    await db_session.commit()
+    await db_session.refresh(imported)
+    assert imported.note == "template-level note"
+    assert imported.items[0].note == "item-level note"
+
+
+async def test_import_exact_duplicate_rejected(db_session):
+    await hrt_catalog.sync_catalog(db_session)
+    await db_session.commit()
+    await hrt_template_service.import_template(db_session, _payload(name="Dup"))
+    await db_session.commit()
+    with pytest.raises(ValueError, match="already imported"):
+        await hrt_template_service.import_template(db_session, _payload(name="Dup"))
+
+
+async def test_import_name_clash_gets_numbered_name(db_session):
+    await hrt_catalog.sync_catalog(db_session)
+    await db_session.commit()
+    await hrt_template_service.import_template(db_session, _payload(name="Clash"))
+    await db_session.commit()
+    other = _payload(name="Clash", items=[
+        {"compound_key": "oxandrolone", "schedule": [{"dose": 40, "interval_days": 1}]}
+    ])
+    imported = await hrt_template_service.import_template(db_session, other)
+    await db_session.commit()
+    assert imported.name == "Clash (2)"
+
+
+async def test_hrt_page_renders_in_english(auth_client, db_session, redis):
+    """The ru-only fixture hid EN regressions — render the page in English."""
+    from vitals.services import language_service
+
+    cycle = await _build_staggered_cycle(db_session)
+    await hrt_template_service.save_cycle_as_template(db_session, cycle.id, name="EN tpl")
+    await language_service.set_language(db_session, "en", redis)
+    await db_session.commit()
+    page = await auth_client.get("/hrt")
+    assert page.status_code == 200
+    for needle in ("Cycle templates", "Start week", "Bloodwork cadence", "Import"):
+        assert needle in page.text, needle
+
+
+# ── Item editing (no delete + re-add) ─────────────────────────────────────────
+async def test_update_cycle_item_dose_and_offset(db_session):
+    cycle = await _build_staggered_cycle(db_session)
+    await db_session.refresh(cycle)
+    item = cycle.items[0]  # flat test-e segment
+    updated = await hrt_cycle_service.update_cycle_item(
+        db_session, item.id,
+        schedule=[{"dose": 300, "interval_days": 7, "duration_days": 70}],
+        start_offset_days=7,
+    )
+    await db_session.commit()
+    assert updated.schedule[0]["dose"] == 300.0
+    assert updated.start_offset_days == 7
+
+
+async def test_update_cycle_item_validates(db_session):
+    cycle = await _build_staggered_cycle(db_session)
+    await db_session.refresh(cycle)
+    item = cycle.items[0]
+    with pytest.raises(ValueError):
+        await hrt_cycle_service.update_cycle_item(
+            db_session, item.id, start_offset_days=-1,
+        )
+    with pytest.raises(ValueError):
+        await hrt_cycle_service.update_cycle_item(
+            db_session, item.id, schedule=[{"dose": -5, "interval_days": 1}],
+        )
+    assert await hrt_cycle_service.update_cycle_item(db_session, 99999) is None
+
+
+async def test_route_edit_item_flat(auth_client, db_session):
+    cycle = await _build_staggered_cycle(db_session)
+    await db_session.refresh(cycle)
+    flat = next(i for i in cycle.items if i.compound_key == "testosterone_enanthate")
+    r = await auth_client.post(
+        f"/hrt/cycle/item/{flat.id}/edit",
+        data={"dose": "175", "interval_days": "3.5", "duration_days": "91",
+              "start_week": "2"},
+    )
+    assert r.status_code == 303
+    await db_session.refresh(flat)
+    assert flat.schedule == [{"dose": 175.0, "interval_days": 3.5, "duration_days": 91}]
+    assert flat.start_offset_days == 7
+
+
+async def test_route_edit_item_week_only_keeps_schedule(auth_client, db_session):
+    """The complex-schedule form posts only start_week — schedule must survive."""
+    cycle = await _build_staggered_cycle(db_session)
+    await db_session.refresh(cycle)
+    winny = next(i for i in cycle.items if i.compound_key == "stanozolol_oral")
+    before = winny.schedule
+    r = await auth_client.post(
+        f"/hrt/cycle/item/{winny.id}/edit", data={"start_week": "6"},
+    )
+    assert r.status_code == 303
+    await db_session.refresh(winny)
+    assert winny.schedule == before
+    assert winny.start_offset_days == 35  # (6-1)*7
+
+
+async def test_route_edit_item_missing_404_and_bad_week_422(auth_client, db_session):
+    r = await auth_client.post("/hrt/cycle/item/99999/edit", data={"start_week": "2"})
+    assert r.status_code == 404
+    cycle = await _build_staggered_cycle(db_session)
+    await db_session.refresh(cycle)
+    r = await auth_client.post(
+        f"/hrt/cycle/item/{cycle.items[0].id}/edit", data={"start_week": "1.5"},
+    )
+    assert r.status_code == 422
