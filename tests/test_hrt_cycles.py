@@ -355,3 +355,127 @@ async def test_future_cycle_not_active_today(db_session):
     )
     await db_session.commit()
     assert await hrt_cycle_service.active_cycle(db_session) is None
+
+
+# ── Per-item start offset (week-staggered courses) ────────────────────────────
+async def test_item_offset_delays_planned_administrations(db_session):
+    await hrt_catalog.sync_catalog(db_session)
+    start = today_local()
+    cycle = await hrt_cycle_service.add_cycle(db_session, kind="blast", start_date=start)
+    await db_session.commit()
+    # Winstrol from week 5 (day 28), daily.
+    await hrt_cycle_service.add_cycle_item(
+        db_session, cycle.id, compound_key="stanozolol_oral",
+        schedule=[{"dose": 30, "interval_days": 1, "duration_days": 28}],
+        start_offset_days=28,
+    )
+    await db_session.commit()
+    planned = await hrt_cycle_service.planned_administrations(
+        db_session, start=start, end=start + timedelta(days=60),
+    )
+    offsets = [(p["date"] - start).days for p in planned]
+    assert offsets and min(offsets) == 28  # nothing before week 5
+    assert max(offsets) == 28 + 27  # 28-day run from its own anchor
+
+
+async def test_item_offset_zero_default_keeps_cycle_anchor(db_session):
+    await hrt_catalog.sync_catalog(db_session)
+    start = today_local()
+    cycle = await hrt_cycle_service.add_cycle(db_session, kind="trt_baseline", start_date=start)
+    await db_session.commit()
+    item = await hrt_cycle_service.add_cycle_item(
+        db_session, cycle.id, compound_key="testosterone_enanthate",
+        schedule=[{"dose": 125, "interval_days": 3.5}],
+    )
+    await db_session.commit()
+    assert item.start_offset_days == 0
+    planned = await hrt_cycle_service.planned_administrations(
+        db_session, start=start, end=start + timedelta(days=7),
+    )
+    assert (planned[0]["date"] - start).days == 0
+
+
+async def test_item_offset_grid_anchored_at_offset_not_cycle_start(db_session):
+    await hrt_catalog.sync_catalog(db_session)
+    start = today_local()
+    cycle = await hrt_cycle_service.add_cycle(db_session, kind="blast", start_date=start)
+    await db_session.commit()
+    # EOD anastrozole from week 3 — grid must run 14, 16, 18... off the offset.
+    await hrt_cycle_service.add_cycle_item(
+        db_session, cycle.id, compound_key="anastrozole",
+        schedule=[{"dose": 0.5, "interval_days": 2, "duration_days": 7}],
+        start_offset_days=14,
+    )
+    await db_session.commit()
+    planned = await hrt_cycle_service.planned_administrations(
+        db_session, start=start, end=start + timedelta(days=30),
+    )
+    assert [(p["date"] - start).days for p in planned] == [14, 16, 18, 20]
+
+
+async def test_item_offset_negative_rejected(db_session):
+    cycle = await hrt_cycle_service.add_cycle(
+        db_session, kind="blast", start_date=today_local(),
+    )
+    await db_session.commit()
+    with pytest.raises(ValueError):
+        await hrt_cycle_service.add_cycle_item(
+            db_session, cycle.id, compound_key="oxandrolone",
+            schedule=[{"dose": 20, "interval_days": 1}], start_offset_days=-7,
+        )
+
+
+async def test_item_offset_release_series_shifts(db_session):
+    await hrt_catalog.sync_catalog(db_session)
+    # The cycle must be active today for its plan to feed the release curve;
+    # planned contributions are only projected from tomorrow onward.
+    start = today_local()
+    cycle = await hrt_cycle_service.add_cycle(db_session, kind="blast", start_date=start)
+    await db_session.commit()
+    await hrt_cycle_service.add_cycle_item(
+        db_session, cycle.id, compound_key="testosterone_propionate",
+        schedule=[{"dose": 100, "interval_days": 2, "duration_days": 14}],
+        start_offset_days=7,
+    )
+    await db_session.commit()
+    series = await hrt_cycle_service.release_series(
+        db_session, start=start, end=start + timedelta(days=10), include_planned=True,
+    )
+    # Zero active hormone until the item's own (offset) start.
+    by_day = {p["date"]: p["total_mg"] for p in series}
+    assert by_day[start.isoformat()] == 0.0
+    assert by_day[(start + timedelta(days=6)).isoformat()] == 0.0
+    assert by_day[(start + timedelta(days=7)).isoformat()] > 0.0
+
+
+async def test_route_add_item_with_start_week(auth_client, db_session):
+    await hrt_catalog.sync_catalog(db_session)
+    await db_session.commit()
+    today = today_local().isoformat()
+    r = await auth_client.post("/hrt/cycle", data={"kind": "blast", "start_date": today})
+    assert r.status_code == 303
+    cycle = await hrt_cycle_service.active_cycle(db_session)
+    r = await auth_client.post(
+        f"/hrt/cycle/{cycle.id}/item",
+        data={"compound_key": "stanozolol_oral", "dose": "30", "interval_days": "1",
+              "duration_days": "28", "start_week": "5"},
+    )
+    assert r.status_code == 303
+    await db_session.refresh(cycle)
+    assert cycle.items[0].start_offset_days == 28  # (5-1)*7
+
+
+async def test_route_add_item_blank_start_week_defaults_zero(auth_client, db_session):
+    await hrt_catalog.sync_catalog(db_session)
+    await db_session.commit()
+    today = today_local().isoformat()
+    await auth_client.post("/hrt/cycle", data={"kind": "trt_baseline", "start_date": today})
+    cycle = await hrt_cycle_service.active_cycle(db_session)
+    r = await auth_client.post(
+        f"/hrt/cycle/{cycle.id}/item",
+        data={"compound_key": "testosterone_enanthate", "dose": "125",
+              "interval_days": "3.5", "start_week": ""},
+    )
+    assert r.status_code == 303
+    await db_session.refresh(cycle)
+    assert cycle.items[0].start_offset_days == 0

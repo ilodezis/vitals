@@ -225,7 +225,66 @@ class HrtCycleItem(Base, TimestampMixin):
     )
     compound_key: Mapped[str] = mapped_column(String(64), nullable=False)
     unit: Mapped[str] = mapped_column(String(8), nullable=False, server_default="mg")
+    # Days after the cycle start before this compound's own grid begins — real
+    # protocols stagger compounds (e.g. winstrol from week 5 → 28). 0 = starts
+    # with the cycle.
+    start_offset_days: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
     schedule: Mapped[Any] = mapped_column(_JSON_TYPE, nullable=False)
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     cycle: Mapped["HrtCycle"] = relationship(back_populates="items")
+
+
+class HrtCycleTemplate(Base, TimestampMixin):
+    """A reusable, **date-free** snapshot of a cycle plan — everything relative
+    (per-item offsets + schedules), no ``start_date``. Materialized into a real
+    ``HrtCycle`` by ``create_cycle_from_template``, and portable across
+    instances via export/import because items reference the shared catalog by
+    ``compound_key`` slug."""
+
+    __tablename__ = "hrt_cycle_templates"
+    __table_args__ = (
+        Index("ix_hrt_cycle_templates_name", "name"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    domain: Mapped[str] = mapped_column(String(32), nullable=False, server_default=DOMAIN)
+    source: Mapped[str] = mapped_column(String(32), nullable=False, server_default="manual")
+
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    # vitals.enums.CycleKind — the kind a cycle created from this template gets.
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    items: Mapped[list["HrtCycleTemplateItem"]] = relationship(
+        back_populates="template",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+
+class HrtCycleTemplateItem(Base, TimestampMixin):
+    """One compound's plan inside a template — the same shape as ``HrtCycleItem``
+    minus the cycle FK. ``compound_key`` only (no ``compound_id``): the slug is
+    the portable reference, resolved against the local catalog on apply."""
+
+    __tablename__ = "hrt_cycle_template_items"
+    __table_args__ = (
+        Index("ix_hrt_cycle_template_items_template", "template_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    template_id: Mapped[int] = mapped_column(
+        ForeignKey("hrt_cycle_templates.id", ondelete="CASCADE"), nullable=False
+    )
+    compound_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    unit: Mapped[str] = mapped_column(String(8), nullable=False, server_default="mg")
+    start_offset_days: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
+    schedule: Mapped[Any] = mapped_column(_JSON_TYPE, nullable=False)
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    template: Mapped["HrtCycleTemplate"] = relationship(back_populates="items")

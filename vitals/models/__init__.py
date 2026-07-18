@@ -50,6 +50,8 @@ from vitals.models.hrt import (
     HrtCompoundComponent,
     HrtCycle,
     HrtCycleItem,
+    HrtCycleTemplate,
+    HrtCycleTemplateItem,
     HrtDose,
     HrtSideEffect,
 )
@@ -96,6 +98,8 @@ __all__ = [
     "HrtCompoundComponent",
     "HrtCycle",
     "HrtCycleItem",
+    "HrtCycleTemplate",
+    "HrtCycleTemplateItem",
     "HrtDose",
     "HrtSideEffect",
     "Milestone",

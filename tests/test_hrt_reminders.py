@@ -221,3 +221,26 @@ async def test_mcp_add_item_unknown_cycle(db_session, session_factory, monkeypat
         cycle_id=9999, compound_key="oxandrolone", dose=20, interval_days=1,
     )
     assert "error" in res
+
+
+async def test_injection_due_not_raised_before_item_offset(db_session):
+    """A compound scheduled from week 5 must not nag during weeks 1-4."""
+    await hrt_catalog.sync_catalog(db_session)
+    cycle = await hrt_cycle_service.add_cycle(
+        db_session, kind="blast", start_date=today_local() - timedelta(days=3),
+    )
+    await db_session.commit()
+    await hrt_cycle_service.add_cycle_item(
+        db_session, cycle.id, compound_key="stanozolol_oral",
+        schedule=[{"dose": 30, "interval_days": 1, "duration_days": 28}],
+        start_offset_days=28,
+    )
+    await db_session.commit()
+    await hrt_reminders.refresh_injection_due(db_session)
+    await db_session.commit()
+    alerts = await alerts_service.list_active(db_session, domain=Domain.HRT.value)
+    assert not any(
+        a.alert_key == hrt_reminders.INJECTION_DUE_KEY
+        and a.entity_ref == "stanozolol_oral"
+        for a in alerts
+    )

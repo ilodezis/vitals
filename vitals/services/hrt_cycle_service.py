@@ -34,6 +34,66 @@ from vitals.utils.timeutils import today_local
 _MAX_ADMIN_PER_SEGMENT = 100_000
 
 
+def validate_schedule(schedule: object) -> list[dict]:
+    """Validate a segment list and return a normalized copy (known keys only,
+    numbers coerced). Raises ``ValueError`` with a per-segment message on bad
+    shape. Write paths (form, MCP, template import) all funnel through this so a
+    hand-crafted JSON payload can't smuggle a malformed segment into the DB."""
+    if not isinstance(schedule, (list, tuple)) or not schedule:
+        raise ValueError("schedule must be a non-empty list of segments")
+    out: list[dict] = []
+    last_idx = len(schedule) - 1
+    for idx, seg in enumerate(schedule):
+        where = f"segment {idx + 1}"
+        if not isinstance(seg, dict):
+            raise ValueError(f"{where}: must be an object")
+        clean: dict = {}
+        is_flat = seg.get("dose") is not None
+        is_ramp = seg.get("dose_start") is not None or seg.get("dose_end") is not None
+        if is_flat == is_ramp:
+            raise ValueError(
+                f"{where}: give either dose (flat) or dose_start+dose_end (ramp)"
+            )
+        try:
+            if is_flat:
+                clean["dose"] = float(seg["dose"])
+                if clean["dose"] <= 0:
+                    raise ValueError
+            else:
+                clean["dose_start"] = float(seg["dose_start"])
+                clean["dose_end"] = float(seg["dose_end"])
+                if clean["dose_start"] <= 0 or clean["dose_end"] <= 0:
+                    raise ValueError
+                if seg.get("step") is not None:
+                    clean["step"] = abs(float(seg["step"]))
+                if seg.get("step_every_days") is not None:
+                    clean["step_every_days"] = float(seg["step_every_days"])
+                    if clean["step_every_days"] <= 0:
+                        raise ValueError
+        except (TypeError, ValueError, KeyError):
+            raise ValueError(f"{where}: doses must be positive numbers") from None
+        try:
+            interval = float(seg.get("interval_days") or 1)
+        except (TypeError, ValueError):
+            raise ValueError(f"{where}: interval_days must be a positive number") from None
+        if interval <= 0:
+            raise ValueError(f"{where}: interval_days must be a positive number")
+        clean["interval_days"] = interval
+        duration = seg.get("duration_days")
+        if duration is not None:
+            try:
+                duration = int(duration)
+            except (TypeError, ValueError):
+                raise ValueError(f"{where}: duration_days must be a positive integer") from None
+            if duration <= 0:
+                raise ValueError(f"{where}: duration_days must be a positive integer")
+            clean["duration_days"] = duration
+        elif idx != last_idx:
+            raise ValueError(f"{where}: only the last segment may omit duration_days")
+        out.append(clean)
+    return out
+
+
 # ── Schedule engine (pure) ────────────────────────────────────────────────────
 def _dose_at(seg: dict, elapsed_days: float, interval: float) -> float:
     """Dose for an administration ``elapsed_days`` into its segment. Flat segments
@@ -102,7 +162,12 @@ def expand_schedule(
 def expand_item_schedule(
     item: HrtCycleItem, anchor: date_type, start: date_type, end: date_type
 ) -> list[tuple[date_type, float]]:
-    return expand_schedule(item.schedule, anchor, start, end)
+    """Expand an item's schedule off the cycle anchor shifted by the item's own
+    ``start_offset_days`` — a compound may join the protocol mid-cycle (e.g.
+    winstrol from week 5). Every consumer (planned overlay, release curve,
+    injection reminder) goes through here, so the offset applies uniformly."""
+    offset = int(item.start_offset_days or 0)
+    return expand_schedule(item.schedule, anchor + timedelta(days=offset), start, end)
 
 
 # ── Cycle CRUD ────────────────────────────────────────────────────────────────
@@ -174,6 +239,7 @@ async def add_cycle_item(
     compound_key: str,
     schedule: list[dict],
     unit: Optional[str] = None,
+    start_offset_days: int = 0,
     note: Optional[str] = None,
 ) -> Optional[HrtCycleItem]:
     cycle = await session.get(HrtCycle, cycle_id)
@@ -182,14 +248,17 @@ async def add_cycle_item(
     key = (compound_key or "").strip()
     if not key:
         raise ValueError("compound_key is required")
-    if not schedule:
-        raise ValueError("schedule must have at least one segment")
+    schedule = validate_schedule(schedule)
+    offset = int(start_offset_days or 0)
+    if offset < 0:
+        raise ValueError("start_offset_days must be >= 0")
     compound = await hrt_service.get_compound(session, key)
     item = HrtCycleItem(
         cycle_id=cycle_id,
         compound_id=compound.id if compound else None,
         compound_key=key,
         unit=(unit or (compound.dose_unit if compound else DoseUnit.MG.value)),
+        start_offset_days=offset,
         schedule=schedule,
         note=note,
     )

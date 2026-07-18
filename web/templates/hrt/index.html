@@ -32,6 +32,9 @@
         <div class="space-y-1">
             <span class="v-tag violet">{{ t("enum.cycle_kind." + active_cycle.kind) }}</span>
             <span class="v-text-body">{{ active_cycle.name or '' }} · {{ active_cycle.start_date }}{% if active_cycle.end_date %} — {{ active_cycle.end_date }}{% endif %}</span>
+            {% if panel_window %}
+            <p class="v-text-body text-[var(--fg-2)]">{{ t("hrt.panel_cadence", days=panel_window) }}</p>
+            {% endif %}
         </div>
 
         <!-- Release sparkline (server-rendered, active mg over 90 days) -->
@@ -57,6 +60,7 @@
                 <span class="v-text-body">
                     {{ compound_names.get(it.compound_key, it.compound_key) }} ·
                     {% for seg in it.schedule %}{{ seg.dose }} {{ it.unit }} / {{ seg.interval_days }}д{% if not loop.last %} → {% endif %}{% endfor %}
+                    {%- if it.start_offset_days %} · {{ t("hrt.from_week") }} {{ it.start_offset_days // 7 + 1 }}{% endif %}
                 </span>
                 <form method="post" action="/hrt/cycle/item/{{ it.id }}/delete" class="inline">
                     <button type="submit" class="v-btn-ghost text-xs">{{ t("hrt.delete") }}</button>
@@ -70,7 +74,7 @@
 
         <!-- Add compound to the active cycle -->
         <form method="post" action="/hrt/cycle/{{ active_cycle.id }}/item"
-              class="grid grid-cols-2 md:grid-cols-5 gap-3 items-end border-t border-[var(--line)] pt-4">
+              class="grid grid-cols-2 md:grid-cols-6 gap-3 items-end border-t border-[var(--line)] pt-4">
             <div class="col-span-2 md:col-span-1">
                 <label class="v-label">{{ t("hrt.compound") }}</label>
                 <select name="compound_key" required class="v-select">
@@ -86,11 +90,28 @@
                 <input type="number" name="interval_days" step="0.5" min="0.5" value="3.5" required class="v-input">
             </div>
             <div>
+                <label class="v-label">{{ t("hrt.start_week") }}</label>
+                <input type="number" name="start_week" step="1" min="1" value="1" class="v-input">
+            </div>
+            <div>
                 <label class="v-label">{{ t("hrt.duration_days") }}</label>
                 <input type="number" name="duration_days" step="1" min="1" class="v-input">
             </div>
             <button type="submit" class="v-btn">{{ t("hrt.add_item") }}</button>
         </form>
+
+        <!-- Save the current plan as a reusable template -->
+        {% if active_cycle.items %}
+        <form method="post" action="/hrt/cycle/{{ active_cycle.id }}/save-template"
+              class="flex flex-wrap items-end gap-3 border-t border-[var(--line)] pt-4">
+            <div class="grow max-w-xs">
+                <label class="v-label">{{ t("hrt.template_name") }}</label>
+                <input type="text" name="name" maxlength="128" required class="v-input"
+                       placeholder="{{ active_cycle.name or t('enum.cycle_kind.' + active_cycle.kind) }}">
+            </div>
+            <button type="submit" class="v-btn-ghost">{{ t("hrt.save_as_template") }}</button>
+        </form>
+        {% endif %}
 
         <!-- Upcoming planned administrations -->
         {% if planned %}
@@ -161,6 +182,65 @@
                 <button type="submit" class="v-btn">{{ t("hrt.create_cycle") }}</button>
             </form>
         </div>
+    </div>
+
+    <!-- Cycle templates: apply / share / import -->
+    <div class="v-card p-6 space-y-4">
+        <h2 class="v-text-heading">{{ t("hrt.templates") }}</h2>
+
+        {% if cycle_templates %}
+        <div class="flex flex-col gap-3">
+            {% for tp in cycle_templates %}
+            <div class="border-t border-[var(--line)] pt-3 space-y-2">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span class="v-text-body">
+                        <span class="v-tag violet">{{ t("enum.cycle_kind." + tp.kind) }}</span>
+                        <span class="font-bold text-[var(--fg-1)]">{{ tp.name }}</span>
+                        · {{ tp.items | length }} {{ t("hrt.template_compounds") }}
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <a href="/hrt/template/{{ tp.id }}/export" class="v-btn-ghost text-xs">{{ t("hrt.export") }}</a>
+                        <form method="post" action="/hrt/template/{{ tp.id }}/delete" class="inline">
+                            <button type="submit" class="v-btn-ghost text-xs">{{ t("hrt.delete") }}</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-x-3 text-sm text-[var(--fg-2)]">
+                    {% for it in tp.items %}
+                    <span>{{ compound_names.get(it.compound_key, it.compound_key) }}{% if it.start_offset_days %} ({{ t("hrt.from_week") }} {{ it.start_offset_days // 7 + 1 }}){% endif %}</span>
+                    {% endfor %}
+                </div>
+                <div class="flex flex-wrap items-end gap-3">
+                    <form method="post" action="/hrt/template/{{ tp.id }}/create-cycle"
+                          class="flex items-end gap-3">
+                        <div>
+                            <label class="v-label">{{ t("hrt.start") }}</label>
+                            <input type="date" name="start_date" value="{{ today }}" required class="v-input">
+                        </div>
+                        <button type="submit" class="v-btn">{{ t("hrt.create_from_template") }}</button>
+                    </form>
+                    <details class="grow min-w-[16rem]">
+                        <summary class="v-label cursor-pointer select-none">{{ t("hrt.share_code") }}</summary>
+                        <textarea readonly rows="6" class="v-input font-mono text-xs w-full mt-1"
+                                  onclick="this.select()">{{ template_exports[tp.id] }}</textarea>
+                    </details>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="v-text-body">{{ t("hrt.no_templates") }}</p>
+        {% endif %}
+
+        <!-- Import a shared template -->
+        <details class="border-t border-[var(--line)] pt-4">
+            <summary class="v-label cursor-pointer select-none">{{ t("hrt.import_template") }}</summary>
+            <form method="post" action="/hrt/template/import" class="space-y-3 mt-2">
+                <textarea name="payload" rows="6" required class="v-input font-mono text-xs w-full"
+                          placeholder='{"format": "vitals.hrt_cycle_template", ...}'></textarea>
+                <button type="submit" class="v-btn">{{ t("hrt.import_btn") }}</button>
+            </form>
+        </details>
     </div>
 
     <!-- Dose form -->

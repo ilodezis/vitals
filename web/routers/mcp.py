@@ -821,6 +821,7 @@ async def add_hrt_cycle_item(
     dose: Optional[float] = None,
     interval_days: Optional[float] = None,
     duration_days: Optional[int] = None,
+    start_offset_days: Optional[int] = None,
     unit: Optional[str] = None,
     note: Optional[str] = None,
 ) -> dict:
@@ -828,7 +829,8 @@ async def add_hrt_cycle_item(
     segments — flat ``{dose, interval_days, duration_days}`` or a linear ramp
     ``{dose_start, dose_end, step, step_every_days, interval_days, duration_days}``)
     for titration/ramps, or the simple ``dose``+``interval_days`` for one flat
-    segment. WRITE tool."""
+    segment. ``start_offset_days`` delays the compound's grid relative to the
+    cycle start (week 5 → 28) for staggered courses. WRITE tool."""
     from vitals.services import hrt_cycle_service
 
     if not schedule:
@@ -844,7 +846,7 @@ async def add_hrt_cycle_item(
         try:
             item = await hrt_cycle_service.add_cycle_item(
                 session, cycle_id, compound_key=compound_key, schedule=schedule,
-                unit=unit, note=note,
+                unit=unit, start_offset_days=int(start_offset_days or 0), note=note,
             )
         except ValueError as e:
             return {"error": str(e)}

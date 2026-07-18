@@ -12,7 +12,13 @@ from datetime import timedelta
 
 from vitals.enums import CycleKind, Domain, DoseUnit, HrtInjectionSite
 from vitals.i18n import current_lang
-from vitals.services import alerts_service, hrt_cycle_service, hrt_reminders, hrt_service
+from vitals.services import (
+    alerts_service,
+    hrt_cycle_service,
+    hrt_reminders,
+    hrt_service,
+    hrt_template_service,
+)
 from vitals.services.conflict_engine import ConflictBlocked
 from vitals.utils.timeutils import today_local
 from web.deps import get_session, require_auth
@@ -74,6 +80,13 @@ async def hrt_dashboard(
         db, start=today - timedelta(days=30), end=today + timedelta(days=60),
     )
 
+    cycle_templates = await hrt_template_service.list_templates(db)
+    # Pre-rendered share JSON per template — the UI shows it in a copyable
+    # <textarea>, so sharing needs no JS beyond select-and-copy.
+    template_exports = {
+        tp.id: hrt_template_service.export_template_json(tp) for tp in cycle_templates
+    }
+
     return templates.TemplateResponse(
         request,
         "hrt/index.html",
@@ -87,10 +100,18 @@ async def hrt_dashboard(
             "last_dose": last,
             "active_cycle": active_cycle,
             "cycles": await hrt_cycle_service.list_cycles(db),
+            "cycle_templates": cycle_templates,
+            "template_exports": template_exports,
             "planned": planned[:12],
             "release": release,
             "release_sparkline": _sparkline(release),
             "cycle_kinds": [k.value for k in CycleKind],
+            # Kind-dependent bloodwork cadence, surfaced on the active-cycle card
+            # so the kinds visibly differ beyond the label.
+            "panel_window": (
+                hrt_reminders.PANEL_WINDOW_BY_KIND.get(active_cycle.kind, 90)
+                if active_cycle else None
+            ),
             "site_counts": hrt_service.site_frequency(doses),
             "sites": [s.value for s in HrtInjectionSite],
             "units": [u.value for u in DoseUnit],
@@ -200,6 +221,7 @@ async def add_cycle_item(
     dose: float = Form(...),
     interval_days: float = Form(...),
     duration_days: Optional[str] = Form(None),
+    start_week: Optional[str] = Form(None),
     unit: Optional[str] = Form(None),
     note: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_session),
@@ -211,10 +233,13 @@ async def add_cycle_item(
     dur = _optional_float(duration_days)
     if dur:
         segment["duration_days"] = int(dur)
+    # The form speaks weeks (week 1 = the cycle start); the model stores days.
+    week = _optional_float(start_week)
+    offset_days = int((week - 1) * 7) if week and week > 1 else 0
     try:
         await hrt_cycle_service.add_cycle_item(
             db, cycle_id, compound_key=compound_key, schedule=[segment],
-            unit=unit or None, note=note,
+            unit=unit or None, start_offset_days=offset_days, note=note,
         )
         await db.commit()
     except ValueError as e:
@@ -259,6 +284,97 @@ async def delete_cycle_item(
 ):
     await hrt_cycle_service.delete_cycle_item(db, item_id)
     await db.commit()
+    return _redirect(request)
+
+
+@router.post("/cycle/{cycle_id}/save-template")
+async def save_cycle_template(
+    request: Request,
+    cycle_id: int,
+    name: str = Form(...),
+    db: AsyncSession = Depends(get_session),
+    username: str = Depends(require_auth),
+):
+    try:
+        await hrt_template_service.save_cycle_as_template(db, cycle_id, name=name)
+        await db.commit()
+    except ValueError as e:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"error": str(e)}
+        )
+    return _redirect(request)
+
+
+@router.post("/template/{template_id}/create-cycle")
+async def create_cycle_from_template(
+    request: Request,
+    template_id: int,
+    start_date: str = Form(...),
+    name: Optional[str] = Form(None),
+    db: AsyncSession = Depends(get_session),
+    username: str = Depends(require_auth),
+):
+    start = date_type.fromisoformat(start_date)
+    try:
+        await hrt_template_service.create_cycle_from_template(
+            db, template_id, start_date=start, name=name
+        )
+        await db.commit()
+    except ValueError as e:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"error": str(e)}
+        )
+    return _redirect(request)
+
+
+@router.post("/template/{template_id}/delete")
+async def delete_template(
+    request: Request,
+    template_id: int,
+    db: AsyncSession = Depends(get_session),
+    username: str = Depends(require_auth),
+):
+    await hrt_template_service.delete_template(db, template_id)
+    await db.commit()
+    return _redirect(request)
+
+
+@router.get("/template/{template_id}/export")
+async def export_template(
+    template_id: int,
+    db: AsyncSession = Depends(get_session),
+    username: str = Depends(require_auth),
+):
+    """The portable share payload as a .json download."""
+    template = await hrt_template_service.get_template(db, template_id)
+    if template is None:
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"error": "not found"})
+    payload = hrt_template_service.export_template(template)
+    safe_name = "".join(
+        ch if ch.isalnum() or ch in "-_" else "_" for ch in template.name
+    )[:64] or "template"
+    return JSONResponse(
+        content=payload,
+        headers={
+            "Content-Disposition": f'attachment; filename="hrt_template_{safe_name}.json"'
+        },
+    )
+
+
+@router.post("/template/import")
+async def import_template(
+    request: Request,
+    payload: str = Form(...),
+    db: AsyncSession = Depends(get_session),
+    username: str = Depends(require_auth),
+):
+    try:
+        await hrt_template_service.import_template(db, payload)
+        await db.commit()
+    except ValueError as e:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"error": str(e)}
+        )
     return _redirect(request)
 
 
