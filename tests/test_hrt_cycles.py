@@ -197,16 +197,12 @@ async def test_release_json_endpoint(auth_client):
     assert "series" in body and len(body["series"]) == 11  # 5 back + today + 5 fwd
 
 
-async def test_hrt_dashboard_renders_in_masthead(auth_client, db_session):
-    """The masthead shell branch (masthead_header macro) must render, not just the
-    classic header — the section is registered in partials/masthead.html."""
-    from vitals.models.app_settings import AppSetting
-    from vitals.services.ui_version_service import SETTINGS_KEY as UI_KEY
-
+async def test_hrt_dashboard_renders_masthead_header(auth_client, db_session):
+    """The masthead editorial header (masthead_header macro) renders on the HRT
+    page — the section is registered in partials/masthead.html."""
     await hrt_catalog.sync_catalog(db_session)
-    db_session.add(AppSetting(key=UI_KEY, value="masthead"))
     await db_session.commit()
     r = await auth_client.get("/hrt")
     assert r.status_code == 200
-    assert "mh-title" in r.text  # masthead editorial header rendered
-    assert "mh-tab" in r.text    # rubric tabs include the section
+    assert "mh-title" in r.text   # masthead editorial header rendered
+    assert "mh-metric" in r.text  # the section's key-figures row rendered

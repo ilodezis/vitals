@@ -35,10 +35,9 @@
 
 {% block content %}
 {% from "garmin/_tabs.html" import garmin_tabs %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+{% from "partials/masthead.html" import masthead_header with context %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
 
-    {% if request.state.ui_version == 'masthead' %}
     {% call masthead_header('garmin', daily.date | format_date, [
         {'label': t('garmin.sleep_score'), 'primary': true, 'value': daily.sleep_score if daily.sleep_score else '—'},
         {'label': t('garmin.avg_sleep_hr'), 'unit': t('garmin.bpm'), 'value': daily.avg_sleep_hr if daily.avg_sleep_hr else '—'},
@@ -48,28 +47,6 @@
         {{ night_nav(prev_date, next_date) }}
     {% endcall %}
     {{ garmin_tabs('sleep') }}
-    {% else %}
-    <!-- Header -->
-    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-        <div class="flex items-start gap-3.5">
-            <span class="v-bar mt-1"></span>
-            <div class="space-y-2">
-                <span class="v-tag violet">🌙 {{ t("garmin.sleep_night_tag") }}</span>
-                <h1 class="v-text-heading">{{ t("garmin.sleep_night_heading") }} · {{ daily.date | format_date }}</h1>
-                <p class="v-text-body" style="color: var(--muted)">
-                    {% if daily.sleep_start and daily.sleep_end %}
-                    {{ daily.sleep_start.strftime('%H:%M') }}–{{ daily.sleep_end.strftime('%H:%M') }} · {{ daily.sleep_seconds | format_hm }}
-                    {% else %}
-                    {{ t("garmin.no_sleep_window") }}
-                    {% endif %}
-                </p>
-            </div>
-        </div>
-        {{ night_nav(prev_date, next_date) }}
-    </div>
-
-    {{ garmin_tabs('sleep') }}
-    {% endif %}
 
     <!-- Key figures -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">

@@ -3,10 +3,9 @@
 {% block title %}{{ t("hrt.page_title") }}{% endblock %}
 
 {% block content %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+{% from "partials/masthead.html" import masthead_header with context %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showForm: false }">
 
-    {% if request.state.ui_version == 'masthead' %}
     {% call masthead_header('hrt', t('hrt.heading'), [
         {'label': t('hrt.last_dose'), 'primary': true, 'value': compound_names.get(last_dose.compound_key, last_dose.compound_key) if last_dose else '—'},
         {'label': t('hrt.date'), 'value': (last_dose.date) if last_dose else '—'},
@@ -17,49 +16,6 @@
             <span x-text="showForm ? '{{ t('hrt.toggle_history') }}' : '{{ t('hrt.add_dose') }}'"></span>
         </button>
     {% endcall %}
-    {% else %}
-    <!-- Header (classic) -->
-    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-        <div class="flex items-start gap-3.5">
-            <span class="v-bar mt-1"></span>
-            <div class="space-y-2">
-                <span class="v-tag violet">💉 {{ t("hrt.tag") }}</span>
-                <h1 class="v-text-heading">{{ t("hrt.heading") }}</h1>
-                <p class="v-text-body max-w-2xl">{{ t("hrt.description") }}</p>
-            </div>
-        </div>
-        <button @click="showForm = !showForm" class="v-btn-ghost w-full md:w-auto shrink-0">
-            <svg style="width:1.1rem;height:1.1rem" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-            </svg>
-            <span x-text="showForm ? '{{ t('hrt.toggle_history') }}' : '{{ t('hrt.add_dose') }}'"></span>
-        </button>
-    </div>
-
-    <!-- Metrics (classic) -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("hrt.last_dose") }}</span>
-            <span class="v-metric-value-text truncate">
-                {% if last_dose %}{{ compound_names.get(last_dose.compound_key, last_dose.compound_key) }}{% else %}—{% endif %}
-            </span>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("hrt.date") }}</span>
-            <span class="v-metric-value-text">
-                {% if last_dose %}{{ last_dose.date }}{% else %}—{% endif %}
-            </span>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("hrt.compounds_count") }}</span>
-            <span class="v-metric-value">{{ compounds | length }}</span>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("hrt.side_effects") }}</span>
-            <span class="v-metric-value">{{ side_effects | length }}</span>
-        </div>
-    </div>
-    {% endif %}
 
     <!-- Cycle + release -->
     <div class="v-card p-6 space-y-5">

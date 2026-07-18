@@ -352,14 +352,14 @@ async def test_glp1_log_injection(auth_client, db_session):
 async def test_phase3_dashboards_render(auth_client):
     """The three Phase 3 dashboards render with their headings."""
     r = await auth_client.get("/supplements", headers={"Accept": "text/html"})
-    assert r.status_code == 200 and "Каталог добавок" in r.text
+    assert r.status_code == 200 and "Добавки" in r.text
 
     r = await auth_client.get("/genetics", headers={"Accept": "text/html"})
-    assert r.status_code == 200 and "Генетические варианты" in r.text
+    assert r.status_code == 200 and "Генетика" in r.text
     assert "Импорт VCF" in r.text
 
     r = await auth_client.get("/skincare", headers={"Accept": "text/html"})
-    assert r.status_code == 200 and "Протокол ухода за кожей" in r.text
+    assert r.status_code == 200 and "Кожа" in r.text
     assert "Схема ухода по дням недели" in r.text
     assert "Понедельник" in r.text
 
@@ -368,7 +368,7 @@ async def test_genetics_dashboard_post_import_view(auth_client):
     """After import, genetics dashboard initializes with admin panels hidden."""
     r = await auth_client.get("/genetics?imported=29&markers=1", headers={"Accept": "text/html"})
     assert r.status_code == 200
-    assert "Персональный геном" in r.text
+    assert "Генетика" in r.text
     assert "Импорт и настройки" in r.text
     assert "Загружено вариантов" in r.text
     assert 'x-init="showAdminPanels = false"' in r.text
@@ -737,15 +737,6 @@ async def test_garmin_sleep_night_page_masthead_and_nav(auth_client, db_session)
     ])
     await db_session.commit()
 
-    # Classic: same prev/next links, no masthead header markup.
-    r = await auth_client.get("/garmin/sleep/2026-06-10", headers={"Accept": "text/html"})
-    assert r.status_code == 200
-    assert 'href="/garmin/sleep/2026-06-09"' in r.text
-    assert 'href="/garmin/sleep/2026-06-11"' in r.text
-    assert 'class="mh-head"' not in r.text
-
-    # Masthead: editorial header with the night's own date as title + prev/next.
-    await auth_client.post("/settings/ui-version", data={"ui_version": "masthead"})
     r = await auth_client.get("/garmin/sleep/2026-06-10", headers={"Accept": "text/html"})
     assert r.status_code == 200
     assert 'class="mh-head"' in r.text
@@ -841,7 +832,6 @@ async def test_garmin_dashboard_day_strip_renders_in_masthead(auth_client, db_se
     ))
     await db_session.commit()
 
-    await auth_client.post("/settings/ui-version", data={"ui_version": "masthead"})
     response = await auth_client.get("/garmin", headers={"Accept": "text/html"})
     assert response.status_code == 200
     assert "12 345" in response.text
@@ -1448,7 +1438,7 @@ async def test_toggle_module_hides_and_shows_nav(auth_client, db_session):
     r = await auth_client.post("/settings/modules", data={"module": "hevy", "enabled": "true"})
     assert r.status_code == 200
     # Response is an OOB nav fragment that swaps the header live (no reload).
-    assert 'id="primary-nav"' in r.text
+    assert 'id="primary-nav-masthead"' in r.text
     assert 'hx-swap-oob="true"' in r.text
     assert 'href="/hevy"' in r.text
     page = await auth_client.get("/weight", headers=html_headers)

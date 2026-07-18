@@ -25,7 +25,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.i18n import t
-from vitals.services import data_portability_service, language_service, modules_service, ui_version_service
+from vitals.services import data_portability_service, language_service, modules_service
 from vitals.services.modules_service import MODULE_REGISTRY, ModuleToggleError
 from vitals.utils.timeutils import today_local
 from web.deps import get_redis, get_session, require_auth
@@ -102,8 +102,6 @@ def _page(request: Request, username: str, *, saved: Optional[str] = None, error
         # Dashboard modules
         "module_registry": MODULE_REGISTRY,
         "enabled_modules": getattr(request.state, "enabled_modules", {}) or {},
-        # UI version (classic | masthead) — for the interface toggle card.
-        "ui_version": getattr(request.state, "ui_version", "classic"),
     }
     return templates.TemplateResponse(request, "settings/settings.html", ctx)
 
@@ -292,25 +290,6 @@ async def save_language(
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
-
-@router.post("/ui-version")
-async def save_ui_version(
-    request: Request,
-    ui_version: str = Form(...),
-    username: str = Depends(require_auth),
-    db: AsyncSession = Depends(get_session),
-    redis: Redis = Depends(get_redis),
-):
-    """Switch between the classic and masthead interface. Copies the language
-    toggle exactly: full form submit (not HTMX) → persist → redirect back, so the
-    page comes back already rendered in the chosen mode. No migration, no data
-    change — the setting is a single ``app_settings`` row."""
-    await ui_version_service.set_ui_version(db, ui_version, redis)
-    await db.commit()
-    return RedirectResponse(
-        url="/settings?saved=ui_version",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
 
 
 @router.post("/password")

@@ -4,20 +4,10 @@
 
 {% block content %}
 {% from "garmin/_tabs.html" import garmin_tabs %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+{% from "partials/masthead.html" import masthead_header with context %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
 
-    {% if request.state.ui_version == 'masthead' %}
     {{ masthead_header('garmin', t('garmin.tab_activities'), []) }}
-    {% else %}
-    <div class="v-card p-6 flex items-start gap-3.5">
-        <span class="v-bar mt-1"></span>
-        <div class="space-y-2">
-            <span class="v-tag cool">⌚ {{ t("garmin.tag") }}</span>
-            <h1 class="v-text-heading">{{ t("garmin.tab_activities") }}</h1>
-        </div>
-    </div>
-    {% endif %}
 
     {{ garmin_tabs('activities') }}
 

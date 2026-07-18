@@ -3,10 +3,9 @@
 {% block title %}{{ t("hevy.page_title") }}{% endblock %}
 
 {% block content %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+{% from "partials/masthead.html" import masthead_header with context %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ }">
 
-    {% if request.state.ui_version == 'masthead' %}
     {% call masthead_header('hevy', t('nav.workouts'), [
         {'label': t('hevy.total_workouts'), 'primary': true, 'value': count},
         {'label': t('hevy.last_date'), 'value': (last_date | format_date) if last_date else '—'},
@@ -19,54 +18,6 @@
         </form>
         <span class="v-text-micro">{{ t("common.synced_label") }} <span class="font-medium text-[var(--fg-2)]">{{ last_sync or t("common.never_synced") }}</span></span>
     {% endcall %}
-    {% else %}
-    <!-- Header -->
-    <div class="v-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-        <div class="flex items-start gap-3.5">
-            <span class="v-bar mt-1"></span>
-            <div class="space-y-2">
-                <span class="v-tag violet">🏋️ {{ t("hevy.tag") }}</span>
-                <h1 class="v-text-heading">{{ t("hevy.heading") }}</h1>
-                <p class="v-text-body max-w-2xl">
-                    {{ t("hevy.description") }}
-                </p>
-            </div>
-        </div>
-        <div class="w-full md:w-auto shrink-0 flex flex-col items-center md:items-end gap-1.5">
-            <form action="/hevy/sync" method="POST" class="w-full">
-                <button type="submit" class="v-btn w-full md:w-auto text-xs" {% if not is_configured %}disabled style="opacity:.5;cursor:not-allowed"{% endif %}>
-                    <svg style="width: 1rem; height: 1rem;" class="shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                    </svg>
-                    {% if is_configured %}{{ t("common.synchronize") }}{% else %}{{ t("common.not_configured") }}{% endif %}
-                </button>
-            </form>
-            <span class="v-text-micro">{{ t("common.synced_label") }} <span class="font-medium text-[var(--fg-2)]">{{ last_sync or t("common.never_synced") }}</span></span>
-        </div>
-    </div>
-
-    <!-- Metrics -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("hevy.total_workouts") }}</span>
-            <div class="flex items-baseline">
-                <span class="v-metric-value">{{ count }}</span>
-                <span class="v-metric-unit">{{ plural(count, t("hevy.session"), t("hevy.sessions_234"), t("hevy.sessions_many")) }}</span>
-            </div>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("hevy.last_date") }}</span>
-            <span class="v-metric-value-text v-num">{{ last_date | format_date if last_date else '—' }}</span>
-        </div>
-        <div class="v-metric">
-            <span class="v-metric-label">{{ t("hevy.exercises_in_catalog") }}</span>
-            <div class="flex items-baseline">
-                <span class="v-metric-value">{{ catalog | length }}</span>
-                <span class="v-metric-unit">{{ t("hevy.pcs") }}</span>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
     <!-- Sync status banner -->
     {% if sync == 'ok' %}

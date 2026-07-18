@@ -760,12 +760,6 @@ _EN: dict[str, str] = {
     "settings.language_title": "Language",
     "settings.language_description": "Interface and AI report language.",
     "settings.language_save": "Save language",
-    # ── UI version toggle (classic | masthead) ────────────────────────────
-    "settings.saved.ui_version": "Interface switched.",
-    "settings.ui_version_title": "Interface",
-    "settings.ui_version_description": "Try the new \"Masthead\" layout — a sidebar rail and editorial typography instead of the top navbar and stat cards. You can switch back at any time; no data is changed.",
-    "settings.ui_version_classic": "Classic",
-    "settings.ui_version_masthead": "Masthead",
     # ── Masthead chrome ───────────────────────────────────────────────────
     "masthead.section_word": "Section",
     "masthead.rubric.health": "Health",
@@ -1868,11 +1862,6 @@ _RU: dict[str, str] = {
     "settings.language_description": "Язык интерфейса и AI-отчётов.",
     "settings.language_save": "Сохранить язык",
     # ── Переключатель интерфейса (классика | масштхед) ─────────────────────
-    "settings.saved.ui_version": "Интерфейс переключён.",
-    "settings.ui_version_title": "Интерфейс",
-    "settings.ui_version_description": "Попробуйте новый вид «Мастхед» — боковая навигация и крупная типографика вместо верхнего меню и карточек-статов. Вернуться к классике можно в любой момент, данные не меняются.",
-    "settings.ui_version_classic": "Классика",
-    "settings.ui_version_masthead": "Мастхед",
     # ── Каркас «Мастхед» ─────────────────────────────────────────────────
     "masthead.section_word": "Раздел",
     "masthead.rubric.health": "Здоровье",

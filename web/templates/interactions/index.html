@@ -3,31 +3,13 @@
 {% block title %}{{ t("interactions.page_title") }}{% endblock %}
 
 {% block content %}
-{% if request.state.ui_version == 'masthead' %}{% from "partials/masthead.html" import masthead_header with context %}{% endif %}
+{% from "partials/masthead.html" import masthead_header with context %}
 <div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
 
-    {% if request.state.ui_version == 'masthead' %}
     {{ masthead_header('interactions', t('nav.interactions'), [
         {'label': t('interactions.total_label'), 'primary': true, 'value': total_count},
         {'label': t('interactions.firing_now'), 'value': firing_ids | length, 'tone': 'bad' if firing_ids else ''}
     ]) }}
-    {% else %}
-    <div class="v-card p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div class="flex items-start gap-3.5">
-            <span class="v-bar mt-1"></span>
-            <div>
-                <h1 class="v-text-heading">{{ t("interactions.heading") }}</h1>
-                <p class="v-text-body mt-1">{{ t("interactions.subheading") }}</p>
-            </div>
-        </div>
-        <div class="flex items-center gap-2">
-            <span class="v-chip">{{ t("interactions.total_count", n=total_count) }}</span>
-            {% if firing_ids %}
-            <span class="v-chip" style="background: var(--bad-soft); color: var(--bad)">{{ t("interactions.firing_now") }}: {{ firing_ids | length }}</span>
-            {% endif %}
-        </div>
-    </div>
-    {% endif %}
 
     <!-- Filters -->
     <form method="get" action="/interactions" class="v-card p-4 flex flex-wrap items-end gap-4">
