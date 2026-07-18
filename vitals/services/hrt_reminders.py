@@ -4,8 +4,8 @@ Two protocol-aware reminders, complementary to Labs' own generic per-marker
 overdue-retest alert:
 
   * **Bloodwork due** (``hrt.labs_due``) — while a cycle is active, if no
-    hormone-panel result exists within a kind-dependent window (blasts need
-    tighter monitoring than a TRT cruise), raise a passive ``warn``.
+    hormone-panel result exists within a kind-dependent window (PCT needs
+    tighter monitoring than a course), raise a passive ``warn``.
   * **Injection due** (``hrt.injection_due``) — for each active cycle item, if the
     most recent shot the fixed-grid schedule expected by today hasn't been logged,
     raise a per-compound ``info`` nag. Fixed grid: being late doesn't shift it.
@@ -57,14 +57,12 @@ HORMONE_PANEL: dict[str, int] = {
 }
 _PANEL_CATEGORY = "hrt_panel"
 
-# How stale the panel may get before nagging, by cycle kind. Blasts push harder,
-# so they warrant tighter monitoring than a steady TRT cruise.
+# How stale the panel may get before nagging, by cycle kind. PCT needs tight
+# monitoring (is natural production actually restarting?); a course follows the
+# standard quarterly panel.
 PANEL_WINDOW_BY_KIND: dict[str, int] = {
-    "blast": 56,
-    "trt_baseline": 90,
-    "cruise": 90,
+    "course": 90,
     "pct": 30,
-    "bridge": 60,
 }
 _DEFAULT_PANEL_WINDOW = 90
 

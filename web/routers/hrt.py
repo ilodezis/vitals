@@ -206,10 +206,15 @@ async def add_cycle(
 ):
     start = date_type.fromisoformat(start_date)
     end = date_type.fromisoformat(end_date) if end_date else None
-    await hrt_cycle_service.add_cycle(
-        db, kind=kind, start_date=start, name=name, end_date=end, note=note
-    )
-    await db.commit()
+    try:
+        await hrt_cycle_service.add_cycle(
+            db, kind=kind, start_date=start, name=name, end_date=end, note=note
+        )
+        await db.commit()
+    except ValueError as e:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"error": str(e)}
+        )
     return _redirect(request)
 
 

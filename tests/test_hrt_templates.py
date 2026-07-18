@@ -21,7 +21,7 @@ async def _build_staggered_cycle(db_session):
     """A realistic week-anchored course: test wk 1-13, winstrol wk 5-9."""
     await hrt_catalog.sync_catalog(db_session)
     cycle = await hrt_cycle_service.add_cycle(
-        db_session, kind="blast", start_date=today_local(), name="Cut stack",
+        db_session, kind="course", start_date=today_local(), name="Cut stack",
     )
     await hrt_cycle_service.add_cycle_item(
         db_session, cycle.id, compound_key="testosterone_enanthate",
@@ -44,7 +44,7 @@ async def test_save_cycle_as_template_snapshots_items(db_session):
     )
     await db_session.commit()
     await db_session.refresh(template)
-    assert template.name == "Cut v1" and template.kind == "blast"
+    assert template.name == "Cut v1" and template.kind == "course"
     assert len(template.items) == 2
     by_key = {it.compound_key: it for it in template.items}
     assert by_key["stanozolol_oral"].start_offset_days == 28
@@ -53,7 +53,7 @@ async def test_save_cycle_as_template_snapshots_items(db_session):
 
 async def test_save_template_requires_name_and_items(db_session):
     cycle = await hrt_cycle_service.add_cycle(
-        db_session, kind="blast", start_date=today_local(),
+        db_session, kind="course", start_date=today_local(),
     )
     await db_session.commit()
     with pytest.raises(ValueError):
@@ -91,7 +91,7 @@ async def test_create_cycle_from_template_materializes_plan(db_session):
     )
     await db_session.commit()
     await db_session.refresh(new_cycle)
-    assert new_cycle.kind == "blast" and new_cycle.start_date == start
+    assert new_cycle.kind == "course" and new_cycle.start_date == start
     assert new_cycle.name == "Cut v1"  # falls back to the template name
     assert len(new_cycle.items) == 2
     by_key = {it.compound_key: it for it in new_cycle.items}
@@ -156,7 +156,7 @@ async def test_import_round_trip(db_session):
     await db_session.commit()
     await db_session.refresh(imported)
     assert imported.id != template.id
-    assert imported.name == "Cut v1" and imported.kind == "blast"
+    assert imported.name == "Cut v1" and imported.kind == "course"
     by_key = {it.compound_key: it for it in imported.items}
     assert by_key["stanozolol_oral"].start_offset_days == 28
     assert by_key["testosterone_enanthate"].schedule[0]["interval_days"] == 3.5
@@ -171,7 +171,7 @@ async def test_import_rejects_garbage_and_wrong_envelope(db_session):
         await hrt_template_service.import_template(
             db_session,
             {"format": hrt_template_service.EXPORT_FORMAT, "version": 99,
-             "name": "X", "kind": "blast", "items": [{}]},
+             "name": "X", "kind": "course", "items": [{}]},
         )
 
 
@@ -180,7 +180,7 @@ async def test_import_rejects_unknown_compound_key(db_session):
     await db_session.commit()
     payload = {
         "format": hrt_template_service.EXPORT_FORMAT, "version": 1,
-        "name": "Sketchy", "kind": "blast",
+        "name": "Sketchy", "kind": "course",
         "items": [{"compound_key": "not_a_real_compound",
                    "schedule": [{"dose": 10, "interval_days": 1}]}],
     }
@@ -199,12 +199,12 @@ async def test_import_rejects_bad_kind_offset_and_schedule(db_session):
     }
     with pytest.raises(ValueError, match="kind"):
         await hrt_template_service.import_template(db_session, {**base, "kind": "yolo"})
-    bad_offset = {**base, "kind": "blast", "items": [
+    bad_offset = {**base, "kind": "course", "items": [
         {**base["items"][0], "start_offset_days": -3}
     ]}
     with pytest.raises(ValueError, match="start_offset_days"):
         await hrt_template_service.import_template(db_session, bad_offset)
-    bad_schedule = {**base, "kind": "blast", "items": [
+    bad_schedule = {**base, "kind": "course", "items": [
         {"compound_key": "oxandrolone", "schedule": [{"dose": -5, "interval_days": 1}]}
     ]}
     with pytest.raises(ValueError, match="positive"):

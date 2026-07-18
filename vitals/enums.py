@@ -120,13 +120,13 @@ class HrtInjectionSite(StrEnum):
 
 class CycleKind(StrEnum):
     """Kind of an HRT cycle (vitals.models.hrt.HrtCycle) — shapes the lab-check
-    cadence and how the release overlay is labelled."""
+    cadence. Deliberately just two: the app only *behaves* differently for
+    "on hormones" vs "restarting natural production", so pretending to five
+    kinds (TRT/blast/cruise/bridge...) was labeling, not function — use the
+    cycle's free-text name for that nuance. (Collapsed in migration 0028.)"""
 
-    TRT_BASELINE = "trt_baseline"  # steady replacement dose
-    BLAST = "blast"                # elevated/supraphysiologic block
-    CRUISE = "cruise"              # low maintenance between blasts
-    PCT = "pct"                    # post-cycle therapy (SERM/HCG restart)
-    BRIDGE = "bridge"              # short bridge between protocols
+    COURSE = "course"  # any exogenous-hormone protocol (TRT, blast, cruise...)
+    PCT = "pct"        # post-cycle therapy (SERM/HCG restart)
 
 
 class LabFlag(StrEnum):

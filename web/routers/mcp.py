@@ -795,9 +795,9 @@ async def add_hrt_cycle(
     end_date: Optional[str] = None,
     note: Optional[str] = None,
 ) -> dict:
-    """Starts an HRT cycle (``kind``: trt_baseline | blast | cruise | pct |
-    bridge). An open-ended cycle closes the previous open one. WRITE tool. Add
-    compounds with ``add_hrt_cycle_item``."""
+    """Starts an HRT cycle (``kind``: course | pct — put nuance like TRT/blast/
+    cruise in ``name``). An open-ended cycle closes the previous open one. WRITE
+    tool. Add compounds with ``add_hrt_cycle_item``."""
     from vitals.services import hrt_cycle_service
     from vitals.utils.timeutils import today_local
 
@@ -806,9 +806,12 @@ async def add_hrt_cycle(
     end = date_type.fromisoformat(end_date) if end_date else None
 
     async with session_factory() as session:
-        cycle = await hrt_cycle_service.add_cycle(
-            session, kind=kind, start_date=start, name=name, end_date=end, note=note,
-        )
+        try:
+            cycle = await hrt_cycle_service.add_cycle(
+                session, kind=kind, start_date=start, name=name, end_date=end, note=note,
+            )
+        except ValueError as e:
+            return {"error": str(e)}
         await session.commit()
         return await serialize_written(session, cycle)
 

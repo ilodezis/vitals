@@ -38,7 +38,7 @@ async def test_seed_hormone_panel_idempotent(db_session):
 async def test_labs_due_raised_on_cycle_without_bloodwork(db_session):
     await hrt_reminders.seed_hormone_panel(db_session)
     await hrt_cycle_service.add_cycle(
-        db_session, kind="blast", start_date=today_local() - timedelta(days=3),
+        db_session, kind="course", start_date=today_local() - timedelta(days=3),
     )
     await db_session.commit()
     await hrt_reminders.refresh_labs_due(db_session)
@@ -50,7 +50,7 @@ async def test_labs_due_raised_on_cycle_without_bloodwork(db_session):
 async def test_labs_due_cleared_by_recent_panel_result(db_session):
     await hrt_reminders.seed_hormone_panel(db_session)
     await hrt_cycle_service.add_cycle(
-        db_session, kind="blast", start_date=today_local() - timedelta(days=3),
+        db_session, kind="course", start_date=today_local() - timedelta(days=3),
     )
     await db_session.commit()
     await hrt_reminders.refresh_labs_due(db_session)
@@ -79,7 +79,7 @@ async def test_labs_due_absent_without_active_cycle(db_session):
 async def test_injection_due_raised_when_shot_missed(db_session):
     await hrt_catalog.sync_catalog(db_session)
     cycle = await hrt_cycle_service.add_cycle(
-        db_session, kind="trt_baseline", start_date=today_local() - timedelta(days=10),
+        db_session, kind="course", start_date=today_local() - timedelta(days=10),
     )
     await db_session.commit()
     await hrt_cycle_service.add_cycle_item(
@@ -98,7 +98,7 @@ async def test_injection_due_raised_when_shot_missed(db_session):
 async def test_injection_due_cleared_after_logging(db_session):
     await hrt_catalog.sync_catalog(db_session)
     cycle = await hrt_cycle_service.add_cycle(
-        db_session, kind="trt_baseline", start_date=today_local() - timedelta(days=10),
+        db_session, kind="course", start_date=today_local() - timedelta(days=10),
     )
     await db_session.commit()
     await hrt_cycle_service.add_cycle_item(
@@ -202,7 +202,7 @@ async def test_mcp_add_cycle_and_item(db_session, session_factory, monkeypatch):
     await hrt_catalog.sync_catalog(db_session)
     await db_session.commit()
 
-    cycle = await mcp_router.add_hrt_cycle(kind="blast", name="Test", start_date="2026-06-01")
+    cycle = await mcp_router.add_hrt_cycle(kind="course", name="Test", start_date="2026-06-01")
     assert "error" not in cycle
     item = await mcp_router.add_hrt_cycle_item(
         cycle_id=cycle["id"], compound_key="trenbolone_acetate",
@@ -227,7 +227,7 @@ async def test_injection_due_not_raised_before_item_offset(db_session):
     """A compound scheduled from week 5 must not nag during weeks 1-4."""
     await hrt_catalog.sync_catalog(db_session)
     cycle = await hrt_cycle_service.add_cycle(
-        db_session, kind="blast", start_date=today_local() - timedelta(days=3),
+        db_session, kind="course", start_date=today_local() - timedelta(days=3),
     )
     await db_session.commit()
     await hrt_cycle_service.add_cycle_item(

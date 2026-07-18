@@ -24,7 +24,7 @@ from typing import Optional, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from vitals.enums import DoseUnit, Source
+from vitals.enums import CycleKind, DoseUnit, Source
 from vitals.models.hrt import DOMAIN, HrtCompound, HrtCycle, HrtCycleItem, HrtDose
 from vitals.services import hrt_service
 from vitals.utils.timeutils import today_local
@@ -209,6 +209,9 @@ async def add_cycle(
     most one protocol is current — the day before the new one starts, but never
     before the old cycle's own start (a same-day supersede clamps to the start
     date, which is why the new cycle wins the ``active_cycle`` id tie-break)."""
+    valid_kinds = {k.value for k in CycleKind}
+    if kind not in valid_kinds:
+        raise ValueError(f"kind must be one of: {', '.join(sorted(valid_kinds))}")
     if end_date is None:
         result = await session.execute(
             select(HrtCycle).where(HrtCycle.domain == DOMAIN, HrtCycle.end_date.is_(None))
