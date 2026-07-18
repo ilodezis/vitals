@@ -285,3 +285,40 @@ async def test_route_template_rendered_on_dashboard(auth_client, db_session):
     page = await auth_client.get("/hrt")
     assert "Visible name" in page.text
     assert hrt_template_service.EXPORT_FORMAT in page.text  # share code textarea
+
+
+# ── Fix pack: 404 export, same-day supersede, garbage date ────────────────────
+async def test_route_export_missing_template_is_404(auth_client):
+    r = await auth_client.get("/hrt/template/99999/export")
+    assert r.status_code == 404
+
+
+async def test_create_from_template_same_day_supersedes(db_session):
+    """Applying a template on the active cycle's own start date must win the
+    active_cycle tie-break, exactly like a hand-built same-day cycle."""
+    cycle = await _build_staggered_cycle(db_session)
+    template = await hrt_template_service.save_cycle_as_template(
+        db_session, cycle.id, name="Same day",
+    )
+    await db_session.commit()
+    new_cycle = await hrt_template_service.create_cycle_from_template(
+        db_session, template.id, start_date=cycle.start_date,
+    )
+    await db_session.commit()
+    active = await hrt_cycle_service.active_cycle(db_session)
+    assert active.id == new_cycle.id
+    await db_session.refresh(cycle)
+    assert cycle.end_date == cycle.start_date  # clamped, not inverted
+
+
+async def test_route_create_from_template_garbage_date_is_422(auth_client, db_session):
+    cycle = await _build_staggered_cycle(db_session)
+    template = await hrt_template_service.save_cycle_as_template(
+        db_session, cycle.id, name="T",
+    )
+    await db_session.commit()
+    r = await auth_client.post(
+        f"/hrt/template/{template.id}/create-cycle", data={"start_date": "31-12-2026"},
+    )
+    assert r.status_code == 422
+    assert "invalid date" in r.json()["error"]

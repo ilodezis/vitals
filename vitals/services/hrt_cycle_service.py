@@ -276,6 +276,9 @@ async def close_cycle(
     cycle = await session.get(HrtCycle, cycle_id)
     if cycle is None:
         return None
+    # An inverted range would make the cycle silently vanish from history.
+    if end_date < cycle.start_date:
+        raise ValueError("end_date cannot be before the cycle's start date")
     cycle.end_date = end_date
     await session.flush()
     return cycle

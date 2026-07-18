@@ -486,3 +486,55 @@ async def test_add_cycle_rejects_unknown_kind(db_session):
         await hrt_cycle_service.add_cycle(
             db_session, kind="blast", start_date=today_local(),
         )
+
+
+# ── Fix pack: date/offset validation ──────────────────────────────────────────
+async def test_route_cycle_garbage_date_is_422(auth_client):
+    r = await auth_client.post(
+        "/hrt/cycle", data={"kind": "course", "start_date": "not-a-date"},
+    )
+    assert r.status_code == 422
+    assert "invalid date" in r.json()["error"]
+
+
+async def test_close_cycle_rejects_end_before_start(db_session):
+    cycle = await hrt_cycle_service.add_cycle(
+        db_session, kind="course", start_date=today_local(),
+    )
+    await db_session.commit()
+    with pytest.raises(ValueError, match="before the cycle"):
+        await hrt_cycle_service.close_cycle(
+            db_session, cycle.id, end_date=today_local() - timedelta(days=1),
+        )
+
+
+async def test_route_close_end_before_start_is_422(auth_client, db_session):
+    cycle = await hrt_cycle_service.add_cycle(
+        db_session, kind="course", start_date=today_local(),
+    )
+    await db_session.commit()
+    r = await auth_client.post(
+        f"/hrt/cycle/{cycle.id}/close",
+        data={"end_date": (today_local() - timedelta(days=5)).isoformat()},
+    )
+    assert r.status_code == 422
+    await db_session.refresh(cycle)
+    assert cycle.end_date is None  # nothing was written
+
+
+async def test_route_add_item_fractional_or_zero_start_week_is_422(auth_client, db_session):
+    await hrt_catalog.sync_catalog(db_session)
+    await db_session.commit()
+    await auth_client.post(
+        "/hrt/cycle", data={"kind": "course", "start_date": today_local().isoformat()},
+    )
+    cycle = await hrt_cycle_service.active_cycle(db_session)
+    for bad_week in ("2.5", "0"):
+        r = await auth_client.post(
+            f"/hrt/cycle/{cycle.id}/item",
+            data={"compound_key": "testosterone_enanthate", "dose": "125",
+                  "interval_days": "3.5", "start_week": bad_week},
+        )
+        assert r.status_code == 422, bad_week
+    await db_session.refresh(cycle)
+    assert cycle.items == []  # nothing slipped through

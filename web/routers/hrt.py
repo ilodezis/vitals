@@ -45,6 +45,16 @@ def _optional_float(value: Optional[str]) -> Optional[float]:
     return float(value)
 
 
+def _parse_date(value: str) -> date_type:
+    """Date parse that fails as a ValueError — the browser's type=date can't
+    send garbage, but HTMX/API clients can, and that should be a 422, not a
+    500 from a naked ``fromisoformat``."""
+    try:
+        return date_type.fromisoformat((value or "").strip())
+    except ValueError:
+        raise ValueError(f"invalid date: {value!r}") from None
+
+
 @router.get("", response_class=HTMLResponse)
 async def hrt_dashboard(
     request: Request,
@@ -204,9 +214,9 @@ async def add_cycle(
     db: AsyncSession = Depends(get_session),
     username: str = Depends(require_auth),
 ):
-    start = date_type.fromisoformat(start_date)
-    end = date_type.fromisoformat(end_date) if end_date else None
     try:
+        start = _parse_date(start_date)
+        end = _parse_date(end_date) if end_date else None
         await hrt_cycle_service.add_cycle(
             db, kind=kind, start_date=start, name=name, end_date=end, note=note
         )
@@ -238,10 +248,14 @@ async def add_cycle_item(
     dur = _optional_float(duration_days)
     if dur:
         segment["duration_days"] = int(dur)
-    # The form speaks weeks (week 1 = the cycle start); the model stores days.
-    week = _optional_float(start_week)
-    offset_days = int((week - 1) * 7) if week and week > 1 else 0
     try:
+        # The form speaks weeks (week 1 = the cycle start); the model stores
+        # days. Whole weeks only — silently flooring 2.5 to 10 days would give
+        # a grid the user never asked for.
+        week = _optional_float(start_week)
+        if week is not None and (week < 1 or week != int(week)):
+            raise ValueError("start_week must be a whole number >= 1")
+        offset_days = int((week - 1) * 7) if week else 0
         await hrt_cycle_service.add_cycle_item(
             db, cycle_id, compound_key=compound_key, schedule=[segment],
             unit=unit or None, start_offset_days=offset_days, note=note,
@@ -262,9 +276,14 @@ async def close_cycle(
     db: AsyncSession = Depends(get_session),
     username: str = Depends(require_auth),
 ):
-    end = date_type.fromisoformat(end_date) if end_date else today_local()
-    await hrt_cycle_service.close_cycle(db, cycle_id, end_date=end)
-    await db.commit()
+    try:
+        end = _parse_date(end_date) if end_date else today_local()
+        await hrt_cycle_service.close_cycle(db, cycle_id, end_date=end)
+        await db.commit()
+    except ValueError as e:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"error": str(e)}
+        )
     return _redirect(request)
 
 
@@ -319,8 +338,8 @@ async def create_cycle_from_template(
     db: AsyncSession = Depends(get_session),
     username: str = Depends(require_auth),
 ):
-    start = date_type.fromisoformat(start_date)
     try:
+        start = _parse_date(start_date)
         await hrt_template_service.create_cycle_from_template(
             db, template_id, start_date=start, name=name
         )
