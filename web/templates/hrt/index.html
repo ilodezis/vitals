@@ -229,7 +229,16 @@
                         · {{ tp.items | length }} {{ t("hrt.template_compounds") }}
                     </span>
                     <div class="flex items-center gap-2">
-                        <a href="/hrt/template/{{ tp.id }}/export" class="v-btn-ghost text-xs">{{ t("hrt.export") }}</a>
+                        <!-- Copies the /export payload; falls back to navigating to the
+                             .json download when the Clipboard API is unavailable. -->
+                        <button type="button" class="v-btn-ghost text-xs" x-data="{ copied: false }"
+                                @click="fetch('/hrt/template/{{ tp.id }}/export')
+                                            .then(r => r.text())
+                                            .then(t => navigator.clipboard.writeText(t))
+                                            .then(() => { copied = true; setTimeout(() => copied = false, 2000) })
+                                            .catch(() => { window.location = '/hrt/template/{{ tp.id }}/export' })">
+                            <span x-text="copied ? '{{ t('hrt.copied') }}' : '{{ t('hrt.export') }}'"></span>
+                        </button>
                         <form method="post" action="/hrt/template/{{ tp.id }}/delete" class="inline">
                             <button type="submit" class="v-btn-ghost text-xs">{{ t("hrt.delete") }}</button>
                         </form>

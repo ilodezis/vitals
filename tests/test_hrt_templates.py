@@ -295,6 +295,9 @@ async def test_route_template_rendered_on_dashboard(auth_client, db_session):
     page = await auth_client.get("/hrt")
     assert "Visible name" in page.text
     assert hrt_template_service.EXPORT_FORMAT in page.text  # share code textarea
+    # The export button copies the /export payload to the clipboard.
+    assert "navigator.clipboard.writeText" in page.text
+    assert "/export" in page.text
 
 
 # ── Fix pack: 404 export, same-day supersede, garbage date ────────────────────
