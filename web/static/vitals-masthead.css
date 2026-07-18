@@ -75,21 +75,16 @@ body.ui-masthead .mh-rail-spacer {
     }
 }
 
-/* Hover / keyboard-focus preview — overlay only, spacer untouched. */
-body.ui-masthead .mh-rail:hover,
-body.ui-masthead .mh-rail:focus-within {
-    width: var(--mh-rail-w-expanded);
-    box-shadow: var(--shadow-lg);
-}
-
-/* Pinned (toggled by .mh-rail-pin, state kept on <html> — see base.html):
-   the one case where the spacer widens too, so <main> genuinely resizes. */
-html.mh-rail-pinned body.ui-masthead .mh-rail {
-    width: var(--mh-rail-w-expanded);
-}
-
-html.mh-rail-pinned body.ui-masthead .mh-rail-spacer {
-    width: var(--mh-rail-w-expanded);
+/* Desktop (>=1101): the rail is permanently expanded — section labels, group
+   headings and every button label are visible. Below that (tablet, 768–1100) it
+   stays a slim icon-only rail. No hover-expand and no pin toggle: the width is
+   purely breakpoint-driven, so <main> never reflows from a stray pointer and
+   there is no client-side rail state to re-sync across boosted navigations. */
+@media (min-width: 1101px) {
+    body.ui-masthead .mh-rail,
+    body.ui-masthead .mh-rail-spacer {
+        width: var(--mh-rail-w-expanded);
+    }
 }
 
 body.ui-masthead .mh-rail-logo {
@@ -133,7 +128,7 @@ body.ui-masthead .mh-rail-nav {
     align-self: stretch;
     align-items: stretch;
     min-height: 0;
-    gap: 8px;
+    gap: 0;
     padding: 0 16px;
     overflow-y: auto;
     overflow-x: hidden;
@@ -144,12 +139,37 @@ body.ui-masthead .mh-rail-nav::-webkit-scrollbar {
     display: none;
 }
 
+/* Rubric group: a small stack of buttons under a quiet heading. The gap between
+   groups reads as a soft separator even in icon-only mode, where the heading
+   itself is hidden. */
+body.ui-masthead .mh-rail-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+body.ui-masthead .mh-rail-group + .mh-rail-group {
+    margin-top: 18px;
+}
+
+/* Heading: hidden by default (icon-only rail), revealed with the labels when the
+   rail is expanded — see the >=1101 block below. */
+body.ui-masthead .mh-rail-group-label {
+    display: none;
+    padding: 0 13px 4px;
+    color: var(--faint);
+    font: 700 10px 'Inter', sans-serif;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+
 /* Section buttons — 44px tall (touch target), rounded, muted → accent when
    active. Width fills the row instead of a fixed 44px square: collapsed, nav's
    own 16px side padding leaves exactly 44px of content width (matching the
    rail's own centering math), so it still reads as a square icon button;
    expanded, the same row just has room for the label to reveal beside it. */
 body.ui-masthead .mh-rail-btn {
+    position: relative;
     height: 44px;
     flex: none;
     border-radius: 10px;
@@ -168,6 +188,10 @@ body.ui-masthead .mh-rail-btn svg {
     width: 18px;
     height: 18px;
     flex: none;
+    /* Lighter stroke than the icons' inline stroke-width="2" — CSS wins over the
+       presentation attribute, so the whole rail set reads thinner and less bulky
+       without touching each glyph's paths. */
+    stroke-width: 1.5;
 }
 
 body.ui-masthead .mh-rail-btn:hover {
@@ -181,8 +205,21 @@ body.ui-masthead .mh-rail-btn.is-active {
     border-color: var(--accent-line);
 }
 
-/* Label — collapsed to zero width by default; revealed under the same three
-   conditions (hover / keyboard-focus / pinned) as the rail's own width. */
+/* Amber "you are here" bar tacked to the button's leading edge — a positional
+   cue that reads instantly even in the icon-only rail, on top of the fill. */
+body.ui-masthead .mh-rail-btn.is-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 9px;
+    bottom: 9px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+}
+
+/* Label — collapsed to zero width in the icon-only rail; revealed on desktop
+   (>=1101), the same breakpoint that expands the rail's own width. */
 body.ui-masthead .mh-rail-label {
     margin-left: 12px;
     font: 600 13px 'Inter', sans-serif;
@@ -193,14 +230,18 @@ body.ui-masthead .mh-rail-label {
     transition: opacity .15s ease, max-width .18s ease;
 }
 
-body.ui-masthead .mh-rail:hover .mh-rail-label,
-body.ui-masthead .mh-rail:focus-within .mh-rail-label,
-html.mh-rail-pinned body.ui-masthead .mh-rail-label {
-    opacity: 1;
-    max-width: 160px;
+@media (min-width: 1101px) {
+    body.ui-masthead .mh-rail-label {
+        opacity: 1;
+        max-width: 160px;
+    }
+
+    body.ui-masthead .mh-rail-group-label {
+        display: block;
+    }
 }
 
-/* Bottom cluster: pin toggle, settings, avatar. Always visible — never part of
+/* Bottom cluster: settings, logout. Always visible — never part of
    .mh-rail-nav's own scroll region (see above) — and laid out with the same
    align-self:stretch + 16px side padding as the nav so its icons line up with
    the nav's icons exactly, collapsed or expanded. */
@@ -213,22 +254,6 @@ body.ui-masthead .mh-rail-foot {
     gap: 14px;
     padding: 12px 16px 0;
     border-top: 1px solid var(--line);
-}
-
-/* Pin toggle and settings share .mh-rail-btn (added in the HTML) for their box
-   model and color states, so they always match the nav buttons pixel-for-pixel
-   instead of drifting independently. Only the pin-specific "tacked down" glyph
-   rotation lives here. */
-body.ui-masthead .mh-rail-pin {
-    cursor: pointer;
-}
-
-body.ui-masthead .mh-rail-pin svg {
-    transition: transform .15s ease;
-}
-
-body.ui-masthead .mh-rail-pin.is-active svg {
-    transform: rotate(-45deg);
 }
 
 body.ui-masthead .mh-rail-avatar {
