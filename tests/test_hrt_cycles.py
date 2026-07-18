@@ -206,3 +206,152 @@ async def test_hrt_dashboard_renders_masthead_header(auth_client, db_session):
     assert r.status_code == 200
     assert "mh-title" in r.text   # masthead editorial header rendered
     assert "mh-metric" in r.text  # the section's key-figures row rendered
+
+
+# ── Cycle lifecycle chains (create-over, delete, switch, close) ───────────────
+async def test_new_open_cycle_supersedes_same_day(db_session):
+    """Creating a new open cycle the SAME day as the current one must switch the
+    active cycle to the new one (the reported UI bug)."""
+    a = await hrt_cycle_service.add_cycle(db_session, kind="trt_baseline", start_date=today_local())
+    await db_session.commit()
+    b = await hrt_cycle_service.add_cycle(db_session, kind="blast", start_date=today_local())
+    await db_session.commit()
+    active = await hrt_cycle_service.active_cycle(db_session)
+    assert active is not None and active.id == b.id
+    assert active.kind == "blast"
+    # The superseded same-day cycle must be closed (not left as a second open one).
+    await db_session.refresh(a)
+    assert a.end_date is not None
+
+
+async def test_new_open_cycle_closes_earlier_open(db_session):
+    a = await hrt_cycle_service.add_cycle(
+        db_session, kind="cruise", start_date=today_local() - timedelta(days=10)
+    )
+    await db_session.commit()
+    b = await hrt_cycle_service.add_cycle(db_session, kind="blast", start_date=today_local())
+    await db_session.commit()
+    await db_session.refresh(a)
+    assert a.end_date == today_local() - timedelta(days=1)
+    active = await hrt_cycle_service.active_cycle(db_session)
+    assert active.id == b.id
+
+
+async def test_only_one_open_cycle_after_supersede(db_session):
+    from sqlalchemy import select
+    from vitals.models.hrt import HrtCycle
+    for _ in range(3):
+        await hrt_cycle_service.add_cycle(db_session, kind="blast", start_date=today_local())
+        await db_session.commit()
+    open_cycles = (
+        await db_session.execute(select(HrtCycle).where(HrtCycle.end_date.is_(None)))
+    ).scalars().all()
+    assert len(open_cycles) == 1
+
+
+async def test_switch_kind_via_new_cycle(db_session):
+    await hrt_cycle_service.add_cycle(db_session, kind="trt_baseline", start_date=today_local())
+    await db_session.commit()
+    await hrt_cycle_service.add_cycle(db_session, kind="pct", start_date=today_local())
+    await db_session.commit()
+    active = await hrt_cycle_service.active_cycle(db_session)
+    assert active.kind == "pct"
+
+
+async def test_delete_active_cycle_makes_none_active(db_session):
+    a = await hrt_cycle_service.add_cycle(db_session, kind="blast", start_date=today_local())
+    await db_session.commit()
+    assert await hrt_cycle_service.delete_cycle(db_session, a.id) is True
+    await db_session.commit()
+    assert await hrt_cycle_service.active_cycle(db_session) is None
+
+
+async def test_delete_cycle_cascades_items(db_session):
+    from sqlalchemy import func, select
+    from vitals.models.hrt import HrtCycleItem
+    await hrt_catalog.sync_catalog(db_session)
+    a = await hrt_cycle_service.add_cycle(db_session, kind="blast", start_date=today_local())
+    await db_session.commit()
+    await hrt_cycle_service.add_cycle_item(
+        db_session, a.id, compound_key="testosterone_enanthate",
+        schedule=[{"dose": 250, "interval_days": 3.5}],
+    )
+    await db_session.commit()
+    await hrt_cycle_service.delete_cycle(db_session, a.id)
+    await db_session.commit()
+    n = (await db_session.execute(select(func.count()).select_from(HrtCycleItem))).scalar()
+    assert n == 0
+
+
+async def test_delete_reveals_previous_open_cycle_as_none(db_session):
+    """After superseding then deleting the new cycle, the superseded one stays
+    closed — no active cycle resurfaces (closed cycles are not 'open')."""
+    await hrt_cycle_service.add_cycle(db_session, kind="cruise", start_date=today_local() - timedelta(days=5))
+    await db_session.commit()
+    b = await hrt_cycle_service.add_cycle(db_session, kind="blast", start_date=today_local())
+    await db_session.commit()
+    await hrt_cycle_service.delete_cycle(db_session, b.id)
+    await db_session.commit()
+    active = await hrt_cycle_service.active_cycle(db_session)
+    # The cruise cycle was closed yesterday when blast started → nothing active now.
+    assert active is None
+
+
+async def test_close_then_create_new(db_session):
+    a = await hrt_cycle_service.add_cycle(db_session, kind="trt_baseline", start_date=today_local() - timedelta(days=3))
+    await db_session.commit()
+    await hrt_cycle_service.close_cycle(db_session, a.id, end_date=today_local())
+    await db_session.commit()
+    b = await hrt_cycle_service.add_cycle(db_session, kind="blast", start_date=today_local())
+    await db_session.commit()
+    active = await hrt_cycle_service.active_cycle(db_session)
+    assert active.id == b.id
+
+
+async def test_add_remove_readd_item(db_session):
+    await hrt_catalog.sync_catalog(db_session)
+    a = await hrt_cycle_service.add_cycle(db_session, kind="blast", start_date=today_local())
+    await db_session.commit()
+    it = await hrt_cycle_service.add_cycle_item(
+        db_session, a.id, compound_key="oxandrolone", schedule=[{"dose": 20, "interval_days": 1}],
+    )
+    await db_session.commit()
+    assert await hrt_cycle_service.delete_cycle_item(db_session, it.id) is True
+    await db_session.commit()
+    it2 = await hrt_cycle_service.add_cycle_item(
+        db_session, a.id, compound_key="oxandrolone", schedule=[{"dose": 30, "interval_days": 1}],
+    )
+    await db_session.commit()
+    await db_session.refresh(a)
+    assert len(a.items) == 1 and a.items[0].id == it2.id
+
+
+# ── Route-level: create-over-active reproduces the UI bug ─────────────────────
+async def test_route_create_cycle_over_active_switches(auth_client, db_session):
+    today = today_local().isoformat()
+    r1 = await auth_client.post("/hrt/cycle", data={"kind": "trt_baseline", "name": "First", "start_date": today})
+    assert r1.status_code == 303
+    r2 = await auth_client.post("/hrt/cycle", data={"kind": "blast", "name": "Second", "start_date": today})
+    assert r2.status_code == 303
+    page = await auth_client.get("/hrt")
+    assert "Second" in page.text
+    # The old cycle's badge/name should no longer be the active one shown up top.
+    active = await hrt_cycle_service.active_cycle(db_session)
+    assert active.name == "Second"
+
+
+async def test_cycle_with_past_end_not_active(db_session):
+    await hrt_cycle_service.add_cycle(
+        db_session, kind="pct", start_date=today_local() - timedelta(days=30),
+        end_date=today_local() - timedelta(days=1),
+    )
+    await db_session.commit()
+    assert await hrt_cycle_service.active_cycle(db_session) is None
+
+
+async def test_future_cycle_not_active_today(db_session):
+    await hrt_cycle_service.add_cycle(
+        db_session, kind="blast", start_date=today_local() + timedelta(days=7),
+    )
+    await db_session.commit()
+    assert await hrt_cycle_service.active_cycle(db_session) is None

@@ -116,10 +116,14 @@ async def list_cycles(session: AsyncSession) -> Sequence[HrtCycle]:
 async def active_cycle(
     session: AsyncSession, *, on_date: Optional[date_type] = None
 ) -> Optional[HrtCycle]:
-    """The cycle covering ``on_date`` (today by default); the newest match wins."""
+    """The cycle covering ``on_date`` (today by default). The newest match wins —
+    ordered by start date then id, so a same-day supersede picks the one created
+    last."""
     day = on_date or today_local()
     result = await session.execute(
-        select(HrtCycle).where(HrtCycle.domain == DOMAIN).order_by(HrtCycle.start_date.desc())
+        select(HrtCycle)
+        .where(HrtCycle.domain == DOMAIN)
+        .order_by(HrtCycle.start_date.desc(), HrtCycle.id.desc())
     )
     for cycle in result.scalars().all():
         if cycle.start_date <= day and (cycle.end_date is None or day <= cycle.end_date):
@@ -136,15 +140,18 @@ async def add_cycle(
     end_date: Optional[date_type] = None,
     note: Optional[str] = None,
 ) -> HrtCycle:
-    """Create a cycle. An open-ended one closes any other still-open cycle the day
-    before it starts, so at most one protocol is current."""
+    """Create a cycle. An open-ended one closes every other still-open cycle so at
+    most one protocol is current — the day before the new one starts, but never
+    before the old cycle's own start (a same-day supersede clamps to the start
+    date, which is why the new cycle wins the ``active_cycle`` id tie-break)."""
     if end_date is None:
         result = await session.execute(
             select(HrtCycle).where(HrtCycle.domain == DOMAIN, HrtCycle.end_date.is_(None))
         )
         for open_cycle in result.scalars().all():
-            if open_cycle.start_date < start_date:
-                open_cycle.end_date = start_date - timedelta(days=1)
+            open_cycle.end_date = max(
+                open_cycle.start_date, start_date - timedelta(days=1)
+            )
 
     cycle = HrtCycle(
         domain=DOMAIN,
