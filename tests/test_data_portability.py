@@ -360,3 +360,63 @@ async def test_import_endpoint_rejects_wrong_extension(auth_client):
     files = {"backup_file": ("data.csv", b"a,b,c", "text/csv")}
     r = await auth_client.post("/settings/import", files=files)
     assert r.status_code == 415
+
+
+# ── HRT in the exports (PR #7 review item) ────────────────────────────────────
+async def _seed_hrt(session):
+    from vitals.services import hrt_catalog, hrt_cycle_service, hrt_service, hrt_template_service
+    from vitals.utils.timeutils import today_local
+
+    await hrt_catalog.sync_catalog(session)
+    await hrt_service.log_dose(
+        session, compound_key="testosterone_enanthate", on_date=today_local(),
+        dose=250, unit="mg", brand="TestBrand", lab="UGL",
+    )
+    await hrt_service.log_side_effect(
+        session, on_date=today_local(), effect_type="acne", severity=2,
+    )
+    cycle = await hrt_cycle_service.add_cycle(
+        session, kind="course", start_date=today_local(), name="Cut",
+    )
+    await hrt_cycle_service.add_cycle_item(
+        session, cycle.id, compound_key="stanozolol_oral",
+        schedule=[{"dose": 30, "interval_days": 1, "duration_days": 28}],
+        start_offset_days=28,
+    )
+    await hrt_template_service.save_cycle_as_template(session, cycle.id, name="Cut tpl")
+    await session.commit()
+
+
+async def test_llm_export_includes_hrt(db_session):
+    await _seed_hrt(db_session)
+    out = await export_llm(db_session)
+    assert out["hrt_doses"][0]["compound"] == "testosterone_enanthate"
+    assert out["hrt_doses"][0]["brand"] == "TestBrand"
+    assert out["hrt_side_effects"][0]["effect_type"] == "acne"
+    cycle = out["hrt_cycles"][0]
+    assert cycle["kind"] == "course"
+    assert cycle["items"][0]["start_offset_days"] == 28
+    tpl = out["hrt_cycle_templates"][0]
+    assert tpl["name"] == "Cut tpl" and tpl["items"][0]["compound"] == "stanozolol_oral"
+
+
+async def test_full_backup_round_trips_hrt(db_session):
+    """The generic full backup must carry every HRT table through wipe+restore."""
+    from sqlalchemy import func, select
+    from vitals.models.hrt import HrtCycle, HrtCycleItem, HrtCycleTemplate, HrtDose
+
+    await _seed_hrt(db_session)
+    snapshot = await export_full(db_session)
+    for table in ("hrt_doses", "hrt_cycles", "hrt_cycle_items",
+                  "hrt_side_effects", "hrt_cycle_templates", "hrt_cycle_template_items"):
+        assert snapshot.get(table), f"{table} missing from full backup"
+
+    stats = await import_full(db_session, snapshot)  # wipe + reload
+    await db_session.commit()
+    assert stats.counts["hrt_doses"] == 1
+    dose = (await db_session.execute(select(HrtDose))).scalars().one()
+    assert dose.brand == "TestBrand"
+    item = (await db_session.execute(select(HrtCycleItem))).scalars().one()
+    assert item.start_offset_days == 28 and item.schedule[0]["dose"] == 30
+    assert (await db_session.execute(select(func.count(HrtCycle.id)))).scalar() == 1
+    assert (await db_session.execute(select(func.count(HrtCycleTemplate.id)))).scalar() == 1

@@ -15,7 +15,7 @@ ANCHOR = date(2026, 6, 1)
 
 
 # ── Schedule engine (pure, no DB) ─────────────────────────────────────────────
-def test_expand_flat_fractional_interval():
+async def test_expand_flat_fractional_interval():
     seg = [{"dose": 125, "interval_days": 3.5, "duration_days": 14}]
     adm = hrt_cycle_service.expand_schedule(seg, ANCHOR, ANCHOR, ANCHOR + timedelta(days=30))
     offsets = [(d - ANCHOR).days for d, _ in adm]
@@ -23,7 +23,7 @@ def test_expand_flat_fractional_interval():
     assert {v for _, v in adm} == {125.0}
 
 
-def test_expand_linear_ramp():
+async def test_expand_linear_ramp():
     seg = [{"dose_start": 250, "dose_end": 500, "step": 50, "step_every_days": 7,
             "interval_days": 7, "duration_days": 28}]
     adm = hrt_cycle_service.expand_schedule(seg, ANCHOR, ANCHOR, ANCHOR + timedelta(days=45))
@@ -32,7 +32,7 @@ def test_expand_linear_ramp():
     ]
 
 
-def test_expand_ramp_clamps_to_end():
+async def test_expand_ramp_clamps_to_end():
     seg = [{"dose_start": 200, "dose_end": 300, "step": 100, "step_every_days": 7,
             "interval_days": 7, "duration_days": 28}]
     adm = hrt_cycle_service.expand_schedule(seg, ANCHOR, ANCHOR, ANCHOR + timedelta(days=45))
@@ -40,7 +40,7 @@ def test_expand_ramp_clamps_to_end():
     assert max(doses) == 300.0  # clamped, never overshoots dose_end
 
 
-def test_expand_two_segments_blast_then_open_cruise():
+async def test_expand_two_segments_blast_then_open_cruise():
     segs = [{"dose": 500, "interval_days": 7, "duration_days": 14},
             {"dose": 150, "interval_days": 7}]
     adm = hrt_cycle_service.expand_schedule(segs, ANCHOR, ANCHOR, ANCHOR + timedelta(days=34))
@@ -49,7 +49,7 @@ def test_expand_two_segments_blast_then_open_cruise():
     ]
 
 
-def test_expand_windows_to_start_end():
+async def test_expand_windows_to_start_end():
     seg = [{"dose": 100, "interval_days": 7}]
     # Only administrations within [ANCHOR+10, ANCHOR+20] returned.
     adm = hrt_cycle_service.expand_schedule(
@@ -59,7 +59,7 @@ def test_expand_windows_to_start_end():
     assert offsets == [14]
 
 
-def test_expand_empty_schedule():
+async def test_expand_empty_schedule():
     assert hrt_cycle_service.expand_schedule([], ANCHOR, ANCHOR, ANCHOR + timedelta(days=10)) == []
 
 

@@ -108,6 +108,10 @@ _EN: dict[str, str] = {
     "hrt.save_as_template": "Save as template",
     "hrt.create_from_template": "Start cycle",
     "hrt.template_compounds": "compounds",
+    "hrt.confirm_delete_dose": "Delete this dose entry?",
+    "hrt.confirm_delete_item": "Remove this compound from the cycle plan?",
+    "hrt.confirm_delete_template": "Delete this template?",
+    "hrt.confirm_delete_side": "Delete this side-effect entry?",
     "hrt.export": "Copy export JSON",
     "hrt.copied": "Copied!",
     "hrt.share_code": "Share code (JSON)",
@@ -983,6 +987,9 @@ _EN: dict[str, str] = {
     "import.label.skincare_logs": "skincare entries",
     "import.label.weekly_digests": "AI digests",
     "import.label.annotations": "timeline events",
+    "import.label.hrt_doses": "HRT doses",
+    "import.label.hrt_cycles": "HRT cycles",
+    "import.label.hrt_side_effects": "HRT side effects",
 
     # ── Body composition (InBody / МедАсс — BIA) ──────────────────────────
     "nav.body_comp": "Body composition",
@@ -1218,6 +1225,10 @@ _RU: dict[str, str] = {
     "hrt.save_as_template": "Сохранить как шаблон",
     "hrt.create_from_template": "Запустить курс",
     "hrt.template_compounds": "препаратов",
+    "hrt.confirm_delete_dose": "Удалить эту запись приёма?",
+    "hrt.confirm_delete_item": "Убрать этот препарат из плана курса?",
+    "hrt.confirm_delete_template": "Удалить этот шаблон?",
+    "hrt.confirm_delete_side": "Удалить эту запись побочки?",
     "hrt.export": "Скопировать JSON",
     "hrt.copied": "Скопировано!",
     "hrt.share_code": "Код для обмена (JSON)",
@@ -2094,6 +2105,9 @@ _RU: dict[str, str] = {
     "import.label.skincare_logs": "записей ухода",
     "import.label.weekly_digests": "AI-дайджестов",
     "import.label.annotations": "событий хронологии",
+    "import.label.hrt_doses": "приёмов ГЗТ",
+    "import.label.hrt_cycles": "курсов ГЗТ",
+    "import.label.hrt_side_effects": "побочек ГЗТ",
 
     # ── Состав тела (InBody / МедАсс — BIA) ───────────────────────────────
     "nav.body_comp": "Состав тела",

@@ -82,12 +82,13 @@ async def hrt_dashboard(
 
     active_cycle = await hrt_cycle_service.active_cycle(db)
     planned = await hrt_cycle_service.planned_administrations(
-        db, start=today, end=today + timedelta(days=21)
+        db, start=today, end=today + timedelta(days=21), cycle=active_cycle
     )
     # A 90-day window (30 back, 60 forward) for the server-rendered release
     # sparkline — actual doses behind, planned projection ahead.
     release = await hrt_cycle_service.release_series(
         db, start=today - timedelta(days=30), end=today + timedelta(days=60),
+        cycle=active_cycle,
     )
 
     cycle_templates = await hrt_template_service.list_templates(db)
@@ -169,7 +170,12 @@ async def add_dose(
     db: AsyncSession = Depends(get_session),
     username: str = Depends(require_auth),
 ):
-    on_date = date_type.fromisoformat(date)
+    try:
+        on_date = _parse_date(date)
+    except ValueError as e:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"error": str(e)}
+        )
     kwargs = dict(
         compound_key=compound_key,
         on_date=on_date,
@@ -473,8 +479,8 @@ async def add_side_effect(
     db: AsyncSession = Depends(get_session),
     username: str = Depends(require_auth),
 ):
-    on_date = date_type.fromisoformat(date)
     try:
+        on_date = _parse_date(date)
         await hrt_service.log_side_effect(
             db, on_date=on_date, effect_type=effect_type, severity=severity, note=note
         )

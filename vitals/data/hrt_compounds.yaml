@@ -3,8 +3,8 @@
 # catalog; a user's dose log references one of these by key.
 #
 # This file describes MOLECULES, not products. Brand / underground-lab (UGL) /
-# batch / actual measured concentration are tracked per-vial on the user's side
-# (HrtVial → HrtDose), NOT here — one molecule (e.g. testosterone enanthate) is
+# batch / actual measured concentration are tracked as plain fields on each
+# dose row (HrtDose), NOT here — one molecule (e.g. testosterone enanthate) is
 # sold under dozens of brands, so brand never belongs on the shared reference.
 #
 # Fields per entry:

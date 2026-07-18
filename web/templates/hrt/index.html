@@ -66,7 +66,7 @@
                     </span>
                     <div class="flex items-center gap-2">
                         <button type="button" @click="edit = !edit" class="v-btn-ghost text-xs">{{ t("common.edit") }}</button>
-                        <form method="post" action="/hrt/cycle/item/{{ it.id }}/delete" class="inline">
+                        <form method="post" action="/hrt/cycle/item/{{ it.id }}/delete" class="inline" data-confirm="{{ t('hrt.confirm_delete_item') }}">
                             <button type="submit" class="v-btn-ghost text-xs">{{ t("hrt.delete") }}</button>
                         </form>
                     </div>
@@ -147,21 +147,21 @@
         {% if planned %}
         <div class="border-t border-[var(--line)] pt-4 space-y-2">
             <span class="v-label">{{ t("hrt.planned_upcoming") }}</span>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+            <div class="v-table-wrap">
+                <table class="v-table">
                     <thead>
-                        <tr class="text-left text-[var(--fg-2)]">
-                            <th class="py-1.5 pr-4">{{ t("hrt.date") }}</th>
-                            <th class="py-1.5 pr-4">{{ t("hrt.compound") }}</th>
-                            <th class="py-1.5 pr-4">{{ t("hrt.dose") }}</th>
+                        <tr>
+                            <th>{{ t("hrt.date") }}</th>
+                            <th>{{ t("hrt.compound") }}</th>
+                            <th>{{ t("hrt.dose") }}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for p in planned %}
-                        <tr class="border-t border-[var(--line)]">
-                            <td class="py-1.5 pr-4 whitespace-nowrap">{{ p.date }}</td>
-                            <td class="py-1.5 pr-4">{{ compound_names.get(p.compound_key, p.compound_key) }}</td>
-                            <td class="py-1.5 pr-4 whitespace-nowrap">{{ p.dose }} {{ p.unit }}</td>
+                        <tr>
+                            <td class="v-num whitespace-nowrap">{{ p.date }}</td>
+                            <td>{{ compound_names.get(p.compound_key, p.compound_key) }}</td>
+                            <td class="v-num whitespace-nowrap">{{ p.dose }} {{ p.unit }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -239,7 +239,7 @@
                                             .catch(() => { window.location = '/hrt/template/{{ tp.id }}/export' })">
                             <span x-text="copied ? '{{ t('hrt.copied') }}' : '{{ t('hrt.export') }}'"></span>
                         </button>
-                        <form method="post" action="/hrt/template/{{ tp.id }}/delete" class="inline">
+                        <form method="post" action="/hrt/template/{{ tp.id }}/delete" class="inline" data-confirm="{{ t('hrt.confirm_delete_template') }}">
                             <button type="submit" class="v-btn-ghost text-xs">{{ t("hrt.delete") }}</button>
                         </form>
                     </div>
@@ -365,32 +365,32 @@
     <div class="v-card p-6 space-y-4">
         <h2 class="v-text-heading">{{ t("hrt.log_title") }}</h2>
         {% if doses %}
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+        <div class="v-table-wrap">
+            <table class="v-table">
                 <thead>
-                    <tr class="text-left text-[var(--fg-2)]">
-                        <th class="py-2 pr-4">{{ t("hrt.date") }}</th>
-                        <th class="py-2 pr-4">{{ t("hrt.compound") }}</th>
-                        <th class="py-2 pr-4">{{ t("hrt.dose") }}</th>
-                        <th class="py-2 pr-4">{{ t("hrt.brand") }}</th>
-                        <th class="py-2 pr-4">{{ t("hrt.site") }}</th>
-                        <th class="py-2 pr-4"></th>
+                    <tr>
+                        <th>{{ t("hrt.date") }}</th>
+                        <th>{{ t("hrt.compound") }}</th>
+                        <th>{{ t("hrt.dose") }}</th>
+                        <th>{{ t("hrt.brand") }}</th>
+                        <th>{{ t("hrt.site") }}</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for d in doses %}
-                    <tr class="border-t border-[var(--line)]">
-                        <td class="py-2 pr-4 whitespace-nowrap">{{ d.date }}</td>
-                        <td class="py-2 pr-4">{{ compound_names.get(d.compound_key, d.compound_key) }}</td>
-                        <td class="py-2 pr-4 whitespace-nowrap">
+                    <tr>
+                        <td class="v-num whitespace-nowrap">{{ d.date }}</td>
+                        <td>{{ compound_names.get(d.compound_key, d.compound_key) }}</td>
+                        <td class="v-num whitespace-nowrap">
                             {{ d.dose | round(2) }} {{ d.unit }}{% if d.volume_ml %} · {{ d.volume_ml | round(2) }} мл{% endif %}
                         </td>
-                        <td class="py-2 pr-4">
+                        <td>
                             {{ d.brand or '' }}{% if d.lab %} / {{ d.lab }}{% endif %}{% if d.batch %} · {{ d.batch }}{% endif %}
                         </td>
-                        <td class="py-2 pr-4 whitespace-nowrap">{{ (d.site or '') | replace('_', ' ') }}</td>
-                        <td class="py-2 pr-4 text-right">
-                            <form method="post" action="/hrt/dose/{{ d.id }}/delete" class="inline">
+                        <td class="whitespace-nowrap">{{ (d.site or '') | replace('_', ' ') }}</td>
+                        <td class="text-right">
+                            <form method="post" action="/hrt/dose/{{ d.id }}/delete" class="inline" data-confirm="{{ t('hrt.confirm_delete_dose') }}">
                                 <button type="submit" class="v-btn-ghost text-xs">{{ t("hrt.delete") }}</button>
                             </form>
                         </td>
@@ -440,7 +440,7 @@
             {% for e in side_effects %}
             <div class="flex items-center justify-between border-t border-[var(--line)] pt-2">
                 <span class="v-text-body">{{ e.date }} · {{ e.effect_type }} · {{ e.severity }}/5</span>
-                <form method="post" action="/hrt/side-effect/{{ e.id }}/delete" class="inline">
+                <form method="post" action="/hrt/side-effect/{{ e.id }}/delete" class="inline" data-confirm="{{ t('hrt.confirm_delete_side') }}">
                     <button type="submit" class="v-btn-ghost text-xs">{{ t("hrt.delete") }}</button>
                 </form>
             </div>

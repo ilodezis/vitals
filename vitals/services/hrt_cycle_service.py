@@ -334,12 +334,19 @@ async def delete_cycle_item(session: AsyncSession, item_id: int) -> bool:
 
 # ── Planned administrations (from the active cycle) ───────────────────────────
 async def planned_administrations(
-    session: AsyncSession, *, start: date_type, end: date_type
+    session: AsyncSession,
+    *,
+    start: date_type,
+    end: date_type,
+    cycle: Optional[HrtCycle] = None,
 ) -> list[dict]:
     """Planned administrations from the active cycle within ``[start, end]``, one
     entry per shot: ``{date, compound_key, unit, dose}``. Empty when no cycle is
-    active. Each item is anchored at the cycle's start (fixed grid)."""
-    cycle = await active_cycle(session)
+    active. Each item is anchored at the cycle's start (fixed grid). Pass the
+    already-loaded ``cycle`` when the caller has it (the dashboard does) to skip
+    the re-fetch."""
+    if cycle is None:
+        cycle = await active_cycle(session)
     if cycle is None:
         return []
     window_start = max(start, cycle.start_date)
@@ -392,11 +399,16 @@ async def _actual_contributions(
 
 
 async def _planned_contributions(
-    session: AsyncSession, *, start: date_type, end: date_type
+    session: AsyncSession,
+    *,
+    start: date_type,
+    end: date_type,
+    cycle: Optional[HrtCycle] = None,
 ) -> list[tuple[date_type, float, float, str]]:
     """Future planned administrations (from the active cycle) as release
     contributions, resolving each item's compound for half-life/fraction."""
-    cycle = await active_cycle(session)
+    if cycle is None:
+        cycle = await active_cycle(session)
     if cycle is None:
         return []
     contribs: list[tuple[date_type, float, float, str]] = []
@@ -423,6 +435,7 @@ async def release_series(
     end: date_type,
     step_days: int = 1,
     include_planned: bool = True,
+    cycle: Optional[HrtCycle] = None,
 ) -> list[dict]:
     """Daily active-hormone-in-body estimate over ``[start, end]``. Sums the
     exponential decay of every modelable administration (actual up to ``end``,
@@ -433,7 +446,7 @@ async def release_series(
     if include_planned:
         today = today_local()
         for adm_date, active, hl, cls in await _planned_contributions(
-            session, start=today + timedelta(days=1), end=end
+            session, start=today + timedelta(days=1), end=end, cycle=cycle
         ):
             contribs.append((adm_date, active, hl, cls))
 
