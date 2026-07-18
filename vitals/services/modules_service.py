@@ -60,6 +60,7 @@ MODULE_REGISTRY: dict[str, ModuleSpec] = {
         ModuleSpec("glp1", "GLP-1", "optional", "/glp1"),
         ModuleSpec("hevy", "Тренировки", "optional", "/hevy"),
         ModuleSpec("supplements", "Добавки", "optional", "/supplements"),
+        ModuleSpec("hrt", "ГЗТ / TRT", "optional", "/hrt"),
         ModuleSpec("genetics", "Генетика", "optional", "/genetics"),
         ModuleSpec("skincare", "Кожа", "optional", "/skincare"),
         ModuleSpec("nutrition", "Питание", "optional", "/nutrition"),

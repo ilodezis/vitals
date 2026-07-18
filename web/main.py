@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
     from vitals.config import load_config
     from vitals.scheduler.jobs import register_all_jobs
     from vitals.scheduler.scheduler import seed_heartbeats, setup_scheduler
-    from vitals.services import conflict_catalog
+    from vitals.services import conflict_catalog, hrt_catalog
     from vitals.services.conflict_registrations import register_all_resolvers
 
     config = load_config()
@@ -61,6 +61,11 @@ async def lifespan(app: FastAPI):
     # deploy without a data migration per rule change.
     async with session_factory() as session:
         await conflict_catalog.sync_catalog(session)
+        # Upsert the curated HRT compound catalog (vitals/data/hrt_compounds.yaml).
+        await hrt_catalog.sync_catalog(session)
+        # Register the hormone/safety bloodwork panel in the Labs catalog.
+        from vitals.services import hrt_reminders
+        await hrt_reminders.seed_hormone_panel(session)
         await session.commit()
 
     if redis is not None:
@@ -265,6 +270,7 @@ from web.routers.alerts import router as alerts_router  # noqa: E402
 from web.routers.weight import router as weight_router  # noqa: E402
 from web.routers.glp1 import router as glp1_router  # noqa: E402
 from web.routers.supplements import router as supplements_router  # noqa: E402
+from web.routers.hrt import router as hrt_router  # noqa: E402
 from web.routers.genetics import router as genetics_router  # noqa: E402
 from web.routers.skincare import router as skincare_router  # noqa: E402
 from web.routers.hevy import router as hevy_router  # noqa: E402
@@ -293,6 +299,7 @@ app.include_router(external_api_router)
 app.include_router(glp1_router, dependencies=[Depends(require_module("glp1"))])
 app.include_router(hevy_router, dependencies=[Depends(require_module("hevy"))])
 app.include_router(supplements_router, dependencies=[Depends(require_module("supplements"))])
+app.include_router(hrt_router, dependencies=[Depends(require_module("hrt"))])
 app.include_router(genetics_router, dependencies=[Depends(require_module("genetics"))])
 app.include_router(skincare_router, dependencies=[Depends(require_module("skincare"))])
 app.include_router(nutrition_router, dependencies=[Depends(require_module("nutrition"))])

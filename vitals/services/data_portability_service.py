@@ -47,6 +47,7 @@ from vitals.models.garmin import GarminActivity, GarminDaily
 from vitals.models.genetics import GeneticVariant
 from vitals.models.glp1 import DosePhase, Injection, SideEffect
 from vitals.models.hevy import HevyExercise, HevySet, HevyWorkout
+from vitals.models.hrt import HrtCycle, HrtCycleTemplate, HrtDose, HrtSideEffect
 from vitals.models.labs import LabResult
 from vitals.models.milestones import Milestone, WeeklyDigest
 from vitals.models.nutrition import MealLog
@@ -71,6 +72,7 @@ _LABELED_TABLES = (
     "garmin_daily", "garmin_activities", "lab_results", "glp1_injections",
     "glp1_side_effects", "meal_logs", "supplements", "genetic_variants",
     "skincare_logs", "weekly_digests", "annotations",
+    "hrt_doses", "hrt_cycles", "hrt_side_effects",
 )
 
 
@@ -412,6 +414,96 @@ async def export_llm(session: AsyncSession) -> dict[str, Any]:
             {"date": e.date.isoformat(), "effect_type": e.effect_type, "severity": e.severity}
         )
         for e in effects
+    ]
+
+    # HRT / TRT protocol — doses (with grey-market provenance), cycles with their
+    # per-compound plans, side effects, and the user's saved cycle templates.
+    hrt_doses = (
+        await session.execute(select(HrtDose).order_by(HrtDose.date, HrtDose.id))
+    ).scalars().all()
+    out["hrt_doses"] = [
+        _compact(
+            {
+                "date": d.date.isoformat(),
+                "compound": d.compound_key,
+                "dose": d.dose,
+                "unit": d.unit,
+                "volume_ml": d.volume_ml,
+                "brand": d.brand,
+                "lab": d.lab,
+                "batch": d.batch,
+                "site": d.site,
+                "note": d.note,
+            }
+        )
+        for d in hrt_doses
+    ]
+    hrt_cycles = (
+        await session.execute(
+            select(HrtCycle)
+            .options(selectinload(HrtCycle.items))
+            .order_by(HrtCycle.start_date, HrtCycle.id)
+        )
+    ).scalars().all()
+    out["hrt_cycles"] = [
+        _compact(
+            {
+                "start_date": c.start_date.isoformat(),
+                "end_date": c.end_date.isoformat() if c.end_date else None,
+                "kind": c.kind,
+                "name": c.name,
+                "note": c.note,
+                "items": [
+                    _compact(
+                        {
+                            "compound": it.compound_key,
+                            "unit": it.unit,
+                            "start_offset_days": it.start_offset_days or None,
+                            "schedule": it.schedule,
+                        }
+                    )
+                    for it in c.items
+                ],
+            }
+        )
+        for c in hrt_cycles
+    ]
+    hrt_effects = (
+        await session.execute(select(HrtSideEffect).order_by(HrtSideEffect.date))
+    ).scalars().all()
+    out["hrt_side_effects"] = [
+        _compact(
+            {"date": e.date.isoformat(), "effect_type": e.effect_type, "severity": e.severity}
+        )
+        for e in hrt_effects
+    ]
+    hrt_templates = (
+        await session.execute(
+            select(HrtCycleTemplate)
+            .options(selectinload(HrtCycleTemplate.items))
+            .order_by(HrtCycleTemplate.name)
+        )
+    ).scalars().all()
+    out["hrt_cycle_templates"] = [
+        _compact(
+            {
+                "name": tp.name,
+                "kind": tp.kind,
+                "note": tp.note,
+                "items": [
+                    _compact(
+                        {
+                            "compound": it.compound_key,
+                            "unit": it.unit,
+                            "start_offset_days": it.start_offset_days or None,
+                            "schedule": it.schedule,
+                        }
+                    )
+                    for it in tp.items
+                ],
+            }
+        )
+        for tp in hrt_templates
     ]
 
     # Labs.

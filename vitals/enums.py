@@ -50,6 +50,7 @@ class Domain(StrEnum):
     GARMIN = "garmin"       # activity & recovery
     LABS = "labs"
     NUTRITION = "nutrition"
+    HRT = "hrt"  # hormone/TRT/AAS cycles, estrogen control, GH/IGF-1/peptides
     MILESTONES = "milestones"
     TIMELINE = "timeline"  # global annotations shown across every domain's chart
     SYSTEM = "system"
@@ -80,6 +81,52 @@ class InjectionSite(StrEnum):
     THIGH_RIGHT = "thigh_right"
     ARM_LEFT = "arm_left"
     ARM_RIGHT = "arm_right"
+
+
+class Route(StrEnum):
+    """Administration route for an HRT compound / dose (vitals.models.hrt)."""
+
+    INTRAMUSCULAR = "intramuscular"
+    SUBCUTANEOUS = "subcutaneous"
+    ORAL = "oral"
+    TRANSDERMAL = "transdermal"
+
+
+class DoseUnit(StrEnum):
+    """Unit a dose is measured in. Injectable AAS/esters are mg; growth hormone
+    and gonadotropins are IU; most peptides and IGF-1 analogs are mcg."""
+
+    MG = "mg"
+    IU = "iu"
+    MCG = "mcg"
+
+
+class HrtInjectionSite(StrEnum):
+    """Intramuscular/subcutaneous sites for the HRT body-map rotation grid — the
+    deeper IM depots used for oil-based esters, distinct from the GLP-1 subcut
+    grid (``InjectionSite``). The user rotates sites to avoid scar tissue/PIP."""
+
+    GLUTE_LEFT = "glute_left"
+    GLUTE_RIGHT = "glute_right"
+    VENTROGLUTE_LEFT = "ventroglute_left"
+    VENTROGLUTE_RIGHT = "ventroglute_right"
+    DELT_LEFT = "delt_left"
+    DELT_RIGHT = "delt_right"
+    QUAD_LEFT = "quad_left"
+    QUAD_RIGHT = "quad_right"
+    VGL_LEFT = "vastus_lateralis_left"
+    VGL_RIGHT = "vastus_lateralis_right"
+
+
+class CycleKind(StrEnum):
+    """Kind of an HRT cycle (vitals.models.hrt.HrtCycle) — shapes the lab-check
+    cadence. Deliberately just two: the app only *behaves* differently for
+    "on hormones" vs "restarting natural production", so pretending to five
+    kinds (TRT/blast/cruise/bridge...) was labeling, not function — use the
+    cycle's free-text name for that nuance. (Collapsed in migration 0028.)"""
+
+    COURSE = "course"  # any exogenous-hormone protocol (TRT, blast, cruise...)
+    PCT = "pct"        # post-cycle therapy (SERM/HCG restart)
 
 
 class LabFlag(StrEnum):

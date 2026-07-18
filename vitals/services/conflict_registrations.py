@@ -15,6 +15,7 @@ from vitals.services import conflict_engine
 from vitals.services import (
     genetics_service,
     glp1_service,
+    hrt_service,
     labs_service,
     nutrition_service,
     skincare_service,
@@ -42,4 +43,7 @@ def register_all_resolvers() -> None:
     )
     conflict_engine.register_domain_resolver(
         Domain.NUTRITION.value, nutrition_service.resolve_today
+    )
+    conflict_engine.register_domain_resolver(
+        Domain.HRT.value, hrt_service.resolve_active
     )

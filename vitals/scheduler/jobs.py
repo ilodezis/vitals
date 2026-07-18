@@ -22,6 +22,7 @@ def register_all_jobs() -> None:
     from vitals.services.garmin_service import sync_job as garmin_sync_job
     from vitals.services.digest_service import digest_job
     from vitals.services.nutrition_service import day_end_job as nutrition_day_end_job
+    from vitals.services.hrt_reminders import reminders_job as hrt_reminders_job
 
     # GLP-1 plateau check — once a day at 06:00 local. Cheap read; raises/clears a
     # passive warn alert so it's fresh even on days the dashboard isn't opened.
@@ -30,6 +31,16 @@ def register_all_jobs() -> None:
         plateau_job,
         trigger="cron",
         hour=6,
+        minute=0,
+    )
+
+    # HRT reminders — once a day at 07:00 local. Nags for overdue bloodwork
+    # (while on cycle) and for missed scheduled injections; both idempotent.
+    register_job(
+        "hrt_reminders",
+        hrt_reminders_job,
+        trigger="cron",
+        hour=7,
         minute=0,
     )
 

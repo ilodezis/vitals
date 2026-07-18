@@ -605,6 +605,15 @@
                     <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.glp1") }}</span>
                 </a>
                 {% endif %}
+                {% if em.get('hrt') %}
+                <a href="/hrt" @click="mobileMenuOpen = false"
+                    class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
+                    <svg class="h-6 w-6 text-[var(--fg-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 20l6-6M14 4l6 6M15 5l4 4M9 11l4 4M13 7l4 4" />
+                    </svg>
+                    <span class="text-xs font-bold text-[var(--fg-2)]">{{ t("nav.hrt") }}</span>
+                </a>
+                {% endif %}
                 <a href="/labs" @click="mobileMenuOpen = false"
                     class="flex flex-col items-center justify-center p-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--line)] hover:border-[var(--accent-line)] transition gap-2">
                     <svg class="h-6 w-6 text-[var(--fg-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">

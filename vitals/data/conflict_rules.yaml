@@ -1426,3 +1426,40 @@
   category: absorption
   source: "Общий принцип адсорбции активированным углём распространяется на серосодержащие соединения, включая NAC — разнесение приёма стандартно рекомендуется."
   evidence: C
+
+# ── HRT / TRT ↔ Labs safety (soft_warn — never blocks, just surfaces risk) ─────
+- code: hrt_oral17aa_liver_enzymes
+  rule_type: soft_warn
+  domain_a: hrt
+  condition_a: {compound_class: oral_aas}
+  domain_b: labs
+  condition_b: {$any: [{marker: "АЛТ", flag: {$in: [high, critical_high]}}, {marker: "АСТ", flag: {$in: [high, critical_high]}}]}
+  severity: warn
+  message: "Активный оральный 17-альфа-алкилированный стероид при повышенных АЛТ/АСТ — печёночная нагрузка; стоит контролировать печёночные пробы и пересмотреть препарат/дозу."
+  category: lab_safety
+  source: "17-альфа-алкилированные оральные стероиды хорошо задокументированы как гепатотоксичные (холестаз, повышение трансаминаз); повышенные АЛТ/АСТ на их фоне — прямой сигнал печёночной нагрузки."
+  evidence: A
+
+- code: hrt_testosterone_hematocrit
+  rule_type: soft_warn
+  domain_a: hrt
+  condition_a: {compound_class: testosterone}
+  domain_b: labs
+  condition_b: {marker: "Гематокрит", flag: {$in: [high, critical_high]}}
+  severity: warn
+  message: "Активный тестостерон при повышенном гематокрите — риск эритроцитоза и вязкости крови; обсудить донацию/кровопускание и контроль показателя."
+  category: lab_safety
+  source: "Экзогенный тестостерон стимулирует эритропоэз; тестостерон-индуцированный эритроцитоз (высокий гематокрит) — известный класс-эффект с повышенным тромботическим риском (эндокринологические рекомендации)."
+  evidence: A
+
+- code: hrt_19nor_prolactin
+  rule_type: soft_warn
+  domain_a: hrt
+  condition_a: {compound_class: {$in: [nandrolone, trenbolone]}}
+  domain_b: labs
+  condition_b: {marker: "Пролактин", flag: {$in: [high, critical_high]}}
+  severity: warn
+  message: "Активный 19-нор (нандролон/тренболон) при повышенном пролактине — прогестиновая активность; рассмотреть контроль пролактина и агонист дофамина."
+  category: lab_safety
+  source: "19-нортестостероновые производные обладают прогестиновой активностью и связаны с гиперпролактинемией и связанными побочными эффектами; повышенный пролактин на их фоне клинически значим."
+  evidence: B
