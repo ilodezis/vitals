@@ -4,7 +4,7 @@
 
 {% block content %}
 {% from "partials/masthead.html" import masthead_header with context %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showForm: false }">
+<div class="v-page v-page-hrt px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showForm: false }">
 
     {% call masthead_header('hrt', t('hrt.heading'), [
         {'label': t('hrt.last_dose'), 'primary': true, 'value': compound_names.get(last_dose.compound_key, last_dose.compound_key) if last_dose else '—'},
@@ -18,7 +18,7 @@
     {% endcall %}
 
     <!-- Cycle + release -->
-    <div class="v-card p-6 space-y-5">
+    <div class="v-card v-hrt-overview p-6 space-y-5">
         <div class="flex items-center justify-between">
             <h2 class="v-text-heading">{{ t("hrt.active_cycle") }}</h2>
             {% if active_cycle %}
@@ -362,7 +362,7 @@
     </div>
 
     <!-- Dose log -->
-    <div class="v-card p-6 space-y-4">
+    <div class="v-card v-hrt-log p-6 space-y-4">
         <h2 class="v-text-heading">{{ t("hrt.log_title") }}</h2>
         {% if doses %}
         <div class="v-table-wrap">

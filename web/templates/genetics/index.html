@@ -4,7 +4,7 @@
 
 {% block content %}
 {% from "partials/masthead.html" import masthead_header with context %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showAdminPanels: {% if variants %}false{% else %}true{% endif %}, activeTab: 'all' }">
+<div class="v-page v-page-genetics px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showAdminPanels: {% if variants %}false{% else %}true{% endif %}, activeTab: 'all' }">
 
     {% call masthead_header('genetics', t('nav.genetics'), [
         {'label': t('genetics.interpreted'), 'primary': true, 'value': variants | length}
@@ -34,7 +34,7 @@
     </div>
 
     <!-- Profile cards -->
-    <div x-show="!showAdminPanels" class="space-y-4">
+    <div x-show="!showAdminPanels" class="v-genetics-groups space-y-4">
         {% set ns = namespace(count=0) %}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             {% for v in variants %}
@@ -44,7 +44,7 @@
                         (activeTab === 'supplements' && '{{ v.impact_domain }}' === 'supplements') ||
                         (activeTab === 'workouts' && ['workouts', 'weight', 'glp1'].includes('{{ v.impact_domain }}')) ||
                         (activeTab === 'health' && ['system', 'labs', 'skincare'].includes('{{ v.impact_domain }}'))"
-                 class="v-card-tile p-6 flex flex-col justify-between gap-5 relative overflow-hidden"
+                 class="v-card-tile v-genetics-card p-6 flex flex-col justify-between gap-5 relative overflow-hidden"
                  style="{% if is_risk %}border-color: rgba(240,178,74,.28){% endif %}">
                 <div class="absolute top-0 left-0 right-0" style="height:2px; background: {% if is_risk %}var(--warn){% else %}var(--line-2){% endif %}"></div>
 

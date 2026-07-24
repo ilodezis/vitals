@@ -4,7 +4,7 @@
 
 {% block content %}
 {% from "partials/masthead.html" import masthead_header with context %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
+<div class="v-page v-page-interactions px-6 py-7 max-w-6xl mx-auto space-y-8">
 
     {{ masthead_header('interactions', t('nav.interactions'), [
         {'label': t('interactions.total_label'), 'primary': true, 'value': total_count},
@@ -12,7 +12,7 @@
     ]) }}
 
     <!-- Filters -->
-    <form method="get" action="/interactions" class="v-card p-4 flex flex-wrap items-end gap-4">
+    <form method="get" action="/interactions" class="v-card v-interaction-summary p-4 flex flex-wrap items-end gap-4">
         <div>
             <label class="v-label">{{ t("interactions.filter_domain") }}</label>
             <select name="domain" class="v-select" onchange="this.form.submit()">
@@ -38,7 +38,7 @@
     {% endif %}
 
     {% for category in ordered_categories %}
-    <div class="v-card p-6 space-y-4">
+    <div class="v-card v-interaction-matrix p-6 space-y-4">
         <div class="flex items-center gap-2.5">
             <span class="v-bar"></span>
             <h2 class="v-text-heading">{{ t("interactions.category." + category) }}</h2>

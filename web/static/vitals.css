@@ -2075,3 +2075,374 @@ sup {
         animation: none !important;
     }
 }
+/* Design handoff: dense data tables and weight entry */
+.v-table {
+    table-layout: fixed;
+}
+.v-table thead th {
+    padding: 7px 12px;
+    background: var(--bg-inset);
+    border-bottom-color: var(--line-2);
+    color: var(--faint);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.v-table tbody td {
+    padding: 7px 12px;
+    border-bottom: 0;
+    box-shadow: inset 0 -1px 0 var(--line);
+}
+.v-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, .022);
+}
+.v-table tbody tr:last-child td {
+    box-shadow: none;
+}
+.v-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+}
+.v-card-inset > .v-table-wrap {
+    border: 0;
+    border-radius: inherit;
+}
+.v-btn:hover,
+.v-btn-ghost:hover,
+.v-icon-btn:hover {
+    filter: brightness(1.06);
+}
+
+.v-weight-hero {
+    display: grid;
+    gap: 8px;
+}
+.v-weight-stepper {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 34px;
+    gap: 8px;
+    align-items: stretch;
+    padding: 6px;
+    background: var(--bg-inset);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+}
+.v-weight-stepper .v-input {
+    height: 56px;
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    text-align: center;
+    font: 700 38px/1 var(--mh-display, 'Bricolage Grotesque', sans-serif);
+    font-variant-numeric: tabular-nums;
+    box-shadow: none;
+}
+.v-weight-step {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface-3);
+    color: var(--fg-2);
+    font: 500 22px/1 'Inter', sans-serif;
+    cursor: pointer;
+    transition: color .15s ease, border-color .15s ease, filter .15s ease;
+}
+.v-weight-step:hover {
+    color: var(--accent-2);
+    border-color: var(--accent-line);
+    filter: brightness(1.06);
+}
+@media (min-width: 1024px) {
+    .weight-main { order: 1; }
+    .weight-sidebar {
+        order: 2;
+        position: sticky;
+        top: 40px;
+    }
+}
+
+/* ============================================================================
+   July 2026 handoff — page-level compositions
+   Shared tokens and components stay global; these selectors describe each
+   product screen so its hierarchy survives desktop, tablet and narrow widths.
+   ========================================================================== */
+.v-page {
+    width: 100%;
+    min-width: 0;
+    isolation: isolate;
+}
+.v-page .v-card,
+.v-page .v-card-tile {
+    box-shadow: 0 18px 50px rgba(8, 7, 10, .08);
+}
+.v-page .v-card > :first-child .v-text-heading,
+.v-page .v-card > :first-child .v-text-card {
+    letter-spacing: -.01em;
+}
+
+/* Garmin — daily readout, recovery and history. */
+.v-garmin-summary {
+    overflow: hidden;
+    border-color: rgba(111, 182, 201, .24);
+    background:
+        radial-gradient(circle at 92% 0, rgba(111, 182, 201, .12), transparent 32%),
+        var(--surface);
+}
+.v-garmin-summary .v-daystrip {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.v-garmin-summary .v-card-inset {
+    min-height: 108px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.v-garmin-recovery { border-left: 3px solid var(--warn); }
+.v-garmin-history .v-table-wrap { max-height: 28rem; }
+
+/* Hevy — workout log beside the catalog, progress beneath. */
+.v-hevy-workspace { align-items: stretch; }
+.v-hevy-workspace > .v-card { height: 100%; }
+.v-hevy-workspace > .v-card:last-child {
+    position: sticky;
+    top: 32px;
+}
+.v-hevy-progress {
+    overflow: hidden;
+    background:
+        linear-gradient(180deg, rgba(176, 147, 214, .07), transparent 45%),
+        var(--surface);
+}
+.v-hevy-progress canvas { min-height: 240px; }
+
+/* Nutrition — a visual daily scorecard followed by the meal ledger. */
+.v-nutrition-intake {
+    overflow: hidden;
+    border-color: rgba(245, 166, 35, .26);
+    background:
+        radial-gradient(circle at 12% 15%, rgba(245, 166, 35, .10), transparent 34%),
+        var(--surface);
+}
+.v-nutrition-intake .mh-calorie-ring { filter: drop-shadow(0 12px 22px rgba(8, 7, 10, .2)); }
+.v-nutrition-meals .v-table-wrap { background: var(--bg-inset); }
+.v-nutrition-meals .v-card + .v-card { margin-top: 24px; }
+
+/* Supplements — four protocol moments and a deliberately quieter archive. */
+.v-protocol-grid > .space-y-3 {
+    position: relative;
+    padding-left: 18px;
+}
+.v-protocol-grid > .space-y-3::before {
+    content: "";
+    position: absolute;
+    inset: 2px auto 2px 0;
+    width: 3px;
+    border-radius: 3px;
+    background: linear-gradient(var(--accent), var(--cool), var(--violet));
+    opacity: .72;
+}
+.v-protocol-grid .v-card-tile { min-height: 172px; }
+.v-supplement-archive { background: color-mix(in srgb, var(--surface) 72%, var(--bg-inset)); }
+
+/* Timeline — one continuous chronological spine grouped by day. */
+.v-timeline-feed {
+    position: relative;
+    max-width: 920px;
+}
+.v-timeline-feed > .space-y-6 { position: relative; }
+.v-timeline-feed > .space-y-6::before {
+    content: "";
+    position: absolute;
+    left: 11px;
+    top: 26px;
+    bottom: 20px;
+    width: 1px;
+    background: var(--line-2);
+}
+.v-timeline-day {
+    position: relative;
+    padding-left: 34px;
+}
+.v-timeline-day::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 5px;
+    width: 13px;
+    height: 13px;
+    border: 3px solid var(--bg);
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent-line);
+}
+.v-timeline-day > .v-card { border-left-color: var(--line-2); }
+
+/* Reports — scannable insight cards plus a readable narrative column. */
+.v-insight-grid { align-items: stretch; }
+.v-insight-grid > .v-card {
+    min-height: 176px;
+    background:
+        linear-gradient(145deg, rgba(245, 166, 35, .055), transparent 45%),
+        var(--surface);
+}
+.v-report-narrative {
+    max-width: 980px;
+    border-color: rgba(111, 197, 142, .22);
+}
+.v-report-narrative .v-digest {
+    max-width: 78ch;
+    font-size: 15px;
+    line-height: 1.75;
+}
+
+/* Charts — a responsive gallery; builder remains a full-width workstation. */
+.v-chart-gallery {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+}
+.v-chart-card {
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+}
+.v-chart-card .h-\[280px\] { min-height: 260px; }
+.v-page-charts > [x-data^="chartBuilder"] { border-color: rgba(111, 182, 201, .22); }
+
+/* GLP-1 — current protocol, injection history and supporting context. */
+.v-glp1-current { align-items: stretch; }
+.v-glp1-current > [x-show="!showForm"] > .v-card { height: 100%; }
+.v-glp1-history .v-card {
+    border-color: rgba(176, 147, 214, .22);
+    background:
+        linear-gradient(180deg, rgba(176, 147, 214, .06), transparent 38%),
+        var(--surface);
+}
+.v-glp1-history .v-table-wrap { min-height: 260px; }
+
+/* Labs — panel-style markers with a dedicated trend surface. */
+.v-lab-panels > .grid { align-items: stretch; }
+.v-lab-panels > .grid > .v-card { height: 100%; }
+.v-lab-panels .v-table tbody tr:has(.v-text-label[style*="var(--warn)"]) {
+    background: rgba(240, 178, 74, .055);
+}
+.v-lab-chart {
+    overflow: hidden;
+    border-color: rgba(111, 182, 201, .24);
+}
+.v-lab-chart canvas { min-height: 250px; }
+
+/* Genetics — category-filtered evidence cards. */
+.v-genetics-groups > .grid { align-items: stretch; }
+.v-genetics-card {
+    min-height: 240px;
+    background:
+        radial-gradient(circle at 100% 0, rgba(176, 147, 214, .09), transparent 35%),
+        var(--surface-2);
+}
+.v-genetics-card .v-chip { font-variant-numeric: tabular-nums; }
+
+/* Skincare — AM/PM routine board and prominent conflict guidance. */
+.v-routine-grid { overflow: hidden; }
+.v-routine-grid > .space-y-3 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.v-routine-grid > .space-y-3 > .v-card-tile { margin: 0; }
+.v-routine-warning {
+    position: sticky;
+    top: 32px;
+    border-color: rgba(232, 112, 86, .26);
+}
+
+/* Interactions — compact pair matrix with an always-visible summary strip. */
+.v-interaction-summary {
+    position: sticky;
+    top: 18px;
+    z-index: 5;
+    backdrop-filter: blur(18px);
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+.v-interaction-matrix { border-left: 3px solid var(--warn); }
+.v-interaction-matrix .v-card-tile {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    min-height: 178px;
+}
+
+/* Settings — section label and explanation left, controls right. */
+.v-settings-sections {
+    width: 100%;
+    max-width: none;
+}
+.v-settings-sections > .v-card:first-child { margin-bottom: 4px; }
+.v-setting-row { border-color: var(--line-2); }
+@media (min-width: 901px) {
+    .v-setting-row:has(> form) {
+        display: grid;
+        grid-template-columns: minmax(180px, .72fr) minmax(0, 1.28fr);
+        column-gap: 36px;
+        align-items: start;
+    }
+    .v-setting-row:has(> form) > :first-child,
+    .v-setting-row:has(> form) > p { grid-column: 1; }
+    .v-setting-row:has(> form) > form {
+        grid-column: 2;
+        grid-row: 1 / span 3;
+    }
+}
+
+/* HRT — active cycle as the hero surface, logs as dense evidence. */
+.v-hrt-overview {
+    overflow: hidden;
+    border-color: rgba(176, 147, 214, .25);
+    background:
+        radial-gradient(circle at 92% 4%, rgba(176, 147, 214, .12), transparent 34%),
+        var(--surface);
+}
+.v-hrt-overview svg polyline { filter: drop-shadow(0 5px 8px rgba(245, 166, 35, .2)); }
+.v-hrt-log .v-table-wrap { max-height: 32rem; }
+
+@media (max-width: 900px) {
+    .v-garmin-summary .v-daystrip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .v-hevy-workspace > .v-card:last-child,
+    .v-routine-warning,
+    .v-interaction-summary { position: static; }
+    .v-chart-gallery { grid-template-columns: 1fr; }
+    .v-routine-grid > .space-y-3 { grid-template-columns: 1fr; }
+    .v-protocol-grid .v-card-tile { min-height: 0; }
+}
+
+@media (max-width: 560px) {
+    .v-page { gap: 22px; }
+    .v-page .v-card { border-radius: 16px; }
+    .v-page .v-card.p-6 { padding: 18px; }
+    .v-garmin-summary .v-daystrip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .v-garmin-summary .v-card-inset:last-child { grid-column: 1 / -1; }
+    .v-protocol-grid > .space-y-3 { padding-left: 12px; }
+    .v-timeline-feed > .space-y-6::before { left: 8px; }
+    .v-timeline-day { padding-left: 26px; }
+    .v-timeline-day::before { left: 2px; }
+    .v-chart-card .h-\[280px\] { min-height: 220px; }
+    .v-interaction-matrix .grid { grid-template-columns: 1fr; }
+    .v-setting-row { padding: 18px; }
+}
+/* Keep the nutrition macro grid shrinkable inside the 68px mobile rail. */
+.v-nutrition-intake .mh-intake-grid,
+.v-nutrition-intake .mh-intake-macros-panel,
+.v-nutrition-intake .mh-macro-row {
+    min-width: 0;
+}
+.v-nutrition-intake .mh-cards-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}.v-nutrition-intake .mh-macro-card,
+.v-nutrition-intake .mh-macro-card-top,
+.v-nutrition-intake .mh-macro-card-label-wrap {
+    min-width: 0;
+}
+@media (max-width: 560px) {
+    .v-nutrition-intake .mh-macro-card { padding: 9px; }
+    .v-nutrition-intake .mh-macro-card-top { align-items: flex-start; }
+}

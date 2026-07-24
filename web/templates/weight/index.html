@@ -4,7 +4,7 @@
 
 {% block content %}
 {% from "partials/masthead.html" import masthead_header with context %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="weightOSDashboard()">
+<div class="v-page v-page-weight px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="weightOSDashboard()">
 
     {{ masthead_header('weight', t('nav.weight'), [
         {'label': t('weight.latest'), 'unit': t('common.kg'), 'primary': true, 'value': (weights[0].weight_kg | format_number) if weights else '—'},
@@ -52,11 +52,15 @@
     <!-- Workspace -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-        <!-- Left: Input Controls (4 of 12 cols) -->
-        <div class="lg:col-span-4 space-y-6">
+        <!-- Sticky entry sidebar (rendered on the right at desktop) -->
+        <div class="weight-sidebar lg:col-span-4 space-y-6">
 
             <!-- Input Card -->
             <div class="v-card p-6 space-y-4">
+                <div class="flex items-center gap-2">
+                    <span class="v-bar v-bar-accent"></span>
+                    <span class="v-text-card">{{ t("weight.new_entry") }}</span>
+                </div>
                 <!-- Tabs -->
                 <div class="v-seg">
                     <button @click="activeTab = 'log'" :class="activeTab === 'log'     ? 'is-active' : ''"
@@ -77,17 +81,22 @@
                 <div x-show="activeTab === 'log'" class="space-y-4">
                     <form @submit.prevent="submitForm($event)" action="/weight/log" id="form-log" hx-boost="false" class="space-y-4">
                         <input type="hidden" name="override" x-model="overrideFlag">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="v-label">{{ t("common.date") }}</label>
-                                <input type="date" name="date" value="{{ today }}" required class="v-input">
-                            </div>
-                            <div>
-                                <label class="v-label">{{ t("weight.weight_kg") }}</label>
-                                <input type="number" name="weight_kg" step="0.01" required
-                                    placeholder="{% if weights %}{{ weights[0].weight_kg | round(1) }}{% else %}0.0{% endif %}"
+                        <div class="v-weight-hero">
+                            <label class="v-label">{{ t("weight.weight_kg") }}</label>
+                            <div class="v-weight-stepper">
+                                <button type="button" class="v-weight-step" aria-label="−0.1 kg"
+                                    @click="$refs.weightInput.stepDown(10); $refs.weightInput.dispatchEvent(new Event('input', { bubbles: true }))">−</button>
+                                <input type="number" name="weight_kg" step="0.01" required x-ref="weightInput"
+                                    value="{% if weights %}{{ weights[0].weight_kg | round(1) }}{% endif %}"
+                                    placeholder="0.0"
                                     class="v-input">
+                                <button type="button" class="v-weight-step" aria-label="+0.1 kg"
+                                    @click="$refs.weightInput.stepUp(10); $refs.weightInput.dispatchEvent(new Event('input', { bubbles: true }))">+</button>
                             </div>
+                        </div>
+                        <div>
+                            <label class="v-label">{{ t("common.date") }}</label>
+                            <input type="date" name="date" value="{{ today }}" required class="v-input">
                         </div>
                         <div>
                             <label class="v-label">{{ t("common.note_optional") }}</label>
@@ -292,8 +301,8 @@
 
         </div>
 
-        <!-- Right: Logs & Tables (8 of 12 cols) -->
-        <div class="lg:col-span-8 space-y-6">
+        <!-- Main data column (rendered on the left at desktop) -->
+        <div class="weight-main lg:col-span-8 space-y-6">
 
             <!-- BODY COMPOSITION (InBody / МедАсс) -->
             {% if body_comp_enabled %}

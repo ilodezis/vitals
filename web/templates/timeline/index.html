@@ -11,7 +11,7 @@
 'muted', 'side_effect': 'bad', 'milestone': 'cool', 'photo': 'muted'} %}
 {% set DERIVED_KIND_LABEL = {'side_effect': 'timeline.kind.side_effect', 'milestone': 'timeline.kind.milestone',
 'photo': 'timeline.kind.photo'} %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showForm: false }">
+<div class="v-page v-page-timeline px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showForm: false }">
 
     {% call masthead_header('timeline', t('nav.timeline'), [
     {'label': t('timeline.metric_total'), 'primary': true, 'value': events|length},
@@ -22,7 +22,7 @@
         </button>
     {% endcall %}
 
-    <div class="max-w-4xl space-y-8">
+    <div class="v-timeline-feed max-w-4xl space-y-8">
     <!-- Add annotation form -->
     <div x-show=" showForm" x-cloak class="v-card p-6 space-y-4">
                     <form action="/timeline" method="POST" class="space-y-4">
@@ -69,7 +69,7 @@
 <!-- Feed -->
 <div class="space-y-6">
     {% for day, items in events|groupby('date')|list|reverse %}
-    <div class="space-y-2.5">
+    <div class="v-timeline-day space-y-2.5">
         <span class="v-text-micro v-num" style="color: var(--muted)">{{ day | format_date }}</span>
         {% for e in items %}
         <div class="v-card p-4 flex items-start gap-3">

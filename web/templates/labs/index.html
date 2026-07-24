@@ -4,7 +4,7 @@
 
 {% block content %}
 {% from "partials/masthead.html" import masthead_header with context %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="labsUpload({% if latest %}false{% else %}true{% endif %})">
+<div class="v-page v-page-labs px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="labsUpload({% if latest %}false{% else %}true{% endif %})">
 
     {% call masthead_header('labs', t('nav.labs'), [
         {'label': t('labs.metric_markers'), 'primary': true, 'value': markers | length},
@@ -109,7 +109,7 @@
     </div>
 
     <!-- Main Dashboard Section (Table + Catalog + Chart) -->
-    <div x-show="!showUpload" class="space-y-6">
+    <div x-show="!showUpload" class="v-lab-panels space-y-6">
         <!-- Tables Row -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <!-- Left: latest per marker table -->
@@ -181,7 +181,7 @@
         </div>
 
         <!-- Chart (bottom) -->
-        <div class="v-card p-6 space-y-3">
+        <div class="v-card v-lab-chart p-6 space-y-3">
             <div class="flex items-center gap-2">
                 <span class="v-bar"></span>
                 <span class="v-text-heading">{{ t("labs.chart_title") }} {{ selected or '—' }}</span>

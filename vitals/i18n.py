@@ -205,6 +205,7 @@ _EN: dict[str, str] = {
 
     # ── Weight ────────────────────────────────────────────────────────────
     "weight.page_title": "Weight — Vitals",
+    "weight.new_entry": "New entry",
     "weight.latest": "Latest weight",
     "weight.ma7": "7-day average",
     "weight.body_fat": "Body fat % (Navy)",
@@ -1322,6 +1323,7 @@ _RU: dict[str, str] = {
 
     # ── Weight ────────────────────────────────────────────────────────────
     "weight.page_title": "Вес — Vitals",
+    "weight.new_entry": "Новая запись",
     "weight.latest": "Последний вес",
     "weight.ma7": "Среднее за 7 дней",
     "weight.body_fat": "Процент жира (Navy)",

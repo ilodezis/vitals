@@ -79,9 +79,7 @@
 {% set current_path = request.url.path if request else '' %}
 {% set em = request.state.enabled_modules or {} %}
 <aside id="primary-nav-masthead" {% if oob %}hx-swap-oob="true"{% endif %} class="mh-rail">
-    <a href="/" class="mh-rail-logo is-live" title="Vitals">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h2.5l2.5-6 3.5 12 2.5-9 1.5 3h3" /></svg>
-    </a>
+    <a href="/" class="mh-rail-wordmark" title="Vitals">Vitals</a>
     <div class="mh-rail-div"></div>
     <nav class="mh-rail-nav">
         {# One block per rubric. Groups with a quiet uppercase heading (shown only
@@ -124,6 +122,7 @@
 {% set em = request.state.enabled_modules or {} %}
 {% set rb = namespace(cat=none, members=[], num=0) %}
 {% for r in MH_RUBRICS %}{% if section in r.members %}{% set rb.members = r.members %}{% set rb.cat = MH_SECTIONS[section].cat or r.cat %}{% set rb.num = loop.index %}{% endif %}{% endfor %}
+{% if section == 'settings' %}{% set rb.cat = 'nav.settings' %}{% set rb.num = 4 %}{% endif %}
 <div class="mh-head">
     <div class="mh-eyebrow-row">
         <span class="mh-eyebrow">{{ t("masthead.section_word") }} {{ "%02d" | format(rb.num) }} · {{ t(rb.cat) if rb.cat else '' }}</span>
@@ -134,20 +133,22 @@
         <a href="{{ meta.href }}" class="mh-tab {% if mem == section %}is-active{% endif %}">{{ t(meta.label) }}</a>
         {% endif %}{% endfor %}
     </nav>
-    <h1 class="mh-title">{{ title }}</h1>
-    {% if metrics %}
-    <div class="mh-metrics">
-        {% for m in metrics %}
-        {% if not loop.first %}<div class="mh-metric-div"></div>{% endif %}
-        <{{ 'a' if m.href else 'div' }} class="mh-metric {{ m.tone or '' }}"{% if m.href %} href="{{ m.href }}"{% endif %}>
-            <div style="display:flex;align-items:baseline;">
-                <span class="mh-metric-value {% if m.primary %}is-primary{% endif %}">{{ m.value }}</span>
-                {% if m.unit %}<span class="mh-metric-unit">{{ m.unit }}</span>{% endif %}
-            </div>
-            <div class="mh-metric-label">{{ m.label }}</div>
-        </{{ 'a' if m.href else 'div' }}>
-        {% endfor %}
+    <div class="mh-hero-row">
+        <h1 class="mh-title">{{ title }}</h1>
+        {% if metrics %}
+        <div class="mh-metrics">
+            {% for m in metrics %}
+            {% if not loop.first %}<div class="mh-metric-div"></div>{% endif %}
+            <{{ 'a' if m.href else 'div' }} class="mh-metric {{ m.tone or '' }}{% if m.primary %} is-primary{% endif %}"{% if m.href %} href="{{ m.href }}"{% endif %}>
+                <div style="display:flex;align-items:baseline;">
+                    <span class="mh-metric-value {% if m.primary %}is-primary{% endif %}">{{ m.value }}</span>
+                    {% if m.unit %}<span class="mh-metric-unit">{{ m.unit }}</span>{% endif %}
+                </div>
+                <div class="mh-metric-label">{{ m.label }}</div>
+            </{{ 'a' if m.href else 'div' }}>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 {% endmacro %}

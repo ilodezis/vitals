@@ -5,7 +5,7 @@
 {% block content %}
 {% from "garmin/_tabs.html" import garmin_tabs %}
 {% from "partials/masthead.html" import masthead_header with context %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showHaeModal: false }">
+<div class="v-page v-page-garmin px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showHaeModal: false }">
 
     {% call masthead_header('garmin', t('nav.organism'), [
         {'label': t('masthead.metric.body_battery'), 'primary': true, 'value': ((latest.body_battery_low or '—') ~ '–' ~ latest.body_battery_high) if (latest and latest.body_battery_high) else '—'},
@@ -26,7 +26,7 @@
     <!-- Day strip: steps, stress, readiness, training status, active calories —
          shared by both shells (classic used to bury these in a classic-only
          grid, which is exactly how masthead lost them; see the plan). -->
-    <div class="v-card p-6 space-y-3">
+    <div class="v-card v-garmin-summary p-6 space-y-3">
         <div class="flex items-center gap-2">
             <span class="v-bar v-bar-sm"></span>
             <span class="v-text-card">{{ t("garmin.day_strip_title") }}</span>
@@ -117,7 +117,7 @@
     {% endif %}
 
     <!-- Metrics history: full width now that activities live on their own tab -->
-    <div class="v-card p-6 space-y-3">
+    <div class="v-card v-garmin-history p-6 space-y-3">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <span class="v-bar v-bar-sm"></span>

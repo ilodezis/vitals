@@ -4,7 +4,7 @@
 
 {% block content %}
 {% from "partials/masthead.html" import masthead_header with context %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8"
+<div class="v-page v-page-nutrition px-6 py-7 max-w-6xl mx-auto space-y-8"
      x-data="nutritionDashboard()">
 
     {% call masthead_header('nutrition', t('nav.nutrition'), [
@@ -17,7 +17,7 @@
     {% endcall %}
 
     <!-- Day intake: ring (calories) + macro bars, driven by ?date= day-nav (I2) -->
-    <div class="v-card p-6 space-y-6">
+    <div class="v-card v-nutrition-intake p-6 space-y-6">
         <div class="mh-intake-header">
             <div class="flex items-center gap-2">
                 <span class="v-bar v-bar-sm"></span>
@@ -183,7 +183,7 @@
         </div>
 
         <!-- History (when form hidden) -->
-        <div x-show="!showForm" class="lg:col-span-12 space-y-6">
+        <div x-show="!showForm" class="v-nutrition-meals lg:col-span-12 space-y-6">
 
             <!-- Today's meals -->
             <div class="v-card p-6 space-y-3">

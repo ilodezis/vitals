@@ -60,7 +60,7 @@
 </div>
 {% endmacro %}
 
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="protocolForm()">
+<div class="v-page v-page-supplements px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="protocolForm()">
 
     {% call masthead_header('supplements', t('nav.supplements'), [
         {'label': t('masthead.supplements.active'), 'primary': true, 'value': supplements | selectattr('active') | list | length},
@@ -72,7 +72,7 @@
     {% endcall %}
 
     <!-- Active Protocol -->
-    <div class="v-card p-6 space-y-8">
+    <div class="v-card v-protocol-grid p-6 space-y-8">
         {% set timing_blocks = [
             ('утро', t("supplements.timing.morning"), t("supplements.timing.morning_sub"), 'amber'),
             ('день', t("supplements.timing.day"), t("supplements.timing.day_sub"), 'cool'),
@@ -133,7 +133,7 @@
     {% endfor %}
 
     {% if count_archived.value > 0 %}
-    <div x-data="{ open: false }" class="v-card p-6 space-y-4">
+    <div x-data="{ open: false }" class="v-card v-supplement-archive p-6 space-y-4">
         <button @click="open = !open" class="w-full flex items-center justify-between transition" style="color: var(--muted)">
             <div class="flex items-center gap-2.5">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>

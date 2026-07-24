@@ -4,7 +4,7 @@
 
 {% block content %}
 {% from "partials/masthead.html" import masthead_header with context %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="protocolForm()">
+<div class="v-page v-page-skincare px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="protocolForm()">
 
     {% call masthead_header('skincare', t('nav.skincare'), [
         {'label': t('masthead.skincare.active'), 'primary': true, 'value': products | selectattr('active') | list | length},
@@ -16,7 +16,7 @@
     {% endcall %}
 
     <!-- Weekly Schedule -->
-    <div class="v-card p-6 space-y-4">
+    <div class="v-card v-routine-grid p-6 space-y-4">
         <div class="flex items-center gap-2.5">
             <span class="v-bar"></span>
             <div>
@@ -147,7 +147,7 @@
         </div>
 
         <!-- Safety Rules -->
-        <div class="lg:col-span-5 v-card p-6 space-y-4">
+        <div class="v-routine-warning lg:col-span-5 v-card p-6 space-y-4">
             <div class="flex items-center gap-2.5">
                 <span class="v-bar" style="background: var(--bad)"></span>
                 <div>

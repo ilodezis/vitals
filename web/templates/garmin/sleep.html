@@ -36,7 +36,7 @@
 {% block content %}
 {% from "garmin/_tabs.html" import garmin_tabs %}
 {% from "partials/masthead.html" import masthead_header with context %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8">
+<div class="v-page v-page-garmin v-page-garmin-sleep px-6 py-7 max-w-6xl mx-auto space-y-8">
 
     {% call masthead_header('garmin', daily.date | format_date, [
         {'label': t('garmin.sleep_score'), 'primary': true, 'value': daily.sleep_score if daily.sleep_score else '—'},

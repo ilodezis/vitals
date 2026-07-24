@@ -4,7 +4,7 @@
 
 {% block content %}
 {% from "partials/masthead.html" import masthead_header with context %}
-<div class="px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showGoalForm: false }">
+<div class="v-page v-page-reports px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showGoalForm: false }">
 
     {{ masthead_header('reports', t('nav.reports'), [
         {'label': t('masthead.reports.goals'), 'primary': true, 'value': cards | length},
@@ -51,7 +51,7 @@
         </form>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="v-insight-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for c in cards %}
         <div class="v-card p-6 space-y-3">
             <div class="flex justify-between items-start gap-2">
@@ -89,7 +89,7 @@
     </div>
 
     <!-- Weekly digest -->
-    <div class="v-card p-6 space-y-3">
+    <div class="v-card v-report-narrative p-6 space-y-3">
         <div class="flex items-center justify-between gap-3 flex-wrap">
             <div class="flex items-center gap-2">
                 <span class="v-bar"></span>

@@ -12,8 +12,8 @@
 body.ui-masthead {
     /* Display face for titles/tabs only; body text stays on Inter. */
     --mh-display: 'Bricolage Grotesque', 'Outfit', ui-sans-serif, system-ui, sans-serif;
-    --mh-rail-w: 76px;
-    --mh-rail-w-expanded: 232px;
+    --mh-rail-w: 68px;
+    --mh-rail-w-expanded: 244px;
 }
 
 /* ── Desktop layout row ──────────────────────────────────────────────────
@@ -812,5 +812,132 @@ body.ui-masthead .mh-macro-card-unit {
     body.ui-masthead .mh-ring-lbl,
     body.ui-masthead .mh-ring-goal {
         font-size: 10px;
+    }
+}
+
+/* Handoff 2026-07: editorial amber shell */
+body.ui-masthead .mh-rail {
+    display: flex;
+    width: var(--mh-rail-w);
+    padding: 20px 0;
+    gap: 18px;
+}
+body.ui-masthead .mh-rail-spacer {
+    display: block;
+    width: var(--mh-rail-w);
+}
+body.ui-masthead .mh-rail-wordmark {
+    width: 100%;
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 20px;
+    color: var(--fg);
+    text-decoration: none;
+    font: 800 0/1 var(--mh-display);
+    letter-spacing: -.02em;
+}
+body.ui-masthead .mh-rail-wordmark::after {
+    content: 'V';
+    font: 800 22px/1 var(--mh-display);
+}
+body.ui-masthead .mh-rail-nav { padding-inline: 12px; }
+body.ui-masthead .mh-rail-btn { height: 42px; }
+body.ui-masthead .mh-rail-foot { padding-inline: 12px; }
+body.ui-masthead .mh-topbar,
+body.ui-masthead .v-bottom-nav { display: none !important; }
+
+body.ui-masthead .mh-tabs {
+    border-bottom: 1px solid var(--line);
+}
+body.ui-masthead .mh-tab { font-size: 15px; }
+body.ui-masthead .mh-hero-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 40px;
+    margin-top: 28px;
+}
+body.ui-masthead .mh-title {
+    flex: none;
+    margin: 0;
+    font: 800 54px/.95 var(--mh-display);
+    letter-spacing: -.025em;
+}
+body.ui-masthead .mh-metrics {
+    justify-content: flex-end;
+    gap: 0;
+    border-top: 0;
+    padding-top: 0;
+    margin-top: 0;
+}
+body.ui-masthead .mh-metric-div { margin: 0 26px; }
+body.ui-masthead .mh-metric-value.is-primary { font-size: 48px; }
+body.ui-masthead main > .max-w-6xl,
+body.ui-masthead main > #alerts-container {
+    max-width: 1240px !important;
+    padding-left: 56px !important;
+    padding-right: 56px !important;
+}
+body.ui-masthead main > .max-w-6xl {
+    padding-top: 40px !important;
+    padding-bottom: 56px !important;
+}
+
+@media (min-width: 901px) {
+    body.ui-masthead .mh-rail,
+    body.ui-masthead .mh-rail-spacer { width: var(--mh-rail-w-expanded); }
+    body.ui-masthead .mh-rail-wordmark { font-size: 26px; }
+    body.ui-masthead .mh-rail-wordmark::after { content: none; }
+    body.ui-masthead .mh-rail-nav,
+    body.ui-masthead .mh-rail-foot { padding-inline: 16px; }
+    body.ui-masthead .mh-rail-label { opacity: 1; max-width: 160px; }
+    body.ui-masthead .mh-rail-group-label { display: block; }
+}
+
+@media (max-width: 900px) {
+    body.ui-masthead main > .max-w-6xl,
+    body.ui-masthead main > #alerts-container {
+        padding-left: 32px !important;
+        padding-right: 32px !important;
+    }
+    body.ui-masthead .mh-hero-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 22px;
+    }
+    body.ui-masthead .mh-title { font-size: 38px; }
+    body.ui-masthead .mh-metric-value.is-primary { font-size: 38px; }
+    body.ui-masthead .mh-metrics {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        overflow: visible;
+    }
+}
+
+@media (max-width: 560px) {
+    body.ui-masthead main > .max-w-6xl,
+    body.ui-masthead main > #alerts-container { padding: 22px 16px !important; }
+    body.ui-masthead .mh-title { font-size: 30px; }
+    body.ui-masthead .mh-hero-row { margin-top: 20px; }
+    body.ui-masthead .mh-tabs {
+        display: flex;
+        gap: 16px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+    body.ui-masthead .mh-metrics {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+        gap: 18px 14px;
+    }
+    body.ui-masthead .mh-metric.is-primary { grid-column: 1 / -1; }
+    body.ui-masthead .mh-metric-div { display: none; }
+}
+@media (max-width: 560px) {
+    body.ui-masthead .grid.grid-cols-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
