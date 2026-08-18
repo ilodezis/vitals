@@ -15,7 +15,12 @@ from vitals.enums import DigestKind, Severity, Source
 from vitals.models.milestones import WeeklyDigest
 from vitals.models.proactive import Notification
 from vitals.models.system_alert import SystemAlert
-from vitals.services import digest_service, garmin_service, weight_service
+from vitals.services import (
+    digest_service,
+    garmin_service,
+    nutrition_service,
+    weight_service,
+)
 from vitals.services.proactive import brief, compose, day_plan, delivery
 
 # The bot only speaks when the ``signals`` module is on — the same switch the
@@ -180,6 +185,57 @@ async def test_the_brief_sees_yesterdays_signals(db_session):
 
     assert [s["key"] for s in ctx["signals"]] == ["caffeine_late", "sleepiness"]
     assert ctx["signals"][0]["at_time"] == "22:00"
+
+
+async def test_the_brief_uses_closed_yesterday_nutrition_not_todays_breakfast(
+    db_session,
+):
+    """The production bug called a partial breakfast "yesterday's intake" and used
+    it to explain recovery after the previous day's workout. The model must only
+    receive the dated, closed-day total; a partial morning is not evidence of a
+    daily deficit.
+    """
+    for name, calories, protein in (
+        ("Breakfast", 800.0, 80.0),
+        ("Dinner", 850.0, 80.0),
+    ):
+        await nutrition_service.log_meal(
+            db_session,
+            on_date=DAY - timedelta(days=1),
+            name=name,
+            calories=calories,
+            protein_g=protein,
+        )
+    for name, calories, protein in (
+        ("Oats", 250.0, 20.0),
+        ("Protein", 170.0, 15.0),
+    ):
+        await nutrition_service.log_meal(
+            db_session,
+            on_date=DAY,
+            name=name,
+            calories=calories,
+            protein_g=protein,
+        )
+    await _seed_day(db_session)
+
+    ctx = await brief.build_context(db_session, on_date=DAY)
+
+    assert ctx["nutrition"]["date"] == (DAY - timedelta(days=1)).isoformat()
+    assert ctx["nutrition"]["calendar_day_closed"] is True
+    assert ctx["nutrition"]["entries_logged"] == 2
+    assert ctx["nutrition"]["totals"] == {
+        "calories": 1650.0,
+        "protein_g": 160.0,
+        "fat_g": None,
+        "carbs_g": None,
+    }
+    assert ctx["nutrition"]["goals"]["protein_target_g"] == 150.0
+    prompt = brief.build_prompt(ctx)
+    assert '"avg_calories_per_day": 420' not in prompt
+    assert '"calories": 1650.0' in prompt
+    assert "не переноси значения между датами" in prompt
+    assert "относится ТОЛЬКО ко вчерашнему" in brief.BRIEF_SYSTEM
 
 
 # ── The fallback ──────────────────────────────────────────────────────────────

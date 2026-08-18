@@ -151,6 +151,9 @@ def is_empty_day(ctx: dict, *, on_date: date_type) -> bool:
         return False
     return not (
         (ctx.get("hevy") or {}).get("total_workouts")
+        # The brief replaces today's unsafe running intake with yesterday's dated,
+        # closed totals. That completed log is new morning context, so it still
+        # makes the day worth briefing even when the watch is on the charger.
         or ctx.get("nutrition")
         or ctx.get("signals")
     )

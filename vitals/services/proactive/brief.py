@@ -96,6 +96,15 @@ Garmin). Базовые понятия объяснять не надо.
 а не совпадение. Про сегодняшнюю нагрузку данных нет и быть не может — не
 выдумывай её.
 
+Блок `nutrition` относится ТОЛЬКО ко вчерашнему, уже закрытому календарному дню:
+`date` — его точная дата, `totals` — сумма записанных калорий и макронутриентов,
+`entries_logged` — число строк в журнале, а не обязательно число приёмов пищи.
+Это единственное питание, которое можно связывать со вчерашней тренировкой и
+сегодняшним восстановлением. Незакрытого питания за сегодняшнее утро в JSON нет:
+не придумывай его и не переноси вчерашние значения на сегодня. Даже закрытый
+день мог быть записан не полностью: если строк мало или итог неправдоподобно
+низкий, говори о возможном неполном логе, а не о доказанном дефиците.
+
 Блок `signals` — что пользователь сам писал про себя, за вчера и сегодня. kind:
 state (состояние, 1-5), symptom (симптом, 1-5), exposure (сделал/принял, at_time —
 время). Здесь и лежит объяснение утренних чисел: вчерашний вечерний exposure
@@ -126,6 +135,7 @@ async def build_context(
         mode=digest_service.REPORT_MODE_BRIEF,
     )
     ctx = compose.strip_protocol(ctx)
+    today = on_date or today_local()
     # One-day window would cut the signals in half: "кофе в 22" is *yesterday's*
     # row and this morning's HRV is the thing it explains. Widened here rather
     # than in ``assemble_context`` because nothing else in the brief wants two
@@ -134,8 +144,19 @@ async def build_context(
     # Deliberately after ``strip_protocol``: that keeps the *stored* protocol out of
     # Telegram, and a signal is not stored protocol — it is a sentence he typed
     # into this very chat. Stripping it here would hide his own words from him.
-    ctx["signals"] = await _signals_since_yesterday(session, on_date or today_local())
-    today = on_date or today_local()
+    ctx["signals"] = await _signals_since_yesterday(session, today)
+    # The shared one-day context contains today's running intake. At brief time it
+    # is breakfast, not a completed daily total; the production failure mislabeled
+    # that partial sum as yesterday's serious deficit after a workout. Replace it
+    # with the only nutrition window that can explain this morning's recovery —
+    # yesterday's closed day — and date it explicitly. This mirrors the conflict
+    # engine, which also defers low-intake conclusions until day end.
+    nutrition_coverage = (ctx.get("coverage") or {}).get("nutrition") or {}
+    ctx["nutrition"] = (
+        await _yesterday_nutrition(session, today)
+        if nutrition_coverage.get("enabled")
+        else None
+    )
     # The one thing the brief could never do: compare. Handed a single day of
     # absolute numbers and asked what they mean, the model supplied the missing
     # half itself — "просадка SpO2 и повышенный пульс покоя" on a resting HR that
@@ -200,9 +221,47 @@ async def _signals_since_yesterday(session: AsyncSession, on_date: date_type) ->
     return [digest_service.signal_row(s) for s in reversed(rows)] or None
 
 
+_NUTRITION_TOTAL_FIELDS = ("calories", "protein_g", "fat_g", "carbs_g")
+
+
+async def _yesterday_nutrition(
+    session: AsyncSession, on_date: date_type
+) -> Optional[dict]:
+    """Return recorded totals for the one closed day relevant to a morning brief.
+
+    A running current-day total is deliberately excluded. Missing nutrient values
+    stay ``None`` rather than becoming measured zeroes, and an empty log stays
+    absent so the model cannot turn missing tracking into fasting.
+    """
+    from vitals.config import load_config
+    from vitals.services import nutrition_service
+
+    yesterday = on_date - timedelta(days=1)
+    meals = await nutrition_service.list_meals_for_date(session, yesterday)
+    if not meals:
+        return None
+
+    totals = {}
+    for field in _NUTRITION_TOTAL_FIELDS:
+        values = [
+            getattr(meal, field)
+            for meal in meals
+            if getattr(meal, field) is not None
+        ]
+        totals[field] = round(sum(values), 1) if values else None
+    return {
+        "date": yesterday.isoformat(),
+        "calendar_day_closed": True,
+        "entries_logged": len(meals),
+        "totals": totals,
+        "goals": nutrition_service.get_goals(load_config()),
+    }
+
+
 def build_prompt(ctx: dict) -> str:
     return (
-        "Данные за сегодня (JSON):\n\n"
+        f"Данные для утреннего брифа на {ctx.get('date')} "
+        "(JSON; не переноси значения между датами):\n\n"
         + json.dumps(ctx, ensure_ascii=False, indent=2)
         + "\n\nНапиши утренний разбор: 2-3 предложения."
     )

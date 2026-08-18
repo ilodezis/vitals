@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed — morning brief nutrition window
+
+- **Morning nutrition analysis now uses the preceding closed day** — the brief no longer hands the model a partial breakfast total that can be mislabeled as yesterday's intake or compared with full-day targets. The context carries an explicit date, recorded-entry count, nutrient totals, and goals for the closed day, while missing logs remain missing instead of being treated as zero intake.
+
 ### Fixed — AI period-report context
 
 - **Stored Garmin and treatment data now reaches the report** — context schema v2 includes bounded Garmin activities and expanded daily metrics, every same-day Hevy session, GLP-1 phases/injections/effects, and HRT plans/actual doses/effects. Garmin and Hevy remain separate sources so a synchronized session is not counted twice.
