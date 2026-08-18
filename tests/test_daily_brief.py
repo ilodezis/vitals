@@ -190,11 +190,6 @@ async def test_the_brief_sees_yesterdays_signals(db_session):
 async def test_the_brief_uses_closed_yesterday_nutrition_not_todays_breakfast(
     db_session,
 ):
-    """The production bug called a partial breakfast "yesterday's intake" and used
-    it to explain recovery after the previous day's workout. The model must only
-    receive the dated, closed-day total; a partial morning is not evidence of a
-    daily deficit.
-    """
     for name, calories, protein in (
         ("Breakfast", 800.0, 80.0),
         ("Dinner", 850.0, 80.0),
@@ -235,7 +230,7 @@ async def test_the_brief_uses_closed_yesterday_nutrition_not_todays_breakfast(
     assert '"avg_calories_per_day": 420' not in prompt
     assert '"calories": 1650.0' in prompt
     assert "не переноси значения между датами" in prompt
-    assert "относится ТОЛЬКО ко вчерашнему" in brief.BRIEF_SYSTEM
+    assert "Текущего утра в JSON нет" in brief.BRIEF_SYSTEM
 
 
 # ── The fallback ──────────────────────────────────────────────────────────────

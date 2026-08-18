@@ -96,14 +96,9 @@ Garmin). Базовые понятия объяснять не надо.
 а не совпадение. Про сегодняшнюю нагрузку данных нет и быть не может — не
 выдумывай её.
 
-Блок `nutrition` относится ТОЛЬКО ко вчерашнему, уже закрытому календарному дню:
-`date` — его точная дата, `totals` — сумма записанных калорий и макронутриентов,
-`entries_logged` — число строк в журнале, а не обязательно число приёмов пищи.
-Это единственное питание, которое можно связывать со вчерашней тренировкой и
-сегодняшним восстановлением. Незакрытого питания за сегодняшнее утро в JSON нет:
-не придумывай его и не переноси вчерашние значения на сегодня. Даже закрытый
-день мог быть записан не полностью: если строк мало или итог неправдоподобно
-низкий, говори о возможном неполном логе, а не о доказанном дефиците.
+`nutrition` — записи только за вчерашний закрытый день (`date`, `totals`,
+`entries_logged`). Текущего утра в JSON нет. Низкий итог при малом числе строк
+может означать неполный лог, а не доказанный дефицит.
 
 Блок `signals` — что пользователь сам писал про себя, за вчера и сегодня. kind:
 state (состояние, 1-5), symptom (симптом, 1-5), exposure (сделал/принял, at_time —
@@ -145,12 +140,6 @@ async def build_context(
     # Telegram, and a signal is not stored protocol — it is a sentence he typed
     # into this very chat. Stripping it here would hide his own words from him.
     ctx["signals"] = await _signals_since_yesterday(session, today)
-    # The shared one-day context contains today's running intake. At brief time it
-    # is breakfast, not a completed daily total; the production failure mislabeled
-    # that partial sum as yesterday's serious deficit after a workout. Replace it
-    # with the only nutrition window that can explain this morning's recovery —
-    # yesterday's closed day — and date it explicitly. This mirrors the conflict
-    # engine, which also defers low-intake conclusions until day end.
     nutrition_coverage = (ctx.get("coverage") or {}).get("nutrition") or {}
     ctx["nutrition"] = (
         await _yesterday_nutrition(session, today)
@@ -227,12 +216,7 @@ _NUTRITION_TOTAL_FIELDS = ("calories", "protein_g", "fat_g", "carbs_g")
 async def _yesterday_nutrition(
     session: AsyncSession, on_date: date_type
 ) -> Optional[dict]:
-    """Return recorded totals for the one closed day relevant to a morning brief.
-
-    A running current-day total is deliberately excluded. Missing nutrient values
-    stay ``None`` rather than becoming measured zeroes, and an empty log stays
-    absent so the model cannot turn missing tracking into fasting.
-    """
+    """Return yesterday's logged nutrition without today's partial total."""
     from vitals.config import load_config
     from vitals.services import nutrition_service
 
