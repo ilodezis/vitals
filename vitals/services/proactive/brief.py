@@ -96,6 +96,10 @@ Garmin). Базовые понятия объяснять не надо.
 а не совпадение. Про сегодняшнюю нагрузку данных нет и быть не может — не
 выдумывай её.
 
+`nutrition` — записи только за вчерашний закрытый день (`date`, `totals`,
+`entries_logged`). Текущего утра в JSON нет. Низкий итог при малом числе строк
+может означать неполный лог, а не доказанный дефицит.
+
 Блок `signals` — что пользователь сам писал про себя, за вчера и сегодня. kind:
 state (состояние, 1-5), symptom (симптом, 1-5), exposure (сделал/принял, at_time —
 время). Здесь и лежит объяснение утренних чисел: вчерашний вечерний exposure
@@ -126,6 +130,7 @@ async def build_context(
         mode=digest_service.REPORT_MODE_BRIEF,
     )
     ctx = compose.strip_protocol(ctx)
+    today = on_date or today_local()
     # One-day window would cut the signals in half: "кофе в 22" is *yesterday's*
     # row and this morning's HRV is the thing it explains. Widened here rather
     # than in ``assemble_context`` because nothing else in the brief wants two
@@ -134,8 +139,12 @@ async def build_context(
     # Deliberately after ``strip_protocol``: that keeps the *stored* protocol out of
     # Telegram, and a signal is not stored protocol — it is a sentence he typed
     # into this very chat. Stripping it here would hide his own words from him.
-    ctx["signals"] = await _signals_since_yesterday(session, on_date or today_local())
-    today = on_date or today_local()
+    ctx["signals"] = await _signals_since_yesterday(session, today)
+    ctx["nutrition"] = (
+        await _yesterday_nutrition(session, today)
+        if _nutrition_enabled(ctx)
+        else None
+    )
     # The one thing the brief could never do: compare. Handed a single day of
     # absolute numbers and asked what they mean, the model supplied the missing
     # half itself — "просадка SpO2 и повышенный пульс покоя" on a resting HR that
@@ -200,9 +209,61 @@ async def _signals_since_yesterday(session: AsyncSession, on_date: date_type) ->
     return [digest_service.signal_row(s) for s in reversed(rows)] or None
 
 
+_NUTRITION_TOTAL_FIELDS = ("calories", "protein_g", "fat_g", "carbs_g")
+
+
+def _nutrition_enabled(ctx: dict) -> bool:
+    """Is the food log a module that is even on? Read off the coverage block so
+    the answer is the same one ``assemble_context`` already settled."""
+    return bool(((ctx.get("coverage") or {}).get("nutrition") or {}).get("enabled"))
+
+
+async def _meals_logged_today(session: AsyncSession, on_date: date_type) -> bool:
+    """Did anything land in the food log today — nothing about *how much*.
+
+    The nutrition block is deliberately about yesterday, so the only thing left
+    that can still say "this morning is alive" is the bare existence of a row.
+    Counting the calories here would put the partial total back into the morning
+    through the side door.
+    """
+    from vitals.services import nutrition_service
+
+    return bool(await nutrition_service.list_meals_for_date(session, on_date))
+
+
+async def _yesterday_nutrition(
+    session: AsyncSession, on_date: date_type
+) -> Optional[dict]:
+    """Return yesterday's logged nutrition without today's partial total."""
+    from vitals.config import load_config
+    from vitals.services import nutrition_service
+
+    yesterday = on_date - timedelta(days=1)
+    meals = await nutrition_service.list_meals_for_date(session, yesterday)
+    if not meals:
+        return None
+
+    totals = {}
+    for field in _NUTRITION_TOTAL_FIELDS:
+        values = [
+            getattr(meal, field)
+            for meal in meals
+            if getattr(meal, field) is not None
+        ]
+        totals[field] = round(sum(values), 1) if values else None
+    return {
+        "date": yesterday.isoformat(),
+        "calendar_day_closed": True,
+        "entries_logged": len(meals),
+        "totals": totals,
+        "goals": nutrition_service.get_goals(load_config()),
+    }
+
+
 def build_prompt(ctx: dict) -> str:
     return (
-        "Данные за сегодня (JSON):\n\n"
+        f"Данные для утреннего брифа на {ctx.get('date')} "
+        "(JSON; не переноси значения между датами):\n\n"
         + json.dumps(ctx, ensure_ascii=False, indent=2)
         + "\n\nНапиши утренний разбор: 2-3 предложения."
     )
@@ -232,7 +293,10 @@ async def generate_brief(
     """Build the brief and store it. ``None`` = empty day, nothing built."""
     on_date = on_date or today_local()
     ctx = await build_context(session, on_date=on_date)
-    if compose.is_empty_day(ctx, on_date=on_date):
+    logged_today = (
+        await _meals_logged_today(session, on_date) if _nutrition_enabled(ctx) else False
+    )
+    if compose.is_empty_day(ctx, on_date=on_date, nutrition_logged_today=logged_today):
         logger.info("no brief for %s: no sleep and nothing new", on_date)
         return None
     # Unconditional, not a flag the caller may forget: whether to *wait* for the
