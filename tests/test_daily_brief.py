@@ -475,6 +475,40 @@ async def test_a_weight_from_months_ago_does_not_keep_the_brief_talking(db_sessi
     assert await brief.generate_brief(db_session, FakeLLM(), on_date=DAY) is None
 
 
+async def test_yesterdays_dinner_does_not_keep_the_brief_talking(db_session):
+    """The same edge, one domain over. The nutrition block is deliberately about
+    yesterday's closed day, so reading it as a reason to speak would mean one
+    logged dinner buys a brief every morning after — a morning with nothing on it
+    is still an empty morning."""
+    await nutrition_service.log_meal(
+        db_session,
+        on_date=DAY - timedelta(days=1),
+        name="Dinner",
+        calories=850.0,
+    )
+    await db_session.commit()
+
+    assert await brief.generate_brief(db_session, FakeLLM(), on_date=DAY) is None
+
+
+async def test_a_meal_logged_today_is_not_an_empty_day(db_session):
+    """And the other direction: the food log filling this morning is exactly the
+    kind of day the watch-on-the-charger rule exists to keep talking. The running
+    total still stays out of the model's JSON — only the fact that he logged."""
+    llm = FakeLLM()
+    await nutrition_service.log_meal(
+        db_session, on_date=DAY, name="Oats", calories=250.0
+    )
+    await db_session.commit()
+
+    row = await brief.generate_brief(db_session, llm, on_date=DAY)
+    await db_session.commit()
+
+    assert row is not None
+    assert '"nutrition": null' in llm.calls[0]["prompt"]
+    assert "250" not in llm.calls[0]["prompt"]
+
+
 async def test_job_stays_quiet_on_an_empty_day_and_says_so_in_the_web(
     db_session, session_factory, monkeypatch
 ):

@@ -11,6 +11,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed — morning brief nutrition window
 
 - **Morning nutrition analysis now uses the preceding closed day** — the brief no longer hands the model a partial breakfast total that can be mislabeled as yesterday's intake or compared with full-day targets. The context carries an explicit date, recorded-entry count, nutrient totals, and goals for the closed day, while missing logs remain missing instead of being treated as zero intake.
+- **A silent morning stays silent** — deciding whether a morning is worth a brief still looks at whether food was logged *today*, not at the closed day now shown to the model, so yesterday's dinner cannot buy a brief for a morning with nothing on it, and a meal logged this morning still keeps the brief talking when the watch is on the charger.
 
 ### Fixed — AI period-report context
 

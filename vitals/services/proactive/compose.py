@@ -124,7 +124,9 @@ def strip_protocol(ctx: dict) -> dict:
     return out
 
 
-def is_empty_day(ctx: dict, *, on_date: date_type) -> bool:
+def is_empty_day(
+    ctx: dict, *, on_date: date_type, nutrition_logged_today: bool
+) -> bool:
     """Nothing anywhere → there is no brief worth sending.
 
     Silence is more honest than "нет данных" three mornings in a row; the web
@@ -135,6 +137,12 @@ def is_empty_day(ctx: dict, *, on_date: date_type) -> bool:
     sitting on the charger silenced every morning — while the scale, the food
     log, the gym and his own signals kept filling. A day is empty only when it is
     empty everywhere.
+
+    Food is passed in rather than read off ``ctx``: the context block carries
+    *yesterday's* closed day, and yesterday's dinner must not buy today a brief —
+    that is the same mistake as counting a weigh-in from March. Today's meals are
+    a fact about today, so they are what this asks for, and only their existence
+    is needed here: the running total itself stays out of the brief.
     """
     garmin = ctx.get("garmin") or {}
     if _is_fresh(garmin.get("date"), on_date) and any(
@@ -151,7 +159,7 @@ def is_empty_day(ctx: dict, *, on_date: date_type) -> bool:
         return False
     return not (
         (ctx.get("hevy") or {}).get("total_workouts")
-        or ctx.get("nutrition")
+        or nutrition_logged_today
         or ctx.get("signals")
     )
 

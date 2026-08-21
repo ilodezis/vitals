@@ -140,10 +140,9 @@ async def build_context(
     # Telegram, and a signal is not stored protocol — it is a sentence he typed
     # into this very chat. Stripping it here would hide his own words from him.
     ctx["signals"] = await _signals_since_yesterday(session, today)
-    nutrition_coverage = (ctx.get("coverage") or {}).get("nutrition") or {}
     ctx["nutrition"] = (
         await _yesterday_nutrition(session, today)
-        if nutrition_coverage.get("enabled")
+        if _nutrition_enabled(ctx)
         else None
     )
     # The one thing the brief could never do: compare. Handed a single day of
@@ -213,6 +212,25 @@ async def _signals_since_yesterday(session: AsyncSession, on_date: date_type) ->
 _NUTRITION_TOTAL_FIELDS = ("calories", "protein_g", "fat_g", "carbs_g")
 
 
+def _nutrition_enabled(ctx: dict) -> bool:
+    """Is the food log a module that is even on? Read off the coverage block so
+    the answer is the same one ``assemble_context`` already settled."""
+    return bool(((ctx.get("coverage") or {}).get("nutrition") or {}).get("enabled"))
+
+
+async def _meals_logged_today(session: AsyncSession, on_date: date_type) -> bool:
+    """Did anything land in the food log today — nothing about *how much*.
+
+    The nutrition block is deliberately about yesterday, so the only thing left
+    that can still say "this morning is alive" is the bare existence of a row.
+    Counting the calories here would put the partial total back into the morning
+    through the side door.
+    """
+    from vitals.services import nutrition_service
+
+    return bool(await nutrition_service.list_meals_for_date(session, on_date))
+
+
 async def _yesterday_nutrition(
     session: AsyncSession, on_date: date_type
 ) -> Optional[dict]:
@@ -275,7 +293,10 @@ async def generate_brief(
     """Build the brief and store it. ``None`` = empty day, nothing built."""
     on_date = on_date or today_local()
     ctx = await build_context(session, on_date=on_date)
-    if compose.is_empty_day(ctx, on_date=on_date):
+    logged_today = (
+        await _meals_logged_today(session, on_date) if _nutrition_enabled(ctx) else False
+    )
+    if compose.is_empty_day(ctx, on_date=on_date, nutrition_logged_today=logged_today):
         logger.info("no brief for %s: no sleep and nothing new", on_date)
         return None
     # Unconditional, not a flag the caller may forget: whether to *wait* for the
