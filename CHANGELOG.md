@@ -8,6 +8,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed — FastMCP 4
+
+- **`fastmcp` 3.4.5 → 4.0.2**, built on the `2026-07-28` MCP revision and the rewritten Python SDK. The server now negotiates a protocol version per connection, so modern clients get sessionless, self-contained requests while older ones keep the session-based era. The tool, resource and prompt surface is unchanged; none of the removed 3.x APIs (server-initiated sampling, roots, elicitation, `import_server`) were in use.
+- **The MCP endpoint now has transport coverage** — the mount, the sub-app lifespan, the Bearer guard and the negotiated protocol are exercised by a real client over HTTP, instead of every MCP test calling the tool functions directly and leaving the whole transport half untested.
+
 ### Fixed — morning brief nutrition window
 
 - **Morning nutrition analysis now uses the preceding closed day** — the brief no longer hands the model a partial breakfast total that can be mislabeled as yesterday's intake or compared with full-day targets. The context carries an explicit date, recorded-entry count, nutrient totals, and goals for the closed day, while missing logs remain missing instead of being treated as zero intake.

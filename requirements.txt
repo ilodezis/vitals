@@ -42,6 +42,6 @@ garminconnect==0.3.7
 PyMuPDF>=1.24,<2.0
 
 # ── Model Context Protocol (MCP) ─────────────────────────────────────────────
-fastmcp==3.4.5
+fastmcp==4.0.2
 
 
