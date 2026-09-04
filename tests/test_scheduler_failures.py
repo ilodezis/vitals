@@ -116,7 +116,10 @@ async def test_budget_matches_each_job_schedule():
     # The widest real gap of 03/11/16/22 is 8h, not 24h/4 — a job may legitimately
     # go that long between runs without being stale.
     assert budgets["garmin_sync"] == 8 * 3600 + slack
-    assert budgets["weekly_digest"] == 7 * 86400 + slack
+    # A week is 7 days give or take the hour a DST switch adds or removes, and the
+    # samples this is measured over reach two months ahead — so for the weeks before
+    # every switch the widest gap is genuinely 7d ± 1h. Budgets follow the calendar.
+    assert abs(budgets["weekly_digest"] - (7 * 86400 + slack)) <= 3600
 
 
 # These read the job names out of /health, which only the owner is shown — hence
