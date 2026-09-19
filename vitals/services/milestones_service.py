@@ -229,7 +229,18 @@ async def progress(session: AsyncSession, milestone: Milestone) -> dict:
     ):
         milestone.status = MilestoneStatus.ACHIEVED.value
         await session.flush()
+        # updated_at is server-set on flush; reload it rather than lazy-load it.
+        await session.refresh(milestone, ["updated_at"])
         out["status"] = milestone.status
+
+    # When a closed goal was closed, and how that sat against its deadline
+    # (positive = early). ponytail: updated_at stands in for the closing date, so
+    # editing a closed goal moves it; add a closed_at column if that matters.
+    if milestone.status != MilestoneStatus.ACTIVE.value and milestone.updated_at:
+        closed_on = milestone.updated_at.date()
+        out["closed_on"] = closed_on.isoformat()
+        if milestone.deadline:
+            out["deadline_margin_days"] = (milestone.deadline - closed_on).days
     return out
 
 

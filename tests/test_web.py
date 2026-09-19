@@ -1276,9 +1276,9 @@ async def test_reports_dashboard_renders(auth_client):
     assert "Еженедельный разбор" in response.text
 
 
-async def test_reports_card_reads_overshoot_and_overdue_honestly(auth_client, db_session):
-    """A crossed goal says it was reached (not "remaining 0.9"), and a missed
-    deadline on a live goal says overdue instead of printing negative days."""
+async def test_reports_moves_reached_goals_to_a_green_archive(auth_client, db_session):
+    """A crossed goal leaves the active grid for the archive, tinted as a win,
+    and a missed deadline on a live goal says overdue instead of negative days."""
     from datetime import timedelta
 
     from vitals.services import milestones_service, weight_service
@@ -1297,9 +1297,12 @@ async def test_reports_card_reads_overshoot_and_overdue_honestly(auth_client, db
     await db_session.commit()
 
     html = (await auth_client.get("/reports", headers={"Accept": "text/html"})).text
-    assert "цель взята, −0,9" in html
-    assert "осталось 4,1" in html
-    assert "просрочено на 3 дн." in html
+    active, archive = html.split("Архив целей", 1)
+    assert "Дойти до 100" in active and "Дойти до 105" not in active
+    assert "осталось 4,1" in active
+    assert "просрочено на 3 дн." in active
+    assert "Дойти до 105" in archive and "is-won" in archive
+    assert "позже дедлайна" in archive
     assert "-41" not in html and "-3 дн." not in html
 
 

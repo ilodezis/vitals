@@ -4,10 +4,12 @@
 
 {% block content %}
 {% from "partials/masthead.html" import masthead_header, card_header with context %}
+{% set active_cards = cards | selectattr("status", "equalto", "active") | list %}
+{% set archived_cards = cards | rejectattr("status", "equalto", "active") | list %}
 <div class="v-page v-page-reports px-6 py-7 max-w-6xl mx-auto space-y-8" x-data="{ showGoalForm: false }">
 
     {{ masthead_header('reports', t('nav.reports'), [
-        {'label': t('masthead.reports.goals'), 'primary': true, 'value': cards | length},
+        {'label': t('masthead.reports.goals'), 'primary': true, 'value': active_cards | length},
         {'label': t('masthead.reports.digests'), 'value': history | length},
         {'label': t('masthead.reports.latest'), 'value': (latest_digest.date | format_date) if latest_digest else '—'}
     ]) }}
@@ -48,7 +50,7 @@
     </div>
 
     <div class="v-insight-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {% for c in cards %}
+        {% for c in active_cards %}
         <div class="v-card p-6 space-y-3">
             <div class="flex justify-between items-start gap-2">
                 <div>
@@ -83,6 +85,50 @@
         </div>
         {% endfor %}
     </div>
+
+    {% if archived_cards %}
+    <!-- Goal archive: reached goals stay on the page, in green -->
+    {% call card_header(t("reports.archive_title")) %}{% endcall %}
+    <div class="v-insight-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for c in archived_cards %}
+        {% set won = c.status == "achieved" %}
+        <div class="v-card v-goal-closed{% if won %} is-won{% endif %} p-6 space-y-3">
+            <div class="flex justify-between items-start gap-2">
+                <div class="flex items-start gap-2">
+                    {% if won %}
+                    <span class="v-goal-check" aria-hidden="true">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                    </span>
+                    {% endif %}
+                    <div>
+                        <div class="v-text-card">{{ c.name }}</div>
+                        <div class="v-text-micro mt-0.5">{{ t("enum.domain." + c.domain) }} · {{ t("enum.status." + c.status) }}</div>
+                    </div>
+                </div>
+                <form action="/reports/milestone/{{ c.id }}/delete" method="POST" data-confirm="{{ t("reports.confirm_delete_goal") }}">
+                    <button aria-label="{{ t('common.delete') }}" type="submit" class="v-icon-btn danger" title="{{ t("common.delete") }}">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                </form>
+            </div>
+            {% if c.target_value is not none %}
+            <div class="flex items-baseline gap-1.5">
+                <span class="v-metric-value v-num">{{ c.target_value | format_number }}</span>
+                <span class="v-unit">{{ c.target_unit or '' }}</span>
+            </div>
+            {% endif %}
+            {% if won and c.closed_on %}
+            <div class="v-text-micro v-num">{{ t("reports.reached_on") }} {{ c.closed_on | format_date }}{% if c.current is not none %} · {{ t("reports.current") }} {{ c.current | format_number }}{% endif %}</div>
+            {% endif %}
+            {% if c.deadline_margin_days is defined %}
+            <div class="v-text-micro v-num">
+                {% if c.deadline_margin_days > 0 %}{{ t("reports.early_by", days=c.deadline_margin_days) }}{% elif c.deadline_margin_days < 0 %}{{ t("reports.late_by", days=-c.deadline_margin_days) }}{% else %}{{ t("reports.on_deadline") }}{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <!-- Weekly digest -->
     <div class="v-card v-report-narrative p-6 space-y-3">

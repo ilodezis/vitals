@@ -3131,3 +3131,33 @@ sup {
     .v-today-change-domain { display: none; }
     .v-today-change-delta { font-size: var(--text-body); }
 }
+
+/* Goal archive (/reports). A reached goal keeps its card, tinted green so the
+   finish reads as a win, not as one more grey status line. Missed or paused
+   goals sit quietly beside it. */
+.v-goal-closed {
+    opacity: .72;
+}
+
+.v-goal-closed.is-won {
+    opacity: 1;
+    background: linear-gradient(var(--good-soft), var(--good-soft)), var(--surface);
+    border-color: var(--good-line);
+}
+
+.v-goal-closed.is-won .v-metric-value {
+    color: var(--good);
+}
+
+.v-goal-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    margin-top: 1px;
+    border-radius: var(--radius-pill);
+    background: var(--good);
+    color: var(--surface);
+}
