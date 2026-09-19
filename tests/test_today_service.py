@@ -194,6 +194,28 @@ async def test_goal_reads_as_distance_covered(db_session):
     assert goal["pct"] == 40
 
 
+async def test_goal_skips_a_goal_already_reached(db_session):
+    """Once the nearer goal is crossed and closes itself, the bar moves on to the
+    next one instead of sitting at 100% on a finished goal."""
+    for offset, kg in ((30, 110.0), (0, 104.0)):
+        await weight_service.log_weight(
+            db_session, on_date=today_local() - timedelta(days=offset), weight_kg=kg
+        )
+    await milestones_service.create_milestone(
+        db_session, name="Дойти до 105", domain=Domain.WEIGHT.value,
+        target_value=105.0, target_unit="кг", deadline=today_local() - timedelta(days=1),
+    )
+    await milestones_service.create_milestone(
+        db_session, name="Дойти до 90", domain=Domain.WEIGHT.value,
+        target_value=90.0, target_unit="кг",
+    )
+    await db_session.commit()
+
+    goal = (await today_service.build(db_session, enabled_modules=ALL_OFF))["goal"]
+
+    assert goal["name"] == "Дойти до 90"
+
+
 async def test_recovery_advice_arrives_as_an_observation(db_session):
     """An interpretation of the numbers is not a failure: it joins the attention
     card on the quietest rung, never as a warning."""

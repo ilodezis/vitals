@@ -47,6 +47,25 @@ async def test_create_and_progress_weight_goal(db_session):
     assert len(await milestones_service.list_milestones(db_session)) == 0
 
 
+async def test_weight_goal_closes_itself_once_crossed(db_session):
+    """A goal the scale has already passed must not sit as "active" with a
+    positive "remaining": crossing the target marks it achieved."""
+    await weight_service.log_weight(db_session, on_date=DAY, weight_kg=105.3)
+    await milestones_service.create_milestone(
+        db_session, name="Дойти до 105", domain="weight", target_value=105.0,
+        target_unit="кг", deadline=DAY - timedelta(days=41),
+    )
+    await db_session.commit()
+    assert (await milestones_service.dashboard_cards(db_session))[0]["status"] == "active"
+
+    await weight_service.log_weight(db_session, on_date=DAY + timedelta(days=1), weight_kg=104.1)
+    await db_session.commit()
+    card = (await milestones_service.dashboard_cards(db_session))[0]
+    assert card["remaining"] == pytest.approx(-0.9)
+    assert card["status"] == "achieved"
+    assert await milestones_service.list_milestones(db_session, status="achieved")
+
+
 async def test_progress_guards_against_unit_domain_mismatch(db_session):
     """A goal filed under domain="weight" but with a "%" target_unit (e.g.
     copy-pasted from a body-fat goal) must not compute current/remaining — on the

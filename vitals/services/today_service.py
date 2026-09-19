@@ -19,7 +19,7 @@ from typing import Any, Optional, Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.config import load_config
-from vitals.enums import DigestKind, Domain, Severity
+from vitals.enums import DigestKind, Domain, MilestoneStatus, Severity
 from vitals.i18n import decimal, t
 from vitals.utils.timeutils import now_local, today_local
 
@@ -363,6 +363,8 @@ async def _goal(session: AsyncSession, series: dict) -> Optional[dict]:
     start = raw[0]["weight_kg"] if raw else None
     for card in await milestones_service.dashboard_cards(session):
         if card["domain"] != Domain.WEIGHT.value or card["current"] is None:
+            continue
+        if card["status"] != MilestoneStatus.ACTIVE.value:
             continue
         if card["target_value"] is None or start is None:
             continue

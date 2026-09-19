@@ -217,6 +217,19 @@ async def progress(session: AsyncSession, milestone: Milestone) -> dict:
         if current is not None:
             out["current"] = round(current, 2)
             out["remaining"] = round(current - milestone.target_value, 2)
+
+    # Weight and body-fat goals are "get below X". Crossing the target closes the
+    # goal on the spot, so a reached card doesn't sit as "active" until someone
+    # flips it by hand. Reopening it while still below the target re-closes it.
+    # ponytail: direction is always "down"; add a direction field for a gain goal.
+    if (
+        milestone.status == MilestoneStatus.ACTIVE.value
+        and out["remaining"] is not None
+        and out["remaining"] <= 0
+    ):
+        milestone.status = MilestoneStatus.ACHIEVED.value
+        await session.flush()
+        out["status"] = milestone.status
     return out
 
 

@@ -1276,6 +1276,33 @@ async def test_reports_dashboard_renders(auth_client):
     assert "Еженедельный разбор" in response.text
 
 
+async def test_reports_card_reads_overshoot_and_overdue_honestly(auth_client, db_session):
+    """A crossed goal says it was reached (not "remaining 0.9"), and a missed
+    deadline on a live goal says overdue instead of printing negative days."""
+    from datetime import timedelta
+
+    from vitals.services import milestones_service, weight_service
+    from vitals.utils.timeutils import today_local
+
+    today = today_local()
+    await weight_service.log_weight(db_session, on_date=today, weight_kg=104.1)
+    await milestones_service.create_milestone(
+        db_session, name="Дойти до 105", domain="weight", target_value=105.0,
+        target_unit="кг", deadline=today - timedelta(days=41),
+    )
+    await milestones_service.create_milestone(
+        db_session, name="Дойти до 100", domain="weight", target_value=100.0,
+        target_unit="кг", deadline=today - timedelta(days=3),
+    )
+    await db_session.commit()
+
+    html = (await auth_client.get("/reports", headers={"Accept": "text/html"})).text
+    assert "цель взята, −0,9" in html
+    assert "осталось 4,1" in html
+    assert "просрочено на 3 дн." in html
+    assert "-41" not in html and "-3 дн." not in html
+
+
 async def test_reports_create_milestone(auth_client, db_session):
     """POST /reports/milestone creates a goal card."""
     from vitals.models.milestones import Milestone

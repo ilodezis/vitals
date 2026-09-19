@@ -67,11 +67,11 @@
                 <span class="v-unit">{{ c.target_unit or '' }}</span>
             </div>
             {% if c.current is not none %}
-            <div class="v-text-micro v-num">{{ t("reports.current") }} {{ c.current | format_number }}{% if c.remaining is not none %} · {{ t("reports.remaining") }} {{ c.remaining | abs | format_number }}{% endif %}</div>
+            <div class="v-text-micro v-num">{{ t("reports.current") }} {{ c.current | format_number }}{% if c.remaining is not none %} · {% if c.remaining <= 0 %}{{ t("reports.goal_reached") }}, −{{ c.remaining | abs | format_number }}{% else %}{{ t("reports.remaining") }} {{ c.remaining | format_number }}{% endif %}{% endif %}</div>
             {% endif %}
             {% endif %}
             <div class="v-text-micro v-num">
-                {% if c.deadline %}{{ t("reports.deadline_label") }} {{ c.deadline | format_date }}{% if c.days_left is not none %} ({{ c.days_left }} {{ t("reports.days_left") }}){% endif %}{% else %}{{ t("reports.no_deadline") }}{% endif %}
+                {% if c.deadline %}{{ t("reports.deadline_label") }} {{ c.deadline | format_date }}{% if c.days_left is not none and c.status == "active" %} ({% if c.days_left < 0 %}{{ t("reports.overdue") }} {{ -c.days_left }}{% else %}{{ c.days_left }}{% endif %} {{ t("reports.days_left") }}){% endif %}{% else %}{{ t("reports.no_deadline") }}{% endif %}
             </div>
         </div>
         {% else %}
