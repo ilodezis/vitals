@@ -100,3 +100,20 @@ def test_date_formatter_has_one_definition():
     assert "function formatDateStr" not in APP_JS
     assert "vitalsFormatDateStr" in HEVY_JS
     assert "vitalsFormatDateStr" in APP_JS
+
+
+def test_script_submitted_forms_fall_back_to_post():
+    """A form Alpine submits with ``@submit.prevent`` still needs ``method``.
+
+    Until Alpine has wired the page up — a slow cold start, a boosted swap
+    that lost the race, a script that failed to load — the browser submits the
+    form itself, and a form without ``method`` submits as GET. Every one of
+    these actions is POST-only, so the owner got a bare "Method Not Allowed"
+    page instead of a saved entry."""
+    form_re = re.compile(r"<form\b[^>]*@submit\.prevent=[^>]*>", re.S)
+    offenders = []
+    for path in TEMPLATES.rglob("*.html"):
+        for tag in form_re.findall(path.read_text(encoding="utf-8")):
+            if "action=" in tag and 'method="post"' not in tag.lower():
+                offenders.append(f"{path.relative_to(TEMPLATES)}: {tag[:80]}")
+    assert not offenders, offenders

@@ -46,7 +46,7 @@
 
                 <!-- TAB 1: Measurements -->
                 <div x-show="activeTab === 'measure'" class="space-y-4">
-                    <form @submit.prevent="submitForm($event)" action="/weight/measurement" id="form-measure"
+                    <form @submit.prevent="submitForm($event)" action="/weight/measurement" method="POST" id="form-measure"
                         hx-boost="false" class="space-y-4">
                         <input type="hidden" name="override" x-model="overrideFlag">
                         <div>

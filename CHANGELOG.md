@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed — "Method Not Allowed" on a save
+
+- **Script-submitted forms now declare `method="POST"`** — the weight, measurement, meal, injection and supplement forms are saved by Alpine through `@submit.prevent`, but carried no `method` of their own. Whenever the browser submitted one itself — before Alpine had wired the page up on a slow cold start, or after a boosted swap lost the init race — it went out as a GET to a POST-only route, and the owner got a bare 405 page instead of a saved entry. The native fallback now posts and lands back on the page with the entry saved; a static contract keeps every such form honest.
+
 ### Changed — FastMCP 4
 
 - **`fastmcp` 3.4.5 → 4.0.2**, built on the `2026-07-28` MCP revision and the rewritten Python SDK. The server now negotiates a protocol version per connection, so modern clients get sessionless, self-contained requests while older ones keep the session-based era. The tool, resource and prompt surface is unchanged; none of the removed 3.x APIs (server-initiated sampling, roots, elicitation, `import_server`) were in use.

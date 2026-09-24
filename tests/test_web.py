@@ -252,6 +252,21 @@ async def test_log_weight_success(auth_client, db_session):
     assert weight_log.note == "Integration test weight"
 
 
+async def test_log_weight_without_javascript(auth_client, db_session):
+    """The form's own submission, before Alpine takes it over, still saves.
+
+    The hidden ``override`` input is bound by ``x-model``, so without Alpine it
+    goes out empty; that must read as "no override", not fail validation."""
+    response = await auth_client.post(
+        "/weight/log",
+        data={"weight_kg": 84.2, "date": "2026-06-11", "override": ""},
+    )
+    assert response.status_code == 303
+
+    result = await db_session.execute(select(WeightLog).where(WeightLog.weight_kg == 84.2))
+    assert result.scalar_one_or_none() is not None
+
+
 async def test_conflict_engine_override_flow(auth_client, db_session):
     """Test conflict blocks trigger HTTP 409, and overrides save correctly."""
     # Seed a conflict rule

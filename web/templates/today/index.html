@@ -94,7 +94,7 @@
 
             <div class="v-card p-6 space-y-4">
                 {{ card_header(t("today.log_title")) }}
-                <form @submit.prevent="submitForm($event)" action="/weight/log" id="form-log" hx-boost="false"
+                <form @submit.prevent="submitForm($event)" action="/weight/log" method="POST" id="form-log" hx-boost="false"
                     class="space-y-4">
                     <input type="hidden" name="override" x-model="overrideFlag">
                     <input type="hidden" name="date" value="{{ today }}">

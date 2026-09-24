@@ -61,7 +61,7 @@
                 <span class="v-chip v-chip-sm" x-show="isEditingLog" x-cloak
                     x-text="'{{ t('weight.editing_prefix') }} · ' + editingDate"></span>
                 {% endcall %}
-                <form @submit.prevent="submitForm($event)" action="/weight/log" id="form-log" hx-boost="false" class="space-y-4">
+                <form @submit.prevent="submitForm($event)" action="/weight/log" method="POST" id="form-log" hx-boost="false" class="space-y-4">
                     <input type="hidden" name="override" x-model="overrideFlag">
                     <div class="v-weight-hero">
                         <label for="weight-weight_kg" class="v-label">{{ t("weight.weight_kg") }}</label>
