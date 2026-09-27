@@ -42,7 +42,7 @@ class ModuleSpec:
     key: str
     category: str       # "core" | "optional"
     route: str          # URL prefix / nav href
-    rubric: str = ""    # "health" | "markers" | "lifestyle"; "" = not in nav
+    rubric: str = ""    # one of NAV_RUBRICS; "" = not in nav
     eyebrow: str = ""   # overrides the rubric's masthead eyebrow for one section
     # No label here on purpose: every surface renders ``t("nav." + key)``, so a
     # label field would be a second, silently-stale copy of the i18n string.
@@ -50,7 +50,7 @@ class ModuleSpec:
 
 # Rubric order = the order the sidebar rail renders its groups, and the number
 # in the masthead eyebrow ("SECTION 02 · Markers"). Label key: ``masthead.rubric.<id>``.
-NAV_RUBRICS: tuple[str, ...] = ("health", "markers", "lifestyle")
+NAV_RUBRICS: tuple[str, ...] = ("health", "markers", "lifestyle", "journal")
 
 # Ordered registry — the ONE source of truth for navigation. ``key`` == route
 # name == nav anchor == i18n suffix. Order within a rubric = render order, so
@@ -64,9 +64,6 @@ MODULE_REGISTRY: dict[str, ModuleSpec] = {
         ModuleSpec("garmin", "core", "/garmin", "health"),
         ModuleSpec("hevy", "optional", "/hevy", "health"),
         ModuleSpec("nutrition", "optional", "/nutrition", "health"),
-        ModuleSpec("timeline", "optional", "/timeline", "health"),
-        ModuleSpec("reports", "core", "/reports", "health", eyebrow="digest"),
-        ModuleSpec("charts", "core", "/charts", "health"),
         # ── Markers ──────────────────────────────────────────────────────────
         # The bottom bar has no Markers slot (see BOTTOM_SLOT_CANDIDATES) — on a
         # phone these four live on the "More" screen.
@@ -86,6 +83,13 @@ MODULE_REGISTRY: dict[str, ModuleSpec] = {
         # nav item; the toggle just shows/hides that tab and its routes. No
         # rubric: it never appears in navigation.
         ModuleSpec("body_comp", "optional", "/weight"),
+        # ── Journal ──────────────────────────────────────────────────────────
+        # Views over every other domain rather than a domain of their own. No
+        # bottom-bar slot (absent from BOTTOM_SLOT_CANDIDATES), so on a phone
+        # they live on the "More" screen.
+        ModuleSpec("timeline", "optional", "/timeline", "journal"),
+        ModuleSpec("reports", "core", "/reports", "journal", eyebrow="digest"),
+        ModuleSpec("charts", "core", "/charts", "journal"),
     )
 }
 
@@ -121,7 +125,8 @@ def nav_modules(
 #
 # Markers is last on purpose: it is the least-often-opened rubric, so with
 # everything on it falls through to the "More" screen — which is exactly the
-# section list frame 3d shows.
+# section list frame 3d shows. Journal is not a candidate at all: it always
+# lives on "More".
 BOTTOM_SLOT_CANDIDATES: tuple[tuple[str, str], ...] = (
     ("health", "rubric"),
     ("nutrition", "module"),
@@ -202,9 +207,9 @@ def more_routes(enabled: Optional[dict[str, bool]] = None) -> tuple[str, ...]:
 
     Not just ``/more``: every section reachable only through that screen is
     "inside" it as far as the bar is concerned, so standing on Labs must not
-    leave all five cells dark.
+    leave all five cells dark. The account rows (/share, /settings) count too.
     """
-    return ("/more", "/settings") + tuple(
+    return ("/more", "/share", "/settings") + tuple(
         s.route for r in more_rubrics(enabled) for s in nav_modules(enabled, rubric=r)
     )
 

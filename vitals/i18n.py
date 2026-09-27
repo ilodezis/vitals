@@ -1001,6 +1001,7 @@ _EN: dict[str, str] = {
     "masthead.rubric.digest": "AI digest",
     "masthead.rubric.markers": "Markers",
     "masthead.rubric.lifestyle": "Lifestyle",
+    "masthead.rubric.journal": "Journal",
 
     # ── Nav chrome: source freshness + the phone "More" screen ─────────────
     "sync.today": "today",
@@ -1344,7 +1345,7 @@ _EN: dict[str, str] = {
     "js.loader.body_upload_text": "Reading the body-composition sheet via AI. This may take up to 15 seconds…",
 
     # ── Custom chart builder ─────────────────────────────────────────────────
-    "charts.page_title": "Custom Charts",
+    "charts.page_title": "Charts — Vitals",
     "charts.metric_count": "Charts",
     "charts.no_charts": "No custom charts yet.",
     "charts.builder_title": "New chart",
@@ -2515,6 +2516,7 @@ _RU: dict[str, str] = {
     "masthead.rubric.digest": "AI-дайджест",
     "masthead.rubric.markers": "Маркеры",
     "masthead.rubric.lifestyle": "Образ жизни",
+    "masthead.rubric.journal": "Журнал",
 
     "sync.today": "сегодня",
     "sync.yesterday": "вчера",
@@ -2856,7 +2858,7 @@ _RU: dict[str, str] = {
     "js.loader.body_upload_text": "Читаю листок состава тела через AI. Это может занять до 15 секунд…",
 
     # ── Конструктор кастомных графиков ───────────────────────────────────────
-    "charts.page_title": "Кастомные графики",
+    "charts.page_title": "Графики — Vitals",
     "charts.metric_count": "Графиков",
     "charts.no_charts": "Пока нет кастомных графиков.",
     "charts.builder_title": "Новый график",

@@ -34,6 +34,26 @@ async def test_more_screen_lists_every_visible_section(auth_client):
     assert "mobileMenuOpen" not in response.text
 
 
+async def test_journal_pages_live_on_the_more_screen(auth_client):
+    """Timeline, reports and charts are views over every domain, not Health
+    sections: they form their own rubric, which never gets a bottom-bar column,
+    so on a phone they are reached through /more and light up its cell."""
+    from vitals.services.modules_service import bottom_slots, more_rubrics
+
+    enabled = {"timeline": True}
+    assert "journal" not in {s.key for s in bottom_slots(enabled)}
+    assert "journal" in more_rubrics(enabled)
+
+    more = await auth_client.get("/more", headers={"Accept": "text/html"})
+    assert "Журнал" in more.text
+
+    # /share is an account row on the same screen, so it counts as "inside" too.
+    for path in ("/reports", "/charts", "/share"):
+        page = await auth_client.get(path, headers={"Accept": "text/html"})
+        assert page.status_code == 200, path
+        assert '<a href="/more" class="v-bnav-link is-active"' in page.text, path
+
+
 async def test_more_screen_has_one_account_row_not_a_second_settings_link(auth_client):
     """The "Modules" row pointed at the same page as "Settings"; its count moved
     onto the Settings row instead of standing as a second destination."""

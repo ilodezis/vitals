@@ -90,8 +90,9 @@ def test_bottom_bar_keeps_three_slots_when_a_slot_module_is_off():
     enabled["nutrition"] = False
     keys = [s.key for s in bottom_slots(enabled)]
     assert keys == ["health", "lifestyle", "markers"]
-    # Markers moved into the bar, so it must no longer be listed on /more.
-    assert more_rubrics(enabled) == []
+    # Markers moved into the bar, so it must no longer be listed on /more;
+    # Journal never gets a column, so it stays there.
+    assert more_rubrics(enabled) == ["journal"]
 
 
 @pytest.mark.parametrize("key", sorted(k for k in OPTIONAL_KEYS if MODULE_REGISTRY[k].rubric))

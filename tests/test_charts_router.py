@@ -21,7 +21,7 @@ async def test_charts_page_renders(auth_client):
     r = await auth_client.get("/charts")
     assert r.status_code == 200
     assert "chartBuilder" in r.text
-    assert "Кастомные графики" in r.text or "charts.page_title" not in r.text
+    assert "Графики — Vitals" in r.text
 
 
 async def test_create_chart_valid_series(auth_client, db_session):

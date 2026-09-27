@@ -1779,7 +1779,9 @@ async def test_domain_pages_carry_the_rubric_tab_row(auth_client):
     """The sibling sections of the page you are on, in the content column."""
     r = await auth_client.get("/weight", headers={"Accept": "text/html"})
     tabs = r.text.split('class="mh-tabs"')[1].split("</nav>")[0]
-    assert 'href="/garmin"' in tabs and 'href="/reports"' in tabs
+    assert 'href="/garmin"' in tabs
+    # Reports sit in the Journal rubric now, not next to Weight.
+    assert 'href="/reports"' not in tabs
     assert 'class="mh-tab is-active"' in tabs
 
 
