@@ -687,6 +687,41 @@ body.ui-masthead .mh-macro-card-unit {
     color: var(--faint);
 }
 
+/* Phone: a system alert above the page. The severity word sat in a column
+   of its own beside a four-line message, and "Hide" was a 16px-tall line of
+   text — the word goes above the message, the button gets a finger's height. */
+@media (max-width: 767px) {
+    body.ui-masthead #alerts-container .v-alert > div:first-child {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+
+    body.ui-masthead #alerts-container .v-alert button {
+        min-height: 44px;
+        padding-inline: 4px;
+    }
+}
+
+/* Phone: a third of the column is ~100px, and the name and its share of
+   calories side by side cut all three names down to "Pro…" / "Car…". The name
+   gets the card's whole top line; the share moves down beside the grams. */
+@media (max-width: 767px) {
+    body.ui-masthead .mh-macro-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "label label" "val pct";
+        align-items: baseline;
+        row-gap: 6px;
+    }
+
+    body.ui-masthead .mh-macro-card-top { display: contents; }
+    body.ui-masthead .mh-macro-card-label-wrap { grid-area: label; }
+    body.ui-masthead .mh-macro-card-label { overflow: visible; text-overflow: clip; }
+    body.ui-masthead .mh-macro-card-pct { grid-area: pct; }
+    body.ui-masthead .mh-macro-card-bottom { grid-area: val; margin-top: 0; }
+}
+
 /* Top bar is mobile-only. */
 @media (min-width: 768px) {
     body.ui-masthead .mh-topbar {
@@ -856,6 +891,12 @@ body.ui-masthead main > #alerts-container + .v-page { padding-top: 24px !importa
         gap: 18px 14px;
     }
     body.ui-masthead .mh-metric.is-primary { grid-column: 1 / -1; }
+    /* …unless it has a single companion: a full-width primary over one lone
+       figure stacked two short numbers into ~230px of header (/nutrition,
+       /timeline). Two figures sit side by side. */
+    body.ui-masthead .mh-metrics:not(:has(.mh-metric ~ .mh-metric ~ .mh-metric)) .mh-metric.is-primary {
+        grid-column: auto;
+    }
     body.ui-masthead .mh-metric-div { display: none; }
 }
 

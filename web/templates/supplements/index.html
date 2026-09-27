@@ -7,11 +7,11 @@
 
 {# ── Supplement card macro (defined in-block so it's reliably in scope) ──── #}
 {% macro supplement_card(s, show_timing=False, archived=False) %}
-<div class="v-card-tile p-6 flex flex-col justify-between gap-4 h-full {% if archived %}opacity-70 hover:opacity-100{% endif %}">
-    <div class="flex justify-between items-start gap-3">
-        <div class="space-y-2 min-w-0">
+<div class="v-card-tile v-supp p-6 flex flex-col justify-between gap-4 h-full {% if archived %}opacity-70 hover:opacity-100{% endif %}">
+    <div class="v-supp-head flex justify-between items-start gap-3">
+        <div class="v-supp-main space-y-2 min-w-0">
             <span class="block v-text-card leading-snug break-words">{{ s.name }}</span>
-            <div class="flex items-center gap-2 flex-wrap">
+            <div class="v-supp-chips flex items-center gap-2 flex-wrap">
                 <span class="v-chip">{{ s.dose or '—' }}</span>
                 {% if show_timing and s.timing %}<span class="v-chip">{{ s.timing }}</span>{% endif %}
                 {% if s.evidence %}

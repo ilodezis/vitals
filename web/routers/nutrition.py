@@ -45,7 +45,10 @@ async def nutrition_dashboard(
     selected_date = date or today
     day_meals = await nutrition_service.list_meals_for_date(db, selected_date)
     summary = await nutrition_service.daily_summary(db, selected_date, cfg)
-    history = await nutrition_service.list_meals(db, start=None, end=None)
+    # One row per logged day, newest first — a day opens in the day view above.
+    # Any older day is one tap away through the date picker there.
+    recent = await nutrition_service.nutrition_summary(db, today - timedelta(days=29), today, cfg)
+    history = [d for d in reversed(recent["per_day"]) if d["meal_count"]]
     alerts = await alerts_service.list_active(db, domain=Domain.NUTRITION.value)
     goals = nutrition_service.get_goals(cfg)
 

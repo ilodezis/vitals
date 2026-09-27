@@ -228,69 +228,24 @@
             </div>
         </div>
 
-            <!-- Full history -->
+            <!-- Recent days: one row per logged day, opening that day above.
+                 Individual meals are edited in the day view, not here — this used
+                 to list every meal ever logged, a delete form per row. -->
             {% if history %}
-            <div class="v-card p-6 space-y-3" x-data="{ showAllHistory: false }">
+            <div class="v-card p-6 space-y-3">
                 {{ card_header(t("nutrition.history_title")) }}
-                <div class="v-card-inset">
-                    <div class="v-table-wrap">
-                        <table class="v-table v-rows" style="width: 100%; table-layout: fixed">
-                        <colgroup>
-                            <col style="width: 100px">
-                            <col style="width: 60px">
-                            <col>
-                            <col style="width: 70px">
-                            <col style="width: 60px">
-                            <col style="width: 60px">
-                            <col style="width: 60px">
-                            <col style="width: 100px">
-                        </colgroup>
-                        <thead>
-                            <tr>
-                                <th>{{ t("common.date") }}</th>
-                                <th>{{ t("nutrition.time_header") }}</th>
-                                <th>{{ t("nutrition.dish_header") }}</th>
-                                <th class="text-right">{{ t("common.kcal") }}</th>
-                                <th class="text-right">{{ t("nutrition.p_header") }}</th>
-                                <th class="text-right">{{ t("nutrition.f_header") }}</th>
-                                <th class="text-right">{{ t("nutrition.c_header") }}</th>
-                                <th class="text-right">{{ t("common.actions") }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for m in history %}
-                            <tr {% if loop.index0 >= 8 %}x-show="showAllHistory" x-cloak{% endif %}>
-                                <td class="v-num v-row-date" style="color: var(--fg)">{{ m.date | format_date }}</td>
-                                <td class="v-num" data-label="{{ t('nutrition.time_header') }}">{{ m.eaten_at.strftime('%H:%M') if m.eaten_at else '—' }}</td>
-                                <td class="truncate v-row-title">{{ m.name }}</td>
-                                <td class="v-num text-right font-semibold" data-label="{{ t('common.kcal') }}" style="color: var(--fg)">{{ m.calories | format_number if m.calories else '—' }}</td>
-                                <td class="v-num text-right" data-label="{{ t('nutrition.protein') }}">{{ m.protein_g | format_number if m.protein_g else '—' }}</td>
-                                <td class="v-num text-right" data-label="{{ t('nutrition.fat') }}">{{ m.fat_g | format_number if m.fat_g else '—' }}</td>
-                                <td class="v-num text-right" data-label="{{ t('nutrition.carbs') }}">{{ m.carbs_g | format_number if m.carbs_g else '—' }}</td>
-                                <td class="text-right whitespace-nowrap v-row-actions">
-                                    <span class="v-icon-actions">
-                                    <button aria-label="{{ t('common.edit') }}" @click="editMeal({id: {{ m.id }}, date: '{{ m.date }}', eaten_at: '{{ m.eaten_at.strftime('%H:%M') if m.eaten_at else '' }}', name: {{ m.name | tojson | forceescape }}, calories: {{ m.calories if m.calories else 'null' }}, protein_g: {{ m.protein_g if m.protein_g else 'null' }}, fat_g: {{ m.fat_g if m.fat_g else 'null' }}, carbs_g: {{ m.carbs_g if m.carbs_g else 'null' }}, note: {{ (m.note or '') | tojson | forceescape }}})" class="v-icon-btn" title="{{ t("common.edit") }}">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    </button>
-                                    <form action="/nutrition/meal/{{ m.id }}/delete" method="POST" class="inline" data-confirm="{{ t("nutrition.confirm_delete") }}">
-                                        <button aria-label="{{ t('common.delete') }}" type="submit" class="v-icon-btn danger" title="{{ t("common.delete") }}">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
-                                    </form>
-                                    </span>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <div class="v-day-list">
+                    {% for d in history %}
+                    {% set over = d.calories > goals.calories_max %}
+                    {% set within = goals.calories_min <= d.calories <= goals.calories_max %}
+                    <a href="/nutrition?date={{ d.date }}" class="v-day-row{% if d.date == selected_date %} is-current{% endif %}">
+                        <span class="v-day-row-date">{{ d.date | format_date }}</span>
+                        <span class="v-day-row-meta">{{ d.meal_count }} {{ d.meal_count | meal_word }} · {{ t("nutrition.protein") }} {{ d.protein_g | format_number }} {{ t("common.g") }}</span>
+                        <span class="v-day-row-kcal{% if over %} is-bad{% elif within %} is-good{% endif %}"><span class="v-num">{{ d.calories | format_number }}</span> <span class="v-unit">{{ t("common.kcal") }}</span></span>
+                    </a>
+                    {% endfor %}
                 </div>
-                {% if history|length > 8 %}
-                <button type="button" @click="showAllHistory = !showAllHistory" class="v-btn-ghost text-xs w-full">
-                    <span x-text="showAllHistory ? '{{ t("common.show_less") }}' : '{{ t("common.show_more") }} · {{ history|length - 8 }}'"></span>
-                </button>
-                {% endif %}
             </div>
-        </div>
             {% endif %}
         </div>
     </div>

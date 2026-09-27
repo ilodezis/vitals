@@ -71,11 +71,14 @@
                 {% endfor %}
             </div>
 
-            <div class="v-card p-6 space-y-3{% if not feed %} is-empty{% endif %}">
+            {# No time on any row (a scan, a sent brief) — no time column: it was
+               a column of dashes pushing every line 70px to the right. #}
+            {% set timed = feed | selectattr('time') | list %}
+            <div class="v-card p-6 space-y-3{% if not feed %} is-empty{% endif %}{% if feed and not timed %} v-today-feed-untimed{% endif %}">
                 {{ card_header(t("today.feed_title")) }}
                 {% for row in feed %}
                 <div class="v-today-feed-row">
-                    <span class="v-today-feed-time">{{ row.time or '—' }}</span>
+                    {% if timed %}<span class="v-today-feed-time">{{ row.time or '' }}</span>{% endif %}
                     <span class="v-dot {{ row.dot }}"></span>
                     <div>
                         <div class="v-today-feed-text">{{ row.text }}</div>

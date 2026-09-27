@@ -38,6 +38,31 @@ async def test_nutrition_dashboard_by_date_shows_that_days_meals_only(auth_clien
     assert "В этот день приёмов нет." in r_empty.text
 
 
+async def test_history_is_one_row_per_day_that_opens_the_day(auth_client, db_session):
+    """The history used to render every meal ever logged as its own table row,
+    each with its own delete form — ~300 rows and about a megabyte of HTML on a
+    phone. It is one row per logged day of the last 30, and the row opens that
+    day in the day view above, which is where a meal is edited or deleted."""
+    day = today_local() - timedelta(days=3)
+    old = today_local() - timedelta(days=45)
+    for name, kcal in (("Яичница", 300), ("Творог", 250)):
+        await nutrition_service.log_meal(
+            db_session, on_date=day, name=name, calories=kcal, protein_g=20, fat_g=5, carbs_g=5,
+        )
+    await nutrition_service.log_meal(
+        db_session, on_date=old, name="Старый суп", calories=250, protein_g=10, fat_g=5, carbs_g=20,
+    )
+    await db_session.commit()
+
+    r = await auth_client.get("/nutrition", headers={"Accept": "text/html"})
+    assert r.status_code == 200
+    assert f'href="/nutrition?date={day.isoformat()}"' in r.text
+    assert ">550<" in r.text                      # the day's total, not its meals
+    assert "Яичница" not in r.text                # another day's meals stay in that day
+    assert f"?date={old.isoformat()}" not in r.text
+    assert "Старый суп" not in r.text
+
+
 async def test_nutrition_dashboard_invalid_date_rejected(auth_client):
     r = await auth_client.get("/nutrition?date=not-a-date", headers={"Accept": "text/html"})
     assert r.status_code == 422

@@ -20,21 +20,32 @@
         {{ card_header(t("skincare.schedule_title")) }}
         <p class="v-text-micro">{{ t("skincare.schedule_hint") }}</p>
 
-        <div class="space-y-3" x-data="{ todayDow: new Date().getDay() }">
+        <div class="space-y-3" x-data="{ todayDow: new Date().getDay(), pick: new Date().getDay() }">
             {% set days = [
                 (1, 'monday', 'mon'), (2, 'tuesday', 'tue'), (3, 'wednesday', 'wed'),
                 (4, 'thursday', 'thu'), (5, 'friday', 'fri'), (6, 'saturday', 'sat'), (0, 'sunday', 'sun')
             ] %}
+
+            {# Phone: one day at a time, today's by default. Seven near-identical
+               day cards stacked into eight screens, with today somewhere in the
+               middle of them. The desktop keeps the whole week side by side. #}
+            <div class="v-day-pick md:hidden" role="tablist">
+                {% for day_index, day_name, day_abbr in days %}
+                <button type="button" role="tab" @click="pick = {{ day_index }}"
+                        :aria-selected="pick === {{ day_index }}"
+                        :class="{ 'is-active': pick === {{ day_index }}, 'is-today': todayDow === {{ day_index }} }">{{ t("skincare.day." + day_abbr) }}</button>
+                {% endfor %}
+            </div>
 
             {% for day_index, day_name, day_abbr in days %}
             {# Two frames, not four: the card, then the day. Today's row is marked
                by its border alone — the ring under it drew a second one 1px
                away, and inside it the AM/PM groups each carried a third. #}
             <div class="v-card-tile p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition hover:border-[var(--line-2)]"
-                 :class="todayDow === {{ day_index }} ? 'border-[var(--line-2)]' : ''">
+                 :class="[todayDow === {{ day_index }} ? 'border-[var(--line-2)]' : '', pick === {{ day_index }} ? '' : 'is-other-day']">
 
-                <!-- Left: Day of the week info -->
-                <div class="flex items-center gap-3 md:w-48 shrink-0">
+                <!-- Left: Day of the week info (the phone's day row above says it) -->
+                <div class="v-hide-phone flex items-center gap-3 md:w-48 shrink-0">
                     <div class="h-10 w-10 rounded-xl bg-[var(--surface-3)] flex items-center justify-center flex-col shrink-0">
                         <span class="v-text-label font-extrabold" :style="todayDow === {{ day_index }} ? 'color: var(--fg)' : 'color: var(--muted)'">{{ t("skincare.day." + day_abbr) }}</span>
                     </div>
