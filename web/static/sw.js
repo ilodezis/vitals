@@ -1,7 +1,6 @@
-// v8 — bumped so `activate` drops the v7 cache after this review batch's
-// vitals.css/base.html edits, so clients get the new assets on next load
-// instead of one stale-while-revalidate paint.
-const CACHE_NAME = 'vitals-os-v8';
+// v9 — bumped so `activate` drops the v8 cache with the move to plain page
+// loads (every tap is now a navigation that asks for the page's assets).
+const CACHE_NAME = 'vitals-os-v9';
 
 const OFFLINE_PAGE = '/static/offline.html';
 
@@ -45,6 +44,24 @@ self.addEventListener('fetch', (event) => {
   // Storage forever, outside the session and untouched by logout.
   if (sameOrigin && url.pathname.startsWith('/static/')
       && !url.pathname.startsWith('/static/uploads/')) {
+    // A ?v=<mtime> URL (static_version() in templating.py) names one exact
+    // build of the file — a deploy changes the URL, never the bytes behind it.
+    // So once cached it is served straight from the cache with no background
+    // refetch: every page load asks for a dozen of these, and revalidating
+    // each one on every tap is a dozen round trips to the server for nothing.
+    // ponytail: superseded builds stay cached until CACHE_NAME is next bumped —
+    // a few hundred KB a year; prune by URL path on activate if that matters.
+    if (url.searchParams.has('v')) {
+      event.respondWith(
+        caches.open(CACHE_NAME).then((cache) =>
+          cache.match(req).then((cached) => cached || fetch(req).then((res) => {
+            if (res && res.status === 200) cache.put(req, res.clone());
+            return res;
+          }))
+        )
+      );
+      return;
+    }
     // Stale-while-revalidate: serve the cached copy instantly (offline-friendly),
     // but ALWAYS kick off a background fetch to refresh the cache. Cache-first
     // (the old strategy) pinned /static/* to whatever was cached until CACHE_NAME

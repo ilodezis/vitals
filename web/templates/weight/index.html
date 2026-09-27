@@ -130,7 +130,7 @@
                                     <td class="{% if w.source == 'manual' %}hide-xs{% endif %}"
                                         data-label="{{ t('weight.source') }}"><span class="v-text-micro">{% if w.source == 'manual' %}{{
                                             t("weight.source_manual") }}{% else %}{{ w.source }}{% endif %}</span></td>
-                                    <td class="max-w-[150px] min-w-0 truncate {% if not w.note %}hide-xs{% endif %}"
+                                    <td class="max-w-[150px] min-w-0 truncate v-row-wide {% if not w.note %}hide-xs{% endif %}"
                                         data-label="{{ t('common.note') }}"
                                         title="{{ w.note or '' }}">{{ w.note or
                                         '—' }}</td>

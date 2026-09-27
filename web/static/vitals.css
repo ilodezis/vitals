@@ -288,14 +288,6 @@ h1.v-text-heading {
 /* Main content scroll — hidden thumb, same reasoning as .v-nav-scroll above:
    scrolling still works fine by wheel/trackpad/touch/keys, it just doesn't
    need a visible bar riding the page's right edge. */
-main {
-    scrollbar-width: none;
-}
-
-main::-webkit-scrollbar {
-    display: none;
-}
-
 /* Date overlay — iOS renders date text centered via system component;
    JS wraps each date input, hides native text on mobile, shows a
    left-aligned overlay span instead. */
@@ -338,52 +330,28 @@ input[type="date"].v-input {
 }
 
 /* ── Safe-area envelope ───────────────────────────────────────────────── */
-/* Left/right insets stay on html for landscape notch.
-   Top inset is handled by the shell's own top bar so body height stays
-   100dvh exactly.
-   overflow:hidden + height:100% keep the document root itself non-scrollable —
-   a prerequisite for the position:fixed app shell below to fully suppress the
-   iOS "scroll the page to reveal a focused input" behaviour under the keyboard. */
+/* Left/right insets stay on html for landscape notch; the top inset is the
+   phone top bar's job (vitals-masthead.css).
+
+   The document is what scrolls — no pinned shell, no inner scroller. That is
+   what gives a phone its own behaviour back: tap the status bar to jump to
+   the top, the browser remembers where you were on Back, a focused field is
+   scrolled into view by the OS itself.
+
+   overflow-x: clip, not hidden: nothing may ever push the page sideways (a
+   long unbroken string, a table the model wrote into the digest), and clip
+   does that without turning the root into a scroll container that would
+   un-stick every position:sticky header below it. */
 html {
+    overflow-x: clip;
     /* The native controls are told the page is dark once, instead of each of
        them being repainted by hand: the calendar glyph and the file button used
        to be `filter: invert(0.85)`-ed, and a checkbox was left as a white square
        the browser drew in its own blue — which is also why growing it to a 22px
        tap target made it louder rather than better. */
     color-scheme: dark;
-    height: 100%;
-    overflow: hidden;
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
-}
-
-/* App shell fills the visible screen exactly so the in-flow bottom nav sits at
-   the true viewport bottom. A class (not the bare `body` selector) so it beats
-   Tailwind's `.h-full`/utility specificity. */
-.v-app-shell {
-    /* position:fixed (not just overflow:hidden) is what actually stops iOS from
-       scrolling the WHOLE page up when the keyboard opens over a focused input.
-       On iOS, overflow:hidden on body/html does NOT prevent that root-level
-       focus-scroll; pinning the shell removes any scrollable document for the
-       browser to move, so only the inner <main> scrolls (native-app feel). This
-       does NOT trap the modal overlays' own position:fixed — a plain fixed ancestor
-       isn't a containing block for fixed descendants (only transform/filter/
-       will-change/contain are), so .v-backdrop still resolves against the viewport.
-
-       Sized with 100dvh + overflow:hidden so the shell tracks the visible viewport
-       and the in-flow bottom nav sits at its foot. NOTE: the "bottom nav floats
-       ~62px above the physical screen bottom" bug in the iOS standalone PWA was NOT
-       a shell-sizing problem — do not chase it here. It was the status-bar style:
-       with apple-mobile-web-app-status-bar-style "black-translucent" iOS pinned the
-       812px webview to the top and drew a 62px band below it; switching to "black"
-       (see base.html) seats the webview flush with the physical bottom. */
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 100dvh;
-    overflow: hidden;
-    overscroll-behavior: none;
 }
 
 /* The classic top-bar frame — .v-header, .v-nav-link, .v-brand-dot,
@@ -628,6 +596,44 @@ a.v-card:hover {
 .v-bnav-link:active {
     background: var(--accent-soft);
     color: var(--accent);
+}
+
+/* On a touch screen the finger covers what it presses, so a colour change
+   alone is half-seen: the control also gives a little under it, and springs
+   back on release. Bottom-bar cells are left out (above) — they would jitter
+   the grid. */
+@media (hover: none) {
+    .v-btn,
+    .v-btn-ghost,
+    .v-btn-danger,
+    .v-icon-btn,
+    .v-pill,
+    .v-seg-btn,
+    .v-chip,
+    body.ui-masthead .mh-tab {
+        transition-property: transform, background-color, border-color, color, box-shadow;
+        transition-duration: 140ms;
+        transition-timing-function: ease-out;
+    }
+
+    .v-btn:active,
+    .v-btn-ghost:active,
+    .v-btn-danger:active,
+    .v-icon-btn:active,
+    .v-pill:active,
+    .v-seg-btn:active,
+    .v-chip:active,
+    body.ui-masthead .mh-tab:active {
+        transform: scale(0.96);
+    }
+
+    body.ui-masthead .mh-bnav .v-nav-ico {
+        transition: transform 140ms ease-out;
+    }
+
+    body.ui-masthead .mh-bnav .v-bnav-link:active .v-nav-ico {
+        transform: scale(0.88);
+    }
 }
 
 .v-btn-danger {
@@ -1446,6 +1452,10 @@ a.v-seg-btn {
     left: 0;
     right: 0;
     height: var(--vv-height, 100dvh);
+    /* A dialog sits inside the page's space-y stack, whose sibling margin
+       would otherwise shift this fixed layer 20px down the screen — leaving an
+       unblurred band of page above it and its bottom edge off-screen. See the
+       margin reset right after this rule. */
     z-index: 50;
     background: rgba(15, 13, 18, 0.7);
     backdrop-filter: blur(6px);
@@ -1456,6 +1466,12 @@ a.v-seg-btn {
     padding: 1.5rem 1rem;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+}
+
+/* Beats the phone's `.space-y-* > * + * { margin-top: … !important }`, which
+   comes later in this file with the same weight. */
+[class*="space-y-"] > .v-backdrop {
+    margin: 0 !important;
 }
 
 .v-modal {
@@ -1682,19 +1698,27 @@ a.v-seg-btn {
         border-radius: var(--radius-sm);
     }
 
-    /* ── Modals — near full-screen on phone ── */
+    /* ── Modals — a sheet from the screen's foot on phone ──
+       Flush with the bottom and both sides, the way the OS draws one: the old
+       8px side gaps and 12px under it made a floating card with two square
+       corners hanging in mid-air. The home-indicator inset goes inside the
+       sheet, under its last button. */
     .v-backdrop {
-        padding: 0.75rem 0.5rem;
+        padding: 2.5rem 0 0;
         align-items: flex-end;
     }
 
     .v-modal {
         max-width: 100%;
+        margin-bottom: 0;
+        border-width: 1px 0 0;
         border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        padding-bottom: calc(1.5rem + max(env(safe-area-inset-bottom), var(--sab, 0px))) !important;
         /* Capped to the real visible height too (not just 92vh) so the sheet
            never claims more room than is left above an open keyboard. */
-        max-height: min(92vh, calc(var(--vv-height, 100dvh) - 1.5rem));
+        max-height: min(92vh, calc(var(--vv-height, 100dvh) - 2.5rem));
         overflow-y: auto;
+        overscroll-behavior: contain;
         -webkit-overflow-scrolling: touch;
     }
 
@@ -1807,31 +1831,41 @@ a.v-seg-btn {
     }
 }
 
-/* ── Page transitions ── */
-/* View Transitions are intentionally OFF (htmx.config.globalViewTransitions = false
-   in base.html) — see the "blank page until reload" bug. Boosted swaps are instant
-   now. The ::view-transition-* fade below only ever animated while htmx drove
-   startViewTransition(); with the flag off it is inert, kept here only so a future
-   re-enable already has the animation ready.
+/* ── Page transitions ──────────────────────────────────────────────────────
+   Cross-document view transitions: every navigation is a real page load, and
+   the browser holds the old page on screen until the new one is ready, then
+   animates between the two. No script is involved, so there is nothing for an
+   interrupted navigation to leave half-done — the failure that got the
+   htmx-driven version of this switched off. Browsers without support
+   (Safari < 18.2) simply navigate instantly.
 
-   The old `.htmx-swapping main { opacity: 0 }` fallback fade was REMOVED outright:
-   on an interrupted swap that transient rule could stick and leave <main> invisible
-   with its content present in the DOM — the exact blank-page-until-reload symptom
-   we are killing. No opacity is ever pinned on <main> for a swap anymore; the swap
-   watchdog in base.html also strips any lingering .htmx-swapping class as insurance. */
+   The chrome is named so it stays put while only the page underneath moves:
+   the bottom bar and the rail are the same element on both sides, and the
+   section chips glide from one active pill to the next instead of flashing.
+   .mh-subtabs share the .mh-tabs class and must not claim the same name — a
+   duplicate name cancels the whole transition. */
+@view-transition {
+    navigation: auto;
+}
+
+body.ui-masthead .mh-bnav { view-transition-name: v-bnav; }
+body.ui-masthead .mh-rail { view-transition-name: v-rail; }
+body.ui-masthead .mh-tabs:not(.mh-subtabs) { view-transition-name: v-tabs; }
+
 ::view-transition-old(root) {
-    animation: 90ms cubic-bezier(0.4, 0, 1, 1) both fade-out;
+    animation: 120ms cubic-bezier(0.4, 0, 1, 1) both fade-out;
 }
 
 ::view-transition-new(root) {
-    animation: 210ms cubic-bezier(0, 0, 0.2, 1) 90ms both fade-in;
+    animation: 260ms cubic-bezier(0.2, 0.8, 0.2, 1) 60ms both page-in;
+}
+
+::view-transition-group(v-tabs) {
+    animation-duration: 260ms;
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @keyframes fade-out {
-    from {
-        opacity: 1;
-    }
-
     to {
         opacity: 0;
     }
@@ -1841,9 +1875,58 @@ a.v-seg-btn {
     from {
         opacity: 0;
     }
+}
 
-    to {
-        opacity: 1;
+@keyframes page-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+}
+
+/* ── Things that appear ────────────────────────────────────────────────────
+   Every panel, tab body, form and dialog in the app is shown by Alpine's
+   x-show flipping `display`, which used to make each of them pop in on the
+   frame it was toggled. @starting-style gives the first frame after an element
+   becomes displayed a from-state to transition out of — one rule instead of an
+   x-transition on fifty-odd elements. Hiding stays instant: a closed panel
+   should get out of the way, not linger. */
+[x-show] {
+    transition: opacity 200ms ease-out, transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* The sheet inside a dialog rises from the screen's foot; its backdrop only
+   fades — it is a scrim, not a card. */
+.v-backdrop .v-modal {
+    transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 200ms ease-out;
+}
+
+@starting-style {
+    [x-show] {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    .v-backdrop[x-show] {
+        transform: none;
+    }
+
+    .v-backdrop .v-modal {
+        transform: translateY(32px);
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation: none !important;
+    }
+
+    [x-show],
+    .v-backdrop .v-modal {
+        transition: none;
     }
 }
 
@@ -2369,6 +2452,11 @@ sup {
 
     .v-table.v-rows > tbody > tr > td {
         display: flex;
+        /* A label and a value that don't fit half a row side by side wrap:
+           label on its own line, value under it on the right. Without the wrap
+           the pair overflowed leftwards past the card edge (the drug name
+           on /glp1). */
+        flex-wrap: wrap;
         align-items: baseline;
         /* Label pinned left by its own auto margin rather than by
            space-between: a value and its unit are two elements, and
@@ -2419,6 +2507,14 @@ sup {
        whole and keeps its own type; only the title is promoted. */
     .v-table.v-rows .v-row-wide {
         display: block;
+        text-align: left;
+    }
+
+    /* …and its label, if it has one, sits on its own line above the prose
+       rather than running into the first word. */
+    .v-table.v-rows .v-row-wide[data-label]::before {
+        display: block;
+        margin-bottom: 2px;
     }
 
     .v-table.v-rows .v-row-date {
@@ -2595,10 +2691,12 @@ sup {
    Shared tokens and components stay global; these selectors describe each
    product screen so its hierarchy survives desktop, tablet and narrow widths.
    ========================================================================== */
+/* No `isolation` here: a stacking context on the page would trap every dialog
+   inside it (.v-backdrop's z-index only counts within the page) under the
+   fixed bottom bar, which then drew over a sheet's Save button. */
 .v-page {
     width: 100%;
     min-width: 0;
-    isolation: isolate;
 }
 .v-page .v-card,
 .v-page .v-card-tile {

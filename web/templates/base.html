@@ -1,13 +1,11 @@
 <!DOCTYPE html>
-<html lang="{{ request.state.lang|default('en') }}" class="h-full">
+<html lang="{{ request.state.lang|default('en') }}">
 
 <head>
     <meta charset="UTF-8">
     <!-- interactive-widget=resizes-content: on Chrome/Android the on-screen keyboard
-         shrinks the layout viewport (dvh/innerHeight) instead of overlaying, so the
-         position:fixed app shell shrinks to fit above it and <main> scrolls normally.
-         iOS ignores this key; there the position:fixed shell + focusin handler below
-         do the work. -->
+         shrinks the layout viewport instead of overlaying it. iOS ignores the key;
+         there the bottom bar simply steps aside while a field has focus (vitals.css). -->
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
     <title>{% block title %}Vitals{% endblock %}</title>
@@ -57,10 +55,8 @@
          up and then snapped back down once a load-time handler reapplied the saved
          scroll offset. vitalsRefresh() does the same POST-redirect-GET without the
          reload: it re-fetches the target page over htmx and swaps only the guts of
-         <main>, which is itself the scroll container (.v-app-shell pins the
-         document so it can never scroll — see vitals.css), so the element the user
-         is scrolling inside survives the swap. innerHTML clearing still clamps
-         scrollTop to 0, so it is reapplied in htmx:afterSwap — that fires in the
+         <main>. Clearing <main> shortens the document and clamps the window's
+         scroll, so the offset is reapplied in htmx:afterSwap — that fires in the
          same task as the DOM insert, before the browser paints, hence no flicker.
          The <main> the response carries is unwrapped with select="main > *" (the
          GET routes render the whole page; only their POSTs branch on hx-request).
@@ -94,28 +90,24 @@
 
         // Stay where you were on every in-page htmx action (save, delete, sync,
         // digest, alert dismissal, a vitalsRefresh above): the swap tears out
-        // <main>'s children, which clamps its scrollTop to 0, so it is re-applied
+        // <main>'s children, which clamps the window's scroll, so it is re-applied
         // in afterSwap — the same task as the DOM insert, before the browser
         // paints, so there is no jump-up-then-back-down.
-        // Navigation is told apart from action by the response's final URL
-        // (xhr.responseURL survives the POST→303→GET hop, unlike the request
-        // path): landing on a DIFFERENT page must still start at the top, only a
-        // swap that re-renders the page you are already on holds its position.
+        // Only a swap that re-renders the page you are already on holds its
+        // position (xhr.responseURL survives the POST→303→GET hop).
         (function () {
             var heldY = null;
             document.addEventListener('htmx:beforeSwap', function (evt) {
                 heldY = null;
-                var main = document.querySelector('main');
                 var xhr = evt.detail && evt.detail.xhr;
-                if (!main || !xhr || !xhr.responseURL) return;
+                if (!xhr || !xhr.responseURL) return;
                 try {
-                    if (new URL(xhr.responseURL).pathname === location.pathname) heldY = main.scrollTop;
-                } catch (e) { /* unparseable URL — treat as a navigation, start at top */ }
+                    if (new URL(xhr.responseURL).pathname === location.pathname) heldY = window.scrollY;
+                } catch (e) { /* unparseable URL — start at top */ }
             });
             document.addEventListener('htmx:afterSwap', function () {
                 if (heldY === null) return;
-                var main = document.querySelector('main');
-                if (main) main.scrollTop = heldY;
+                window.scrollTo(0, heldY);
                 heldY = null;
             });
         })();
@@ -212,25 +204,12 @@
         };
     </script>
     <!-- Page-controller scripts (weightOSDashboard, glp1Dashboard, nutritionDashboard,
-         protocolForm, chartBuilder) — live in <head>, not in each page's own template,
-         and for the exact same reason as Alpine below: hx-boost only swaps <body>
-         innerHTML, so a <script src> sitting inside the swapped content is a brand-new
-         DOM node on every boosted navigation, which means a brand-new async network
-         fetch every time. Alpine's MutationObserver reacts to the DOM insertion (a
-         microtask) long before that fetch resolves, so it evaluates e.g.
-         x-data="nutritionDashboard()" while the function is still undefined.
-         window.X = function (already fixed, see git blame) stopped the *permanent*
-         "never registers after the first boost" failure, but not this *intermittent*
-         load-order race — and Alpine swallows the ReferenceError by silently falling
-         back to x-data="{}" , so the swap watchdog's "did the observer miss this root"
-         check (_x_dataStack) never sees it as missed and never retries. Loading these
-         once, up front, exactly like Alpine/htmx/Chart.js already do, removes the race
-         instead of trying to win it. Each file is a pure `window.X = function(){...}`
-         factory (or, for protocol.js/charts.js, factories + guarded htmx:afterSettle
-         listeners) with no top-level DOM access, so loading it on every page — not just
-         the one that uses it — is inert elsewhere and safe. Placed before alpine-script
-         so protocol.js's alpine:init listener (a secondary Alpine.data() registration,
-         kept for named-component syntax) is attached before Alpine dispatches that event.
+         protocolForm, chartBuilder) — deferred in <head>, ahead of Alpine, so every
+         x-data="…()" factory exists before Alpine evaluates it. Each file is a pure
+         `window.X = function(){...}` factory (or factories + guarded listeners) with no
+         top-level DOM access, so loading it on every page is inert elsewhere, and the
+         service worker serves the lot from cache. protocol.js's alpine:init listener
+         has to be attached before Alpine dispatches that event, hence the order.
          charts.js goes first: it owns vitalsFormatDateStr, which app.js and hevy.js call
          from their own top-level init (readyState is already "interactive" while deferred
          scripts run, so those inits fire during evaluation, not at DOMContentLoaded). -->
@@ -245,39 +224,18 @@
     <script defer src="{{ static_version('/static/labs.js') }}"></script>
     <script defer src="{{ static_version('/static/hevy.js') }}"></script>
 
-    <!-- Alpine — lives in <head> (not a page script) with `defer` so it survives boosted
-         navigations: hx-boost only swaps <body> innerHTML, so anything inside <body> gets
-         torn down and re-run on every navigation. That re-execution used to start a brand
-         new, independent Alpine instance (with its own MutationObserver) on top of the
-         still-running previous one each time the user navigated, so every x-for in the app
-         re-rendered once per surviving instance — most visibly as the custom-chart builder's
-         metric dropdowns repeating their options once per past navigation. `defer` still
-         guarantees this runs after page-specific scripts (protocol.js etc.), since deferred
-         scripts execute in order only once the whole document has finished parsing. -->
     <script id="alpine-script" defer src="{{ static_version('/static/vendor/alpine.min.js') }}"></script>
 
     <!-- Viewport/safe-area sync: iOS WebKit (standalone PWA) resolves dvh/env(safe-area-inset-*)
          unreliably on cold start/resume and doesn't always re-layout once real metrics settle.
          This measures real values from JS and re-measures on the events where iOS tends to
-         change its mind, caching them as CSS vars that vitals.css reads via max(env, var). Lives
-         in <head> (not a page script) because hx-boost only swaps <body> innerHTML, so this
-         registers once and survives boosted navigations. The probe hangs off <html> for the
-         same reason.
+         change its mind, caching them as CSS vars that vitals.css reads via max(env, var).
 
          --vv-height/--vv-top feed the on-screen-keyboard fix for fixed-position overlays
          (.v-backdrop in vitals.css): position:fixed is anchored to the layout viewport, which
          the browser pans/shrinks independently of (the visual viewport) once a focused input
          forces it to clear the keyboard — without tracking that, a fixed modal stays in its old
-         layout-viewport coordinates and visibly shoots off the top of the screen.
-
-         --app-height deliberately keeps reading window.innerHeight, NOT visualViewport.height,
-         even though that means the app shell doesn't shrink for the keyboard: an earlier version
-         of this fix sized the shell (a normal in-flow element, not a fixed overlay) to
-         visualViewport.height, which made it shorter than the unchanged layout viewport — and
-         that extra room was enough for iOS to start scrolling the whole document to reveal the
-         focused input, dragging the bottom nav up to the top of the screen. Pinning --app-height
-         to the full, keyboard-independent viewport keeps the document itself permanently
-         unscrollable, which is what the rest of the layout (a single scrolling <main>) assumes. -->
+         layout-viewport coordinates and visibly shoots off the top of the screen. -->
     <script>
         (function () {
             var root = document.documentElement, probe = null;
@@ -294,7 +252,6 @@
             }
             function setHeight() {
                 var vv = window.visualViewport;
-                root.style.setProperty('--app-height', window.innerHeight + 'px');
                 root.style.setProperty('--vv-height', (vv ? vv.height : window.innerHeight) + 'px');
                 root.style.setProperty('--vv-top', (vv ? vv.offsetTop : 0) + 'px');
             }
@@ -324,60 +281,14 @@
         })();
     </script>
 
-    <!-- No JS keyboard "focus keeper" here on purpose. An earlier version reset the
-         document scroll and scrollIntoView()'d the focused field on focusin; on iOS it
-         fought the browser's own focus-scroll and made the page jerk up and snap back.
-         The position:fixed app shell (vitals.css) already removes the scrollable
-         document, so iOS simply scrolls the inner <main> natively — no JS needed. -->
+    <!-- No JS keyboard "focus keeper" here on purpose. An earlier version
+         scrollIntoView()'d the focused field on focusin; on iOS it fought the
+         browser's own focus-scroll and made the page jerk up and snap back. -->
 
-    <!-- Render diagnostics: a lightweight ring buffer of htmx lifecycle +
-         page-render state, kept in <head> so it survives hx-boost body swaps.
-         The "tables/charts sometimes don't load, only a reload helps" bug could
-         not be reproduced locally; this captures the real case in prod. When it
-         happens, run vitalsDiag() in the console (or read localStorage key
-         'vitals_diag') to see whether it stalled on an invisible <main>, a chart
-         that never warmed, or an unfinished swap. Inert otherwise — records only,
-         no console noise unless window.__VITALS_DIAG_LOG is set. -->
-    <script>
-        (function () {
-            var KEY = 'vitals_diag', CAP = 60, buf = [];
-            try { buf = JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { buf = []; }
-            function snap(ev) {
-                var main = document.querySelector('main');
-                // Did Alpine actually wire up the swapped-in content? A root that
-                // renders but has no _x_dataStack means the inputs/tabs are dead —
-                // the "inputs don't work until reload" fingerprint. null = no x-data
-                // root on this page (nothing to check).
-                var xroot = main ? main.querySelector('[x-data]') : null;
-                var rec = {
-                    t: new Date().toISOString(), ev: ev, url: location.pathname,
-                    mainOpacity: main ? getComputedStyle(main).opacity : null,
-                    mainVisible: main ? getComputedStyle(main).visibility : null,
-                    alpineInit: xroot ? !!xroot._x_dataStack : null,
-                    htmlCls: document.documentElement.className,
-                    rows: document.querySelectorAll('table tbody tr').length,
-                    canvases: document.querySelectorAll('canvas').length
-                };
-                buf.push(rec);
-                if (buf.length > CAP) buf = buf.slice(-CAP);
-                try { localStorage.setItem(KEY, JSON.stringify(buf)); } catch (e) { }
-                if (window.__VITALS_DIAG_LOG) console.debug('[vitals-diag]', rec);
-            }
-            ['htmx:beforeSwap', 'htmx:afterSwap', 'htmx:afterSettle', 'htmx:load',
-                'htmx:historyRestore', 'htmx:responseError', 'htmx:swapError'
-            ].forEach(function (e) { document.addEventListener(e, function () { snap(e); }); });
-            window.addEventListener('error', function (e) { snap('js-error:' + (e && e.message)); });
-            window.addEventListener('pageshow', function () { snap('pageshow'); });
-            window.vitalsDiag = function () { try { console.table(buf); } catch (e) { } return buf; };
-        })();
-    </script>
-
-    <!-- Swap watchdog + self-heal: the belt-and-suspenders half of
-         the "blank page until reload" fix. Turning off globalViewTransitions removes
-         the main trigger, but a boosted swap can still be interrupted by other means
-         (a JS error mid-settle, the tab going hidden). htmx:afterSwap is the earliest
-         reliable signal that new <body> content has landed; a short deferred pass then
-         guarantees the page is actually usable:
+    <!-- Swap watchdog + self-heal for in-page htmx swaps (vitalsRefresh, hx-post
+         targets). A swap can be interrupted (a JS error mid-settle, the tab going
+         hidden); htmx:afterSwap is the earliest reliable signal that new content has
+         landed, and a short deferred pass then guarantees it is actually usable:
            1. un-stick <main> if a transient .htmx-swapping opacity rule lingered;
            2. wire up any Alpine x-data root the global MutationObserver missed —
               guarded by Alpine's own _x_dataStack marker, so an already-initialised
@@ -385,8 +296,8 @@
               trap that put Alpine in <head> in the first place);
            3. if the natural htmx:afterSettle/htmx:load never fired, replay them so the
               chart + date-input initialisers (which hang off those events) still run.
-         Registered once in <head> so it survives hx-boost body swaps. Inert on a
-         healthy swap — step 3 only fires when the settle events were actually dropped. -->
+         Inert on a healthy swap — step 3 only fires when the settle events were
+         actually dropped. -->
     <script>
         (function () {
             var settleSeen = false;
@@ -431,28 +342,28 @@
     </script>
 </head>
 
-<body class="v-app-shell flex flex-col overflow-hidden select-none ui-masthead" hx-boost="true">
+<!-- A plain document: every link is a real page load and the window is what
+     scrolls. The app used to be a hand-rolled single-page shell — hx-boost
+     swapping <body> on every tap, the document pinned with position:fixed and
+     <main> as the only scroller — and most of the JavaScript that once lived in
+     this file existed to repair what that broke: scripts racing Alpine, pages
+     dead until a reload, scroll positions held by hand, page transitions turned
+     off because they interrupted the swap. The browser now does navigation,
+     history, scroll restoration and the transition between pages itself
+     (@view-transition in vitals.css). htmx stays for in-page actions only. -->
+<body class="select-none ui-masthead">
     <div id="top-progress-bar" class="v-progress-bar"></div>
 
     {% from "partials/nav_mobile.html" import mobile_bottom_nav with context %}
-    <!-- Masthead: compact mobile top bar; the desktop rail is included below.
-         No controls on it any more (nav handoff, July): the phone used to carry
-         three navigation surfaces at once — this bar's "Menu" button, the bottom
-         bar's own "More" button, and the one drawer both of them opened. The
-         bottom bar owns phone navigation now and /more is a real page, and the
-         wordmark that was left went with the mobile shell pass. -->
     {% if username %}
-    <!-- Empty on purpose: below 768px this is the safe-area spacer that keeps
-         <main> clear of the status bar, and above it the element is hidden.
-         The wordmark it used to carry was 52px spent telling someone already
-         inside the app which app they were in. -->
+    <!-- Empty on purpose: below 768px this is the safe-area spacer that keeps the
+         page clear of the status bar, and above it the element is hidden. -->
     <header class="mh-topbar"></header>
     {% endif %}
     <div class="mh-shell">
         {% if username %}
-        <!-- The rail itself is position:fixed (so it sits above <main> and scrolls
-             independently — see vitals-masthead.css); this spacer is the plain
-             in-flow box that reserves its column width in .mh-shell. -->
+        <!-- The rail itself is position:fixed (see vitals-masthead.css); this spacer
+             is the plain in-flow box that reserves its column width in .mh-shell. -->
         <div class="mh-rail-spacer" aria-hidden="true"></div>
         {% include "partials/nav_masthead.html" %}
         {% endif %}
@@ -460,7 +371,7 @@
     <!-- Main Workspace — content is selectable (see `main` rule in vitals.css):
          <body> carries select-none for app-like chrome, but lab values, rsIDs and
          the AI digest must be copyable. -->
-    <main class="flex-1 min-w-0 w-full overflow-y-auto">
+    <main class="flex-1 min-w-0 w-full">
         <!-- System Alerts Container -->
         {% if alerts %}
         <div id="alerts-container" class="flex-none px-6 pt-5 max-w-6xl mx-auto w-full space-y-2">
@@ -535,21 +446,6 @@
     </div>
 
     <script>
-        // Wrapped in an IIFE because this whole block re-runs on every hx-boost
-        // swap (it lives in <body>, torn down and re-executed each navigation —
-        // see the comment on ensureConfirmModal below). Without the IIFE, the
-        // top-level `const slowRoutes` below collided with itself on the SECOND
-        // boosted navigation: inline <script> declarations share one global
-        // lexical scope across separate executions, so redeclaring a `const`
-        // threw "Identifier 'slowRoutes' has already been declared" — a
-        // SyntaxError raised from inside htmx's own script-execution step,
-        // which aborted the rest of that swap's script processing. That's what
-        // actually caused the "charts/tables/inputs randomly dead until reload"
-        // bug: any page-specific <script> further down (e.g. nutrition.js's
-        // nutritionDashboard()) never got to run, then Alpine tried to
-        // initialise x-data roots pointing at functions that were never
-        // defined. Function declarations don't have this problem (redeclaring
-        // `function foo(){}` is legal), only top-level let/const.
         (function () {
         // Transient toast for client-side feedback (form errors, network failures).
         // type: 'error' (default) | 'warn' | 'success'.
@@ -577,11 +473,7 @@
         // Themed replacement for the native confirm() dialog — reuses the
         // .v-backdrop/.v-modal/.v-btn-danger/.v-btn-ghost shell from
         // partials/conflict_modal.html so destructive confirms stay in the design
-        // system. Modelled on vitalsToast above: look the element up fresh by id
-        // on every call instead of caching it in a closure, because hx-boost tears
-        // down and re-renders everything inside <body> on each navigation — a
-        // cached reference would go stale and the dialog would silently stop
-        // appearing after the first boosted nav.
+        // system. Built on first use.
         function ensureConfirmModal() {
             let modal = document.getElementById('vitals-confirm-modal');
             if (modal) return modal;
@@ -626,48 +518,78 @@
             return new Promise((resolve) => { window.__vitalsConfirmResolve = resolve; });
         };
 
-        // All 15 delete forms inherit hx-boost="true" from <body>, so htmx (not
-        // the browser) owns their submission — a raw document-level 'submit'
-        // listener runs too late, after htmx has already read the form and
-        // fired its fetch. htmx's own extension point for this is the
-        // cancelable htmx:confirm event (fired for every request it's about to
-        // issue, boosted or not): preventDefault() pauses it, and calling
-        // evt.detail.issueRequest(true) later resumes the exact same request.
-        // This is the documented hook for swapping in a custom confirm UI.
-        // Guard registration since this whole <script> re-runs on every
-        // hx-boost swap (same pattern as the chart-init listeners below).
-        if (!window.__vitalsConfirmBound) {
-            window.__vitalsConfirmBound = true;
-            document.addEventListener('htmx:confirm', function (e) {
-                const el = e.detail && e.detail.elt;
-                const message = el && el.getAttribute ? el.getAttribute('data-confirm') : null;
-                if (!message) return;
-                e.preventDefault();
-                // Optional per-form verb. Every caller but one is a delete form, so
-                // "Delete" stays the default — but a dialog that asks "Revoke this
-                // link?" and answers itself with "Delete" is naming a different act
-                // than the one about to happen.
-                const label = el.getAttribute('data-confirm-label') || undefined;
-                window.vitalsConfirm(message, label).then((ok) => {
-                    if (ok) e.detail.issueRequest(true);
-                });
-            });
+        // data-confirm="…" asks before the request goes out, on two kinds of
+        // element. Optional data-confirm-label names the verb: every caller but
+        // one is a delete form, so "Delete" stays the default — but a dialog that
+        // asks "Revoke this link?" and answers itself with "Delete" is naming a
+        // different act than the one about to happen.
+        function askFirst(el) {
+            return window.vitalsConfirm(el.getAttribute('data-confirm'),
+                el.getAttribute('data-confirm-label') || undefined);
         }
 
-        // View Transitions are DISABLED on purpose (root cause of the "graphs/tables/
-        // inputs randomly don't load until reload" bug). With globalViewTransitions
-        // = true, htmx 1.9.12 wraps every boosted body swap in
-        // document.startViewTransition(); if that transition is interrupted (rapid
-        // navigation, tab hidden mid-animation, a throw in a settle handler) the
-        // browser can abort the callback, leaving the swap half-finished: the new
-        // <script>s never run so charts never draw, Alpine never wires up the new
-        // inputs/tabs, and only a full reload clears it. Instant swaps remove that
-        // whole failure mode; the cosmetic fade isn't worth an occasionally-dead page.
-        document.addEventListener("DOMContentLoaded", () => {
-            if (window.htmx) {
-                htmx.config.globalViewTransitions = false;
-            }
+        // 1. An htmx element (hx-post and friends): htmx:confirm is the documented
+        //    hook — preventDefault() pauses the request, issueRequest(true)
+        //    resumes the exact same one.
+        document.addEventListener('htmx:confirm', function (e) {
+            const el = e.detail && e.detail.elt;
+            if (!el || !el.getAttribute || !el.getAttribute('data-confirm')) return;
+            e.preventDefault();
+            askFirst(el).then((ok) => { if (ok) e.detail.issueRequest(true); });
         });
+
+        // 2. A plain <form method="post">: capture phase, so the question comes
+        //    before anything else sees the submit; requestSubmit() replays it
+        //    with the same submitter once the answer is yes.
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+            if (!form.hasAttribute('data-confirm') || form.hasAttribute('hx-post')) return;
+            if (form.dataset.confirmed) { delete form.dataset.confirmed; return; }
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            const submitter = e.submitter;
+            askFirst(form).then((ok) => {
+                if (!ok) return;
+                form.dataset.confirmed = '1';
+                form.requestSubmit(submitter || undefined);
+            });
+        }, true);
+
+        // Every other plain form post: show that it went (progress bar, the slow
+        // route's loader, a disabled button so a second tap cannot post twice),
+        // and remember where the page was. The server answers a post with a
+        // redirect, usually back to the page it came from, and a fresh page load
+        // starts at the top — on a long list that throws you off the row you
+        // just deleted. The offset is put back below, once, if the redirect
+        // lands on the same path within a few seconds.
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+            if (e.defaultPrevented || (form.method || '').toLowerCase() !== 'post') return;
+            document.getElementById('top-progress-bar')?.classList.add('is-active');
+            const action = form.getAttribute('action') || location.pathname;
+            if (Object.keys(slowRoutes).some(route => action.includes(route))) showLoader(action);
+            try {
+                sessionStorage.setItem('vitals_scroll', JSON.stringify(
+                    { path: location.pathname, y: window.scrollY, t: Date.now() }));
+            } catch (err) { /* private mode — the page just starts at the top */ }
+            // After the entry list is built: a submitter disabled inside this
+            // handler would drop its own name/value from the post.
+            setTimeout(() => {
+                form.querySelectorAll('button[type="submit"], button:not([type])').forEach(b => { b.disabled = true; });
+            });
+        });
+        try {
+            const held = JSON.parse(sessionStorage.getItem('vitals_scroll') || 'null');
+            sessionStorage.removeItem('vitals_scroll');
+            if (held && held.path === location.pathname && Date.now() - held.t < 15000) {
+                // Now, before the first paint, and once more after Alpine has
+                // rendered in case the page was still too short to reach it.
+                window.scrollTo(0, held.y);
+                document.addEventListener('DOMContentLoaded', () => {
+                    if (window.scrollY < held.y) window.scrollTo(0, held.y);
+                });
+            }
+        } catch (err) { /* nothing held */ }
 
         // Slow routes configuration — uses window.t() for i18n
         const slowRoutes = {
@@ -809,8 +731,7 @@
          and the active one is often past the fold, so without this the row looks
          like it starts at the first chip every time. scrollLeft on the row
          itself, never scrollIntoView: the latter also scrolls every ancestor,
-         which on iOS drags <main> (the app's only scroll container) and the
-         fixed shell with it.
+         the page included.
 
          Aligned to the row's leading edge, not centred. Centring left the
          PREVIOUS chip half off-screen, and a word cut in half at the left edge
@@ -836,7 +757,6 @@
                     row.scrollLeft = Math.max(0, active.offsetLeft - first.offsetLeft);
                 });
             }
-            document.addEventListener('DOMContentLoaded', leadChip);
             document.addEventListener('htmx:load', leadChip);
             leadChip();
         })();
@@ -844,40 +764,26 @@
 
     <!-- Phone: hide the section bar while reading, bring it back on the way up.
          Scrolling down is a request for content, scrolling up is a request for
-         navigation. <main> is the app's only scroll container (the shell is
-         position:fixed), and hx-boost replaces it on every navigation, so the
-         listener is re-bound whenever the node changes — the identity check is
-         what makes that safe to call on every htmx:load. The 8px threshold
-         stops the bar flickering under a jittery finger; the 64px floor keeps
-         it on screen for the first swipe. Purely additive: the CSS that reads
-         .mh-bar-hidden only exists below 768px. -->
+         navigation. The 8px threshold stops the bar flickering under a jittery
+         finger; the 64px floor keeps it on screen for the first swipe (and
+         through iOS's rubber band above the top, where scrollY goes negative).
+         Purely additive: the CSS that reads .mh-bar-hidden only exists below 768px. -->
     <script>
         (function () {
-            var main = null, last = 0;
-            function onScroll() {
-                var y = main.scrollTop;
+            var last = window.scrollY;
+            window.addEventListener('scroll', function () {
+                var y = window.scrollY;
                 if (Math.abs(y - last) < 8) return;
                 document.body.classList.toggle('mh-bar-hidden', y > last && y > 64);
                 last = y;
-            }
-            function bind() {
-                var el = document.querySelector('main');
-                if (!el || el === main) return;
-                main = el;
-                last = el.scrollTop;
-                document.body.classList.remove('mh-bar-hidden');
-                el.addEventListener('scroll', onScroll, { passive: true });
-            }
-            document.addEventListener('DOMContentLoaded', bind);
-            document.addEventListener('htmx:load', bind);
-            bind();
+            }, { passive: true });
         })();
     </script>
 
     <!-- Fix iOS date input centering: iOS renders the date via a system component
          that ignores text-align. We wrap each date input, hide its native text on
-         mobile, and overlay a left-aligned formatted span. Runs on first load AND
-         after every HTMX swap (hx-boost navigation replaces <main>). -->
+         mobile, and overlay a left-aligned formatted span. Runs on load AND after
+         every htmx swap that brings new inputs in. -->
     <script>
         (function () {
             var valDesc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');

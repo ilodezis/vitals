@@ -129,21 +129,38 @@ async def test_dashboard_renders(auth_client):
     assert "История взвешиваний" in response.text
 
 
-async def test_boosted_swap_reliability_guards(auth_client):
-    """Regression lock for the "graphs/tables/inputs randomly don't load until
-    reload" bug. The fix has two halves that must both stay in the served frame:
-      1. View Transitions OFF — the interrupt-prone startViewTransition wrapper
-         around boosted swaps is what left pages half-rendered.
-      2. The swap watchdog — replays dropped settle/load events and re-inits any
-         Alpine root the observer missed, so a stalled swap self-heals."""
+async def test_navigation_is_a_real_page_load(auth_client):
+    """The "graphs/tables/inputs randomly don't load until reload" bug came from
+    hx-boost swapping <body> on every tap, and htmx's view-transition wrapper
+    around that swap had to be switched off because an interrupted one left the
+    page half-rendered. Navigation is now the browser's own: no boost anywhere
+    in the frame, and the page transition is the CSS cross-document one, which
+    has no script step to interrupt."""
     html = (await auth_client.get("/weight", headers={"Accept": "text/html"})).text
-    # 1) Transitions disabled, and never silently re-enabled.
-    assert "htmx.config.globalViewTransitions = false" in html
-    assert "htmx.config.globalViewTransitions = true" not in html
-    # 2) Watchdog present and doing all three repair steps.
-    assert "htmx:afterSwap" in html
+    assert 'hx-boost="true"' not in html
+    assert "globalViewTransitions = true" not in html
+    css = (Path(__file__).resolve().parent.parent / "web" / "static" / "vitals.css").read_text(encoding="utf-8")
+    assert "@view-transition" in css and "navigation: auto" in css
+    # In-page htmx swaps (a save re-rendering <main>) keep their watchdog.
     assert "Alpine.initTree" in html
     assert "_x_dataStack" in html  # guard against Alpine double-init
+
+
+async def test_plain_post_forms_still_ask_before_deleting(auth_client):
+    """Without hx-boost a delete form is a plain browser post, which htmx's
+    htmx:confirm hook never sees — the capture-phase submit listener has to ask
+    instead, or every trash icon deletes on the first tap."""
+    html = (await auth_client.get("/weight", headers={"Accept": "text/html"})).text
+    assert 'data-confirm="' in html  # the page does carry a confirmed delete form
+    assert "form.hasAttribute('data-confirm')" in html
+    assert "form.requestSubmit(submitter" in html
+    assert "htmx:confirm" in html  # hx-post elements keep the htmx route
+
+
+async def test_a_post_that_lands_back_on_its_page_keeps_the_scroll(auth_client):
+    html = (await auth_client.get("/weight", headers={"Accept": "text/html"})).text
+    assert "sessionStorage.setItem('vitals_scroll'" in html
+    assert "held.path === location.pathname" in html
 
 
 def test_body_script_const_is_iife_scoped():

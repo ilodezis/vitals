@@ -27,14 +27,12 @@ body.ui-masthead {
 }
 
 /* ── Desktop layout row ──────────────────────────────────────────────────
-   base.html wraps the rail + <main> in `.mh-shell`; the rail is a flex-none
-   column and <main> takes the rest and scrolls. */
+   base.html wraps the rail spacer + <main> in `.mh-shell`; <main> takes the
+   rest of the row and the document scrolls. No overflow here: any overflow
+   value on an ancestor would become the scroller the sticky headers pin to. */
 body.ui-masthead .mh-shell {
     display: flex;
-    flex: 1;
-    min-height: 0;
     width: 100%;
-    overflow: hidden;
 }
 
 /* ── The rail ──────────────────────────────────────────────────────────────
@@ -42,8 +40,8 @@ body.ui-masthead .mh-shell {
    rules are more specific than the utilities, so they would always win — the
    rail is hidden below md and shown from md up via the media query below.
 
-   position:fixed on purpose: the rail is full-height chrome that must not join
-   <main>'s scroll region. .mh-rail-spacer is the plain in-flow box that reserves
+   position:fixed on purpose: the rail is full-height chrome that must not
+   scroll with the page. .mh-rail-spacer is the plain in-flow box that reserves
    the column width in .mh-shell, so the two always agree. One width at every
    desktop size — no hover-expand, no pin toggle, so <main> never reflows from a
    stray pointer and there is no client-side rail state to re-sync across
@@ -938,9 +936,33 @@ body.ui-masthead .mh-bnav {
     border-top: 1px solid var(--line);
 }
 
+/* Pinned to the screen's foot over the scrolling page, which keeps the same
+   distance clear underneath so the last row is never hidden behind it. */
 @media (max-width: 767px) {
     body.ui-masthead .mh-bnav {
         display: grid;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 40;
+    }
+
+    body.ui-masthead main {
+        padding-bottom: calc(56px + max(env(safe-area-inset-bottom), var(--sab, 0px)));
+    }
+
+    /* A card scrolled to on purpose (an "Add" panel opening) stops below the
+       pinned chip row instead of underneath it. */
+    body.ui-masthead main .v-card {
+        scroll-margin-top: 72px;
+    }
+
+    /* A field has the keyboard up: the bar has nothing to offer while typing,
+       and on iOS a fixed bar rides up with the visual viewport and lands on
+       top of the field being filled in. */
+    body.ui-masthead:has(:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="submit"], [type="button"]), textarea, select):focus) .mh-bnav {
+        display: none;
     }
 }
 

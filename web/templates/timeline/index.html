@@ -27,7 +27,8 @@
 
     <div class="v-timeline-feed space-y-8">
     <!-- Add annotation form -->
-    <div x-show=" showForm" x-cloak class="v-card p-6 space-y-4">
+    <div x-show="showForm" x-cloak class="v-card p-6 space-y-4"
+             x-effect="showForm && $nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'start' }))">
                     <form action="/timeline" method="POST" class="space-y-4">
                         <div>
                             <label for="timeline-title" class="v-label">{{ t("timeline.title_label") }}</label>

@@ -326,7 +326,8 @@
     </div>
 
     <!-- Dose form -->
-    <div class="v-card p-6" x-show="showFormModal" x-cloak>
+    <div class="v-card p-6" x-show="showFormModal" x-cloak
+             x-effect="showFormModal && $nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'start' }))">
         <form method="post" action="/hrt/dose" class="space-y-4"
               @submit.prevent="submitForm($event)" hx-boost="false">
             {# override is set by protocolForm().submitForm on the FormData itself #}

@@ -23,7 +23,8 @@
     <div class="v-glp1-current grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
         <!-- Form Panel (when showForm is true) -->
-        <div x-show="showForm" class="lg:col-span-12 v-card p-6 space-y-4" x-cloak>
+        <div x-show="showForm" class="lg:col-span-12 v-card p-6 space-y-4" x-cloak
+             x-effect="showForm && $nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'start' }))">
             <div class="v-seg">
                 <button @click="activeTab = 'injection'" :class="activeTab === 'injection' ? 'is-active' : ''" class="v-seg-btn">{{ t("glp1.tab_injection") }}</button>
                 <button @click="activeTab = 'phase'" :class="activeTab === 'phase' ? 'is-active' : ''" class="v-seg-btn">{{ t("glp1.tab_phase") }}</button>
