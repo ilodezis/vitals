@@ -475,7 +475,11 @@ function initWeightChart() {
                 type: 'box',
                 xMin: xMin,
                 xMax: xMax,
-                backgroundColor: 'rgba(245, 166, 35, 0.07)',
+                // Phases run end to end, so on a phone their fill is one amber
+                // wash over the whole plot, under the noise and trip bands that
+                // actually need a tint to be seen. The borders still mark each
+                // dose change.
+                backgroundColor: phone ? 'transparent' : 'rgba(245, 166, 35, 0.07)',
                 borderColor: 'rgba(245, 166, 35, 0.18)',
                 borderWidth: 1,
                 drawTime: 'beforeDatasetsDraw',

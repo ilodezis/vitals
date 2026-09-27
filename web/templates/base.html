@@ -154,6 +154,10 @@
             var out = {};
             if (!overlays || !overlays.length || !sortedLabels || !sortedLabels.length) return out;
             var C = (window.vitalsChartTheme && window.vitalsChartTheme()) || {};
+            // Captions are set sideways across the full height of the plot — on
+            // a phone's 220px chart that is across the data line itself. The
+            // band or the dashed line still marks where the event sits.
+            var phone = window.matchMedia('(max-width: 767px)').matches;
             var LABEL_COLOR = { good: C.good, bad: C.bad, warn: C.bad, '': C.violet };
             var BOX_BG = { good: 'rgba(111, 197, 142, 0.07)', bad: 'rgba(232, 112, 86, 0.07)', warn: 'rgba(232, 112, 86, 0.07)', '': 'rgba(176, 147, 214, 0.07)' };
             var BOX_BORDER = { good: 'rgba(111, 197, 142, 0.3)', bad: 'rgba(232, 112, 86, 0.3)', warn: 'rgba(232, 112, 86, 0.3)', '': 'rgba(176, 147, 214, 0.3)' };
@@ -171,7 +175,7 @@
                         borderColor: BOX_BORDER[o.tone] || BOX_BORDER[''],
                         borderWidth: 1,
                         label: {
-                            display: true, content: o.label, position: 'center', rotation: -90,
+                            display: !phone, content: o.label, position: 'center', rotation: -90,
                             color: color, font: { family: 'Inter', size: 9, weight: 'bold' }
                         }
                     };
@@ -193,7 +197,7 @@
                         borderWidth: 1.5,
                         borderDash: [3, 3],
                         label: {
-                            display: true, content: o.label, position: 'start', rotation: -90,
+                            display: !phone, content: o.label, position: 'start', rotation: -90,
                             xAdjust: 8, color: color, backgroundColor: 'rgba(27, 25, 32, 0.85)',
                             padding: 3, font: { family: 'Inter', size: 9, weight: 'bold' }
                         }
