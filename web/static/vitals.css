@@ -1839,8 +1839,9 @@ a.v-seg-btn {
    htmx-driven version of this switched off. Browsers without support
    (Safari < 18.2) simply navigate instantly.
 
-   The chrome is named so it stays put while only the page underneath moves:
-   the bottom bar and the rail are the same element on both sides, and the
+   The page itself swaps without animation: a fade out and back in blanked the
+   screen mid-tap and added a third of a second to every navigation. Only the
+   named chrome animates: the bottom bar and the rail stay put, and the
    section chips glide from one active pill to the next instead of flashing.
    .mh-subtabs share the .mh-tabs class and must not claim the same name — a
    duplicate name cancels the whole transition. */
@@ -1852,36 +1853,14 @@ body.ui-masthead .mh-bnav { view-transition-name: v-bnav; }
 body.ui-masthead .mh-rail { view-transition-name: v-rail; }
 body.ui-masthead .mh-tabs:not(.mh-subtabs) { view-transition-name: v-tabs; }
 
-::view-transition-old(root) {
-    animation: 120ms cubic-bezier(0.4, 0, 1, 1) both fade-out;
-}
-
+::view-transition-old(root),
 ::view-transition-new(root) {
-    animation: 260ms cubic-bezier(0.2, 0.8, 0.2, 1) 60ms both page-in;
+    animation: none;
 }
 
 ::view-transition-group(v-tabs) {
     animation-duration: 260ms;
     animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-@keyframes fade-out {
-    to {
-        opacity: 0;
-    }
-}
-
-@keyframes fade-in {
-    from {
-        opacity: 0;
-    }
-}
-
-@keyframes page-in {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
 }
 
 /* ── Things that appear ────────────────────────────────────────────────────

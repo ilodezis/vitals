@@ -146,6 +146,17 @@ async def test_navigation_is_a_real_page_load(auth_client):
     assert "_x_dataStack" in html  # guard against Alpine double-init
 
 
+def test_navigation_does_not_replay_animations():
+    """Every tap is a full page load, so any load-time animation is paid on every
+    navigation: the page fading out and back in blanked the screen mid-tap, and
+    Chart.js's default 1 s grow-in redrew each chart from zero."""
+    static = Path(__file__).resolve().parent.parent / "web" / "static"
+    css = (static / "vitals.css").read_text(encoding="utf-8")
+    root = css[css.index("::view-transition-old(root)"):]
+    assert root[:root.index("}")].split("{")[1].strip() == "animation: none;"
+    assert "Chart.defaults.animation = false" in (static / "charts.js").read_text(encoding="utf-8")
+
+
 async def test_plain_post_forms_still_ask_before_deleting(auth_client):
     """Without hx-boost a delete form is a plain browser post, which htmx's
     htmx:confirm hook never sees — the capture-phase submit listener has to ask

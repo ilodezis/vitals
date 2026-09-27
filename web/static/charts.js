@@ -26,6 +26,14 @@
  * after (see the script order in base.html). Registered once on the global Chart
  * and guarded, since a boosted navigation re-runs inits but not this file.
  */
+/**
+ * Charts draw in their final state. Every tap is a full page load, so Chart.js's
+ * default 1 s grow-in animation replayed on each navigation and made every page
+ * feel a second slower than it was. charts.js runs before every other script
+ * that builds a chart, so this one default covers them all.
+ */
+if (window.Chart) Chart.defaults.animation = false;
+
 if (window.Chart && !Chart.Interaction.modes.nearestByTime) {
     Chart.Interaction.modes.nearestByTime = (chart, e, options, useFinalPosition) => {
         const position = Chart.helpers.getRelativePosition(e, chart);
