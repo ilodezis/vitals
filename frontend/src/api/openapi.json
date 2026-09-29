@@ -1,0 +1,491 @@
+{
+  "components": {
+    "schemas": {
+      "ConflictBody": {
+        "description": "409 — a ``block`` rule fired; repeat the write with ``override`` to keep it.",
+        "properties": {
+          "error": {
+            "const": "conflict",
+            "title": "Error",
+            "type": "string"
+          },
+          "violations": {
+            "items": {
+              "$ref": "#/components/schemas/ViolationBody"
+            },
+            "title": "Violations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "error",
+          "violations"
+        ],
+        "title": "ConflictBody",
+        "type": "object"
+      },
+      "InvalidBody": {
+        "description": "400 — a service refused the values (its ``ValueError`` message).",
+        "properties": {
+          "error": {
+            "const": "invalid",
+            "title": "Error",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ],
+        "title": "InvalidBody",
+        "type": "object"
+      },
+      "Nav": {
+        "properties": {
+          "bottom_slots": {
+            "items": {
+              "$ref": "#/components/schemas/NavSlot"
+            },
+            "title": "Bottom Slots",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NavItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "more_routes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "More Routes",
+            "type": "array"
+          },
+          "more_rubrics": {
+            "items": {
+              "type": "string"
+            },
+            "title": "More Rubrics",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "bottom_slots",
+          "more_rubrics",
+          "more_routes"
+        ],
+        "title": "Nav",
+        "type": "object"
+      },
+      "NavItem": {
+        "description": "One section in the rail, in rail order. Its label is ``nav.<key>`` and its\nrubric's is ``masthead.rubric.<rubric>``; both live in the i18n dictionaries.",
+        "properties": {
+          "eyebrow": {
+            "title": "Eyebrow",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          },
+          "rubric": {
+            "title": "Rubric",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "route",
+          "rubric",
+          "eyebrow"
+        ],
+        "title": "NavItem",
+        "type": "object"
+      },
+      "NavSlot": {
+        "description": "One of the three middle columns of the phone's bottom bar.",
+        "properties": {
+          "icon": {
+            "title": "Icon",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label_key": {
+            "title": "Label Key",
+            "type": "string"
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          },
+          "routes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Routes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label_key",
+          "icon",
+          "route",
+          "routes"
+        ],
+        "title": "NavSlot",
+        "type": "object"
+      },
+      "NotFoundBody": {
+        "description": "404 — the module behind the endpoint is switched off, or nothing is there.",
+        "properties": {
+          "error": {
+            "enum": [
+              "module_disabled",
+              "not_found"
+            ],
+            "title": "Error",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "NotFoundBody",
+        "type": "object"
+      },
+      "RailStat": {
+        "description": "One row of the rail's status card, as values — the client phrases them.\nOnly the fields of the row's own ``key`` are filled; the rest are null.",
+        "properties": {
+          "calories": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calories"
+          },
+          "calories_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calories Max"
+          },
+          "days_since": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Since"
+          },
+          "delta_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Kg"
+          },
+          "key": {
+            "enum": [
+              "weight",
+              "recovery",
+              "nutrition",
+              "workouts"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "protein_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protein G"
+          },
+          "readiness": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Readiness"
+          },
+          "sleep_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep Seconds"
+          },
+          "tone": {
+            "enum": [
+              "",
+              "good",
+              "bad",
+              "warn"
+            ],
+            "title": "Tone",
+            "type": "string"
+          },
+          "weight_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Kg"
+          }
+        },
+        "required": [
+          "key",
+          "tone",
+          "weight_kg",
+          "delta_kg",
+          "sleep_seconds",
+          "readiness",
+          "calories",
+          "calories_max",
+          "protein_g",
+          "days_since"
+        ],
+        "title": "RailStat",
+        "type": "object"
+      },
+      "SessionView": {
+        "properties": {
+          "enabled_modules": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Enabled Modules",
+            "type": "object"
+          },
+          "lang": {
+            "enum": [
+              "en",
+              "ru"
+            ],
+            "title": "Lang",
+            "type": "string"
+          },
+          "nav": {
+            "$ref": "#/components/schemas/Nav"
+          },
+          "rail": {
+            "items": {
+              "$ref": "#/components/schemas/RailStat"
+            },
+            "title": "Rail",
+            "type": "array"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "lang",
+          "enabled_modules",
+          "nav",
+          "rail"
+        ],
+        "title": "SessionView",
+        "type": "object"
+      },
+      "UnauthenticatedBody": {
+        "description": "401 — no valid session cookie.",
+        "properties": {
+          "error": {
+            "const": "unauthenticated",
+            "title": "Error",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "UnauthenticatedBody",
+        "type": "object"
+      },
+      "ViolationBody": {
+        "description": "One rule a write tripped — ``Violation.to_dict()`` of the conflict engine.",
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "domain_a": {
+            "title": "Domain A",
+            "type": "string"
+          },
+          "domain_b": {
+            "title": "Domain B",
+            "type": "string"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": true,
+            "title": "Params",
+            "type": "object"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Id"
+          },
+          "rule_type": {
+            "title": "Rule Type",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "required": [
+          "rule_id",
+          "rule_type",
+          "severity",
+          "message",
+          "domain_a",
+          "domain_b",
+          "params",
+          "category",
+          "source",
+          "evidence"
+        ],
+        "title": "ViolationBody",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Vitals API",
+    "version": "1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/session": {
+      "get": {
+        "description": "Who is signed in, the UI language, and everything the shell draws from: the\nmodule switches, the navigation built from them, the rail's status card.",
+        "operationId": "read_session",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Read Session"
+      }
+    }
+  }
+}

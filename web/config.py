@@ -13,6 +13,10 @@ from dataclasses import dataclass
 SESSION_COOKIE = "vitals_session"
 DEFAULT_SESSION_TTL = 30 * 24 * 3600  # 30 days
 
+# Everything under this prefix is the JSON API for the React app: it answers
+# failures with ``{"error": ...}`` bodies and is never redirected to a login page.
+API_PATH_PREFIX = "/api/"
+
 # Short-lived handle tying the password step to the 2FA step. It carries no
 # access on its own — it is signed with its own salt (see ``web/auth.py``), so it
 # cannot be presented as a session cookie, and it only says "this username just
