@@ -105,9 +105,9 @@ async def read_nutrition(
         calories_pct=cal_pct,
         protein_pct=prot_pct,
         macro_split=MacroSplit(
-            protein_pct=float(split.get("protein_pct", 0)),
-            fat_pct=float(split.get("fat_pct", 0)),
-            carbs_pct=float(split.get("carbs_pct", 0)),
+            protein_pct=float(split.get("protein") or split.get("protein_pct", 0)),
+            fat_pct=float(split.get("fat") or split.get("fat_pct", 0)),
+            carbs_pct=float(split.get("carbs") or split.get("carbs_pct", 0)),
         ),
         meals=meals_out,
         recent_days=recent_days,

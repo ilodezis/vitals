@@ -449,10 +449,10 @@ export default function HrtScreen() {
               </div>
               <div className="space-y-2">
                 {view.sideEffects.map((se) => (
-                  <div key={se.id} className="flex justify-between items-center p-2 rounded bg-[var(--bg-deep)]">
-                    <div>
-                      <span className="font-medium text-sm">{se.name}</span>
-                      <span className="block text-xs text-[var(--muted)]">{shortDate(parseIsoDate(se.date), lang)}</span>
+                  <div key={se.id} className="hrt-side-effect-item">
+                    <div className="hrt-side-effect-info">
+                      <span className="hrt-side-effect-name">{se.name}</span>
+                      <span className="hrt-side-effect-date">{shortDate(parseIsoDate(se.date), lang)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Delta tone={se.sev > 3 ? 'bad' : undefined}>Grade {se.sev}</Delta>
@@ -479,10 +479,10 @@ export default function HrtScreen() {
             <div className="hrt-card">
               <div className="space-y-2">
                 {view.templates.map((tpl) => (
-                  <div key={tpl.id} className="p-3 rounded bg-[var(--bg-deep)] flex justify-between items-center">
-                    <div>
-                      <h4 className="font-semibold text-sm">{tpl.name}</h4>
-                      <p className="text-xs text-[var(--muted)]">
+                  <div key={tpl.id} className="hrt-template-item">
+                    <div className="hrt-template-info">
+                      <h4 className="hrt-template-name">{tpl.name}</h4>
+                      <p className="hrt-template-sub">
                         {tpl.items.map(([c]) => c).join(', ')}
                       </p>
                     </div>

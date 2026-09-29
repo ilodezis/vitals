@@ -748,6 +748,7 @@ async def seed_app_settings(session):
                 "genetics": True,
                 "skincare": True,
                 "nutrition": True,
+                "hrt": True,
             },
         ),
         AppSetting(key="language", value="ru"),

@@ -297,7 +297,7 @@ export default function WeightMeasuresScreen() {
                 {activePane === 'measure' && (
                   <form onSubmit={(e) => { e.preventDefault(); measureMutation.mutate() }}>
                     <div className="fld">
-                      <label>{t('app.date')}</label>
+                      <label>{t('common.date')}</label>
                       <input type="date" className="input" value={mDate} onChange={(e) => setMDate(e.target.value)} required />
                     </div>
                     <div className="g2">
@@ -407,7 +407,7 @@ export default function WeightMeasuresScreen() {
                 {activePane === 'photo' && (
                   <form onSubmit={(e) => { e.preventDefault(); photoMutation.mutate() }}>
                     <div className="fld">
-                      <label>{t('app.date')}</label>
+                      <label>{t('common.date')}</label>
                       <input type="date" className="input" value={phDate} onChange={(e) => setPhDate(e.target.value)} required />
                     </div>
                     <div className="fld">
@@ -467,7 +467,7 @@ export default function WeightMeasuresScreen() {
                         <h4 style={{ margin: '0 0 8px' }}>{t('app.weight.verify_metrics')}</h4>
                         <div className="g2">
                           <div className="fld">
-                            <label>{t('app.date')}</label>
+                            <label>{t('common.date')}</label>
                             <input
                               type="date"
                               className="input"

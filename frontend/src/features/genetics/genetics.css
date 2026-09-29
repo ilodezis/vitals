@@ -1,6 +1,8 @@
 /* Genetics Screen Styles */
 .genetics-hero { display: flex; align-items: baseline; gap: 16px; margin-top: 4px; }
 .genetics-hero .big { font-size: 56px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; }
+.genetics-hero .side { display: flex; flex-direction: column; gap: 4px; }
+.genetics-hero .side .sub { font-size: var(--t-caption); color: var(--muted); }
 
 .genetics-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 20px; }
 @container app (min-width: 768px) {

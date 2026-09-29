@@ -37,3 +37,12 @@
 
 .hrt-empty { padding: 32px 16px; text-align: center; color: var(--muted); border: 1.5px dashed var(--line-2); border-radius: var(--r-lg); }
 .hrt-empty p { margin-top: 8px; font-size: var(--t-caption); }
+
+.hrt-side-effect-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-deep); border-radius: var(--r); }
+.hrt-side-effect-info { display: flex; flex-direction: column; gap: 2px; }
+.hrt-side-effect-name { font-weight: 600; font-size: var(--t-body); }
+.hrt-side-effect-date { font-size: var(--t-caption); color: var(--muted); }
+.hrt-template-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: var(--bg-deep); border-radius: var(--r); }
+.hrt-template-info { display: flex; flex-direction: column; gap: 2px; }
+.hrt-template-name { font-weight: 600; font-size: var(--t-body); }
+.hrt-template-sub { font-size: var(--t-caption); color: var(--muted); }
