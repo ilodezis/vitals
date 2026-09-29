@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from 'node:url'
 import babel from '@rolldown/plugin-babel'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 import { defineConfig } from 'vitest/config'
 
 const backend = 'http://127.0.0.1:8000'
@@ -31,6 +32,36 @@ export default defineConfig(({ command }) => ({
     react(),
     // React Compiler through Babel, as documented by @vitejs/plugin-react 6.
     babel({ presets: [reactCompilerPreset()] }),
+    VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      registerType: 'autoUpdate',
+      injectRegister: null,
+      manifest: {
+        start_url: '/app/today',
+        name: 'Vitals',
+        short_name: 'Vitals',
+        display: 'standalone',
+        background_color: '#0c0e12',
+        theme_color: '#0c0e12',
+        icons: [
+          {
+            src: '/static/icons/icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: '/static/icons/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+        ],
+      },
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+      },
+    }),
   ],
   define: { __API_BUSTER__: JSON.stringify(apiBuster) },
   resolve: {

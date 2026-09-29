@@ -35,6 +35,7 @@ from web.api import (
     nutrition,
     reports,
     session,
+    settings,
     share,
     signals,
     skincare,
@@ -72,12 +73,5 @@ api_router.include_router(reports.router)
 api_router.include_router(charts.router)
 api_router.include_router(alerts.router)
 api_router.include_router(share.router)
-
-
-
-
-
-
-
-
+api_router.include_router(settings.router)
 

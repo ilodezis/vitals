@@ -7,6 +7,14 @@ import '@/styles/base.css'
 import '@/styles/app.css'
 import { App } from '@/app/App'
 
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/static/app/sw.js', { scope: '/' })
+      .catch((err) => console.error('Service worker registration failed:', err))
+  })
+}
+
 const root = document.getElementById('root')
 if (root === null) throw new Error('#root is missing from index.html')
 

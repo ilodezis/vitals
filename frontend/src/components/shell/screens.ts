@@ -26,6 +26,7 @@ const loaders: Partial<Record<ScreenId, () => Promise<{ default: ComponentType }
   charts: () => import('@/features/charts/ChartsScreen'),
   share: () => import('@/features/share/ShareScreen'),
   more: () => import('@/features/more/MoreScreen'),
+  settings: () => import('@/features/settings/SettingsScreen'),
 }
 
 const placeholder = () => import('@/features/placeholder/PlaceholderScreen')

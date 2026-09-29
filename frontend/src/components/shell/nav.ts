@@ -102,7 +102,7 @@ export const BUILT_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>([
   'workouts', 'nutrition', 'glp1', 'hrt', 'labs', 'genetics',
   'supplements', 'skincare', 'interactions', 'signals',
   'timeline', 'reports', 'charts', 'share',
-  'more',
+  'more', 'settings',
 ])
 
 export const navScreen = (id: ScreenId): ScreenId => PARENT[id] ?? id

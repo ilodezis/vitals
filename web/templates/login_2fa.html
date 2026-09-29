@@ -4,42 +4,52 @@
 
 {% block content %}
 {% include "partials/login_styles.html" %}
+<link rel="stylesheet" href="{{ static_version('/static/server.css') }}">
 
-<div class="lg-wrap is-compact">
-    <div class="lg-mark">Vitals</div>
+<div class="bare-pg">
+    <div class="bare-in">
+        <a href="/app" class="bare-brand">Vitals</a>
+        <h1 class="bare-h">{{ t("login.twofa_heading") }}</h1>
 
-    <form class="lg-form animate-float-up" action="/login/2fa" method="POST">
-        <input type="hidden" name="next" value="{{ next }}">
+        <form class="lg" action="/login/2fa" method="POST">
+            <input type="hidden" name="next" value="{{ next }}">
 
-        <h1 class="lg-title">{{ t("login.twofa_heading") }}</h1>
-
-        <div class="lg-fields">
-            <div class="lg-field{% if error %} is-error{% endif %}">
-                <label class="lg-label" for="lg-code">{{ t("login.twofa_code") }}</label>
-                <input class="lg-input" type="text" id="lg-code" name="code" required
+            <div class="lg-f code{% if error %} is-error{% endif %}">
+                <label for="lg-code">{{ t("login.twofa_code") }}</label>
+                <input type="text" id="lg-code" name="code" required
                        inputmode="numeric" pattern="[0-9]*" maxlength="6"
                        autocomplete="one-time-code" autocapitalize="none" spellcheck="false"
-                       placeholder="000000" autofocus>
+                       placeholder="000 000" autofocus>
             </div>
-        </div>
 
-        <div class="lg-foot">
             {% if error %}
-            <p class="lg-error" role="alert">{{ error }}</p>
+            <p class="lg-err" role="alert">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span>{{ error }}</span>
+            </p>
             {% endif %}
 
-            <button class="v-btn lg-submit" type="submit" data-lg-submit>
+            <button class="btn w" type="submit" data-lg-submit>
                 <span data-lg-submit-label>{{ t("login.twofa_submit") }}</span>
             </button>
 
-            <a class="lg-alt" href="/login">{{ t("login.twofa_back") }}</a>
-        </div>
-    </form>
+            <a class="bare-back" href="/login">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>{{ t("login.twofa_back") }}</span>
+            </a>
+        </form>
+    </div>
 </div>
 
 <script>
     (function () {
-        var form = document.querySelector('.lg-form');
+        var form = document.querySelector('.lg');
         if (!form) return;
 
         var code = form.querySelector('#lg-code');
@@ -47,28 +57,20 @@
         var label = form.querySelector('[data-lg-submit-label]');
         var sending = {{ t("login.submitting")|tojson }};
 
-        // autofocus only fires on a real page load; a rejected code comes back
-        // as a boosted swap, so put the cursor back by hand.
-        if (form.querySelector('.lg-error')) code.focus();
+        if (form.querySelector('.lg-err') && code) code.focus();
 
-        // A one-time code is fixed-length, so the press adds nothing: submit the
-        // moment six digits are there. Paste from a password manager lands here
-        // too (it fires 'input'), which is the common case on desktop.
-        code.addEventListener('input', function () {
-            var digits = code.value.replace(/\D/g, '').slice(0, 6);
-            if (digits !== code.value) code.value = digits;
-            if (digits.length === 6) form.requestSubmit();
-        });
+        if (code) {
+            code.addEventListener('input', function () {
+                var digits = code.value.replace(/\D/g, '').slice(0, 6);
+                if (digits !== code.value) code.value = digits;
+                if (digits.length === 6) form.requestSubmit();
+            });
+        }
 
-        // Guards against a double POST — matters more here than on the password
-        // form, since auto-submit and a manual press can race.
         form.addEventListener('submit', function () {
             if (submit.getAttribute('aria-busy') === 'true') return;
             submit.setAttribute('aria-busy', 'true');
             label.textContent = sending;
-            var sweep = document.createElement('span');
-            sweep.className = 'lg-submit-sweep';
-            submit.appendChild(sweep);
         });
     })();
 </script>
