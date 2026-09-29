@@ -904,6 +904,352 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Settings
+         * @description Read the complete settings view model without leaking any secrets.
+         */
+        get: operations["read_settings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/2fa/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable Twofa */
+        post: operations["disable_twofa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/2fa/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enable Twofa */
+        post: operations["enable_twofa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/2fa/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Twofa
+         * @description Start 2FA enrolment: mints an unconfirmed secret and returns the setup payload.
+         */
+        post: operations["start_twofa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/ai": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Ai */
+        post: operations["update_ai"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Backup */
+        get: operations["export_backup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/export-llm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Llm */
+        get: operations["export_llm"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/garmin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Garmin */
+        post: operations["update_garmin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/garmin/weight-toggle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Toggle Garmin Weight */
+        post: operations["toggle_garmin_weight"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/garmin/weight/send-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send Garmin Weight */
+        post: operations["send_garmin_weight"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/hevy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Hevy */
+        post: operations["update_hevy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Backup */
+        post: operations["import_backup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/language": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Language */
+        post: operations["update_language"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Mcp */
+        post: operations["update_mcp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/modules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Toggle Module */
+        post: operations["toggle_module"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/nutrition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Nutrition Goals */
+        post: operations["update_nutrition_goals"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Password */
+        post: operations["update_password"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/proactive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Proactive */
+        post: operations["update_proactive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Profile */
+        post: operations["update_profile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/restart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restart Container */
+        post: operations["restart_container"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/today": {
         parameters: {
             query?: never;
@@ -1270,6 +1616,47 @@ export interface components {
             /** Start Time */
             start_time: string;
         };
+        /** AiSettings */
+        AiSettings: {
+            /**
+             * Llm Model Brief
+             * @default
+             */
+            llm_model_brief: string;
+            /**
+             * Llm Model Digest
+             * @default anthropic/claude-sonnet-4.6
+             */
+            llm_model_digest: string;
+            /**
+             * Llm Model Parser
+             * @default google/gemini-2.5-flash
+             */
+            llm_model_parser: string;
+            /**
+             * Openrouter Api Key Set
+             * @default false
+             */
+            openrouter_api_key_set: boolean;
+            /**
+             * Openrouter Base Url
+             * @default https://openrouter.ai/api/v1
+             */
+            openrouter_base_url: string;
+        };
+        /** AiUpdate */
+        AiUpdate: {
+            /** Llm Model Brief */
+            llm_model_brief?: string | null;
+            /** Llm Model Digest */
+            llm_model_digest?: string | null;
+            /** Llm Model Parser */
+            llm_model_parser?: string | null;
+            /** Openrouter Api Key */
+            openrouter_api_key?: string | null;
+            /** Openrouter Base Url */
+            openrouter_base_url?: string | null;
+        };
         /** AttentionItem */
         AttentionItem: {
             /** Domain */
@@ -1444,6 +1831,11 @@ export interface components {
             reason?: string | null;
             scan?: components["schemas"]["BodyScanPreview"] | null;
         };
+        /** Body_import_backup */
+        Body_import_backup: {
+            /** Backup File */
+            backup_file: string;
+        };
         /** Body_import_garmin_data */
         Body_import_garmin_data: {
             /** File */
@@ -1581,6 +1973,37 @@ export interface components {
             /** Ok */
             ok: boolean;
         };
+        /** GarminSettings */
+        GarminSettings: {
+            /** Breaker */
+            breaker?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Garmin Credentials Configured
+             * @default false
+             */
+            garmin_credentials_configured: boolean;
+            /**
+             * Garmin Email
+             * @default
+             */
+            garmin_email: string;
+            /**
+             * Garmin Password Set
+             * @default false
+             */
+            garmin_password_set: boolean;
+            /**
+             * Garmin Weight Export Enabled
+             * @default false
+             */
+            garmin_weight_export_enabled: boolean;
+            /** Garmin Weight Status */
+            garmin_weight_status?: {
+                [key: string]: unknown;
+            } | null;
+        };
         /** GarminSyncResponse */
         GarminSyncResponse: {
             /** Error */
@@ -1592,6 +2015,18 @@ export interface components {
              * @default 0
              */
             synced_days: number;
+        };
+        /** GarminUpdate */
+        GarminUpdate: {
+            /** Garmin Email */
+            garmin_email?: string | null;
+            /** Garmin Password */
+            garmin_password?: string | null;
+        };
+        /** GarminWeightToggleUpdate */
+        GarminWeightToggleUpdate: {
+            /** Enabled */
+            enabled: boolean;
         };
         /** GeneticVariantCreate */
         GeneticVariantCreate: {
@@ -1908,6 +2343,14 @@ export interface components {
             /** Weight Kg */
             weight_kg?: number | null;
         };
+        /** HevySettings */
+        HevySettings: {
+            /**
+             * Hevy Api Key Set
+             * @default false
+             */
+            hevy_api_key_set: boolean;
+        };
         /** HevySyncResponse */
         HevySyncResponse: {
             /** Error */
@@ -1919,6 +2362,11 @@ export interface components {
              * @default 0
              */
             synced: number;
+        };
+        /** HevyUpdate */
+        HevyUpdate: {
+            /** Hevy Api Key */
+            hevy_api_key?: string | null;
         };
         /** HevyWorkoutItem */
         HevyWorkoutItem: {
@@ -2290,6 +2738,16 @@ export interface components {
             /** Templates */
             templates: components["schemas"]["HrtTemplateItem"][];
         };
+        /** ImportResult */
+        ImportResult: {
+            /**
+             * Restored
+             * @default true
+             */
+            restored: boolean;
+            /** Summary */
+            summary: string;
+        };
         /** IntradaySeriesPoint */
         IntradaySeriesPoint: {
             /** Time */
@@ -2512,6 +2970,19 @@ export interface components {
             /** Source */
             source: string;
         };
+        /** LanguageSettings */
+        LanguageSettings: {
+            /**
+             * Language
+             * @default ru
+             */
+            language: string;
+        };
+        /** LanguageUpdate */
+        LanguageUpdate: {
+            /** Language */
+            language: string;
+        };
         /** LastScanRow */
         LastScanRow: {
             /** Label */
@@ -2565,6 +3036,26 @@ export interface components {
             fat_g: number;
             /** Protein G */
             protein_g: number;
+        };
+        /** McpSettings */
+        McpSettings: {
+            /**
+             * Mcp Client Id
+             * @default vitals-claude-connector
+             */
+            mcp_client_id: string;
+            /**
+             * Mcp Client Secret Set
+             * @default false
+             */
+            mcp_client_secret_set: boolean;
+        };
+        /** McpUpdate */
+        McpUpdate: {
+            /** Mcp Client Id */
+            mcp_client_id?: string | null;
+            /** Mcp Client Secret */
+            mcp_client_secret?: string | null;
         };
         /** MealCreate */
         MealCreate: {
@@ -2645,6 +3136,20 @@ export interface components {
         MealRef: {
             /** Id */
             id: number;
+        };
+        /** ModuleToggleUpdate */
+        ModuleToggleUpdate: {
+            /** Enabled */
+            enabled: boolean;
+            /** Module */
+            module: string;
+        };
+        /** ModulesSettings */
+        ModulesSettings: {
+            /** Enabled Modules */
+            enabled_modules?: {
+                [key: string]: boolean;
+            };
         };
         /** Nav */
         Nav: {
@@ -2792,6 +3297,33 @@ export interface components {
             /** Protein Target G */
             protein_target_g: number;
         };
+        /** NutritionGoalsSettings */
+        NutritionGoalsSettings: {
+            /**
+             * Nutrition Calories Max
+             * @default 1700
+             */
+            nutrition_calories_max: string;
+            /**
+             * Nutrition Calories Min
+             * @default 1300
+             */
+            nutrition_calories_min: string;
+            /**
+             * Nutrition Protein Target G
+             * @default 150
+             */
+            nutrition_protein_target_g: string;
+        };
+        /** NutritionGoalsUpdate */
+        NutritionGoalsUpdate: {
+            /** Nutrition Calories Max */
+            nutrition_calories_max?: string | null;
+            /** Nutrition Calories Min */
+            nutrition_calories_min?: string | null;
+            /** Nutrition Protein Target G */
+            nutrition_protein_target_g?: string | null;
+        };
         /** NutritionView */
         NutritionView: {
             /** Calories Pct */
@@ -2833,6 +3365,131 @@ export interface components {
              */
             today_date: string;
             totals: components["schemas"]["MacroTotals"];
+        };
+        /** PasswordChangeUpdate */
+        PasswordChangeUpdate: {
+            /** New Password */
+            new_password: string;
+            /** New Password Confirm */
+            new_password_confirm: string;
+            /** Old Password */
+            old_password: string;
+        };
+        /** ProactiveSettings */
+        ProactiveSettings: {
+            /** Brief Time */
+            brief_time: string;
+            /** Daily Budget */
+            daily_budget: number;
+            /** Evening Time */
+            evening_time: string;
+            /** Garmin Sync Hours */
+            garmin_sync_hours: number;
+            /** Garmin Weight Export Minutes */
+            garmin_weight_export_minutes: number;
+            /** Garmin Weight Max Age Days */
+            garmin_weight_max_age_days: number;
+            /** Nudges */
+            nudges?: {
+                [key: string]: boolean;
+            };
+            /** Pulse End Hour */
+            pulse_end_hour: number;
+            /** Pulse Seconds */
+            pulse_seconds: number;
+            /** Pulse Start Hour */
+            pulse_start_hour: number;
+            /** Quiet End */
+            quiet_end: string;
+            /** Quiet Start */
+            quiet_start: string;
+            /** Week Template */
+            week_template?: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        /** ProactiveUpdate */
+        ProactiveUpdate: {
+            /** Brief Time */
+            brief_time?: string | null;
+            /** Daily Budget */
+            daily_budget?: number | null;
+            /** Evening Time */
+            evening_time?: string | null;
+            /** Garmin Sync Hours */
+            garmin_sync_hours?: number | null;
+            /** Garmin Weight Export Minutes */
+            garmin_weight_export_minutes?: number | null;
+            /** Garmin Weight Max Age Days */
+            garmin_weight_max_age_days?: number | null;
+            /** Nudges */
+            nudges?: string[] | null;
+            /** Pulse End Hour */
+            pulse_end_hour?: number | null;
+            /** Pulse Seconds */
+            pulse_seconds?: number | null;
+            /** Pulse Start Hour */
+            pulse_start_hour?: number | null;
+            /** Quiet End */
+            quiet_end?: string | null;
+            /** Quiet Start */
+            quiet_start?: string | null;
+            /** Week Template */
+            week_template?: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            } | null;
+        };
+        /** ProfileSettings */
+        ProfileSettings: {
+            /**
+             * Height Cm
+             * @default 190
+             */
+            height_cm: string;
+            /**
+             * Sex
+             * @default male
+             */
+            sex: string;
+            /**
+             * Timezone
+             * @default Europe/Chisinau
+             */
+            timezone: string;
+            /**
+             * User Age
+             * @default 18
+             */
+            user_age: string;
+            /**
+             * User Goals
+             * @default
+             */
+            user_goals: string;
+            /**
+             * User Program
+             * @default
+             */
+            user_program: string;
+        };
+        /** ProfileUpdate */
+        ProfileUpdate: {
+            /** Height Cm */
+            height_cm?: string | null;
+            /** Sex */
+            sex?: string | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** User Age */
+            user_age?: string | null;
+            /** User Goals */
+            user_goals?: string | null;
+            /** User Program */
+            user_program?: string | null;
         };
         /** ProgressPhotoItem */
         ProgressPhotoItem: {
@@ -3016,6 +3673,31 @@ export interface components {
              */
             today_date: string;
         };
+        /** SaveResponse */
+        SaveResponse: {
+            /** Adjusted */
+            adjusted?: boolean | null;
+            /** Message */
+            message?: string | null;
+            /**
+             * Saved
+             * @default true
+             */
+            saved: boolean;
+        };
+        /** SecuritySettings */
+        SecuritySettings: {
+            /**
+             * Twofa Enabled
+             * @default false
+             */
+            twofa_enabled: boolean;
+            /**
+             * Twofa Pending
+             * @default false
+             */
+            twofa_pending: boolean;
+        };
         /** SessionView */
         SessionView: {
             /** Enabled Modules */
@@ -3030,6 +3712,21 @@ export interface components {
             nav: components["schemas"]["Nav"];
             /** Rail */
             rail: components["schemas"]["RailStat"][];
+            /** Username */
+            username: string;
+        };
+        /** SettingsView */
+        SettingsView: {
+            ai: components["schemas"]["AiSettings"];
+            garmin: components["schemas"]["GarminSettings"];
+            hevy: components["schemas"]["HevySettings"];
+            language: components["schemas"]["LanguageSettings"];
+            mcp: components["schemas"]["McpSettings"];
+            modules: components["schemas"]["ModulesSettings"];
+            nutrition_goals: components["schemas"]["NutritionGoalsSettings"];
+            proactive: components["schemas"]["ProactiveSettings"];
+            profile: components["schemas"]["ProfileSettings"];
+            security: components["schemas"]["SecuritySettings"];
             /** Username */
             username: string;
         };
@@ -3121,6 +3818,11 @@ export interface components {
             /** Start Min */
             start_min: number;
         };
+        /** StatusResponse */
+        StatusResponse: {
+            /** Status */
+            status: string;
+        };
         /**
          * SyncStamp
          * @description An integration that last put something in the lake, and the day it did.
@@ -3183,6 +3885,20 @@ export interface components {
             narrative_source: "digest" | "computed";
             /** Sync */
             sync: components["schemas"]["SyncStamp"][];
+        };
+        /** TwoFaCodeUpdate */
+        TwoFaCodeUpdate: {
+            /** Code */
+            code: string;
+        };
+        /** TwoFaStartResponse */
+        TwoFaStartResponse: {
+            /** Otpauth Uri */
+            otpauth_uri: string;
+            /** Qr Svg */
+            qr_svg: string;
+            /** Secret */
+            secret: string;
         };
         /**
          * UnauthenticatedBody
@@ -6175,6 +6891,948 @@ export interface operations {
             };
         };
     };
+    read_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    disable_twofa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFaCodeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enable_twofa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFaCodeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_twofa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoFaStartResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    update_ai: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_backup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    export_llm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    update_garmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GarminUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toggle_garmin_weight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GarminWeightToggleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_garmin_weight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    update_hevy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HevyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_backup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_backup"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_language: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LanguageUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_mcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toggle_module: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModuleToggleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_nutrition_goals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NutritionGoalsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_password: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordChangeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_proactive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProactiveUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_profile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restart_container: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatusResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
     read_today: {
         parameters: {
             query?: never;
@@ -7125,4 +8783,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: 3e6bd9ddb4d077677095824d7ae83e3ba5bce6bcfe72f804a4d060575b644152
+// openapi.json sha256: b635d3831781dcfb84d85eb80966760e62f61fbdbb5e5cfd3ada4d74ab85288e

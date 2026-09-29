@@ -99,6 +99,98 @@
         "title": "ActivityItem",
         "type": "object"
       },
+      "AiSettings": {
+        "properties": {
+          "llm_model_brief": {
+            "default": "",
+            "title": "Llm Model Brief",
+            "type": "string"
+          },
+          "llm_model_digest": {
+            "default": "anthropic/claude-sonnet-4.6",
+            "title": "Llm Model Digest",
+            "type": "string"
+          },
+          "llm_model_parser": {
+            "default": "google/gemini-2.5-flash",
+            "title": "Llm Model Parser",
+            "type": "string"
+          },
+          "openrouter_api_key_set": {
+            "default": false,
+            "title": "Openrouter Api Key Set",
+            "type": "boolean"
+          },
+          "openrouter_base_url": {
+            "default": "https://openrouter.ai/api/v1",
+            "title": "Openrouter Base Url",
+            "type": "string"
+          }
+        },
+        "title": "AiSettings",
+        "type": "object"
+      },
+      "AiUpdate": {
+        "properties": {
+          "llm_model_brief": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Model Brief"
+          },
+          "llm_model_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Model Digest"
+          },
+          "llm_model_parser": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Model Parser"
+          },
+          "openrouter_api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Openrouter Api Key"
+          },
+          "openrouter_base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Openrouter Base Url"
+          }
+        },
+        "title": "AiUpdate",
+        "type": "object"
+      },
       "AttentionItem": {
         "properties": {
           "domain": {
@@ -671,6 +763,20 @@
         "title": "BodyScanUploadResponse",
         "type": "object"
       },
+      "Body_import_backup": {
+        "properties": {
+          "backup_file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Backup File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "backup_file"
+        ],
+        "title": "Body_import_backup",
+        "type": "object"
+      },
       "Body_import_garmin_data": {
         "properties": {
           "file": {
@@ -1063,6 +1169,56 @@
         "title": "GarminImportResponse",
         "type": "object"
       },
+      "GarminSettings": {
+        "properties": {
+          "breaker": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breaker"
+          },
+          "garmin_credentials_configured": {
+            "default": false,
+            "title": "Garmin Credentials Configured",
+            "type": "boolean"
+          },
+          "garmin_email": {
+            "default": "",
+            "title": "Garmin Email",
+            "type": "string"
+          },
+          "garmin_password_set": {
+            "default": false,
+            "title": "Garmin Password Set",
+            "type": "boolean"
+          },
+          "garmin_weight_export_enabled": {
+            "default": false,
+            "title": "Garmin Weight Export Enabled",
+            "type": "boolean"
+          },
+          "garmin_weight_status": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Garmin Weight Status"
+          }
+        },
+        "title": "GarminSettings",
+        "type": "object"
+      },
       "GarminSyncResponse": {
         "properties": {
           "error": {
@@ -1090,6 +1246,47 @@
           "ok"
         ],
         "title": "GarminSyncResponse",
+        "type": "object"
+      },
+      "GarminUpdate": {
+        "properties": {
+          "garmin_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Garmin Email"
+          },
+          "garmin_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Garmin Password"
+          }
+        },
+        "title": "GarminUpdate",
+        "type": "object"
+      },
+      "GarminWeightToggleUpdate": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "GarminWeightToggleUpdate",
         "type": "object"
       },
       "GeneticVariantCreate": {
@@ -2113,6 +2310,17 @@
         "title": "HevySetItem",
         "type": "object"
       },
+      "HevySettings": {
+        "properties": {
+          "hevy_api_key_set": {
+            "default": false,
+            "title": "Hevy Api Key Set",
+            "type": "boolean"
+          }
+        },
+        "title": "HevySettings",
+        "type": "object"
+      },
       "HevySyncResponse": {
         "properties": {
           "error": {
@@ -2140,6 +2348,23 @@
           "ok"
         ],
         "title": "HevySyncResponse",
+        "type": "object"
+      },
+      "HevyUpdate": {
+        "properties": {
+          "hevy_api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hevy Api Key"
+          }
+        },
+        "title": "HevyUpdate",
         "type": "object"
       },
       "HevyWorkoutItem": {
@@ -3363,6 +3588,24 @@
         "title": "HrtView",
         "type": "object"
       },
+      "ImportResult": {
+        "properties": {
+          "restored": {
+            "default": true,
+            "title": "Restored",
+            "type": "boolean"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary"
+        ],
+        "title": "ImportResult",
+        "type": "object"
+      },
       "IntradaySeriesPoint": {
         "properties": {
           "time": {
@@ -4057,6 +4300,30 @@
         "title": "LabsView",
         "type": "object"
       },
+      "LanguageSettings": {
+        "properties": {
+          "language": {
+            "default": "ru",
+            "title": "Language",
+            "type": "string"
+          }
+        },
+        "title": "LanguageSettings",
+        "type": "object"
+      },
+      "LanguageUpdate": {
+        "properties": {
+          "language": {
+            "title": "Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "language"
+        ],
+        "title": "LanguageUpdate",
+        "type": "object"
+      },
       "LastScanRow": {
         "properties": {
           "label": {
@@ -4187,6 +4454,50 @@
           "carbs_g"
         ],
         "title": "MacroTotals",
+        "type": "object"
+      },
+      "McpSettings": {
+        "properties": {
+          "mcp_client_id": {
+            "default": "vitals-claude-connector",
+            "title": "Mcp Client Id",
+            "type": "string"
+          },
+          "mcp_client_secret_set": {
+            "default": false,
+            "title": "Mcp Client Secret Set",
+            "type": "boolean"
+          }
+        },
+        "title": "McpSettings",
+        "type": "object"
+      },
+      "McpUpdate": {
+        "properties": {
+          "mcp_client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mcp Client Id"
+          },
+          "mcp_client_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mcp Client Secret"
+          }
+        },
+        "title": "McpUpdate",
         "type": "object"
       },
       "MealCreate": {
@@ -4480,6 +4791,37 @@
           "id"
         ],
         "title": "MealRef",
+        "type": "object"
+      },
+      "ModuleToggleUpdate": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "module": {
+            "title": "Module",
+            "type": "string"
+          }
+        },
+        "required": [
+          "module",
+          "enabled"
+        ],
+        "title": "ModuleToggleUpdate",
+        "type": "object"
+      },
+      "ModulesSettings": {
+        "properties": {
+          "enabled_modules": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Enabled Modules",
+            "type": "object"
+          }
+        },
+        "title": "ModulesSettings",
         "type": "object"
       },
       "Nav": {
@@ -4893,6 +5235,66 @@
         "title": "NutritionGoals",
         "type": "object"
       },
+      "NutritionGoalsSettings": {
+        "properties": {
+          "nutrition_calories_max": {
+            "default": "1700",
+            "title": "Nutrition Calories Max",
+            "type": "string"
+          },
+          "nutrition_calories_min": {
+            "default": "1300",
+            "title": "Nutrition Calories Min",
+            "type": "string"
+          },
+          "nutrition_protein_target_g": {
+            "default": "150",
+            "title": "Nutrition Protein Target G",
+            "type": "string"
+          }
+        },
+        "title": "NutritionGoalsSettings",
+        "type": "object"
+      },
+      "NutritionGoalsUpdate": {
+        "properties": {
+          "nutrition_calories_max": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nutrition Calories Max"
+          },
+          "nutrition_calories_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nutrition Calories Min"
+          },
+          "nutrition_protein_target_g": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nutrition Protein Target G"
+          }
+        },
+        "title": "NutritionGoalsUpdate",
+        "type": "object"
+      },
       "NutritionView": {
         "properties": {
           "calories_pct": {
@@ -4966,6 +5368,371 @@
           "macro_split"
         ],
         "title": "NutritionView",
+        "type": "object"
+      },
+      "PasswordChangeUpdate": {
+        "properties": {
+          "new_password": {
+            "title": "New Password",
+            "type": "string"
+          },
+          "new_password_confirm": {
+            "title": "New Password Confirm",
+            "type": "string"
+          },
+          "old_password": {
+            "title": "Old Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "old_password",
+          "new_password",
+          "new_password_confirm"
+        ],
+        "title": "PasswordChangeUpdate",
+        "type": "object"
+      },
+      "ProactiveSettings": {
+        "properties": {
+          "brief_time": {
+            "title": "Brief Time",
+            "type": "string"
+          },
+          "daily_budget": {
+            "title": "Daily Budget",
+            "type": "integer"
+          },
+          "evening_time": {
+            "title": "Evening Time",
+            "type": "string"
+          },
+          "garmin_sync_hours": {
+            "title": "Garmin Sync Hours",
+            "type": "integer"
+          },
+          "garmin_weight_export_minutes": {
+            "title": "Garmin Weight Export Minutes",
+            "type": "integer"
+          },
+          "garmin_weight_max_age_days": {
+            "title": "Garmin Weight Max Age Days",
+            "type": "integer"
+          },
+          "nudges": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Nudges",
+            "type": "object"
+          },
+          "pulse_end_hour": {
+            "title": "Pulse End Hour",
+            "type": "integer"
+          },
+          "pulse_seconds": {
+            "title": "Pulse Seconds",
+            "type": "integer"
+          },
+          "pulse_start_hour": {
+            "title": "Pulse Start Hour",
+            "type": "integer"
+          },
+          "quiet_end": {
+            "title": "Quiet End",
+            "type": "string"
+          },
+          "quiet_start": {
+            "title": "Quiet Start",
+            "type": "string"
+          },
+          "week_template": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Week Template",
+            "type": "object"
+          }
+        },
+        "required": [
+          "brief_time",
+          "evening_time",
+          "quiet_start",
+          "quiet_end",
+          "daily_budget",
+          "garmin_sync_hours",
+          "garmin_weight_export_minutes",
+          "garmin_weight_max_age_days",
+          "pulse_seconds",
+          "pulse_start_hour",
+          "pulse_end_hour"
+        ],
+        "title": "ProactiveSettings",
+        "type": "object"
+      },
+      "ProactiveUpdate": {
+        "properties": {
+          "brief_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brief Time"
+          },
+          "daily_budget": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Budget"
+          },
+          "evening_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evening Time"
+          },
+          "garmin_sync_hours": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Garmin Sync Hours"
+          },
+          "garmin_weight_export_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Garmin Weight Export Minutes"
+          },
+          "garmin_weight_max_age_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Garmin Weight Max Age Days"
+          },
+          "nudges": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nudges"
+          },
+          "pulse_end_hour": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pulse End Hour"
+          },
+          "pulse_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pulse Seconds"
+          },
+          "pulse_start_hour": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pulse Start Hour"
+          },
+          "quiet_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quiet End"
+          },
+          "quiet_start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quiet Start"
+          },
+          "week_template": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week Template"
+          }
+        },
+        "title": "ProactiveUpdate",
+        "type": "object"
+      },
+      "ProfileSettings": {
+        "properties": {
+          "height_cm": {
+            "default": "190",
+            "title": "Height Cm",
+            "type": "string"
+          },
+          "sex": {
+            "default": "male",
+            "title": "Sex",
+            "type": "string"
+          },
+          "timezone": {
+            "default": "Europe/Chisinau",
+            "title": "Timezone",
+            "type": "string"
+          },
+          "user_age": {
+            "default": "18",
+            "title": "User Age",
+            "type": "string"
+          },
+          "user_goals": {
+            "default": "",
+            "title": "User Goals",
+            "type": "string"
+          },
+          "user_program": {
+            "default": "",
+            "title": "User Program",
+            "type": "string"
+          }
+        },
+        "title": "ProfileSettings",
+        "type": "object"
+      },
+      "ProfileUpdate": {
+        "properties": {
+          "height_cm": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Cm"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sex"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "user_age": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Age"
+          },
+          "user_goals": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Goals"
+          },
+          "user_program": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Program"
+          }
+        },
+        "title": "ProfileUpdate",
         "type": "object"
       },
       "ProgressPhotoItem": {
@@ -5493,6 +6260,55 @@
         "title": "RecoveryView",
         "type": "object"
       },
+      "SaveResponse": {
+        "properties": {
+          "adjusted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjusted"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "saved": {
+            "default": true,
+            "title": "Saved",
+            "type": "boolean"
+          }
+        },
+        "title": "SaveResponse",
+        "type": "object"
+      },
+      "SecuritySettings": {
+        "properties": {
+          "twofa_enabled": {
+            "default": false,
+            "title": "Twofa Enabled",
+            "type": "boolean"
+          },
+          "twofa_pending": {
+            "default": false,
+            "title": "Twofa Pending",
+            "type": "boolean"
+          }
+        },
+        "title": "SecuritySettings",
+        "type": "object"
+      },
       "SessionView": {
         "properties": {
           "enabled_modules": {
@@ -5533,6 +6349,59 @@
           "rail"
         ],
         "title": "SessionView",
+        "type": "object"
+      },
+      "SettingsView": {
+        "properties": {
+          "ai": {
+            "$ref": "#/components/schemas/AiSettings"
+          },
+          "garmin": {
+            "$ref": "#/components/schemas/GarminSettings"
+          },
+          "hevy": {
+            "$ref": "#/components/schemas/HevySettings"
+          },
+          "language": {
+            "$ref": "#/components/schemas/LanguageSettings"
+          },
+          "mcp": {
+            "$ref": "#/components/schemas/McpSettings"
+          },
+          "modules": {
+            "$ref": "#/components/schemas/ModulesSettings"
+          },
+          "nutrition_goals": {
+            "$ref": "#/components/schemas/NutritionGoalsSettings"
+          },
+          "proactive": {
+            "$ref": "#/components/schemas/ProactiveSettings"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/ProfileSettings"
+          },
+          "security": {
+            "$ref": "#/components/schemas/SecuritySettings"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "profile",
+          "nutrition_goals",
+          "language",
+          "modules",
+          "ai",
+          "hevy",
+          "garmin",
+          "mcp",
+          "security",
+          "proactive"
+        ],
+        "title": "SettingsView",
         "type": "object"
       },
       "SleepNightView": {
@@ -5803,6 +6672,19 @@
         "title": "SleepStageSegment",
         "type": "object"
       },
+      "StatusResponse": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "StatusResponse",
+        "type": "object"
+      },
       "SyncStamp": {
         "description": "An integration that last put something in the lake, and the day it did.",
         "properties": {
@@ -6003,6 +6885,42 @@
           "latest_weight"
         ],
         "title": "TodayView",
+        "type": "object"
+      },
+      "TwoFaCodeUpdate": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "TwoFaCodeUpdate",
+        "type": "object"
+      },
+      "TwoFaStartResponse": {
+        "properties": {
+          "otpauth_uri": {
+            "title": "Otpauth Uri",
+            "type": "string"
+          },
+          "qr_svg": {
+            "title": "Qr Svg",
+            "type": "string"
+          },
+          "secret": {
+            "title": "Secret",
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "otpauth_uri",
+          "qr_svg"
+        ],
+        "title": "TwoFaStartResponse",
         "type": "object"
       },
       "UnauthenticatedBody": {
@@ -9971,6 +10889,1104 @@
           }
         },
         "summary": "Read Session"
+      }
+    },
+    "/api/v1/settings": {
+      "get": {
+        "description": "Read the complete settings view model without leaking any secrets.",
+        "operationId": "read_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Read Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/2fa/disable": {
+      "post": {
+        "operationId": "disable_twofa",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFaCodeUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Disable Twofa",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/2fa/enable": {
+      "post": {
+        "operationId": "enable_twofa",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFaCodeUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Enable Twofa",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/2fa/start": {
+      "post": {
+        "description": "Start 2FA enrolment: mints an unconfirmed secret and returns the setup payload.",
+        "operationId": "start_twofa",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwoFaStartResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Start Twofa",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/ai": {
+      "post": {
+        "operationId": "update_ai",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Ai",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/export": {
+      "get": {
+        "operationId": "export_backup",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Export Backup",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/export-llm": {
+      "get": {
+        "operationId": "export_llm",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Export Llm",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/garmin": {
+      "post": {
+        "operationId": "update_garmin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GarminUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Garmin",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/garmin/weight-toggle": {
+      "post": {
+        "operationId": "toggle_garmin_weight",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GarminWeightToggleUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Toggle Garmin Weight",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/garmin/weight/send-now": {
+      "post": {
+        "operationId": "send_garmin_weight",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Send Garmin Weight",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/hevy": {
+      "post": {
+        "operationId": "update_hevy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HevyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Hevy",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/import": {
+      "post": {
+        "operationId": "import_backup",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_backup"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Backup",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/language": {
+      "post": {
+        "operationId": "update_language",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LanguageUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Language",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/mcp": {
+      "post": {
+        "operationId": "update_mcp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Mcp",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/modules": {
+      "post": {
+        "operationId": "toggle_module",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModuleToggleUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Toggle Module",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/nutrition": {
+      "post": {
+        "operationId": "update_nutrition_goals",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NutritionGoalsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Nutrition Goals",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/password": {
+      "post": {
+        "operationId": "update_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Password",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/proactive": {
+      "post": {
+        "operationId": "update_proactive",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProactiveUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Proactive",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/profile": {
+      "post": {
+        "operationId": "update_profile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Profile",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/restart": {
+      "post": {
+        "operationId": "restart_container",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Restart Container",
+        "tags": [
+          "settings"
+        ]
       }
     },
     "/api/v1/today": {

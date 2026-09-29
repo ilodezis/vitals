@@ -1,0 +1,96 @@
+/* Settings Screen Styles */
+.set-sec .sec-h {
+  margin-bottom: 6px;
+}
+
+.set-d {
+  margin: 0 0 16px;
+  max-width: 60ch;
+  text-wrap: pretty;
+  line-height: 1.5;
+  color: var(--muted);
+  font-size: var(--t-body, 14px);
+}
+
+.set-save {
+  margin-top: 16px;
+}
+
+.mod-g {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.opt.lock {
+  cursor: default;
+}
+
+.opt.lock.on {
+  background: var(--fg-2, #333);
+}
+
+.opt.lock.on:hover {
+  background: var(--fg-2, #333);
+  color: var(--bg, #0c0e12);
+}
+
+.wk {
+  display: grid;
+  gap: 6px;
+}
+
+.wk-r {
+  display: grid;
+  grid-template-columns: 26px repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  align-items: center;
+}
+
+.wk-h span {
+  font-size: var(--t-micro, 11px);
+  color: var(--muted);
+}
+
+.wk select.input {
+  height: 38px;
+  font-size: var(--t-body, 14px);
+  padding: 0 28px 0 10px;
+  border-radius: var(--r-sm, 8px);
+  background-position: right 8px center;
+  background-size: 14px;
+}
+
+.tfa-l .badge {
+  font-size: var(--t-body, 14px);
+}
+
+.qr {
+  width: max-content;
+  padding: 10px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.qr svg {
+  display: block;
+  max-width: 140px;
+  max-height: 140px;
+}
+
+.tfa-key .key {
+  font-size: 14px;
+  color: var(--fg);
+  margin: 6px 0 8px;
+  word-spacing: 0.2em;
+}
+
+.set-sec.narrow {
+  max-width: 760px;
+}
+
+@media (min-width: 768px) {
+  .wk {
+    max-width: 560px;
+  }
+}

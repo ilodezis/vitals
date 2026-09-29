@@ -18,6 +18,7 @@ const loaders: Partial<Record<ScreenId, () => Promise<{ default: ComponentType }
   hrt: () => import('@/features/hrt/HrtScreen'),
   genetics: () => import('@/features/genetics/GeneticsScreen'),
   more: () => import('@/features/more/MoreScreen'),
+  settings: () => import('@/features/settings/SettingsScreen'),
 }
 
 const placeholder = () => import('@/features/placeholder/PlaceholderScreen')
