@@ -48,3 +48,23 @@ const I = {
   ruler: '<circle class="ds" cx="10" cy="12" r="6.5"/><circle cx="10" cy="12" r="2"/><path d="M16.5 12H21v3.5h-4.5"/>',
 };
 const ic = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+
+/* Added to the family for the remaining screens: same grid, same stroke, same quiet fill. */
+Object.assign(I, {
+  edit: '<path class="ds" d="M4.6 19.4l.9-4.1 9.6-9.6a2.1 2.1 0 0 1 3 3l-9.6 9.6z"/><path d="M13.3 7.5l3.2 3.2"/>',
+  trash: '<path class="ds" d="M6.6 8h10.8l-.8 10.1a1.8 1.8 0 0 1-1.8 1.7H9.2a1.8 1.8 0 0 1-1.8-1.7z"/><path d="M4.5 8h15M9.6 8V5.7a1.2 1.2 0 0 1 1.2-1.2h2.4a1.2 1.2 0 0 1 1.2 1.2V8M10.3 11.6v4.6M13.7 11.6v4.6"/>',
+  copy: '<rect class="ds" x="8.6" y="8.6" width="11" height="11" rx="2.6"/><path d="M15.4 8.6V6.7a2.2 2.2 0 0 0-2.2-2.2H6.7a2.2 2.2 0 0 0-2.2 2.2v6.5a2.2 2.2 0 0 0 2.2 2.2h1.9"/>',
+  download: '<path d="M12 4.5V15M7.8 11.3 12 15.5l4.2-4.2M4.5 15.2v2.3A2.5 2.5 0 0 0 7 20h10a2.5 2.5 0 0 0 2.5-2.5v-2.3"/>',
+  link: '<path d="M10.3 13.7a3.6 3.6 0 0 0 5.1 0l3-3a3.6 3.6 0 0 0-5.1-5.1l-1 1M13.7 10.3a3.6 3.6 0 0 0-5.1 0l-3 3a3.6 3.6 0 0 0 5.1 5.1l1-1"/>',
+  lock: '<rect class="ds" x="5.5" y="10.5" width="13" height="9.5" rx="2.6"/><path d="M8.6 10.5V8a3.4 3.4 0 0 1 6.8 0v2.5M12 14.3v2"/>',
+  archive: '<path class="ds" d="M5 8h14v9.5a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M4 5.6A1.6 1.6 0 0 1 5.6 4h12.8A1.6 1.6 0 0 1 20 5.6V8H4zM10 12h4"/>',
+  image: '<rect class="ds" x="4" y="5" width="16" height="14" rx="3"/><circle cx="9" cy="10" r="1.5"/><path d="M4.5 16.6l4.2-3.7 3 2.6 2.6-2.2 5.2 4.3"/>',
+  chevD: '<path d="M5.5 9.5 12 16l6.5-6.5"/>',
+  wifiOff: '<path d="M4.5 4.5l15 15M5.2 9.6a11 11 0 0 1 3.8-2.1M18.8 9.6a11 11 0 0 0-5.4-3M8.4 13.4a6.4 6.4 0 0 1 2.5-1.2M15.6 13.4a6.4 6.4 0 0 0-1.7-1.1M12 17h.01"/>',
+  // HRT: an ampoule with a crimped cap
+  hrt: '<path class="ds" d="M8.5 9.6h7v8.2a2.4 2.4 0 0 1-2.4 2.4h-2.2a2.4 2.4 0 0 1-2.4-2.4z"/><path d="M9.6 9.6V7.8h4.8v1.8M8.4 6.2h7.2M8.5 13.4h7M11 16.7h2"/>',
+  // interactions: two circles and the overlap they share
+  interactions: '<circle cx="9.2" cy="12" r="5.7"/><circle cx="14.8" cy="12" r="5.7"/><path class="d2" d="M12 7.04A5.7 5.7 0 0 0 12 16.96 5.7 5.7 0 0 0 12 7.04z"/>',
+  // signals: what was said to the bot, as a speech bubble with a small wave in it
+  signals: '<path class="ds" d="M5.6 5h12.8A1.6 1.6 0 0 1 20 6.6v7.8a1.6 1.6 0 0 1-1.6 1.6H11l-4.4 3.5V16H5.6A1.6 1.6 0 0 1 4 14.4V6.6A1.6 1.6 0 0 1 5.6 5z"/><path d="M8.4 10.6v-1M11 12.2V8.2M13.6 11.2V9.4M16.2 10.6v-1"/>',
+});
