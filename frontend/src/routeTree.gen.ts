@@ -10,11 +10,113 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ChartsRouteImport } from './routes/charts'
+import { Route as GeneticsRouteImport } from './routes/genetics'
+import { Route as Glp1RouteImport } from './routes/glp1'
+import { Route as HrtRouteImport } from './routes/hrt'
+import { Route as InteractionsRouteImport } from './routes/interactions'
+import { Route as LabsRouteImport } from './routes/labs'
+import { Route as MoreRouteImport } from './routes/more'
+import { Route as NutritionRouteImport } from './routes/nutrition'
+import { Route as RecoveryRouteImport } from './routes/recovery'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ShareRouteImport } from './routes/share'
+import { Route as SignalsRouteImport } from './routes/signals'
+import { Route as SkincareRouteImport } from './routes/skincare'
+import { Route as SupplementsRouteImport } from './routes/supplements'
+import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as TodayRouteImport } from './routes/today'
+import { Route as WeightRouteImport } from './routes/weight'
+import { Route as WorkoutsRouteImport } from './routes/workouts'
+import { Route as RecoveryActivitiesRouteImport } from './routes/recovery.activities'
+import { Route as RecoveryNightsRouteImport } from './routes/recovery.nights'
+import { Route as WeightMeasuresRouteImport } from './routes/weight.measures'
+import { Route as RecoverySleepDateRouteImport } from './routes/recovery.sleep.$date'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChartsRoute = ChartsRouteImport.update({
+  id: '/charts',
+  path: '/charts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GeneticsRoute = GeneticsRouteImport.update({
+  id: '/genetics',
+  path: '/genetics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Glp1Route = Glp1RouteImport.update({
+  id: '/glp1',
+  path: '/glp1',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HrtRoute = HrtRouteImport.update({
+  id: '/hrt',
+  path: '/hrt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InteractionsRoute = InteractionsRouteImport.update({
+  id: '/interactions',
+  path: '/interactions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsRoute = LabsRouteImport.update({
+  id: '/labs',
+  path: '/labs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MoreRoute = MoreRouteImport.update({
+  id: '/more',
+  path: '/more',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NutritionRoute = NutritionRouteImport.update({
+  id: '/nutrition',
+  path: '/nutrition',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecoveryRoute = RecoveryRouteImport.update({
+  id: '/recovery',
+  path: '/recovery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShareRoute = ShareRouteImport.update({
+  id: '/share',
+  path: '/share',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignalsRoute = SignalsRouteImport.update({
+  id: '/signals',
+  path: '/signals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SkincareRoute = SkincareRouteImport.update({
+  id: '/skincare',
+  path: '/skincare',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupplementsRoute = SupplementsRouteImport.update({
+  id: '/supplements',
+  path: '/supplements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TimelineRoute = TimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TodayRoute = TodayRouteImport.update({
@@ -22,31 +124,218 @@ const TodayRoute = TodayRouteImport.update({
   path: '/today',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WeightRoute = WeightRouteImport.update({
+  id: '/weight',
+  path: '/weight',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkoutsRoute = WorkoutsRouteImport.update({
+  id: '/workouts',
+  path: '/workouts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecoveryActivitiesRoute = RecoveryActivitiesRouteImport.update({
+  id: '/activities',
+  path: '/activities',
+  getParentRoute: () => RecoveryRoute,
+} as any)
+const RecoveryNightsRoute = RecoveryNightsRouteImport.update({
+  id: '/nights',
+  path: '/nights',
+  getParentRoute: () => RecoveryRoute,
+} as any)
+const WeightMeasuresRoute = WeightMeasuresRouteImport.update({
+  id: '/measures',
+  path: '/measures',
+  getParentRoute: () => WeightRoute,
+} as any)
+const RecoverySleepDateRoute = RecoverySleepDateRouteImport.update({
+  id: '/sleep/$date',
+  path: '/sleep/$date',
+  getParentRoute: () => RecoveryRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/charts': typeof ChartsRoute
+  '/genetics': typeof GeneticsRoute
+  '/glp1': typeof Glp1Route
+  '/hrt': typeof HrtRoute
+  '/interactions': typeof InteractionsRoute
+  '/labs': typeof LabsRoute
+  '/more': typeof MoreRoute
+  '/nutrition': typeof NutritionRoute
+  '/recovery': typeof RecoveryRouteWithChildren
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
+  '/share': typeof ShareRoute
+  '/signals': typeof SignalsRoute
+  '/skincare': typeof SkincareRoute
+  '/supplements': typeof SupplementsRoute
+  '/timeline': typeof TimelineRoute
   '/today': typeof TodayRoute
+  '/weight': typeof WeightRouteWithChildren
+  '/workouts': typeof WorkoutsRoute
+  '/recovery/activities': typeof RecoveryActivitiesRoute
+  '/recovery/nights': typeof RecoveryNightsRoute
+  '/weight/measures': typeof WeightMeasuresRoute
+  '/recovery/sleep/$date': typeof RecoverySleepDateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/charts': typeof ChartsRoute
+  '/genetics': typeof GeneticsRoute
+  '/glp1': typeof Glp1Route
+  '/hrt': typeof HrtRoute
+  '/interactions': typeof InteractionsRoute
+  '/labs': typeof LabsRoute
+  '/more': typeof MoreRoute
+  '/nutrition': typeof NutritionRoute
+  '/recovery': typeof RecoveryRouteWithChildren
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
+  '/share': typeof ShareRoute
+  '/signals': typeof SignalsRoute
+  '/skincare': typeof SkincareRoute
+  '/supplements': typeof SupplementsRoute
+  '/timeline': typeof TimelineRoute
   '/today': typeof TodayRoute
+  '/weight': typeof WeightRouteWithChildren
+  '/workouts': typeof WorkoutsRoute
+  '/recovery/activities': typeof RecoveryActivitiesRoute
+  '/recovery/nights': typeof RecoveryNightsRoute
+  '/weight/measures': typeof WeightMeasuresRoute
+  '/recovery/sleep/$date': typeof RecoverySleepDateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/charts': typeof ChartsRoute
+  '/genetics': typeof GeneticsRoute
+  '/glp1': typeof Glp1Route
+  '/hrt': typeof HrtRoute
+  '/interactions': typeof InteractionsRoute
+  '/labs': typeof LabsRoute
+  '/more': typeof MoreRoute
+  '/nutrition': typeof NutritionRoute
+  '/recovery': typeof RecoveryRouteWithChildren
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
+  '/share': typeof ShareRoute
+  '/signals': typeof SignalsRoute
+  '/skincare': typeof SkincareRoute
+  '/supplements': typeof SupplementsRoute
+  '/timeline': typeof TimelineRoute
   '/today': typeof TodayRoute
+  '/weight': typeof WeightRouteWithChildren
+  '/workouts': typeof WorkoutsRoute
+  '/recovery/activities': typeof RecoveryActivitiesRoute
+  '/recovery/nights': typeof RecoveryNightsRoute
+  '/weight/measures': typeof WeightMeasuresRoute
+  '/recovery/sleep/$date': typeof RecoverySleepDateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/today'
+  fullPaths:
+    | '/'
+    | '/charts'
+    | '/genetics'
+    | '/glp1'
+    | '/hrt'
+    | '/interactions'
+    | '/labs'
+    | '/more'
+    | '/nutrition'
+    | '/recovery'
+    | '/reports'
+    | '/settings'
+    | '/share'
+    | '/signals'
+    | '/skincare'
+    | '/supplements'
+    | '/timeline'
+    | '/today'
+    | '/weight'
+    | '/workouts'
+    | '/recovery/activities'
+    | '/recovery/nights'
+    | '/weight/measures'
+    | '/recovery/sleep/$date'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/today'
-  id: '__root__' | '/' | '/today'
+  to:
+    | '/'
+    | '/charts'
+    | '/genetics'
+    | '/glp1'
+    | '/hrt'
+    | '/interactions'
+    | '/labs'
+    | '/more'
+    | '/nutrition'
+    | '/recovery'
+    | '/reports'
+    | '/settings'
+    | '/share'
+    | '/signals'
+    | '/skincare'
+    | '/supplements'
+    | '/timeline'
+    | '/today'
+    | '/weight'
+    | '/workouts'
+    | '/recovery/activities'
+    | '/recovery/nights'
+    | '/weight/measures'
+    | '/recovery/sleep/$date'
+  id:
+    | '__root__'
+    | '/'
+    | '/charts'
+    | '/genetics'
+    | '/glp1'
+    | '/hrt'
+    | '/interactions'
+    | '/labs'
+    | '/more'
+    | '/nutrition'
+    | '/recovery'
+    | '/reports'
+    | '/settings'
+    | '/share'
+    | '/signals'
+    | '/skincare'
+    | '/supplements'
+    | '/timeline'
+    | '/today'
+    | '/weight'
+    | '/workouts'
+    | '/recovery/activities'
+    | '/recovery/nights'
+    | '/weight/measures'
+    | '/recovery/sleep/$date'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChartsRoute: typeof ChartsRoute
+  GeneticsRoute: typeof GeneticsRoute
+  Glp1Route: typeof Glp1Route
+  HrtRoute: typeof HrtRoute
+  InteractionsRoute: typeof InteractionsRoute
+  LabsRoute: typeof LabsRoute
+  MoreRoute: typeof MoreRoute
+  NutritionRoute: typeof NutritionRoute
+  RecoveryRoute: typeof RecoveryRouteWithChildren
+  ReportsRoute: typeof ReportsRoute
+  SettingsRoute: typeof SettingsRoute
+  ShareRoute: typeof ShareRoute
+  SignalsRoute: typeof SignalsRoute
+  SkincareRoute: typeof SkincareRoute
+  SupplementsRoute: typeof SupplementsRoute
+  TimelineRoute: typeof TimelineRoute
   TodayRoute: typeof TodayRoute
+  WeightRoute: typeof WeightRouteWithChildren
+  WorkoutsRoute: typeof WorkoutsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,6 +347,118 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/charts': {
+      id: '/charts'
+      path: '/charts'
+      fullPath: '/charts'
+      preLoaderRoute: typeof ChartsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/genetics': {
+      id: '/genetics'
+      path: '/genetics'
+      fullPath: '/genetics'
+      preLoaderRoute: typeof GeneticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/glp1': {
+      id: '/glp1'
+      path: '/glp1'
+      fullPath: '/glp1'
+      preLoaderRoute: typeof Glp1RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hrt': {
+      id: '/hrt'
+      path: '/hrt'
+      fullPath: '/hrt'
+      preLoaderRoute: typeof HrtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/interactions': {
+      id: '/interactions'
+      path: '/interactions'
+      fullPath: '/interactions'
+      preLoaderRoute: typeof InteractionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs': {
+      id: '/labs'
+      path: '/labs'
+      fullPath: '/labs'
+      preLoaderRoute: typeof LabsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/more': {
+      id: '/more'
+      path: '/more'
+      fullPath: '/more'
+      preLoaderRoute: typeof MoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nutrition': {
+      id: '/nutrition'
+      path: '/nutrition'
+      fullPath: '/nutrition'
+      preLoaderRoute: typeof NutritionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recovery': {
+      id: '/recovery'
+      path: '/recovery'
+      fullPath: '/recovery'
+      preLoaderRoute: typeof RecoveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/share': {
+      id: '/share'
+      path: '/share'
+      fullPath: '/share'
+      preLoaderRoute: typeof ShareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signals': {
+      id: '/signals'
+      path: '/signals'
+      fullPath: '/signals'
+      preLoaderRoute: typeof SignalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/skincare': {
+      id: '/skincare'
+      path: '/skincare'
+      fullPath: '/skincare'
+      preLoaderRoute: typeof SkincareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/supplements': {
+      id: '/supplements'
+      path: '/supplements'
+      fullPath: '/supplements'
+      preLoaderRoute: typeof SupplementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/timeline': {
+      id: '/timeline'
+      path: '/timeline'
+      fullPath: '/timeline'
+      preLoaderRoute: typeof TimelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/today': {
       id: '/today'
       path: '/today'
@@ -65,12 +466,99 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TodayRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/weight': {
+      id: '/weight'
+      path: '/weight'
+      fullPath: '/weight'
+      preLoaderRoute: typeof WeightRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workouts': {
+      id: '/workouts'
+      path: '/workouts'
+      fullPath: '/workouts'
+      preLoaderRoute: typeof WorkoutsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recovery/activities': {
+      id: '/recovery/activities'
+      path: '/activities'
+      fullPath: '/recovery/activities'
+      preLoaderRoute: typeof RecoveryActivitiesRouteImport
+      parentRoute: typeof RecoveryRoute
+    }
+    '/recovery/nights': {
+      id: '/recovery/nights'
+      path: '/nights'
+      fullPath: '/recovery/nights'
+      preLoaderRoute: typeof RecoveryNightsRouteImport
+      parentRoute: typeof RecoveryRoute
+    }
+    '/weight/measures': {
+      id: '/weight/measures'
+      path: '/measures'
+      fullPath: '/weight/measures'
+      preLoaderRoute: typeof WeightMeasuresRouteImport
+      parentRoute: typeof WeightRoute
+    }
+    '/recovery/sleep/$date': {
+      id: '/recovery/sleep/$date'
+      path: '/sleep/$date'
+      fullPath: '/recovery/sleep/$date'
+      preLoaderRoute: typeof RecoverySleepDateRouteImport
+      parentRoute: typeof RecoveryRoute
+    }
   }
 }
 
+interface RecoveryRouteChildren {
+  RecoveryActivitiesRoute: typeof RecoveryActivitiesRoute
+  RecoveryNightsRoute: typeof RecoveryNightsRoute
+  RecoverySleepDateRoute: typeof RecoverySleepDateRoute
+}
+
+const RecoveryRouteChildren: RecoveryRouteChildren = {
+  RecoveryActivitiesRoute: RecoveryActivitiesRoute,
+  RecoveryNightsRoute: RecoveryNightsRoute,
+  RecoverySleepDateRoute: RecoverySleepDateRoute,
+}
+
+const RecoveryRouteWithChildren = RecoveryRoute._addFileChildren(
+  RecoveryRouteChildren,
+)
+
+interface WeightRouteChildren {
+  WeightMeasuresRoute: typeof WeightMeasuresRoute
+}
+
+const WeightRouteChildren: WeightRouteChildren = {
+  WeightMeasuresRoute: WeightMeasuresRoute,
+}
+
+const WeightRouteWithChildren =
+  WeightRoute._addFileChildren(WeightRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChartsRoute: ChartsRoute,
+  GeneticsRoute: GeneticsRoute,
+  Glp1Route: Glp1Route,
+  HrtRoute: HrtRoute,
+  InteractionsRoute: InteractionsRoute,
+  LabsRoute: LabsRoute,
+  MoreRoute: MoreRoute,
+  NutritionRoute: NutritionRoute,
+  RecoveryRoute: RecoveryRouteWithChildren,
+  ReportsRoute: ReportsRoute,
+  SettingsRoute: SettingsRoute,
+  ShareRoute: ShareRoute,
+  SignalsRoute: SignalsRoute,
+  SkincareRoute: SkincareRoute,
+  SupplementsRoute: SupplementsRoute,
+  TimelineRoute: TimelineRoute,
   TodayRoute: TodayRoute,
+  WeightRoute: WeightRouteWithChildren,
+  WorkoutsRoute: WorkoutsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

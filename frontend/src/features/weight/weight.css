@@ -1,0 +1,5 @@
+/* Weight — the few rules the screen adds to the shared grammar. */
+
+.r-hist { grid-template-columns: minmax(0, 1fr) auto 72px; }
+.r-hist .time-gap { margin-left: 4px; }
+.scan-sub { margin: -4px 0 10px; }

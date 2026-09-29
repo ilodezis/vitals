@@ -1,0 +1,51 @@
+/* Ported from the redesign mockup (docs/design/mockup/src/styles.css): same rules, same order.
+   Change the mockup first, then here. */
+
+/* ==========================================================================
+   Labs
+   ========================================================================== */
+.drop { display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: center; padding: 14px 16px; border-radius: var(--r-lg); border: 1.5px dashed var(--line-2); background: var(--bg-deep); color: var(--fg-2); transition: border-color var(--d2), background var(--d2); cursor: pointer; width: 100%; text-align: left; }
+.drop:hover { border-color: var(--accent-line); background: var(--accent-soft); }
+.drop .ico svg { width: 20px; height: 20px; }
+.drop b { display: block; color: var(--fg); font-weight: 600; }
+.drop small { color: var(--muted); font-size: var(--t-micro); }
+.mk { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 14px 0; cursor: pointer; }
+.mk .rbar { grid-column: 1 / -1; }
+.mk .scale { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: var(--t-micro); color: var(--faint); font-variant-numeric: tabular-nums; margin-top: -2px; }
+.mk .v.bad { color: var(--bad-strong); }
+.mk .st { font-size: var(--t-micro); font-weight: 600; }
+.mk .st.bad { color: var(--bad-strong); }
+.mk-detail { grid-column: 1 / -1; }
+.mk-detail-in { padding: 10px 0 4px; }
+.lab-side { display: none; }
+.mk-note { font-size: var(--t-label); color: var(--muted); margin-top: 10px; line-height: 1.5; }
+
+.drop .ico { display: grid; place-items: center; color: var(--fg-2); }
+.drop .ico svg { width: 22px; height: 22px; }
+
+.mk.sel { background: var(--surface); margin: 0 -12px; padding-left: 12px; padding-right: 12px; border-radius: var(--r); border-bottom-color: transparent; }
+
+@container app (min-width: 768px) {
+  /* Labs */
+  .lab-side { display: block; }
+  .mk-detail { display: none; }
+  .mk { padding: 14px 12px; margin: 0 -12px; border-radius: var(--r); border-bottom-color: transparent; box-shadow: 0 1px 0 var(--line); transition: background var(--d2); }
+  .mk:hover { background: rgba(255, 255, 255, .02); }
+
+}
+/* Labs: what the JSX carries instead of inline styles */
+.drop-first { margin-top: 28px; }
+.labs-grid { margin-top: 8px; }
+.mk-list { margin-top: 12px; border-top: 0; }
+.mk-value { text-align: right; }
+.mk .st.fine { color: var(--faint); }
+.lab-side { margin-top: 12px; }
+.lab-hero { margin-top: 4px; }
+.lab-hero .big { font-size: 56px; }
+.lab-hero .big.bad { color: var(--bad-strong); }
+.lab-chart { margin-top: 22px; }
+.lab-history { margin-top: 14px; }
+.lab-past { min-height: 42px; }
+.lab-past .m { font-size: var(--t-body); color: var(--fg-2); }
+.mk.enter { animation: mk-in 320ms var(--ease-out) both; }
+@keyframes mk-in { from { opacity: 0; transform: translateY(6px); } }

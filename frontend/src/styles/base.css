@@ -1,10 +1,9 @@
 /* Base — the document itself. Component styles live next to their components. */
 
 *, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; }
+html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
 html { color-scheme: dark; -webkit-text-size-adjust: 100%; }
 body {
-  min-height: 100dvh;
   background: var(--bg);
   color: var(--fg);
   font-family: var(--f-text);

@@ -1,0 +1,48 @@
+/* Ported from the redesign mockup (docs/design/mockup/src/styles.css): same rules, same order.
+   Change the mockup first, then here. */
+
+/* ==========================================================================
+   GLP-1
+   ========================================================================== */
+.cyc-cap { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.cyc-cap { flex-wrap: wrap; }
+.cyc-cap .big { font-family: var(--f-display); font-size: var(--t-heading); font-weight: 600; letter-spacing: -.015em; }
+.cyc-cap .sub { white-space: nowrap; }
+.cyc-cap .big span { color: var(--violet); }
+.sites { display: grid; grid-template-columns: 150px 1fr; gap: 16px; align-items: center; }
+.site-list { display: grid; gap: 2px; }
+.site-list div { display: flex; justify-content: space-between; font-size: var(--t-label); color: var(--fg-2); padding: 6px 0; border-bottom: 1px solid var(--line); }
+.site-list div span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; }
+.site-list div.sug span:first-child { color: var(--fg); font-weight: 600; }
+.site-list div.sug span:last-child { color: var(--violet); }
+.pips { display: inline-flex; gap: 3px; }
+.pips i { width: 14px; height: 6px; border-radius: 2px; background: var(--surface-3); }
+.pips i.on { background: var(--warn); }
+.pips.l2 i.on { background: var(--fg-2); }
+
+/* GLP-1 cycle: a line of days, not a row of boxes */
+.cycle { position: relative; display: grid; grid-template-columns: repeat(8, 1fr); margin-top: 20px; }
+.cycle::before, .cycle .prog { content: ''; position: absolute; top: 7px; left: 6.25%; height: 2px; border-radius: 1px; }
+.cycle::before { right: 6.25%; background: var(--line-2); }
+.cycle .prog { width: 25%; background: var(--violet); opacity: .55; }
+.cyc { position: relative; display: grid; justify-items: center; gap: 2px; font-size: var(--t-micro); color: var(--muted); }
+.cyc i { width: 16px; height: 16px; display: grid; place-items: center; }
+.cyc i::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--line-2); box-shadow: 0 0 0 4px var(--bg); }
+.cyc b { margin-top: 8px; font-family: var(--f-display); font-weight: 500; font-size: var(--t-ui); color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.cyc.past b { color: var(--faint); }
+.cyc.past i::before { background: var(--violet); }
+.cyc.inj i::before { width: 12px; height: 12px; background: var(--violet); }
+.cyc.inj b { color: var(--violet); }
+.cyc.now i::before { width: 12px; height: 12px; background: var(--accent); box-shadow: 0 0 0 3px var(--bg), 0 0 0 4.5px var(--accent-line); }
+.cyc.now b { color: var(--fg); }
+.cyc.now span { color: var(--accent-2); font-weight: 600; }
+.cyc.next i::before { width: 12px; height: 12px; background: var(--bg); box-shadow: inset 0 0 0 2px var(--violet), 0 0 0 4px var(--bg); }
+.cyc.next b { color: var(--violet); }
+
+@container app (min-width: 768px) {
+  .cyc-cap .big { font-size: var(--t-lead); }
+
+}
+.r-3 { grid-template-columns: 1fr auto auto; }
+.r-3 .t { font-weight: 400; }
+.glp1-summary { margin: 12px 0 0; }

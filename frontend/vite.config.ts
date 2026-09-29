@@ -6,6 +6,11 @@ import { defineConfig } from 'vitest/config'
 
 const backend = 'http://127.0.0.1:8000'
 
+// Object form on purpose: the string shorthand turns changeOrigin on, which
+// swaps the Host for the backend's while the browser's Origin stays put, and the
+// backend answers 403 to any unsafe request whose Origin differs from its Host.
+const toBackend = { target: backend, changeOrigin: false }
+
 export default defineConfig(({ command }) => ({
   // Built assets ride the backend's existing /static mount, so the app adds no
   // anonymous route of its own. In dev the app is served from the root instead,
@@ -28,14 +33,13 @@ export default defineConfig(({ command }) => ({
   },
   server: {
     // Same origin as far as the browser is concerned: the session cookie set by
-    // /login lands on the dev server's host and rides every proxied call. Host is
-    // kept (no changeOrigin) so the backend's Origin check still matches.
+    // /login lands on the dev server's host and rides every proxied call.
     proxy: {
-      '/api': backend,
-      '/login': backend,
-      '/logout': backend,
+      '/api': toBackend,
+      '/login': toBackend,
+      '/logout': toBackend,
       // The login page's own CSS/JS and the guarded uploads.
-      '/static': backend,
+      '/static': toBackend,
     },
   },
   test: {

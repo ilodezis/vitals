@@ -4,6 +4,7 @@ import '@fontsource-variable/geologica'
 import '@fontsource-variable/golos-text'
 import '@/styles/tokens.css'
 import '@/styles/base.css'
+import '@/styles/app.css'
 import { App } from '@/app/App'
 
 const root = document.getElementById('root')

@@ -1,0 +1,73 @@
+/* Ported from the redesign mockup (docs/design/mockup/src/styles.css): same rules, same order.
+   Change the mockup first, then here. */
+
+/* ==========================================================================
+   TODAY
+   ========================================================================== */
+.narr { font-family: var(--f-display); font-weight: 600; font-size: 29px; line-height: 1.12; letter-spacing: -.028em; margin: var(--s3) 0 0; text-wrap: balance; }
+.narr .w { display: inline-block; }
+.narr.intro .w { animation: word 700ms var(--ease-out) both; }
+@keyframes word { from { opacity: 0; transform: translateY(.35em); filter: blur(6px); } }
+.narr em { font-style: normal; color: var(--fg-2); }
+.sync { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: var(--t-micro); color: var(--muted); }
+.sync span { display: inline-flex; align-items: center; gap: 6px; }
+
+.fig-weight { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.fw-v { font-family: var(--f-display); font-weight: 300; font-size: 58px; line-height: .9; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+.fw-v .u { font-family: var(--f-text); font-size: var(--t-ui); font-weight: 500; color: var(--muted); letter-spacing: 0; margin-left: 4px; }
+.today-figs { margin-top: var(--s6); }
+.today-figs > .f-weight { grid-column: 1 / -1; padding: 16px 0 18px !important; border-left: 0 !important; }
+.today-figs > *:nth-child(even) { padding: 14px var(--s4) 14px 0; border-left: 0; }
+.today-figs > *:nth-child(odd):not(.f-weight) { padding: 14px 0 14px var(--s4); border-left: 1px solid var(--line); }
+.today-figs > :not(.f-weight) .go { display: none; }
+
+/* Week-over-week: dumbbell rows */
+.dumb { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) 52px; }
+.dumb .rbar { height: 18px; }
+.dumb .rbar .track { top: 7px; }
+.dumb .rbar .ref { top: 5px; }
+.dumb .rbar .pt { top: 3px; }
+.dumb .rbar .prev { top: 5px; }
+.dumb .rbar .con { top: 8px; }
+.dumb .v { font-size: var(--t-body); }
+
+/* Feed timeline */
+.feed { position: relative; }
+.feed-row { display: grid; grid-template-columns: 44px 16px 1fr; gap: 8px; padding: 9px 0; align-items: start; }
+.feed-row .time { font-size: var(--t-label); color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 1px; }
+.feed-row .rail-dot { position: relative; height: 100%; display: flex; justify-content: center; padding-top: 6px; }
+.feed-row .rail-dot::after { content: ''; position: absolute; top: 18px; bottom: -14px; width: 1px; background: var(--line-2); }
+.feed-row:last-child .rail-dot::after { display: none; }
+.feed-row .tx { color: var(--fg); }
+.feed-row .dt { font-size: var(--t-micro); color: var(--muted); margin-top: 1px; }
+.feed-row.enter { animation: rowin 520ms var(--ease-out) both; }
+@keyframes rowin { from { opacity: 0; transform: translateY(-8px); } }
+
+.goal-scale { display: flex; justify-content: space-between; margin-top: 8px; font-size: var(--t-micro); color: var(--muted); font-variant-numeric: tabular-nums; }
+.goal-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+.goal-top .gv { font-family: var(--f-display); font-size: var(--t-lead); font-weight: 500; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.goal-top .gv .u { font-size: var(--t-label); color: var(--muted); font-family: var(--f-text); margin-left: 3px; }
+
+.today-log { display: none; }
+
+/* Quick chips under log */
+
+@container app (min-width: 768px) {
+  /* Today */
+  .today-top { display: flex; justify-content: space-between; align-items: center; height: 36px; }
+  .today-top .sync { margin: 0; }
+  .narr { font-size: var(--t-display); max-width: 24ch; margin-top: 18px; line-height: 1.08; }
+  .today-figs { display: grid; grid-template-columns: 1.4fr repeat(4, 1fr); margin-top: 36px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .today-figs > * { padding: 18px 20px !important; border: 0 !important; border-left: 1px solid var(--line) !important; }
+  .today-figs > .f-weight { grid-column: auto; padding-left: 0 !important; border-left: 0 !important; }
+  .today-figs .go { top: 20px; right: 16px !important; }
+  .today-figs > :not(.f-weight) .go { display: block; }
+  .fw-v { font-size: 56px; }
+  .today-log { display: block; }
+
+}
+/* Today: what the JSX carries instead of inline styles */
+.today-delta { margin-left: 6px; vertical-align: 1px; }
+.goal-forecast { margin: 12px 0 0; }
+.today-log .btn { margin-top: 12px; }
+.today-log .qchips { margin-top: 12px; }

@@ -1,0 +1,55 @@
+import { describe, expect, it, vi } from 'vitest'
+import { PARALLAX, SHADE, sheetCloses, swipeCommits, swipeFrame, whenPresent } from './stageMotion'
+
+describe('whenPresent', () => {
+  it('returns at once when the element is already there', async () => {
+    await expect(whenPresent(() => 'here')).resolves.toBe('here')
+  })
+
+  it('waits for an element that shows up a moment later', async () => {
+    vi.useFakeTimers()
+    let calls = 0
+    const found = whenPresent(() => (++calls > 3 ? 'late' : null))
+    await vi.advanceTimersByTimeAsync(100)
+    await expect(found).resolves.toBe('late')
+    vi.useRealTimers()
+  })
+
+  it('gives up after the timeout so a navigation never hangs on it', async () => {
+    vi.useFakeTimers()
+    const found = whenPresent(() => null, 100, 16)
+    await vi.advanceTimersByTimeAsync(200)
+    await expect(found).resolves.toBeNull()
+    vi.useRealTimers()
+  })
+})
+
+describe('edge swipe', () => {
+  it('commits past 35% of the width, however slowly', () => {
+    expect(swipeCommits(0.36, 0)).toBe(true)
+    expect(swipeCommits(0.34, 0.1)).toBe(false)
+  })
+
+  it('commits on a fast flick once it has moved a little', () => {
+    expect(swipeCommits(0.1, 0.6)).toBe(true)
+    expect(swipeCommits(0.05, 0.9)).toBe(false)
+    expect(swipeCommits(0.2, 0.4)).toBe(false)
+  })
+
+  it('moves the top screen with the finger and the one below by the parallax', () => {
+    expect(swipeFrame(0, 400)).toEqual({ top: 0, under: -PARALLAX * 400, shade: SHADE })
+    expect(swipeFrame(1, 400)).toEqual({ top: 400, under: -0, shade: 0 })
+    const half = swipeFrame(0.5, 400)
+    expect(half.top).toBe(200)
+    expect(half.under).toBeCloseTo(-56, 5)
+    expect(half.shade).toBeCloseTo(0.16, 5)
+  })
+})
+
+describe('sheet drag', () => {
+  it('closes past 28% of its height or faster than 0.6 px/ms', () => {
+    expect(sheetCloses(300, 1000, 0)).toBe(true)
+    expect(sheetCloses(270, 1000, 0.1)).toBe(false)
+    expect(sheetCloses(20, 1000, 0.7)).toBe(true)
+  })
+})

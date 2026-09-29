@@ -1,0 +1,45 @@
+/* Ported from the redesign mockup (docs/design/mockup/src/styles.css): same rules, same order.
+   Change the mockup first, then here. */
+
+/* ==========================================================================
+   Recovery
+   ========================================================================== */
+.hyp-legend { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+.hyp-legend > div { font-size: var(--t-micro); color: var(--muted); }
+.hyp-legend b { display: block; font-family: var(--f-display); font-size: var(--t-ui); color: var(--fg); font-weight: 500; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.hyp-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+.compo { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px; margin-top: 14px; }
+.compo i { display: block; height: 100%; }
+.compo.intro i { animation: grow 900ms var(--ease-out) both; transform-origin: 0 50%; }
+@keyframes grow { from { transform: scaleX(0); } }
+
+.norms .row { grid-template-columns: minmax(0, 1fr) 72px; }
+.norms .rbar { grid-column: 1 / -1; margin-top: -4px; }
+
+.days { border-top: 1px solid var(--line); }
+.day { display: grid; grid-template-columns: 64px repeat(4, minmax(0, 1fr)); gap: 4px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.day .d { font-size: var(--t-label); color: var(--fg-2); }
+.day .d small { display: block; color: var(--muted); font-size: var(--t-micro); }
+.cell { height: 38px; border-radius: var(--r-xs); display: grid; place-items: center; font-family: var(--f-display); font-size: var(--t-body); font-weight: 500; font-variant-numeric: tabular-nums; color: var(--fg-2); }
+.cell.g1 { background: rgba(111, 197, 142, .08); } .cell.g2 { background: rgba(111, 197, 142, .16); color: var(--good); }
+.cell.b1 { background: rgba(238, 122, 96, .09); } .cell.b2 { background: rgba(238, 122, 96, .18); color: var(--bad-strong); }
+.days-head { display: grid; grid-template-columns: 64px repeat(4, minmax(0, 1fr)); gap: 4px; padding: 0 0 8px; font-size: var(--t-micro); color: var(--muted); text-align: center; }
+.days-head span:first-child { text-align: left; }
+.heat { display: none; }
+
+@container app (min-width: 768px) {
+  /* Recovery */
+  .heat { display: block; overflow-x: auto; }
+  .days-m { display: none; }
+  .heat table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 3px; font-variant-numeric: tabular-nums; }
+  .heat col.lblc { width: 128px; }
+  .heat th { font-size: var(--t-micro); color: var(--muted); font-weight: 500; padding: 0 0 6px; text-align: center; white-space: nowrap; }
+  .heat th.now { color: var(--accent-2); }
+  .heat td.lbl { font-size: var(--t-label); color: var(--fg-2); white-space: nowrap; padding-right: 12px; text-align: left; }
+  .heat td.lbl small { display: block; font-size: var(--t-micro); color: var(--faint); }
+  .heat .cell { height: 40px; }
+
+  .days-head { display: none; }
+
+}
+.recovery-grid { margin-top: 0; }
