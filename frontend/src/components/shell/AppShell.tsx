@@ -1,9 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { ToastHost } from '@/components/controls/ToastHost'
+import { toast } from '@/components/controls/toast'
 import { LogSheet } from '@/components/sheet/LogSheet'
 import { closeLogSheet, toggleLogSheet, useLogSheet } from '@/components/sheet/logSheetStore'
 import { I18nProvider } from '@/i18n/I18nProvider'
+import { useT } from '@/i18n/useT'
 import type { Dictionary } from '@/i18n/translate'
 import { cx } from '@/lib/cx'
 import type { Lang } from '@/lib/format'
@@ -50,6 +52,7 @@ export function AppShell({ lang, dictionary }: { lang: Lang; dictionary: Diction
 
   return (
     <I18nProvider lang={lang} dictionary={dictionary}>
+      <OfflineWatcher />
       <LayoutContext value={{ desktop }}>
         <div ref={host} className="app-host">
           <div className={cx('vt', open && 'sheet-open')}>
@@ -63,4 +66,16 @@ export function AppShell({ lang, dictionary }: { lang: Lang; dictionary: Diction
       </LayoutContext>
     </I18nProvider>
   )
+}
+
+function OfflineWatcher() {
+  const { t } = useT()
+  useEffect(() => {
+    const handleOffline = () => {
+      toast(t('app.offline_toast'), { icon: 'wifiOff' })
+    }
+    window.addEventListener('offline', handleOffline)
+    return () => window.removeEventListener('offline', handleOffline)
+  }, [t])
+  return null
 }

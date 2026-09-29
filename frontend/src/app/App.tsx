@@ -1,9 +1,6 @@
-import { useEffect } from 'react'
 import { useIsRestoring } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { RouterProvider } from '@tanstack/react-router'
-import { toast } from '@/components/controls/toast'
-import { useT } from '@/i18n/useT'
 import { CACHE_BUSTER, CACHE_MAX_AGE_MS, persister } from './persist'
 import { queryClient } from './queryClient'
 import { router } from './router'
@@ -14,22 +11,9 @@ export function App() {
       client={queryClient}
       persistOptions={{ persister, maxAge: CACHE_MAX_AGE_MS, buster: CACHE_BUSTER }}
     >
-      <OfflineWatcher />
       <Router />
     </PersistQueryClientProvider>
   )
-}
-
-function OfflineWatcher() {
-  const { t } = useT()
-  useEffect(() => {
-    const handleOffline = () => {
-      toast(t('app.offline_toast'), { icon: 'wifiOff' })
-    }
-    window.addEventListener('offline', handleOffline)
-    return () => window.removeEventListener('offline', handleOffline)
-  }, [t])
-  return null
 }
 
 /** The router's first loaders read the cache, so they wait for it to come back from the device:
