@@ -1,0 +1,6 @@
+/* One family: 1.6 stroke, a quiet fill on the form, fuller when active.
+   A parent raises the fill by setting --icf (e.g. .32 on the active nav item). */
+.icon { display: block; flex: none; }
+.icon .d { fill: currentColor; fill-opacity: var(--icf, .2); stroke: none; }
+.icon .d2 { fill: currentColor; fill-opacity: .6; stroke: none; }
+.icon .ds { fill: currentColor; fill-opacity: var(--icf, .14); }

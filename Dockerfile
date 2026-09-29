@@ -1,3 +1,15 @@
+# ── Stage 1: build the React app ─────────────────────────────────────────────
+# Vite writes to ../web/static/app (see frontend/vite.config.ts), so the layout
+# mirrors the repo: /build/frontend in, /build/web/static/app out.
+FROM node:24-alpine AS frontend
+
+WORKDIR /build/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# ── Stage 2: the app ─────────────────────────────────────────────────────────
 FROM python:3.13-slim
 
 # Sync timezone to Chisinau wall-clock time
@@ -15,6 +27,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+COPY --from=frontend /build/web/static/app /app/web/static/app
 
 # Run alembic migrations, then launch FastAPI + APScheduler process.
 # --forwarded-allow-ips="*": trust X-Forwarded-For so per-IP login throttling

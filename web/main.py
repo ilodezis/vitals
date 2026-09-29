@@ -341,6 +341,11 @@ async def root():
 
 app.include_router(auth_router)
 
+# The React app's shell for every /app path (its assets ride the /static mount).
+from web.spa import router as spa_router  # noqa: E402
+
+app.include_router(spa_router)
+
 # Routers under web/routers/ will be included dynamically to avoid import cycles.
 # These routers will be imported and registered below.
 from web.routers.alerts import router as alerts_router  # noqa: E402

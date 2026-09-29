@@ -11,6 +11,9 @@ __pycache__/
 # Node (tailwind.css is committed; node_modules is build-only)
 node_modules/
 web/node_modules/
+frontend/node_modules/
+# The React app is built inside the image; a local build must not leak in
+web/static/app/
 
 # Secrets + local artifacts (env is injected at runtime via compose env_file)
 .env

@@ -78,3 +78,5 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .eslintcache
+# React app build output (Vite outDir) — produced by `npm run build` / the image
+web/static/app/

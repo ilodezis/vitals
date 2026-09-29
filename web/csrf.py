@@ -76,15 +76,35 @@ _SECURITY_HEADERS = {
 }
 
 
+# The React app's build (Vite ``outDir``). Everything under ``assets/`` is named
+# after its content hash, so a changed file is a new URL and the old one can be
+# kept forever. Only answers that are the file itself: a miss mid-deploy must not
+# stick in the browser as a year-long 404.
+_APP_ASSETS_PREFIX = "/static/app/assets/"
+_APP_SERVICE_WORKER = "/static/app/sw.js"
+_CACHEABLE_STATUSES = frozenset({200, 304})
+
+
 async def _security_headers(request: Request, call_next):
     response = await call_next(request)
     for name, value in _SECURITY_HEADERS.items():
         response.headers.setdefault(name, value)
 
     content_type = response.headers.get("content-type", "").lower()
+    path = request.url.path
+    is_file = response.status_code in _CACHEABLE_STATUSES
+
+    if is_file and path.startswith(_APP_ASSETS_PREFIX):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+
+    # Served from /static/app/ but controls the whole site, so it has to say so;
+    # no-cache so a new worker is picked up on the next visit.
+    elif is_file and path == _APP_SERVICE_WORKER:
+        response.headers["Service-Worker-Allowed"] = "/"
+        response.headers["Cache-Control"] = "no-cache"
 
     # Disable browser caching for HTML documents
-    if "text/html" in content_type:
+    elif "text/html" in content_type:
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
 
     # For JS/CSS: no-cache forces the browser to revalidate via ETag/Last-Modified

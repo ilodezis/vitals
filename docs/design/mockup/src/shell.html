@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1B1820">
+<title>Vitals · рефакторинг интерфейса</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geologica:wght@300..700&family=Golos+Text:wght@400..700&display=swap">
+<style>
+/*CSS*/
+</style>
+</head>
+<body>
+<div class="viewer">
+  <header class="vbar">
+    <div class="vbar-title">Vitals<span>рефакторинг интерфейса · макет</span></div>
+    <div class="vseg" id="mode">
+      <button data-mode="phone">Телефон</button>
+      <button data-mode="desk">Компьютер</button>
+      <button data-mode="both" class="on">Оба</button>
+    </div>
+    <div class="vjump" id="jump">
+      <button data-j="today">Сегодня</button>
+      <button data-j="weight">Вес</button>
+      <button data-j="recovery">Восстановление</button>
+      <button data-j="glp1">GLP-1</button>
+      <button data-j="labs">Анализы</button>
+      <button data-j="more">Ещё</button>
+      <button data-j="log">Запись</button>
+    </div>
+    <div class="vbar-spacer"></div>
+    <button class="vbtn" id="replay">Повторить вход</button>
+    <button class="vbtn" id="notes-btn">Что изменилось</button>
+  </header>
+
+  <main class="vstage" id="stage">
+    <div class="vslot" id="slot-desk">
+      <div class="vscale">
+        <div class="win">
+          <div class="win-bar"><i></i><i></i><i></i><div class="win-url" id="url">vitals.local/today</div></div>
+          <div class="win-body"><div class="app-host frame-desk" id="host-desk"></div></div>
+        </div>
+      </div>
+      <div class="vcaption">Компьютер · 1440 × 900</div>
+    </div>
+    <div class="vslot" id="slot-phone">
+      <div class="vscale">
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="phone-status"><span>8:14</span><svg viewBox="0 0 64 12" fill="currentColor"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/><path d="M29 3.2a9 9 0 0 1 12 0l-1.4 1.5a7 7 0 0 0-9.2 0zM31.7 6.1a5 5 0 0 1 6.6 0L35 9.6z"/><rect x="45.5" y=".5" width="16" height="11" rx="3" fill="none" stroke="currentColor" opacity=".45"/><rect x="47.5" y="2.5" width="10" height="7" rx="1.5"/><rect x="62.5" y="4" width="1.5" height="4" rx=".75" opacity=".45"/></svg></div>
+            <div class="phone-island"></div>
+            <div class="app-host frame-phone" id="host-phone"></div>
+            <div class="phone-home"></div>
+          </div>
+        </div>
+      </div>
+      <div class="vcaption">Телефон · 402 × 874</div>
+    </div>
+
+    <aside class="vnotes" id="notes">
+      <h3>Что изменилось</h3>
+      <p class="lead">Направление то же: тёплый plum-charcoal, один янтарь, редакционный masthead. Пересобрана система под ним.</p>
+      <ol>
+        <li><b>Шрифты, которые умеют по-русски</b>Bricolage Grotesque не содержит кириллицы, и в русском интерфейсе все заголовки падали в Inter. Теперь заголовки и цифры набраны Geologica, текст — Golos Text. Оба кириллические и с табличными цифрами. Крупные числа light, заголовки bold.</li>
+        <li><b>Меньше коробок</b>Страница — одна плоскость, группы разделены линиями и воздухом. Панель остаётся только у графиков и интерактивных вещей, карточек в карточках больше нет. Левую полоску у заголовка карточки убрал.</li>
+        <li><b>Никаких пилюль в обводке</b>У контролов одна грамматика. Раздел, где ты сейчас, — текст с янтарным подчёркиванием. Выбор на странице (период, фильтр, место инъекции) — текст, выбранный пункт становится светлой капсулой. Источник данных показан цветной точкой с текстом, без плашки. Вторичные кнопки — текст с иконкой. Цикл GLP-1 — линия дней вместо восьми коробок, степпер — число между двумя круглыми кнопками.</li>
+        <li><b>Свои иконки</b>Нарисованы одним семейством: штрих 1,6, тихая заливка формы, у активной иконки заливка плотнее. Предметы из этого продукта: восход над горизонтом вместо солнышка, напольные весы с табло, шприц-ручка, пробирка с пробой, капля крови для маркеров, стетоскоп для врача.</li>
+        <li><b>Янтарь означает «сейчас»</b>Им отмечены активная навигация, одна главная кнопка и точка «сегодня» на каждом графике. Данные янтарём не красятся: раньше «0 ккал» горел оранжевым.</li>
+        <li><b>Цифры показаны формой</b>Неделя к неделе — гантели на коридоре твоей нормы вместо фразы «87 → 86.2 week over week». Анализы — шкала референса вместо «30.0–100.0». 14 дней — тепловая таблица отклонений вместо простыни. Ночь — гипнограмма.</li>
+        <li><b>Запись в одном месте</b>Центральная «+» на телефоне и «Записать · N» в рейле открывают одну шторку: вес, еда, доза, замер. Конфликт-движок встроен прямо в неё: введи вес на 1,5 кг дальше утреннего — появится block и «Сохранить всё равно».</li>
+        <li><b>Навигация как в нативном приложении</b>Push/pop экранов, свайп назад от левого края, большой заголовок при скролле сворачивается в бар, вкладка помнит, где ты был. На десктопе активный пункт рейла переезжает плашкой.</li>
+        <li><b>Движение со смыслом</b>Вход «Сегодня»: фраза проявляется по словам, цифры докручиваются одометром. Цифра веса перелетает с «Сегодня» в экран «Вес». Линия тренда прорисовывается, график можно вести пальцем. При reduced motion всё становится мгновенным.</li>
+        <li><b>Приоритет источников виден</b>Строка Garmin, перекрытая ручной записью, остаётся в истории приглушённой и объясняет почему — правило видно, а не спрятано в сервисе.</li>
+        <li><b>Меньше шума в подписях</b>Нет uppercase-лейблов и «SECTION 01 · HEALTH». Даты относительные («Вчера», «вс, 27 сен»), десятичная запятая, узкий пробел в тысячах.</li>
+      </ol>
+    </aside>
+  </main>
+</div>
+
+<script>
+/*JS*/
+</script>
+</body>
+</html>

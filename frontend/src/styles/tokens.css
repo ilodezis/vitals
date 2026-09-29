@@ -1,0 +1,64 @@
+/* Design tokens — the :root of the redesign mockup (docs/design/mockup/src/styles.css),
+   verbatim except for the self-hosted font family names. Change them there first. */
+
+:root {
+  /* Surfaces — the page is one plane; panels are a half-step up, not a slab */
+  --bg: #1B1820;
+  --bg-deep: #141217;
+  --surface: #221E27;
+  --surface-2: #2A2530;
+  --surface-3: #342E3B;
+  --line: #2F2A36;
+  --line-2: #433C4D;
+
+  /* Text */
+  --fg: #F4F0F6;
+  --fg-2: #CEC6D7;
+  --muted: #A39AB0;
+  --faint: #857B93;
+
+  /* The one accent: "now / you are here / the one action" */
+  --accent: #F5A623;
+  --accent-2: #FFC25A;
+  --accent-ink: #2A1B03;
+  --accent-soft: rgba(245, 166, 35, .12);
+  --accent-line: rgba(245, 166, 35, .36);
+
+  /* Semantic — base / soft 13% / line 30% */
+  --good: #6FC58E; --good-soft: rgba(111, 197, 142, .13); --good-line: rgba(111, 197, 142, .30);
+  --bad: #EE7A60; --bad-strong: #FF8469; --bad-soft: rgba(238, 122, 96, .13); --bad-line: rgba(238, 122, 96, .30);
+  --warn: #F0B24A; --warn-soft: rgba(240, 178, 74, .13); --warn-line: rgba(240, 178, 74, .30);
+  --cool: #6FB6C9; --cool-soft: rgba(111, 182, 201, .13); --cool-line: rgba(111, 182, 201, .30);
+  --violet: #BCA4DC; --violet-soft: rgba(188, 164, 220, .13); --violet-line: rgba(188, 164, 220, .30);
+  --deep: #8E78D0;
+
+  /* Type — two families, both carry Cyrillic and tabular figures. Self-hosted
+     (@fontsource-variable); display falls back to the text face, never straight
+     to a generic. */
+  --f-display: 'Geologica Variable', 'Golos Text Variable', system-ui, sans-serif;
+  --f-text: 'Golos Text Variable', 'Geologica Variable', system-ui, sans-serif;
+
+  /* One ladder */
+  --t-eyebrow: 11px;
+  --t-micro: 12px;
+  --t-label: 13px;
+  --t-body: 14px;
+  --t-ui: 15px;
+  --t-heading: 18px;
+  --t-lead: 22px;
+  --t-title: 28px;
+  --t-display: 38px;
+  --t-hero: 56px;
+
+  /* Space & shape */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px; --s10: 40px; --s12: 48px;
+  --r-xs: 8px; --r-sm: 10px; --r: 14px; --r-lg: 20px; --r-pill: 999px;
+
+  /* Motion — one vocabulary */
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-io: cubic-bezier(.65, 0, .35, 1);
+  --ease-sheet: cubic-bezier(.32, .72, 0, 1);
+  --d1: 120ms; --d2: 200ms; --d3: 320ms; --d4: 480ms;
+
+  --shadow-lg: 0 30px 80px -30px rgba(0, 0, 0, .75), 0 8px 24px -12px rgba(0, 0, 0, .5);
+}
