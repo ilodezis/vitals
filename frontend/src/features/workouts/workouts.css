@@ -1,0 +1,12 @@
+/* Workouts styling */
+.r-wk { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.ex { margin-bottom: 12px; }
+.ex-t { font-weight: 600; font-size: var(--t-label); color: var(--fg); background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
+.ex-t:hover { color: var(--violet); }
+.sets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.set { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: var(--r-xs); background: var(--surface); font-size: var(--t-micro); color: var(--fg-2); }
+.set i { font-style: normal; font-weight: 600; color: var(--muted); }
+.pick { width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--line); padding: 8px 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.pick:hover, .pick.sel { color: var(--violet); }
+.tech { margin-top: 12px; padding: 10px 14px; border-radius: var(--r); background: var(--surface); font-size: var(--t-label); color: var(--fg-2); }
+.tech b { display: block; font-size: var(--t-micro); color: var(--muted); margin-bottom: 4px; }

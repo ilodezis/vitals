@@ -1,0 +1,14 @@
+/* Nutrition styling */
+.dnav { display: flex; align-items: center; gap: 8px; }
+.dnav .dl { font-family: var(--f-display); font-size: var(--t-ui); font-weight: 500; }
+.intake { display: grid; gap: 16px; padding: 16px; border-radius: var(--r); background: var(--surface); }
+.mrows { display: grid; gap: 12px; }
+.mrow-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.mrow-h .t { font-weight: 600; font-size: var(--t-label); }
+.r-meal { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
+@container app (min-width: 768px) {
+  .r-meal { grid-template-columns: 52px minmax(0, 1fr) 88px 44px 44px 44px 72px; }
+}
+.r-meal .tm { color: var(--muted); }
+.r-day { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--line); padding: 8px 0; cursor: pointer; color: inherit; }
+.r-day:hover, .r-day.sel { color: var(--violet); }

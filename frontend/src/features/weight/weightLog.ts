@@ -33,6 +33,7 @@ interface Context {
 const refetchAfterWeight = (queryClient: QueryClient) =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: todayQuery.queryKey }),
+    queryClient.invalidateQueries({ queryKey: ['weight'] }),
     queryClient.invalidateQueries({ queryKey: ['session'] }),
   ])
 

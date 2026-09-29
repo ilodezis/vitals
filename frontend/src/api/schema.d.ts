@@ -4,6 +4,192 @@
  */
 
 export interface paths {
+    "/api/v1/nutrition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Nutrition
+         * @description The Nutrition screen: daily KBJU totals against goals, macro split, meals list,
+         *     and 30-day mini bars.
+         */
+        get: operations["read_nutrition"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nutrition/meals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Meal
+         * @description Log a meal.
+         */
+        post: operations["create_meal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/nutrition/meals/{meal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Meal
+         * @description Delete a meal entry.
+         */
+        delete: operations["delete_meal"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Meal
+         * @description Edit a logged meal.
+         */
+        patch: operations["update_meal"];
+        trace?: never;
+    };
+    "/api/v1/recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Recovery Overview
+         * @description The Recovery screen: sleep score, HRV, resting HR, body battery, night preview,
+         *     and 14-day recovery grid.
+         */
+        get: operations["read_recovery_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recovery/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Activities List
+         * @description List recorded sport activities, newest first.
+         */
+        get: operations["read_activities_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recovery/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Garmin Data
+         * @description Ingest a Health Auto Export JSON dump.
+         */
+        post: operations["import_garmin_data"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recovery/nights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Nights List
+         * @description List recorded sleep sessions, newest first.
+         */
+        get: operations["read_nights_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recovery/sleep/{on_date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Sleep Night Detail
+         * @description One night in detail: hypnogram, minute-level curves, left/right night navigation.
+         */
+        get: operations["read_sleep_night_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recovery/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Garmin Now
+         * @description Trigger an on-demand sync of Garmin metrics.
+         */
+        post: operations["sync_garmin_now"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/session": {
         parameters: {
             query?: never;
@@ -42,6 +228,107 @@ export interface paths {
         get: operations["read_today"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Weight Dashboard
+         * @description The Weight screen: latest weight, MA-7, week change, body fat, trend chart series,
+         *     history with superseded flags, pace and latest scan summary.
+         */
+        get: operations["read_weight_dashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weight/body-scans/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Body Scan
+         * @description Step 2: persist the owner-edited scan rows.
+         */
+        post: operations["confirm_body_scan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weight/body-scans/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Body Scan
+         * @description Step 1: vision extraction from a photo/PDF of a scan sheet.
+         */
+        post: operations["upload_body_scan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weight/body-scans/{scan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Body Scan
+         * @description Delete a body scan entry and its stored file.
+         */
+        delete: operations["delete_body_scan"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weight/garmin-export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trigger Garmin Weight Export
+         * @description Explicitly trigger Garmin weight export reconciliation.
+         */
+        post: operations["trigger_garmin_weight_export"];
         delete?: never;
         options?: never;
         head?: never;
@@ -94,10 +381,202 @@ export interface paths {
         patch: operations["update_weight_log"];
         trace?: never;
     };
+    "/api/v1/weight/measures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Weight Measures
+         * @description The Measurements desk: circumferences, Navy fat, scans, noise markers, photos.
+         */
+        get: operations["read_weight_measures"];
+        put?: never;
+        /**
+         * Create Body Measurement
+         * @description Log or update body circumference measurements.
+         */
+        post: operations["create_body_measurement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weight/measures/{measurement_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Body Measurement
+         * @description Delete a body measurement entry.
+         */
+        delete: operations["delete_body_measurement"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weight/noise-markers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Noise Marker
+         * @description Exclude a period from calculations to filter out noise.
+         */
+        post: operations["create_noise_marker"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weight/noise-markers/{marker_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Noise Marker
+         * @description Delete an excluded period marker.
+         */
+        delete: operations["delete_noise_marker"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weight/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Progress Photos
+         * @description Upload up to 5 daily progress photos.
+         */
+        post: operations["upload_progress_photos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weight/photos/{photo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Progress Photo
+         * @description Delete a progress photo.
+         */
+        delete: operations["delete_progress_photo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Workouts
+         * @description The Workouts screen: recent sessions expandable to sets, exercise catalog with progression.
+         */
+        get: operations["read_workouts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workouts/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Hevy Now
+         * @description Pull the latest workouts from Hevy.
+         */
+        post: operations["sync_hevy_now"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActivitiesListView */
+        ActivitiesListView: {
+            /** Activities */
+            activities: components["schemas"]["ActivityItem"][];
+            /** Total */
+            total: number;
+        };
+        /** ActivityItem */
+        ActivityItem: {
+            /** Activity Type */
+            activity_type: string;
+            /** Avg Hr */
+            avg_hr?: number | null;
+            /** Calories */
+            calories?: number | null;
+            /** Distance Meters */
+            distance_meters?: number | null;
+            /** Duration Seconds */
+            duration_seconds: number;
+            /** Id */
+            id: string;
+            /** Max Hr */
+            max_hr?: number | null;
+            /** Name */
+            name: string;
+            /** Start Time */
+            start_time: string;
+        };
         /** AttentionItem */
         AttentionItem: {
             /** Domain */
@@ -109,6 +588,191 @@ export interface components {
              * @enum {string}
              */
             severity: "note" | "info" | "warn" | "block";
+        };
+        /** BodyMeasurementCreate */
+        BodyMeasurementCreate: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Hips Cm */
+            hips_cm?: number | null;
+            /** Neck Cm */
+            neck_cm?: number | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Waist Cm */
+            waist_cm?: number | null;
+        };
+        /** BodyMeasurementItem */
+        BodyMeasurementItem: {
+            /** Body Fat Pct */
+            body_fat_pct?: number | null;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Hips Cm */
+            hips_cm?: number | null;
+            /** Id */
+            id: number;
+            /** Lbm Kg */
+            lbm_kg?: number | null;
+            /** Neck Cm */
+            neck_cm?: number | null;
+            /** Note */
+            note?: string | null;
+            /** Source */
+            source: string;
+            /** Source Label */
+            source_label: string;
+            /** Waist Cm */
+            waist_cm?: number | null;
+        };
+        /** BodyMeasurementRef */
+        BodyMeasurementRef: {
+            /** Body Fat Pct */
+            body_fat_pct?: number | null;
+            /** Id */
+            id: number;
+            /** Lbm Kg */
+            lbm_kg?: number | null;
+        };
+        /** BodyScanConfirm */
+        BodyScanConfirm: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Device */
+            device?: string | null;
+            /** File Key */
+            file_key?: string | null;
+            /**
+             * Metrics
+             * @default []
+             */
+            metrics: components["schemas"]["BodyScanMetricItem"][];
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Raw Payload Id */
+            raw_payload_id?: number | null;
+        };
+        /** BodyScanConfirmResponse */
+        BodyScanConfirmResponse: {
+            /** Ok */
+            ok: boolean;
+            /** Scan Id */
+            scan_id?: number | null;
+        };
+        /** BodyScanDetailItem */
+        BodyScanDetailItem: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Device */
+            device?: string | null;
+            /** File Key */
+            file_key?: string | null;
+            /** Id */
+            id: number;
+            /**
+             * Metrics
+             * @default []
+             */
+            metrics: components["schemas"]["BodyScanMetricItem"][];
+            /** Metrics Count */
+            metrics_count: number;
+            /** Note */
+            note?: string | null;
+        };
+        /** BodyScanMetricItem */
+        BodyScanMetricItem: {
+            /** Category */
+            category?: string | null;
+            /** Id */
+            id?: number | null;
+            /** Label */
+            label: string;
+            /** Metric Key */
+            metric_key?: string | null;
+            /** Ref High */
+            ref_high?: number | null;
+            /** Ref Low */
+            ref_low?: number | null;
+            /** Segment */
+            segment?: string | null;
+            /** Unit */
+            unit?: string | null;
+            /** Value */
+            value: number;
+        };
+        /** BodyScanPreview */
+        BodyScanPreview: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Device */
+            device?: string | null;
+            /** File Key */
+            file_key: string;
+            /**
+             * Metrics
+             * @default []
+             */
+            metrics: components["schemas"]["BodyScanMetricItem"][];
+            /** Raw Payload Id */
+            raw_payload_id: number;
+        };
+        /** BodyScanUploadResponse */
+        BodyScanUploadResponse: {
+            /** Message */
+            message?: string | null;
+            /** Ok */
+            ok: boolean;
+            /** Reason */
+            reason?: string | null;
+            scan?: components["schemas"]["BodyScanPreview"] | null;
+        };
+        /** Body_import_garmin_data */
+        Body_import_garmin_data: {
+            /** File */
+            file?: string | null;
+        };
+        /** Body_upload_body_scan */
+        Body_upload_body_scan: {
+            /** Date */
+            date?: string | null;
+            /** File */
+            file: string;
+        };
+        /** Body_upload_progress_photos */
+        Body_upload_progress_photos: {
+            /** Date */
+            date: string;
+            /** File */
+            file?: string | null;
+            /** Files */
+            files?: string[] | null;
+            /** Note */
+            note?: string | null;
         };
         /**
          * ConflictBody
@@ -132,6 +796,38 @@ export interface components {
             hi: number;
             /** Lo */
             lo: number;
+        };
+        /** DosePhase */
+        DosePhase: {
+            /**
+             * From Date
+             * Format: date
+             */
+            from_date: string;
+            /** Label */
+            label: string;
+            /** To Date */
+            to_date?: string | null;
+        };
+        /** ExerciseCatalogItem */
+        ExerciseCatalogItem: {
+            /** Exercise Template Id */
+            exercise_template_id: string;
+            /** Last Date */
+            last_date?: string | null;
+            /** Latest Notes */
+            latest_notes?: string | null;
+            /** Progression Verdict */
+            progression_verdict?: string | null;
+            /** Sessions Count */
+            sessions_count: number;
+            /** Title */
+            title: string;
+            /**
+             * Working Weight Series
+             * @default []
+             */
+            working_weight_series: components["schemas"]["WorkingWeightPoint"][];
         };
         /**
          * FeedRow
@@ -158,6 +854,41 @@ export interface components {
             time: string;
             /** Value */
             value: number | null;
+        };
+        /** GarminExportResponse */
+        GarminExportResponse: {
+            /** Last Error */
+            last_error?: string | null;
+            /** Next Attempt At */
+            next_attempt_at?: string | null;
+            /** Ok */
+            ok: boolean;
+            /** Status */
+            status: string;
+        };
+        /** GarminImportResponse */
+        GarminImportResponse: {
+            /**
+             * Imported Dates
+             * @default []
+             */
+            imported_dates: string[];
+            /** Message */
+            message?: string | null;
+            /** Ok */
+            ok: boolean;
+        };
+        /** GarminSyncResponse */
+        GarminSyncResponse: {
+            /** Error */
+            error?: string | null;
+            /** Ok */
+            ok: boolean;
+            /**
+             * Synced Days
+             * @default 0
+             */
+            synced_days: number;
         };
         /**
          * Goal
@@ -194,6 +925,84 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HevyExerciseItem */
+        HevyExerciseItem: {
+            /** Exercise Index */
+            exercise_index: number;
+            /** Exercise Template Id */
+            exercise_template_id?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Sets
+             * @default []
+             */
+            sets: components["schemas"]["HevySetItem"][];
+            /** Title */
+            title: string;
+        };
+        /** HevySetItem */
+        HevySetItem: {
+            /** Reps */
+            reps?: number | null;
+            /** Rpe */
+            rpe?: number | null;
+            /** Set Index */
+            set_index: number;
+            /** Set Type */
+            set_type: string;
+            /** Weight Kg */
+            weight_kg?: number | null;
+        };
+        /** HevySyncResponse */
+        HevySyncResponse: {
+            /** Error */
+            error?: string | null;
+            /** Ok */
+            ok: boolean;
+            /**
+             * Synced
+             * @default 0
+             */
+            synced: number;
+        };
+        /** HevyWorkoutItem */
+        HevyWorkoutItem: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Duration Min */
+            duration_min?: number | null;
+            /**
+             * Exercises
+             * @default []
+             */
+            exercises: components["schemas"]["HevyExerciseItem"][];
+            /** Id */
+            id: string;
+            /** Program */
+            program?: string | null;
+            /** Start Time */
+            start_time?: string | null;
+            /** Title */
+            title: string;
+            /** Volume Kg */
+            volume_kg?: number | null;
+            /**
+             * Working Sets
+             * @default 0
+             */
+            working_sets: number;
+        };
+        /** IntradaySeriesPoint */
+        IntradaySeriesPoint: {
+            /** Time */
+            time: string;
+            /** Value */
+            value: number;
+        };
         /**
          * InvalidBody
          * @description 400 — a service refused the values (its ``ValueError`` message).
@@ -207,6 +1016,30 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** LastScanRow */
+        LastScanRow: {
+            /** Label */
+            label: string;
+            /** Unit */
+            unit?: string | null;
+            /** Value */
+            value: number;
+        };
+        /** LastScanSummary */
+        LastScanSummary: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Device */
+            device?: string | null;
+            /**
+             * Rows
+             * @default []
+             */
+            rows: components["schemas"]["LastScanRow"][];
+        };
         /** LatestWeight */
         LatestWeight: {
             /**
@@ -216,6 +1049,106 @@ export interface components {
             date: string;
             /** Kg */
             kg: number;
+        };
+        /** MacroSplit */
+        MacroSplit: {
+            /** Carbs Pct */
+            carbs_pct: number;
+            /** Fat Pct */
+            fat_pct: number;
+            /** Protein Pct */
+            protein_pct: number;
+        };
+        /** MacroTotals */
+        MacroTotals: {
+            /** Calories */
+            calories: number;
+            /** Carbs G */
+            carbs_g: number;
+            /** Fat G */
+            fat_g: number;
+            /** Protein G */
+            protein_g: number;
+        };
+        /** MealCreate */
+        MealCreate: {
+            /** Calories */
+            calories?: number | null;
+            /** Carbs G */
+            carbs_g?: number | null;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Fat G */
+            fat_g?: number | null;
+            /** Name */
+            name: string;
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Protein G */
+            protein_g?: number | null;
+            /** Time */
+            time?: string | null;
+        };
+        /** MealItem */
+        MealItem: {
+            /** Calories */
+            calories?: number | null;
+            /** Carbs G */
+            carbs_g?: number | null;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Fat G */
+            fat_g?: number | null;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Note */
+            note?: string | null;
+            /** Protein G */
+            protein_g?: number | null;
+            /** Time */
+            time?: string | null;
+        };
+        /** MealPatch */
+        MealPatch: {
+            /** Calories */
+            calories?: number | null;
+            /** Carbs G */
+            carbs_g?: number | null;
+            /** Date */
+            date?: string | null;
+            /** Fat G */
+            fat_g?: number | null;
+            /** Name */
+            name?: string | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Protein G */
+            protein_g?: number | null;
+            /** Time */
+            time?: string | null;
+        };
+        /** MealRef */
+        MealRef: {
+            /** Id */
+            id: number;
         };
         /** Nav */
         Nav: {
@@ -259,6 +1192,72 @@ export interface components {
             /** Routes */
             routes: string[];
         };
+        /** NightListItem */
+        NightListItem: {
+            /** Awake Seconds */
+            awake_seconds?: number | null;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Deep Seconds */
+            deep_seconds?: number | null;
+            /** Duration Seconds */
+            duration_seconds?: number | null;
+            /** Hrv */
+            hrv?: number | null;
+            /** Light Seconds */
+            light_seconds?: number | null;
+            /** Rem Seconds */
+            rem_seconds?: number | null;
+            /** Rhr */
+            rhr?: number | null;
+            /** Score */
+            score?: number | null;
+        };
+        /** NightsListView */
+        NightsListView: {
+            /** Nights */
+            nights: components["schemas"]["NightListItem"][];
+            /** Total */
+            total: number;
+        };
+        /** NoiseMarkerCreate */
+        NoiseMarkerCreate: {
+            /** Direction */
+            direction?: string | null;
+            /** End Date */
+            end_date?: string | null;
+            /** Reason */
+            reason: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+        };
+        /** NoiseMarkerItem */
+        NoiseMarkerItem: {
+            /** Direction */
+            direction?: string | null;
+            /** End Date */
+            end_date?: string | null;
+            /** Id */
+            id: number;
+            /** Reason */
+            reason: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+        };
+        /** NoiseMarkerRef */
+        NoiseMarkerRef: {
+            /** Id */
+            id: number;
+        };
         /**
          * NotFoundBody
          * @description 404 — the module behind the endpoint is switched off, or nothing is there.
@@ -269,6 +1268,91 @@ export interface components {
              * @enum {string}
              */
             error: "module_disabled" | "not_found";
+        };
+        /** NutritionDayMini */
+        NutritionDayMini: {
+            /** Calories */
+            calories: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Meal Count */
+            meal_count: number;
+            /** Protein G */
+            protein_g: number;
+        };
+        /** NutritionGoals */
+        NutritionGoals: {
+            /** Calories Max */
+            calories_max: number;
+            /** Calories Min */
+            calories_min: number;
+            /** Carbs Target G */
+            carbs_target_g: number;
+            /** Fat Target G */
+            fat_target_g: number;
+            /** Protein Target G */
+            protein_target_g: number;
+        };
+        /** NutritionView */
+        NutritionView: {
+            /** Calories Pct */
+            calories_pct: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            goals: components["schemas"]["NutritionGoals"];
+            /** Is Today */
+            is_today: boolean;
+            macro_split: components["schemas"]["MacroSplit"];
+            /**
+             * Meals
+             * @default []
+             */
+            meals: components["schemas"]["MealItem"][];
+            /**
+             * Next Date
+             * Format: date
+             */
+            next_date: string;
+            /**
+             * Prev Date
+             * Format: date
+             */
+            prev_date: string;
+            /** Protein Pct */
+            protein_pct: number;
+            /**
+             * Recent Days
+             * @default []
+             */
+            recent_days: components["schemas"]["NutritionDayMini"][];
+            /**
+             * Today Date
+             * Format: date
+             */
+            today_date: string;
+            totals: components["schemas"]["MacroTotals"];
+        };
+        /** ProgressPhotoItem */
+        ProgressPhotoItem: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** File Key */
+            file_key: string;
+            /** Id */
+            id: number;
+            /** Note */
+            note?: string | null;
+            /** Url */
+            url: string;
         };
         /**
          * RailStat
@@ -303,6 +1387,139 @@ export interface components {
             /** Weight Kg */
             weight_kg: number | null;
         };
+        /** RecoveryBar */
+        RecoveryBar: {
+            /** Hi */
+            hi: number;
+            /** Key */
+            key: string;
+            /** Lo */
+            lo: number;
+            /** Max */
+            max: number;
+            /** Min */
+            min: number;
+            /**
+             * Tone
+             * @default
+             */
+            tone: string;
+            /** Value */
+            value?: number | null;
+        };
+        /** RecoveryDayItem */
+        RecoveryDayItem: {
+            /** Bb */
+            bb?: number | null;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Hrv */
+            hrv?: number | null;
+            /** Rhr */
+            rhr?: number | null;
+            /** Sleep */
+            sleep?: number | null;
+            /** Steps */
+            steps?: number | null;
+            /** Stress */
+            stress?: number | null;
+        };
+        /** RecoveryHeadline */
+        RecoveryHeadline: {
+            /** Body Battery From */
+            body_battery_from?: number | null;
+            /** Body Battery To */
+            body_battery_to?: number | null;
+            /** Hrv */
+            hrv?: number | null;
+            /**
+             * Hrv Nights Below
+             * @default 0
+             */
+            hrv_nights_below: number;
+            /** Rhr */
+            rhr?: number | null;
+            /**
+             * Rhr Note
+             * @default
+             */
+            rhr_note: string;
+            /** Sleep Minutes */
+            sleep_minutes?: number | null;
+            /** Sleep Score */
+            sleep_score?: number | null;
+        };
+        /** RecoveryNightPreview */
+        RecoveryNightPreview: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** End */
+            end: string;
+            /**
+             * Stage Minutes
+             * @default []
+             */
+            stage_minutes: number[];
+            /**
+             * Stages
+             * @default []
+             */
+            stages: number[];
+            /** Start */
+            start: string;
+        };
+        /** RecoveryNorm */
+        RecoveryNorm: {
+            /** Better */
+            better: number;
+            /** Hi */
+            hi: number;
+            /** Lo */
+            lo: number;
+            /** Unit */
+            unit: string;
+        };
+        /** RecoveryView */
+        RecoveryView: {
+            /**
+             * Bars
+             * @default []
+             */
+            bars: components["schemas"]["RecoveryBar"][];
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Days
+             * @default []
+             */
+            days: components["schemas"]["RecoveryDayItem"][];
+            headline: components["schemas"]["RecoveryHeadline"];
+            /** Is Configured */
+            is_configured: boolean;
+            /** Is Today */
+            is_today: boolean;
+            /** Last Sync */
+            last_sync?: string | null;
+            night?: components["schemas"]["RecoveryNightPreview"] | null;
+            /** Norms */
+            norms: {
+                [key: string]: components["schemas"]["RecoveryNorm"];
+            };
+            /**
+             * Today Date
+             * Format: date
+             */
+            today_date: string;
+        };
         /** SessionView */
         SessionView: {
             /** Enabled Modules */
@@ -319,6 +1536,94 @@ export interface components {
             rail: components["schemas"]["RailStat"][];
             /** Username */
             username: string;
+        };
+        /** SleepNightView */
+        SleepNightView: {
+            /** Awake Count */
+            awake_count?: number | null;
+            /** Awake Seconds */
+            awake_seconds?: number | null;
+            /** Bb Change */
+            bb_change?: number | null;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Deep Seconds */
+            deep_seconds?: number | null;
+            /** Duration Seconds */
+            duration_seconds?: number | null;
+            /** End Time */
+            end_time?: string | null;
+            /**
+             * Heart Rate
+             * @default []
+             */
+            heart_rate: components["schemas"]["IntradaySeriesPoint"][];
+            /**
+             * Hrv
+             * @default []
+             */
+            hrv: components["schemas"]["IntradaySeriesPoint"][];
+            /** Is Today */
+            is_today: boolean;
+            /** Light Seconds */
+            light_seconds?: number | null;
+            /**
+             * Movement
+             * @default []
+             */
+            movement: components["schemas"]["IntradaySeriesPoint"][];
+            /** Next Date */
+            next_date?: string | null;
+            /** Prev Date */
+            prev_date?: string | null;
+            /** Rem Seconds */
+            rem_seconds?: number | null;
+            /**
+             * Respiration
+             * @default []
+             */
+            respiration: components["schemas"]["IntradaySeriesPoint"][];
+            /** Restless Moments */
+            restless_moments?: number | null;
+            /** Rhr */
+            rhr?: number | null;
+            /** Score */
+            score?: number | null;
+            /** Spo2 Min */
+            spo2_min?: number | null;
+            /**
+             * Stages Minutes
+             * @default {}
+             */
+            stages_minutes: {
+                [key: string]: number;
+            };
+            /**
+             * Stages Series
+             * @default []
+             */
+            stages_series: components["schemas"]["SleepStageSegment"][];
+            /** Start Time */
+            start_time?: string | null;
+            /**
+             * Today Date
+             * Format: date
+             */
+            today_date: string;
+        };
+        /** SleepStageSegment */
+        SleepStageSegment: {
+            /** Duration Min */
+            duration_min: number;
+            /** End Min */
+            end_min: number;
+            /** Stage */
+            stage: string;
+            /** Start Min */
+            start_min: number;
         };
         /**
          * SyncStamp
@@ -465,6 +1770,32 @@ export interface components {
              */
             tone: "" | "good" | "bad";
         };
+        /** WeightHistoryItem */
+        WeightHistoryItem: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Id */
+            id: number;
+            /** Note */
+            note?: string | null;
+            /** Source */
+            source: string;
+            /**
+             * Superseded
+             * @default false
+             */
+            superseded: boolean;
+            /**
+             * Time
+             * @default
+             */
+            time: string;
+            /** Weight Kg */
+            weight_kg: number;
+        };
         /** WeightLogCreate */
         WeightLogCreate: {
             /**
@@ -516,6 +1847,178 @@ export interface components {
             /** Id */
             id: number;
         };
+        /** WeightMeasuresView */
+        WeightMeasuresView: {
+            /** Average7 */
+            average7?: number | null;
+            /**
+             * Body Comp Enabled
+             * @default false
+             */
+            body_comp_enabled: boolean;
+            /** Body Fat Pct */
+            body_fat_pct?: number | null;
+            /** Body Fat Source */
+            body_fat_source?: string | null;
+            /**
+             * Headline Metrics
+             * @default []
+             */
+            headline_metrics: components["schemas"]["LastScanRow"][];
+            /** Height Cm */
+            height_cm: number;
+            /** Latest Kg */
+            latest_kg?: number | null;
+            /**
+             * Llm Configured
+             * @default false
+             */
+            llm_configured: boolean;
+            /**
+             * Measurements
+             * @default []
+             */
+            measurements: components["schemas"]["BodyMeasurementItem"][];
+            /**
+             * Noise Markers
+             * @default []
+             */
+            noise_markers: components["schemas"]["NoiseMarkerItem"][];
+            /**
+             * Photos
+             * @default []
+             */
+            photos: components["schemas"]["ProgressPhotoItem"][];
+            /**
+             * Scans
+             * @default []
+             */
+            scans: components["schemas"]["BodyScanDetailItem"][];
+            /** Sex */
+            sex: string;
+            /** Week Delta Kg */
+            week_delta_kg?: number | null;
+        };
+        /** WeightPace */
+        WeightPace: {
+            dose?: components["schemas"]["WeightPaceDose"] | null;
+            goal?: components["schemas"]["WeightPaceGoal"] | null;
+            /** Per Week Kg */
+            per_week_kg?: number | null;
+        };
+        /** WeightPaceDose */
+        WeightPaceDose: {
+            /** Days */
+            days: number;
+            /** Delta Kg */
+            delta_kg: number;
+            /** Label */
+            label: string;
+            /**
+             * Since Date
+             * Format: date
+             */
+            since_date: string;
+        };
+        /** WeightPaceGoal */
+        WeightPaceGoal: {
+            /** Target Kg */
+            target_kg: number;
+            /** Weeks */
+            weeks?: number | null;
+        };
+        /** WeightPoint */
+        WeightPoint: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Kg */
+            kg: number;
+        };
+        /** WeightView */
+        WeightView: {
+            /** Average7 */
+            average7?: number | null;
+            /** Body Fat Pct */
+            body_fat_pct?: number | null;
+            /** Body Fat Source */
+            body_fat_source?: string | null;
+            /**
+             * Dose Phases
+             * @default []
+             */
+            dose_phases: components["schemas"]["DosePhase"][];
+            /**
+             * Drug
+             * @default GLP-1
+             */
+            drug: string;
+            /**
+             * History
+             * @default []
+             */
+            history: components["schemas"]["WeightHistoryItem"][];
+            last_scan?: components["schemas"]["LastScanSummary"] | null;
+            /** Latest Date */
+            latest_date?: string | null;
+            /** Latest Kg */
+            latest_kg?: number | null;
+            pace: components["schemas"]["WeightPace"];
+            /**
+             * Trend
+             * @default []
+             */
+            trend: components["schemas"]["WeightPoint"][];
+            /** Week Delta Kg */
+            week_delta_kg?: number | null;
+            /**
+             * Weighings
+             * @default []
+             */
+            weighings: components["schemas"]["WeightPoint"][];
+        };
+        /** WorkingWeightPoint */
+        WorkingWeightPoint: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Sets
+             * @default 0
+             */
+            sets: number;
+            /** Top Reps */
+            top_reps?: number | null;
+            /** Weight Kg */
+            weight_kg: number;
+        };
+        /** WorkoutsView */
+        WorkoutsView: {
+            /**
+             * Catalog
+             * @default []
+             */
+            catalog: components["schemas"]["ExerciseCatalogItem"][];
+            /** Exercise Count */
+            exercise_count: number;
+            /** Is Configured */
+            is_configured: boolean;
+            /** Last Sync */
+            last_sync?: string | null;
+            /** Last Workout Date */
+            last_workout_date?: string | null;
+            /** Workout Count */
+            workout_count: number;
+            /**
+             * Workouts
+             * @default []
+             */
+            workouts: components["schemas"]["HevyWorkoutItem"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -525,6 +2028,516 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    read_nutrition: {
+        parameters: {
+            query?: {
+                date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NutritionView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_meal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MealCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MealRef"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_meal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_meal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MealPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MealRef"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_recovery_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    read_activities_list: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivitiesListView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_garmin_data: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_garmin_data"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GarminImportResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_nights_list: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NightsListView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_sleep_night_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                on_date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SleepNightView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_garmin_now: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GarminSyncResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
     read_session: {
         parameters: {
             query?: never;
@@ -579,6 +2592,267 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TodayView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    read_weight_dashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeightView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    confirm_body_scan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BodyScanConfirm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodyScanConfirmResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_body_scan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_body_scan"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodyScanUploadResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_body_scan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trigger_garmin_weight_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GarminExportResponse"];
                 };
             };
             /** @description Unauthorized */
@@ -788,6 +3062,468 @@ export interface operations {
             };
         };
     };
+    read_weight_measures: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeightMeasuresView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    create_body_measurement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BodyMeasurementCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodyMeasurementRef"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_body_measurement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                measurement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_noise_marker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoiseMarkerCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoiseMarkerRef"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_noise_marker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                marker_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_progress_photos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_progress_photos"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressPhotoItem"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_progress_photo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                photo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_workouts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkoutsView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    sync_hevy_now: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HevySyncResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
 }
 
-// openapi.json sha256: 7e7ab3c5a0e8c9db6dd767e9bb60186487a41cb677b5a5b460ddda2ec5bb1a94
+// openapi.json sha256: 649c86d5f6523a5be612074005881f5ae960182eb1ec8a7444914445b95f0994

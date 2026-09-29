@@ -1,6 +1,104 @@
 {
   "components": {
     "schemas": {
+      "ActivitiesListView": {
+        "properties": {
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityItem"
+            },
+            "title": "Activities",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "activities",
+          "total"
+        ],
+        "title": "ActivitiesListView",
+        "type": "object"
+      },
+      "ActivityItem": {
+        "properties": {
+          "activity_type": {
+            "title": "Activity Type",
+            "type": "string"
+          },
+          "avg_hr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Hr"
+          },
+          "calories": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calories"
+          },
+          "distance_meters": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Meters"
+          },
+          "duration_seconds": {
+            "title": "Duration Seconds",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "max_hr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Hr"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "start_time": {
+            "title": "Start Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "activity_type",
+          "start_time",
+          "duration_seconds"
+        ],
+        "title": "ActivityItem",
+        "type": "object"
+      },
       "AttentionItem": {
         "properties": {
           "domain": {
@@ -35,6 +133,636 @@
           "domain"
         ],
         "title": "AttentionItem",
+        "type": "object"
+      },
+      "BodyMeasurementCreate": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "hips_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hips Cm"
+          },
+          "neck_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neck Cm"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "override": {
+            "default": false,
+            "title": "Override",
+            "type": "boolean"
+          },
+          "waist_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waist Cm"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "BodyMeasurementCreate",
+        "type": "object"
+      },
+      "BodyMeasurementItem": {
+        "properties": {
+          "body_fat_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Fat Pct"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "hips_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hips Cm"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "lbm_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lbm Kg"
+          },
+          "neck_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neck Cm"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
+          "waist_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waist Cm"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "source",
+          "source_label"
+        ],
+        "title": "BodyMeasurementItem",
+        "type": "object"
+      },
+      "BodyMeasurementRef": {
+        "properties": {
+          "body_fat_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Fat Pct"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "lbm_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lbm Kg"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "BodyMeasurementRef",
+        "type": "object"
+      },
+      "BodyScanConfirm": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device"
+          },
+          "file_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Key"
+          },
+          "metrics": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BodyScanMetricItem"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "override": {
+            "default": false,
+            "title": "Override",
+            "type": "boolean"
+          },
+          "raw_payload_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Payload Id"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "BodyScanConfirm",
+        "type": "object"
+      },
+      "BodyScanConfirmResponse": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "scan_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan Id"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "BodyScanConfirmResponse",
+        "type": "object"
+      },
+      "BodyScanDetailItem": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device"
+          },
+          "file_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Key"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "metrics": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BodyScanMetricItem"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "metrics_count": {
+            "title": "Metrics Count",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "metrics_count"
+        ],
+        "title": "BodyScanDetailItem",
+        "type": "object"
+      },
+      "BodyScanMetricItem": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "metric_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metric Key"
+          },
+          "ref_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref High"
+          },
+          "ref_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Low"
+          },
+          "segment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "BodyScanMetricItem",
+        "type": "object"
+      },
+      "BodyScanPreview": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device"
+          },
+          "file_key": {
+            "title": "File Key",
+            "type": "string"
+          },
+          "metrics": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BodyScanMetricItem"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "raw_payload_id": {
+            "title": "Raw Payload Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "file_key",
+          "raw_payload_id"
+        ],
+        "title": "BodyScanPreview",
+        "type": "object"
+      },
+      "BodyScanUploadResponse": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "scan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BodyScanPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "BodyScanUploadResponse",
+        "type": "object"
+      },
+      "Body_import_garmin_data": {
+        "properties": {
+          "file": {
+            "anyOf": [
+              {
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          }
+        },
+        "title": "Body_import_garmin_data",
+        "type": "object"
+      },
+      "Body_upload_body_scan": {
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_body_scan",
+        "type": "object"
+      },
+      "Body_upload_progress_photos": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "items": {
+                  "contentMediaType": "application/octet-stream",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Files"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "Body_upload_progress_photos",
         "type": "object"
       },
       "ConflictBody": {
@@ -77,6 +805,102 @@
           "hi"
         ],
         "title": "Corridor",
+        "type": "object"
+      },
+      "DosePhase": {
+        "properties": {
+          "from_date": {
+            "format": "date",
+            "title": "From Date",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "to_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Date"
+          }
+        },
+        "required": [
+          "from_date",
+          "label"
+        ],
+        "title": "DosePhase",
+        "type": "object"
+      },
+      "ExerciseCatalogItem": {
+        "properties": {
+          "exercise_template_id": {
+            "title": "Exercise Template Id",
+            "type": "string"
+          },
+          "last_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Date"
+          },
+          "latest_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Notes"
+          },
+          "progression_verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progression Verdict"
+          },
+          "sessions_count": {
+            "title": "Sessions Count",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "working_weight_series": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/WorkingWeightPoint"
+            },
+            "title": "Working Weight Series",
+            "type": "array"
+          }
+        },
+        "required": [
+          "exercise_template_id",
+          "title",
+          "sessions_count"
+        ],
+        "title": "ExerciseCatalogItem",
         "type": "object"
       },
       "FeedRow": {
@@ -136,6 +960,108 @@
           "value"
         ],
         "title": "FeedRow",
+        "type": "object"
+      },
+      "GarminExportResponse": {
+        "properties": {
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "status"
+        ],
+        "title": "GarminExportResponse",
+        "type": "object"
+      },
+      "GarminImportResponse": {
+        "properties": {
+          "imported_dates": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Imported Dates",
+            "type": "array"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "GarminImportResponse",
+        "type": "object"
+      },
+      "GarminSyncResponse": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "synced_days": {
+            "default": 0,
+            "title": "Synced Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "GarminSyncResponse",
         "type": "object"
       },
       "Goal": {
@@ -231,6 +1157,233 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HevyExerciseItem": {
+        "properties": {
+          "exercise_index": {
+            "title": "Exercise Index",
+            "type": "integer"
+          },
+          "exercise_template_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exercise Template Id"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "sets": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/HevySetItem"
+            },
+            "title": "Sets",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "exercise_index",
+          "title"
+        ],
+        "title": "HevyExerciseItem",
+        "type": "object"
+      },
+      "HevySetItem": {
+        "properties": {
+          "reps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reps"
+          },
+          "rpe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rpe"
+          },
+          "set_index": {
+            "title": "Set Index",
+            "type": "integer"
+          },
+          "set_type": {
+            "title": "Set Type",
+            "type": "string"
+          },
+          "weight_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Kg"
+          }
+        },
+        "required": [
+          "set_index",
+          "set_type"
+        ],
+        "title": "HevySetItem",
+        "type": "object"
+      },
+      "HevySyncResponse": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "synced": {
+            "default": 0,
+            "title": "Synced",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "HevySyncResponse",
+        "type": "object"
+      },
+      "HevyWorkoutItem": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "duration_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Min"
+          },
+          "exercises": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/HevyExerciseItem"
+            },
+            "title": "Exercises",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "program": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "volume_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume Kg"
+          },
+          "working_sets": {
+            "default": 0,
+            "title": "Working Sets",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "title"
+        ],
+        "title": "HevyWorkoutItem",
+        "type": "object"
+      },
+      "IntradaySeriesPoint": {
+        "properties": {
+          "time": {
+            "title": "Time",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "time",
+          "value"
+        ],
+        "title": "IntradaySeriesPoint",
+        "type": "object"
+      },
       "InvalidBody": {
         "description": "400 — a service refused the values (its ``ValueError`` message).",
         "properties": {
@@ -251,6 +1404,68 @@
         "title": "InvalidBody",
         "type": "object"
       },
+      "LastScanRow": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "LastScanRow",
+        "type": "object"
+      },
+      "LastScanSummary": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device"
+          },
+          "rows": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LastScanRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "LastScanSummary",
+        "type": "object"
+      },
       "LatestWeight": {
         "properties": {
           "date": {
@@ -268,6 +1483,350 @@
           "date"
         ],
         "title": "LatestWeight",
+        "type": "object"
+      },
+      "MacroSplit": {
+        "properties": {
+          "carbs_pct": {
+            "title": "Carbs Pct",
+            "type": "number"
+          },
+          "fat_pct": {
+            "title": "Fat Pct",
+            "type": "number"
+          },
+          "protein_pct": {
+            "title": "Protein Pct",
+            "type": "number"
+          }
+        },
+        "required": [
+          "protein_pct",
+          "fat_pct",
+          "carbs_pct"
+        ],
+        "title": "MacroSplit",
+        "type": "object"
+      },
+      "MacroTotals": {
+        "properties": {
+          "calories": {
+            "title": "Calories",
+            "type": "number"
+          },
+          "carbs_g": {
+            "title": "Carbs G",
+            "type": "number"
+          },
+          "fat_g": {
+            "title": "Fat G",
+            "type": "number"
+          },
+          "protein_g": {
+            "title": "Protein G",
+            "type": "number"
+          }
+        },
+        "required": [
+          "calories",
+          "protein_g",
+          "fat_g",
+          "carbs_g"
+        ],
+        "title": "MacroTotals",
+        "type": "object"
+      },
+      "MealCreate": {
+        "properties": {
+          "calories": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calories"
+          },
+          "carbs_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carbs G"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "fat_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fat G"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "override": {
+            "default": false,
+            "title": "Override",
+            "type": "boolean"
+          },
+          "protein_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protein G"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time"
+          }
+        },
+        "required": [
+          "date",
+          "name"
+        ],
+        "title": "MealCreate",
+        "type": "object"
+      },
+      "MealItem": {
+        "properties": {
+          "calories": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calories"
+          },
+          "carbs_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carbs G"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "fat_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fat G"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "protein_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protein G"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "name"
+        ],
+        "title": "MealItem",
+        "type": "object"
+      },
+      "MealPatch": {
+        "properties": {
+          "calories": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calories"
+          },
+          "carbs_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carbs G"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "fat_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fat G"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "override": {
+            "default": false,
+            "title": "Override",
+            "type": "boolean"
+          },
+          "protein_g": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protein G"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time"
+          }
+        },
+        "title": "MealPatch",
+        "type": "object"
+      },
+      "MealRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "MealRef",
         "type": "object"
       },
       "Nav": {
@@ -376,6 +1935,231 @@
         "title": "NavSlot",
         "type": "object"
       },
+      "NightListItem": {
+        "properties": {
+          "awake_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Awake Seconds"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "deep_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deep Seconds"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "hrv": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hrv"
+          },
+          "light_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Light Seconds"
+          },
+          "rem_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rem Seconds"
+          },
+          "rhr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rhr"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "NightListItem",
+        "type": "object"
+      },
+      "NightsListView": {
+        "properties": {
+          "nights": {
+            "items": {
+              "$ref": "#/components/schemas/NightListItem"
+            },
+            "title": "Nights",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "nights",
+          "total"
+        ],
+        "title": "NightsListView",
+        "type": "object"
+      },
+      "NoiseMarkerCreate": {
+        "properties": {
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_date",
+          "reason"
+        ],
+        "title": "NoiseMarkerCreate",
+        "type": "object"
+      },
+      "NoiseMarkerItem": {
+        "properties": {
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "start_date",
+          "reason"
+        ],
+        "title": "NoiseMarkerItem",
+        "type": "object"
+      },
+      "NoiseMarkerRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "NoiseMarkerRef",
+        "type": "object"
+      },
       "NotFoundBody": {
         "description": "404 — the module behind the endpoint is switched off, or nothing is there.",
         "properties": {
@@ -392,6 +2176,183 @@
           "error"
         ],
         "title": "NotFoundBody",
+        "type": "object"
+      },
+      "NutritionDayMini": {
+        "properties": {
+          "calories": {
+            "title": "Calories",
+            "type": "number"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "meal_count": {
+            "title": "Meal Count",
+            "type": "integer"
+          },
+          "protein_g": {
+            "title": "Protein G",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "calories",
+          "protein_g",
+          "meal_count"
+        ],
+        "title": "NutritionDayMini",
+        "type": "object"
+      },
+      "NutritionGoals": {
+        "properties": {
+          "calories_max": {
+            "title": "Calories Max",
+            "type": "number"
+          },
+          "calories_min": {
+            "title": "Calories Min",
+            "type": "number"
+          },
+          "carbs_target_g": {
+            "title": "Carbs Target G",
+            "type": "number"
+          },
+          "fat_target_g": {
+            "title": "Fat Target G",
+            "type": "number"
+          },
+          "protein_target_g": {
+            "title": "Protein Target G",
+            "type": "number"
+          }
+        },
+        "required": [
+          "calories_min",
+          "calories_max",
+          "protein_target_g",
+          "fat_target_g",
+          "carbs_target_g"
+        ],
+        "title": "NutritionGoals",
+        "type": "object"
+      },
+      "NutritionView": {
+        "properties": {
+          "calories_pct": {
+            "title": "Calories Pct",
+            "type": "number"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "goals": {
+            "$ref": "#/components/schemas/NutritionGoals"
+          },
+          "is_today": {
+            "title": "Is Today",
+            "type": "boolean"
+          },
+          "macro_split": {
+            "$ref": "#/components/schemas/MacroSplit"
+          },
+          "meals": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/MealItem"
+            },
+            "title": "Meals",
+            "type": "array"
+          },
+          "next_date": {
+            "format": "date",
+            "title": "Next Date",
+            "type": "string"
+          },
+          "prev_date": {
+            "format": "date",
+            "title": "Prev Date",
+            "type": "string"
+          },
+          "protein_pct": {
+            "title": "Protein Pct",
+            "type": "number"
+          },
+          "recent_days": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/NutritionDayMini"
+            },
+            "title": "Recent Days",
+            "type": "array"
+          },
+          "today_date": {
+            "format": "date",
+            "title": "Today Date",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/MacroTotals"
+          }
+        },
+        "required": [
+          "date",
+          "today_date",
+          "is_today",
+          "prev_date",
+          "next_date",
+          "totals",
+          "goals",
+          "calories_pct",
+          "protein_pct",
+          "macro_split"
+        ],
+        "title": "NutritionView",
+        "type": "object"
+      },
+      "ProgressPhotoItem": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "file_key": {
+            "title": "File Key",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "file_key",
+          "url"
+        ],
+        "title": "ProgressPhotoItem",
         "type": "object"
       },
       "RailStat": {
@@ -521,6 +2482,364 @@
         "title": "RailStat",
         "type": "object"
       },
+      "RecoveryBar": {
+        "properties": {
+          "hi": {
+            "title": "Hi",
+            "type": "number"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "lo": {
+            "title": "Lo",
+            "type": "number"
+          },
+          "max": {
+            "title": "Max",
+            "type": "number"
+          },
+          "min": {
+            "title": "Min",
+            "type": "number"
+          },
+          "tone": {
+            "default": "",
+            "title": "Tone",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "key",
+          "min",
+          "max",
+          "lo",
+          "hi"
+        ],
+        "title": "RecoveryBar",
+        "type": "object"
+      },
+      "RecoveryDayItem": {
+        "properties": {
+          "bb": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bb"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "hrv": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hrv"
+          },
+          "rhr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rhr"
+          },
+          "sleep": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep"
+          },
+          "steps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Steps"
+          },
+          "stress": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stress"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "RecoveryDayItem",
+        "type": "object"
+      },
+      "RecoveryHeadline": {
+        "properties": {
+          "body_battery_from": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Battery From"
+          },
+          "body_battery_to": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Battery To"
+          },
+          "hrv": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hrv"
+          },
+          "hrv_nights_below": {
+            "default": 0,
+            "title": "Hrv Nights Below",
+            "type": "integer"
+          },
+          "rhr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rhr"
+          },
+          "rhr_note": {
+            "default": "",
+            "title": "Rhr Note",
+            "type": "string"
+          },
+          "sleep_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep Minutes"
+          },
+          "sleep_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep Score"
+          }
+        },
+        "title": "RecoveryHeadline",
+        "type": "object"
+      },
+      "RecoveryNightPreview": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "stage_minutes": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Stage Minutes",
+            "type": "array"
+          },
+          "stages": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Stages",
+            "type": "array"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "start",
+          "end"
+        ],
+        "title": "RecoveryNightPreview",
+        "type": "object"
+      },
+      "RecoveryNorm": {
+        "properties": {
+          "better": {
+            "title": "Better",
+            "type": "integer"
+          },
+          "hi": {
+            "title": "Hi",
+            "type": "number"
+          },
+          "lo": {
+            "title": "Lo",
+            "type": "number"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lo",
+          "hi",
+          "better",
+          "unit"
+        ],
+        "title": "RecoveryNorm",
+        "type": "object"
+      },
+      "RecoveryView": {
+        "properties": {
+          "bars": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RecoveryBar"
+            },
+            "title": "Bars",
+            "type": "array"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "days": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RecoveryDayItem"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "headline": {
+            "$ref": "#/components/schemas/RecoveryHeadline"
+          },
+          "is_configured": {
+            "title": "Is Configured",
+            "type": "boolean"
+          },
+          "is_today": {
+            "title": "Is Today",
+            "type": "boolean"
+          },
+          "last_sync": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync"
+          },
+          "night": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecoveryNightPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "norms": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/RecoveryNorm"
+            },
+            "title": "Norms",
+            "type": "object"
+          },
+          "today_date": {
+            "format": "date",
+            "title": "Today Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "today_date",
+          "is_today",
+          "is_configured",
+          "headline",
+          "norms"
+        ],
+        "title": "RecoveryView",
+        "type": "object"
+      },
       "SessionView": {
         "properties": {
           "enabled_modules": {
@@ -561,6 +2880,274 @@
           "rail"
         ],
         "title": "SessionView",
+        "type": "object"
+      },
+      "SleepNightView": {
+        "properties": {
+          "awake_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Awake Count"
+          },
+          "awake_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Awake Seconds"
+          },
+          "bb_change": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bb Change"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "deep_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deep Seconds"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time"
+          },
+          "heart_rate": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IntradaySeriesPoint"
+            },
+            "title": "Heart Rate",
+            "type": "array"
+          },
+          "hrv": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IntradaySeriesPoint"
+            },
+            "title": "Hrv",
+            "type": "array"
+          },
+          "is_today": {
+            "title": "Is Today",
+            "type": "boolean"
+          },
+          "light_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Light Seconds"
+          },
+          "movement": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IntradaySeriesPoint"
+            },
+            "title": "Movement",
+            "type": "array"
+          },
+          "next_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Date"
+          },
+          "prev_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Date"
+          },
+          "rem_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rem Seconds"
+          },
+          "respiration": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IntradaySeriesPoint"
+            },
+            "title": "Respiration",
+            "type": "array"
+          },
+          "restless_moments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restless Moments"
+          },
+          "rhr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rhr"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "spo2_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spo2 Min"
+          },
+          "stages_minutes": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "default": {},
+            "title": "Stages Minutes",
+            "type": "object"
+          },
+          "stages_series": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SleepStageSegment"
+            },
+            "title": "Stages Series",
+            "type": "array"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "today_date": {
+            "format": "date",
+            "title": "Today Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "today_date",
+          "is_today"
+        ],
+        "title": "SleepNightView",
+        "type": "object"
+      },
+      "SleepStageSegment": {
+        "properties": {
+          "duration_min": {
+            "title": "Duration Min",
+            "type": "integer"
+          },
+          "end_min": {
+            "title": "End Min",
+            "type": "integer"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "start_min": {
+            "title": "Start Min",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stage",
+          "start_min",
+          "end_min",
+          "duration_min"
+        ],
+        "title": "SleepStageSegment",
         "type": "object"
       },
       "SyncStamp": {
@@ -983,6 +3570,56 @@
         "title": "WeekChange",
         "type": "object"
       },
+      "WeightHistoryItem": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "superseded": {
+            "default": false,
+            "title": "Superseded",
+            "type": "boolean"
+          },
+          "time": {
+            "default": "",
+            "title": "Time",
+            "type": "string"
+          },
+          "weight_kg": {
+            "title": "Weight Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "weight_kg",
+          "source"
+        ],
+        "title": "WeightHistoryItem",
+        "type": "object"
+      },
       "WeightLogCreate": {
         "properties": {
           "date": {
@@ -1095,6 +3732,461 @@
         ],
         "title": "WeightLogRef",
         "type": "object"
+      },
+      "WeightMeasuresView": {
+        "properties": {
+          "average7": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average7"
+          },
+          "body_comp_enabled": {
+            "default": false,
+            "title": "Body Comp Enabled",
+            "type": "boolean"
+          },
+          "body_fat_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Fat Pct"
+          },
+          "body_fat_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Fat Source"
+          },
+          "headline_metrics": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LastScanRow"
+            },
+            "title": "Headline Metrics",
+            "type": "array"
+          },
+          "height_cm": {
+            "title": "Height Cm",
+            "type": "number"
+          },
+          "latest_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Kg"
+          },
+          "llm_configured": {
+            "default": false,
+            "title": "Llm Configured",
+            "type": "boolean"
+          },
+          "measurements": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BodyMeasurementItem"
+            },
+            "title": "Measurements",
+            "type": "array"
+          },
+          "noise_markers": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/NoiseMarkerItem"
+            },
+            "title": "Noise Markers",
+            "type": "array"
+          },
+          "photos": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProgressPhotoItem"
+            },
+            "title": "Photos",
+            "type": "array"
+          },
+          "scans": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BodyScanDetailItem"
+            },
+            "title": "Scans",
+            "type": "array"
+          },
+          "sex": {
+            "title": "Sex",
+            "type": "string"
+          },
+          "week_delta_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week Delta Kg"
+          }
+        },
+        "required": [
+          "height_cm",
+          "sex"
+        ],
+        "title": "WeightMeasuresView",
+        "type": "object"
+      },
+      "WeightPace": {
+        "properties": {
+          "dose": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeightPaceDose"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeightPaceGoal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "per_week_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Week Kg"
+          }
+        },
+        "title": "WeightPace",
+        "type": "object"
+      },
+      "WeightPaceDose": {
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "delta_kg": {
+            "title": "Delta Kg",
+            "type": "number"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "since_date": {
+            "format": "date",
+            "title": "Since Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "since_date",
+          "days",
+          "delta_kg"
+        ],
+        "title": "WeightPaceDose",
+        "type": "object"
+      },
+      "WeightPaceGoal": {
+        "properties": {
+          "target_kg": {
+            "title": "Target Kg",
+            "type": "number"
+          },
+          "weeks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weeks"
+          }
+        },
+        "required": [
+          "target_kg"
+        ],
+        "title": "WeightPaceGoal",
+        "type": "object"
+      },
+      "WeightPoint": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "kg": {
+            "title": "Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "kg"
+        ],
+        "title": "WeightPoint",
+        "type": "object"
+      },
+      "WeightView": {
+        "properties": {
+          "average7": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average7"
+          },
+          "body_fat_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Fat Pct"
+          },
+          "body_fat_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Fat Source"
+          },
+          "dose_phases": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DosePhase"
+            },
+            "title": "Dose Phases",
+            "type": "array"
+          },
+          "drug": {
+            "default": "GLP-1",
+            "title": "Drug",
+            "type": "string"
+          },
+          "history": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/WeightHistoryItem"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "last_scan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastScanSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latest_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Date"
+          },
+          "latest_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Kg"
+          },
+          "pace": {
+            "$ref": "#/components/schemas/WeightPace"
+          },
+          "trend": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/WeightPoint"
+            },
+            "title": "Trend",
+            "type": "array"
+          },
+          "week_delta_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week Delta Kg"
+          },
+          "weighings": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/WeightPoint"
+            },
+            "title": "Weighings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pace"
+        ],
+        "title": "WeightView",
+        "type": "object"
+      },
+      "WorkingWeightPoint": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "sets": {
+            "default": 0,
+            "title": "Sets",
+            "type": "integer"
+          },
+          "top_reps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top Reps"
+          },
+          "weight_kg": {
+            "title": "Weight Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "weight_kg"
+        ],
+        "title": "WorkingWeightPoint",
+        "type": "object"
+      },
+      "WorkoutsView": {
+        "properties": {
+          "catalog": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ExerciseCatalogItem"
+            },
+            "title": "Catalog",
+            "type": "array"
+          },
+          "exercise_count": {
+            "title": "Exercise Count",
+            "type": "integer"
+          },
+          "is_configured": {
+            "title": "Is Configured",
+            "type": "boolean"
+          },
+          "last_sync": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync"
+          },
+          "last_workout_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Workout Date"
+          },
+          "workout_count": {
+            "title": "Workout Count",
+            "type": "integer"
+          },
+          "workouts": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/HevyWorkoutItem"
+            },
+            "title": "Workouts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "workout_count",
+          "exercise_count",
+          "is_configured"
+        ],
+        "title": "WorkoutsView",
+        "type": "object"
       }
     }
   },
@@ -1104,6 +4196,613 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/nutrition": {
+      "get": {
+        "description": "The Nutrition screen: daily KBJU totals against goals, macro split, meals list,\nand 30-day mini bars.",
+        "operationId": "read_nutrition",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NutritionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Nutrition"
+      }
+    },
+    "/api/v1/nutrition/meals": {
+      "post": {
+        "description": "Log a meal.",
+        "operationId": "create_meal",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealRef"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Meal"
+      }
+    },
+    "/api/v1/nutrition/meals/{meal_id}": {
+      "delete": {
+        "description": "Delete a meal entry.",
+        "operationId": "delete_meal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meal_id",
+            "required": true,
+            "schema": {
+              "title": "Meal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Meal"
+      },
+      "patch": {
+        "description": "Edit a logged meal.",
+        "operationId": "update_meal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "meal_id",
+            "required": true,
+            "schema": {
+              "title": "Meal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealRef"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Meal"
+      }
+    },
+    "/api/v1/recovery": {
+      "get": {
+        "description": "The Recovery screen: sleep score, HRV, resting HR, body battery, night preview,\nand 14-day recovery grid.",
+        "operationId": "read_recovery_overview",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Read Recovery Overview"
+      }
+    },
+    "/api/v1/recovery/activities": {
+      "get": {
+        "description": "List recorded sport activities, newest first.",
+        "operationId": "read_activities_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivitiesListView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Activities List"
+      }
+    },
+    "/api/v1/recovery/import": {
+      "post": {
+        "description": "Ingest a Health Auto Export JSON dump.",
+        "operationId": "import_garmin_data",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_garmin_data"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GarminImportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Garmin Data"
+      }
+    },
+    "/api/v1/recovery/nights": {
+      "get": {
+        "description": "List recorded sleep sessions, newest first.",
+        "operationId": "read_nights_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 60,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NightsListView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Nights List"
+      }
+    },
+    "/api/v1/recovery/sleep/{on_date}": {
+      "get": {
+        "description": "One night in detail: hypnogram, minute-level curves, left/right night navigation.",
+        "operationId": "read_sleep_night_detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "on_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "On Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SleepNightView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Sleep Night Detail"
+      }
+    },
+    "/api/v1/recovery/sync": {
+      "post": {
+        "description": "Trigger an on-demand sync of Garmin metrics.",
+        "operationId": "sync_garmin_now",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GarminSyncResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Sync Garmin Now"
+      }
+    },
     "/api/v1/session": {
       "get": {
         "description": "Who is signed in, the UI language, and everything the shell draws from: the\nmodule switches, the navigation built from them, the rail's status card.",
@@ -1180,6 +4879,295 @@
           }
         },
         "summary": "Read Today"
+      }
+    },
+    "/api/v1/weight": {
+      "get": {
+        "description": "The Weight screen: latest weight, MA-7, week change, body fat, trend chart series,\nhistory with superseded flags, pace and latest scan summary.",
+        "operationId": "read_weight_dashboard",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeightView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Read Weight Dashboard"
+      }
+    },
+    "/api/v1/weight/body-scans/confirm": {
+      "post": {
+        "description": "Step 2: persist the owner-edited scan rows.",
+        "operationId": "confirm_body_scan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BodyScanConfirm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodyScanConfirmResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Body Scan"
+      }
+    },
+    "/api/v1/weight/body-scans/upload": {
+      "post": {
+        "description": "Step 1: vision extraction from a photo/PDF of a scan sheet.",
+        "operationId": "upload_body_scan",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_body_scan"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodyScanUploadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Body Scan"
+      }
+    },
+    "/api/v1/weight/body-scans/{scan_id}": {
+      "delete": {
+        "description": "Delete a body scan entry and its stored file.",
+        "operationId": "delete_body_scan",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scan_id",
+            "required": true,
+            "schema": {
+              "title": "Scan Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Body Scan"
+      }
+    },
+    "/api/v1/weight/garmin-export": {
+      "post": {
+        "description": "Explicitly trigger Garmin weight export reconciliation.",
+        "operationId": "trigger_garmin_weight_export",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GarminExportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Trigger Garmin Weight Export"
       }
     },
     "/api/v1/weight/logs": {
@@ -1400,6 +5388,521 @@
           }
         },
         "summary": "Update Weight Log"
+      }
+    },
+    "/api/v1/weight/measures": {
+      "get": {
+        "description": "The Measurements desk: circumferences, Navy fat, scans, noise markers, photos.",
+        "operationId": "read_weight_measures",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeightMeasuresView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Read Weight Measures"
+      },
+      "post": {
+        "description": "Log or update body circumference measurements.",
+        "operationId": "create_body_measurement",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BodyMeasurementCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodyMeasurementRef"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Body Measurement"
+      }
+    },
+    "/api/v1/weight/measures/{measurement_id}": {
+      "delete": {
+        "description": "Delete a body measurement entry.",
+        "operationId": "delete_body_measurement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "measurement_id",
+            "required": true,
+            "schema": {
+              "title": "Measurement Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Body Measurement"
+      }
+    },
+    "/api/v1/weight/noise-markers": {
+      "post": {
+        "description": "Exclude a period from calculations to filter out noise.",
+        "operationId": "create_noise_marker",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoiseMarkerCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoiseMarkerRef"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Noise Marker"
+      }
+    },
+    "/api/v1/weight/noise-markers/{marker_id}": {
+      "delete": {
+        "description": "Delete an excluded period marker.",
+        "operationId": "delete_noise_marker",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "marker_id",
+            "required": true,
+            "schema": {
+              "title": "Marker Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Noise Marker"
+      }
+    },
+    "/api/v1/weight/photos": {
+      "post": {
+        "description": "Upload up to 5 daily progress photos.",
+        "operationId": "upload_progress_photos",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_progress_photos"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProgressPhotoItem"
+                  },
+                  "title": "Response Upload Progress Photos",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Progress Photos"
+      }
+    },
+    "/api/v1/weight/photos/{photo_id}": {
+      "delete": {
+        "description": "Delete a progress photo.",
+        "operationId": "delete_progress_photo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "photo_id",
+            "required": true,
+            "schema": {
+              "title": "Photo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Progress Photo"
+      }
+    },
+    "/api/v1/workouts": {
+      "get": {
+        "description": "The Workouts screen: recent sessions expandable to sets, exercise catalog with progression.",
+        "operationId": "read_workouts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutsView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Read Workouts"
+      }
+    },
+    "/api/v1/workouts/sync": {
+      "post": {
+        "description": "Pull the latest workouts from Hevy.",
+        "operationId": "sync_hevy_now",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HevySyncResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Sync Hevy Now"
       }
     }
   }

@@ -6,7 +6,13 @@ import type { ScreenId } from './nav'
 const loaders: Partial<Record<ScreenId, () => Promise<{ default: ComponentType }>>> = {
   today: () => import('@/features/today/TodayScreen'),
   weight: () => import('@/features/weight/WeightScreen'),
+  measures: () => import('@/features/weight/WeightMeasuresScreen'),
   recovery: () => import('@/features/recovery/RecoveryScreen'),
+  sleep: () => import('@/features/recovery/SleepNightScreen'),
+  nights: () => import('@/features/recovery/NightsListScreen'),
+  activities: () => import('@/features/recovery/ActivitiesScreen'),
+  workouts: () => import('@/features/workouts/WorkoutsScreen'),
+  nutrition: () => import('@/features/nutrition/NutritionScreen'),
   glp1: () => import('@/features/glp1/Glp1Screen'),
   labs: () => import('@/features/labs/LabsScreen'),
   more: () => import('@/features/more/MoreScreen'),

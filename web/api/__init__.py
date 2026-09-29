@@ -22,10 +22,10 @@ from __future__ import annotations
 
 from fastapi import Depends
 
-from web.api import session, today, weight
+from web.api import garmin, hevy, nutrition, session, today, weight
 from web.api.errors import ApiRouter
 from web.api.schemas.errors import NotFoundBody, UnauthenticatedBody
-from web.deps import require_auth
+from web.deps import require_auth, require_module
 
 api_router = ApiRouter(
     prefix="/api/v1",
@@ -36,3 +36,6 @@ api_router = ApiRouter(
 api_router.include_router(session.router)
 api_router.include_router(today.router)
 api_router.include_router(weight.router)
+api_router.include_router(garmin.router)
+api_router.include_router(hevy.router, dependencies=[Depends(require_module("hevy"))])
+api_router.include_router(nutrition.router, dependencies=[Depends(require_module("nutrition"))])
