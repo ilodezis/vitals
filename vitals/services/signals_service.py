@@ -27,7 +27,7 @@ import inspect
 import logging
 from dataclasses import dataclass
 from datetime import date as date_type, time as time_type, timedelta
-from typing import Awaitable, Callable, Optional, Sequence, Union
+from typing import Any, Awaitable, Callable, Optional, Sequence, Union
 from uuid import uuid4
 
 from sqlalchemy import select, update
@@ -499,3 +499,51 @@ async def get_day_context(
 ) -> Optional[DayContext]:
     result = await session.execute(select(DayContext).where(DayContext.date == on_date))
     return result.scalars().first()
+
+
+# ── Full view collection for API / UI ─────────────────────────────────────────
+async def collect(session: AsyncSession, limit: int = 200) -> dict[str, Any]:
+    """Collect everything needed by the Signals screen in one round-trip."""
+    signals = await list_signals(session, include_misparse=True, limit=limit)
+    freq = await key_frequency(session, include_misparse=True)
+
+    sig_items = []
+    for s in signals:
+        sig_items.append({
+            "id": s.id,
+            "date": s.date.isoformat(),
+            "time": s.at_time.isoformat() if s.at_time else None,
+            "kind": s.kind,
+            "key": normalize_key(s.key),
+            "raw_key": s.key,
+            "value": s.value_num,
+            "unit": s.unit,
+            "note": s.note,
+            "misparse": s.misparse,
+            "batch_id": s.batch_id,
+        })
+
+    freq_items = [
+        {
+            "key": f.key,
+            "count": f.count,
+            "n": f.count,
+            "variants": list(f.variants),
+            "alias": list(f.variants),
+            "examples": list(f.examples),
+            "ex": list(f.examples),
+        }
+        for f in freq
+    ]
+
+    misparse_count = sum(1 for s in signals if s.misparse)
+
+    return {
+        "signals": sig_items,
+        "frequency": freq_items,
+        "kinds": [k.value for k in SignalKind],
+        "misparse_count": misparse_count,
+        "total_count": len(signals),
+        "keys_count": len(freq_items),
+    }
+

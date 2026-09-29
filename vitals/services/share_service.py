@@ -750,3 +750,61 @@ async def earliest_data_date(session: AsyncSession) -> Optional[date_type]:
         if value is not None:
             found.append(value)
     return min(found) if found else None
+
+
+# ── Full view collection for API / UI ─────────────────────────────────────────
+async def collect(
+    session: AsyncSession, enabled_modules: Optional[dict[str, bool]] = None
+) -> dict[str, Any]:
+    """Collect everything needed by the Share dashboard in one round-trip."""
+    enabled = enabled_modules or {}
+    reports = await list_reports(session)
+    default_start, default_end = default_period()
+    moment = now_local()
+
+    report_items = []
+    for r in reports:
+        if r.revoked_at is not None:
+            state = "revoked"
+        elif r.expires_at <= moment:
+            state = "expired"
+        else:
+            state = "live"
+
+        report_items.append({
+            "id": r.id,
+            "token": r.token,
+            "title": r.title,
+            "preset": r.preset,
+            "domains": list(r.domains) if r.domains else [],
+            "period_start": r.period_start.isoformat(),
+            "period_end": r.period_end.isoformat(),
+            "expires_at": r.expires_at.isoformat(),
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "revoked_at": r.revoked_at.isoformat() if r.revoked_at else None,
+            "opened_count": r.opened_count or 0,
+            "last_opened_at": r.last_opened_at.isoformat() if r.last_opened_at else None,
+            "state": state,
+            "url": f"/r/{r.token}",
+        })
+
+    presets_dict = {
+        key: {
+            "domains": resolve_domains(spec["domains"], enabled),
+            "labs_flagged_only": spec["labs_flagged_only"],
+        }
+        for key, spec in PRESETS.items()
+    }
+
+    return {
+        "reports": report_items,
+        "available_domains": available_domains(enabled),
+        "presets": presets_dict,
+        "period_choices": list(PERIOD_CHOICES),
+        "expiry_choices": list(EXPIRY_CHOICES),
+        "default_expiry": DEFAULT_EXPIRY_DAYS,
+        "default_start": default_start.isoformat(),
+        "default_end": default_end.isoformat(),
+        "today": today_local().isoformat(),
+    }
+

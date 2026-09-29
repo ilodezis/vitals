@@ -1,0 +1,19 @@
+/* Supplements styles ported from mockup */
+.tgrp .sec-h h2 { display: inline-flex; align-items: center; gap: 8px; }
+.sec.tgrp { margin-top: var(--s8); }
+.r-supp { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; }
+.r-supp > .badge, .r-supp > span:empty { grid-column: 1; }
+.r-supp .acts { grid-column: 2; margin-right: -10px; }
+.flag { display: flex; gap: 6px; align-items: flex-start; font-size: var(--t-micro); color: var(--warn); margin-top: 3px; }
+.flag svg { width: 14px; height: 14px; flex: none; margin-top: 1px; }
+.arch-h { height: 52px; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; }
+.arch-h > svg:first-child { width: 20px; height: 20px; color: var(--muted); }
+.arch-h h2 { margin: 0; font-family: var(--f-display); font-weight: 600; font-size: var(--t-heading); letter-spacing: -.015em; display: flex; align-items: center; gap: 8px; }
+.arch-h .caret { margin-left: auto; width: 18px; height: 18px; color: var(--muted); transition: transform var(--d2); }
+.arch-h.open .caret { transform: rotate(180deg); }
+.arch { border-top: 1px solid var(--line); }
+
+@container app (min-width: 768px) {
+  .r-supp { grid-template-columns: minmax(0, 1fr) 120px 72px 136px; align-items: center; }
+  .r-supp > .badge, .r-supp > span:empty, .r-supp .acts { grid-column: auto; }
+}

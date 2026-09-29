@@ -1,0 +1,13 @@
+/* Interactions styles ported from mockup */
+.fgroup { margin-top: var(--s6); }
+.fgroup + .fgroup { margin-top: var(--s4); }
+.fgroup .filters { margin-top: 6px; }
+.fgroup .flabel { font-size: var(--t-label); color: var(--muted); font-weight: 500; }
+.rgrp { margin-top: var(--s8); }
+.rule { grid-template-columns: minmax(0, 1fr) auto; align-items: start; padding: 16px 0; gap: 12px; }
+.rule.firing { border-left: 2px solid var(--bad); padding-left: 12px; }
+.rl-h, .rl-t { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.rl-h .m, .rl-t .m { font-size: var(--t-micro); color: var(--muted); }
+.rl-m { margin: 8px 0 8px; color: var(--fg); max-width: 64ch; text-wrap: pretty; line-height: 1.5; }
+.opts.tg { margin: -2px 0 0; flex-wrap: nowrap; }
+.opts.tg .opt { height: 32px; font-size: var(--t-label); }

@@ -1,0 +1,30 @@
+/* Signals styles ported from mockup */
+.key { color: var(--fg); font-family: var(--f-mono, monospace); }
+.m.key { color: var(--muted); font-size: 12px; }
+.freq { grid-template-columns: minmax(0, 1fr) 72px 24px; align-items: start; }
+.freq .fbar { margin-top: 8px; }
+.freq .fex { grid-column: 1 / -1; display: grid; gap: 1px; font-size: var(--t-micro); color: var(--muted); }
+.fbar { height: 6px; border-radius: 3px; background: var(--bg-deep); overflow: hidden; }
+.fbar i { display: block; height: 100%; border-radius: inherit; background: var(--violet); }
+.tl { border-top: 1px solid var(--line); }
+.tl-day { display: grid; padding: 14px 0 6px; border-bottom: 1px solid var(--line); }
+.tl-day .d { font-size: var(--t-label); color: var(--muted); font-weight: 500; margin-bottom: 2px; }
+.tl-list { position: relative; }
+.tl-list::before { content: ''; position: absolute; left: 7px; top: 18px; bottom: 22px; width: 1px; background: var(--line-2); }
+.tl-ev { position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 10px; padding: 8px 0; align-items: start; }
+.tl-ev .tk { position: relative; width: 7px; height: 7px; margin: 6px 0 0 4px; border-radius: 50%; background: var(--faint); box-shadow: 0 0 0 4px var(--bg); }
+.tk.good { background: var(--good); }
+.tk.bad { background: var(--bad); }
+.tk.cool { background: var(--cool); }
+.tk.violet { background: var(--violet); }
+.tk.warn { background: var(--warn); }
+.ev-h { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; margin-bottom: 2px; }
+.ev-h .m { font-size: var(--t-micro); color: var(--muted); }
+
+@container app (min-width: 768px) {
+  .freq { grid-template-columns: 180px minmax(0, 1fr) 32px minmax(0, 1.2fr); align-items: center; }
+  .freq .fbar { margin-top: 0; }
+  .freq .fex { grid-column: auto; }
+  .tl-day { grid-template-columns: 112px minmax(0, 1fr); gap: 24px; padding: 12px 0 4px; }
+  .tl-day .d { padding-top: 8px; }
+}

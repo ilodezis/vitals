@@ -22,7 +22,27 @@ from __future__ import annotations
 
 from fastapi import Depends
 
-from web.api import garmin, genetics, glp1, hevy, hrt, labs, nutrition, session, today, weight
+from web.api import (
+    alerts,
+    charts,
+    garmin,
+    genetics,
+    glp1,
+    hevy,
+    hrt,
+    interactions,
+    labs,
+    nutrition,
+    reports,
+    session,
+    share,
+    signals,
+    skincare,
+    supplements,
+    timeline,
+    today,
+    weight,
+)
 from web.api.errors import ApiRouter
 from web.api.schemas.errors import NotFoundBody, UnauthenticatedBody
 from web.deps import require_auth, require_module
@@ -43,4 +63,21 @@ api_router.include_router(glp1.router, dependencies=[Depends(require_module("glp
 api_router.include_router(hrt.router, dependencies=[Depends(require_module("hrt"))])
 api_router.include_router(labs.router, dependencies=[Depends(require_module("labs"))])
 api_router.include_router(genetics.router, dependencies=[Depends(require_module("genetics"))])
+api_router.include_router(supplements.router, dependencies=[Depends(require_module("supplements"))])
+api_router.include_router(skincare.router, dependencies=[Depends(require_module("skincare"))])
+api_router.include_router(interactions.router, dependencies=[Depends(require_module("interactions"))])
+api_router.include_router(signals.router, dependencies=[Depends(require_module("signals"))])
+api_router.include_router(timeline.router, dependencies=[Depends(require_module("timeline"))])
+api_router.include_router(reports.router)
+api_router.include_router(charts.router)
+api_router.include_router(alerts.router)
+api_router.include_router(share.router)
+
+
+
+
+
+
+
+
 

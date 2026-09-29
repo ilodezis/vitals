@@ -1,0 +1,15 @@
+/* Charts styles ported from mockup */
+.cgal { display: flex; flex-direction: column; gap: 24px; }
+.cg .sec-h .acts .meta { margin-right: 4px; }
+.cg-note { margin: calc(-1 * var(--s2)) 0 var(--s3); font-size: var(--t-label); color: var(--muted); }
+.srows { display: grid; gap: 14px; }
+.srow { display: grid; grid-template-columns: minmax(0, 1fr) 40px; gap: 6px 4px; align-items: end; }
+.srow .flabel { grid-column: 1 / -1; }
+.srow-f { display: grid; gap: 8px; }
+.srow .ibtn { width: 40px; height: 48px; color: var(--muted); }
+.srow .ibtn svg { width: 18px; height: 18px; }
+
+@container app (min-width: 768px) {
+  .cgal { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; }
+  .srow-f { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

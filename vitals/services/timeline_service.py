@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date as date_type
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -436,3 +436,55 @@ async def overlays_for(
             "kind": a.kind,
         })
     return overlays
+
+
+# ── Full view collection for API / UI ─────────────────────────────────────────
+async def collect(
+    session: AsyncSession, *, domain: Optional[str] = None, limit: int = 200
+) -> dict[str, Any]:
+    """Collect everything needed by the Timeline feed in one round-trip."""
+    from vitals.utils.timeutils import today_local
+
+    domains_filter = [domain] if domain and domain != "all" else None
+    events = await list_events(session, domains=domains_filter, limit=limit)
+
+    event_dicts = []
+    for e in events:
+        d = e.to_dict()
+        ann_id = None
+        if e.source == "manual" and e.ref.startswith("annotation:"):
+            raw_id = e.ref.split(":")[1]
+            if raw_id.isdigit():
+                ann_id = int(raw_id)
+        d["id"] = ann_id
+        d["manual"] = e.source == "manual"
+        d["dom"] = e.domain
+        event_dicts.append(d)
+
+    manual_count = sum(1 for e in event_dicts if e["manual"])
+
+    all_domains = [
+        Domain.TIMELINE.value,
+        Domain.WEIGHT.value,
+        Domain.GLP1.value,
+        Domain.GARMIN.value,
+        Domain.WORKOUTS.value,
+        Domain.LABS.value,
+        Domain.NUTRITION.value,
+        Domain.SKINCARE.value,
+        Domain.SUPPLEMENTS.value,
+        Domain.GENETICS.value,
+        Domain.BODY_COMPOSITION.value,
+    ]
+
+    kinds = [k.value for k in AnnotationKind]
+
+    return {
+        "events": event_dicts,
+        "manual_count": manual_count,
+        "total_count": len(event_dicts),
+        "domains": all_domains,
+        "kinds": kinds,
+        "today": today_local().isoformat(),
+    }
+

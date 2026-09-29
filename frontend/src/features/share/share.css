@@ -1,0 +1,20 @@
+/* Share (doctor reports) styles ported from mockup */
+.made { background: var(--surface); border-radius: var(--r-lg); padding: var(--s4); border: 1px solid var(--line-2); }
+.made .panel-h h3 { display: flex; align-items: center; gap: 8px; }
+.made .panel-h svg { width: 18px; height: 18px; color: var(--good); stroke-width: 2; }
+.made-r { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; align-items: center; margin-top: 10px; }
+.made-r .flabel { grid-column: 1 / -1; }
+.made .fhint { margin: 12px 0 0; font-size: var(--t-micro); color: var(--muted); }
+.r-share { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+.r-share .sh-meta { grid-column: 1 / -1; grid-row: 2; display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; }
+.r-share .acts { margin-right: -10px; }
+.link-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 16px; gap: 12px; align-items: center; width: 100%; text-align: left; margin-top: var(--s5); padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); transition: background var(--d1); cursor: pointer; }
+.link-row > svg:first-child { width: 20px; height: 20px; color: var(--muted); }
+.link-row b { display: block; font-weight: 500; color: var(--fg); }
+.link-row small { font-size: var(--t-micro); color: var(--muted); }
+.link-row .chev { width: 16px; height: 16px; color: var(--faint); }
+
+@container app (min-width: 768px) {
+  .made-r { grid-template-columns: 64px minmax(0, 1fr) auto; }
+  .made-r .flabel { grid-column: auto; }
+}

@@ -4,6 +4,130 @@
  */
 
 export interface paths {
+    "/api/v1/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Alerts
+         * @description List active system alerts, optionally filtered by domain.
+         */
+        get: operations["read_alerts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/resolve-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve All Alerts
+         * @description Mark all active alerts resolved, optionally by domain.
+         */
+        post: operations["resolve_all_alerts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/{alert_id}/override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Override Alert
+         * @description Mark a block alert overridden.
+         */
+        post: operations["override_alert"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/{alert_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve Alert
+         * @description Mark an alert resolved.
+         */
+        post: operations["resolve_alert"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/charts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Charts
+         * @description The charts gallery: saved custom charts with resolved data series, plus metric catalog.
+         */
+        get: operations["read_charts"];
+        put?: never;
+        /**
+         * Create Chart
+         * @description Create a new custom chart configuration.
+         */
+        post: operations["create_chart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/charts/{chart_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Chart
+         * @description Delete a saved custom chart.
+         */
+        delete: operations["delete_chart"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/genetics": {
         parameters: {
             query?: never;
@@ -536,6 +660,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/interactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Interactions
+         * @description List conflict engine rules, active state, and firing alerts.
+         */
+        get: operations["read_interactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interactions/{rule_id}/toggle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Toggle Conflict Rule
+         * @description Toggle a conflict rule on or off.
+         */
+        post: operations["toggle_conflict_rule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/labs": {
         parameters: {
             query?: never;
@@ -883,6 +1047,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Reports
+         * @description The reports dashboard: active goals, archive, weekly digest, morning brief.
+         */
+        get: operations["read_reports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/briefs/build": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build Brief
+         * @description Assemble today's brief without sending.
+         */
+        post: operations["build_brief"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/briefs/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Test Brief
+         * @description Generate and send today's brief via Telegram.
+         */
+        post: operations["send_test_brief"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/digests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Digest
+         * @description Generate a weekly digest on demand.
+         */
+        post: operations["generate_digest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/milestones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Milestone
+         * @description Create a health goal / milestone card.
+         */
+        post: operations["create_milestone"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/milestones/{milestone_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Milestone
+         * @description Delete a goal milestone card.
+         */
+        delete: operations["delete_milestone"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/milestones/{milestone_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Milestone Status
+         * @description Change milestone status (e.g. active, achieved, abandoned).
+         */
+        patch: operations["update_milestone_status"];
+        trace?: never;
+    };
     "/api/v1/session": {
         parameters: {
             query?: never;
@@ -902,6 +1206,406 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Share
+         * @description The doctor reports management dashboard.
+         */
+        get: operations["read_share"];
+        put?: never;
+        /**
+         * Create Share Report
+         * @description Create a frozen report for a doctor and generate a secure password.
+         */
+        post: operations["create_share_report"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/share/{report_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Share Report
+         * @description Delete a doctor report record completely.
+         */
+        delete: operations["delete_share_report"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/share/{report_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke Share Report
+         * @description Revoke an active doctor report link.
+         */
+        post: operations["revoke_share_report"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Signals
+         * @description The free-text signals feed and key frequencies.
+         */
+        get: operations["read_signals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/signals/{batch_id}/misparse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Signal Misparse
+         * @description Mark an entire message batch as 'не то' (misparse).
+         */
+        post: operations["mark_signal_misparse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/signals/{signal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Signal
+         * @description Delete a wrongly parsed signal row completely.
+         */
+        delete: operations["delete_signal"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skincare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Skincare
+         * @description The entire skincare dashboard: schedule, products, diary, observations, rules.
+         */
+        get: operations["read_skincare"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skincare/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upsert Skincare Log
+         * @description Save or update skincare daily checklist log.
+         */
+        post: operations["upsert_skincare_log"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skincare/logs/{log_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Skincare Log
+         * @description Delete a skincare diary log entry.
+         */
+        delete: operations["delete_skincare_log"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skincare/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Skincare Observation
+         * @description Record a skincare observation.
+         */
+        post: operations["create_skincare_observation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skincare/observations/{obs_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Skincare Observation
+         * @description Delete a skincare observation entry.
+         */
+        delete: operations["delete_skincare_observation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skincare/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Skincare Product
+         * @description Add a skincare product.
+         */
+        post: operations["create_skincare_product"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skincare/products/{product_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Skincare Product
+         * @description Delete a skincare product.
+         */
+        delete: operations["delete_skincare_product"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Skincare Product
+         * @description Update a skincare product.
+         */
+        patch: operations["update_skincare_product"];
+        trace?: never;
+    };
+    "/api/v1/supplements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Supplements
+         * @description The entire supplements catalog grouped by timing slot, plus archive.
+         */
+        get: operations["read_supplements"];
+        put?: never;
+        /**
+         * Create Supplement
+         * @description Add a supplement to the catalog.
+         */
+        post: operations["create_supplement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/supplements/{supplement_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Supplement
+         * @description Delete a supplement from the catalog.
+         */
+        delete: operations["delete_supplement"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Supplement
+         * @description Update a supplement.
+         */
+        patch: operations["update_supplement"];
+        trace?: never;
+    };
+    "/api/v1/supplements/{supplement_id}/toggle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Toggle Supplement
+         * @description Toggle a supplement active/inactive.
+         */
+        post: operations["toggle_supplement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Timeline
+         * @description The unified timeline feed: manual annotations + derived events.
+         */
+        get: operations["read_timeline"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timeline/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Annotation
+         * @description Create a manual annotation.
+         */
+        post: operations["create_annotation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timeline/annotations/{annotation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Annotation
+         * @description Delete a manual annotation.
+         */
+        delete: operations["delete_annotation"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Annotation
+         * @description Update a manual annotation.
+         */
+        patch: operations["update_annotation"];
         trace?: never;
     };
     "/api/v1/today": {
@@ -1270,6 +1974,60 @@ export interface components {
             /** Start Time */
             start_time: string;
         };
+        /** AlertsListView */
+        AlertsListView: {
+            /**
+             * Alerts
+             * @default []
+             */
+            alerts: components["schemas"]["SystemAlertItem"][];
+            /**
+             * Count
+             * @default 0
+             */
+            count: number;
+        };
+        /** AnnotationCreate */
+        AnnotationCreate: {
+            /** Date */
+            date: string;
+            /**
+             * Domain
+             * @default timeline
+             */
+            domain: string;
+            /** Enddate */
+            endDate?: string | null;
+            /**
+             * Kind
+             * @default note
+             */
+            kind: string;
+            /** Note */
+            note?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** AnnotationCreated */
+        AnnotationCreated: {
+            /** Id */
+            id: number;
+        };
+        /** AnnotationUpdate */
+        AnnotationUpdate: {
+            /** Date */
+            date?: string | null;
+            /** Domain */
+            domain?: string | null;
+            /** Enddate */
+            endDate?: string | null;
+            /** Kind */
+            kind?: string | null;
+            /** Note */
+            note?: string | null;
+            /** Title */
+            title?: string | null;
+        };
         /** AttentionItem */
         AttentionItem: {
             /** Domain */
@@ -1477,6 +2235,105 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /** ChartCreateRequest */
+        ChartCreateRequest: {
+            /** Name */
+            name: string;
+            /**
+             * Normalize
+             * @default false
+             */
+            normalize: boolean;
+            /**
+             * Series
+             * @default []
+             */
+            series: components["schemas"]["ChartSeriesInput"][];
+        };
+        /** ChartCreated */
+        ChartCreated: {
+            /** Id */
+            id: string;
+        };
+        /** ChartOverlay */
+        ChartOverlay: {
+            /** End */
+            end?: string | null;
+            /**
+             * Kind
+             * @default
+             */
+            kind: string;
+            /** Label */
+            label: string;
+            /** Start */
+            start: string;
+            /**
+             * Tone
+             * @default
+             */
+            tone: string;
+        };
+        /** ChartPoint */
+        ChartPoint: {
+            /** Date */
+            date: string;
+            /** Value */
+            value: number;
+        };
+        /** ChartResolvedSeries */
+        ChartResolvedSeries: {
+            /**
+             * Colorslot
+             * @default 0
+             */
+            colorSlot: number;
+            /** Label */
+            label: string;
+            /**
+             * Points
+             * @default []
+             */
+            points: components["schemas"]["ChartPoint"][];
+            /** Unit */
+            unit?: string | null;
+        };
+        /** ChartSeriesInput */
+        ChartSeriesInput: {
+            /** Domain */
+            domain: string;
+            /** Label */
+            label?: string | null;
+            /** Metrickey */
+            metricKey: string;
+            /** Param */
+            param?: string | null;
+        };
+        /** ChartsView */
+        ChartsView: {
+            /**
+             * Catalog
+             * @default {}
+             */
+            catalog: {
+                [key: string]: unknown;
+            };
+            /**
+             * Charts
+             * @default []
+             */
+            charts: components["schemas"]["CustomChartItem"][];
+            /**
+             * Count
+             * @default 0
+             */
+            count: number;
+            /**
+             * Empty
+             * @default true
+             */
+            empty: boolean;
+        };
         /**
          * ConflictBody
          * @description 409 — a ``block`` rule fired; repeat the write with ``override`` to keep it.
@@ -1490,6 +2347,64 @@ export interface components {
             /** Violations */
             violations: components["schemas"]["ViolationBody"][];
         };
+        /** ConflictRuleItem */
+        ConflictRuleItem: {
+            /** A */
+            a: string;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** B */
+            b: string;
+            /** Cat */
+            cat: string;
+            /** Category */
+            category: string;
+            /** Code */
+            code?: string | null;
+            /** Domaina */
+            domainA: string;
+            /** Domainb */
+            domainB: string;
+            /** Ev */
+            ev?: string | null;
+            /** Evidence */
+            evidence?: string | null;
+            /**
+             * Firing
+             * @default false
+             */
+            firing: boolean;
+            /** H */
+            h?: number | null;
+            /** Hours */
+            hours?: number | null;
+            /** Id */
+            id: number;
+            /** Message */
+            message: string;
+            /** Msg */
+            msg: string;
+            /**
+             * On
+             * @default true
+             */
+            on: boolean;
+            /** Ruletype */
+            ruleType: string;
+            /** Sev */
+            sev: string;
+            /** Severity */
+            severity: string;
+            /** Source */
+            source?: string | null;
+            /** Src */
+            src?: string | null;
+            /** Type */
+            type: string;
+        };
         /**
          * Corridor
          * @description A band a value is read against.
@@ -1499,6 +2414,101 @@ export interface components {
             hi: number;
             /** Lo */
             lo: number;
+        };
+        /** CreateShareRequest */
+        CreateShareRequest: {
+            /**
+             * Domains
+             * @default []
+             */
+            domains: string[];
+            /**
+             * Expiresdays
+             * @default 14
+             */
+            expiresDays: number;
+            /**
+             * Labsflaggedonly
+             * @default false
+             */
+            labsFlaggedOnly: boolean;
+            /** Note */
+            note?: string | null;
+            /**
+             * Period
+             * @default 90
+             */
+            period: string;
+            /** Periodend */
+            periodEnd?: string | null;
+            /** Periodstart */
+            periodStart?: string | null;
+            /** Preset */
+            preset?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** CreatedShareResponse */
+        CreatedShareResponse: {
+            /** Expiresat */
+            expiresAt: string;
+            /** Id */
+            id: number;
+            /** Password */
+            password: string;
+            /** Token */
+            token: string;
+            /** Url */
+            url: string;
+        };
+        /** CustomChartItem */
+        CustomChartItem: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Normalize
+             * @default false
+             */
+            normalize: boolean;
+            /**
+             * Overlays
+             * @default []
+             */
+            overlays: components["schemas"]["ChartOverlay"][];
+            /**
+             * Series
+             * @default []
+             */
+            series: components["schemas"]["ChartResolvedSeries"][];
+        };
+        /** DigestGenerateRequest */
+        DigestGenerateRequest: {
+            /**
+             * Perioddays
+             * @default 7
+             */
+            periodDays: number;
+        };
+        /** DigestItem */
+        DigestItem: {
+            /** Content */
+            content: string;
+            /** Createdat */
+            createdAt?: string | null;
+            /** Date */
+            date?: string | null;
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /** Model */
+            model?: string | null;
+            /** Periodend */
+            periodEnd?: string | null;
+            /** Periodstart */
+            periodStart?: string | null;
         };
         /** DosePhase */
         DosePhase: {
@@ -2290,6 +3300,46 @@ export interface components {
             /** Templates */
             templates: components["schemas"]["HrtTemplateItem"][];
         };
+        /** InteractionsView */
+        InteractionsView: {
+            /**
+             * Alldomains
+             * @default []
+             */
+            allDomains: string[];
+            /**
+             * Bycategory
+             * @default {}
+             */
+            byCategory: {
+                [key: string]: components["schemas"]["ConflictRuleItem"][];
+            };
+            /**
+             * Firingcount
+             * @default 0
+             */
+            firingCount: number;
+            /**
+             * Firingids
+             * @default []
+             */
+            firingIds: number[];
+            /**
+             * Orderedcategories
+             * @default []
+             */
+            orderedCategories: string[];
+            /**
+             * Rules
+             * @default []
+             */
+            rules: components["schemas"]["ConflictRuleItem"][];
+            /**
+             * Totalcount
+             * @default 0
+             */
+            totalCount: number;
+        };
         /** IntradaySeriesPoint */
         IntradaySeriesPoint: {
             /** Time */
@@ -2309,6 +3359,35 @@ export interface components {
             error: "invalid";
             /** Message */
             message: string;
+        };
+        /** KeyFrequencyItem */
+        KeyFrequencyItem: {
+            /**
+             * Alias
+             * @default []
+             */
+            alias: string[];
+            /** Count */
+            count: number;
+            /**
+             * Ex
+             * @default []
+             */
+            ex: string[];
+            /**
+             * Examples
+             * @default []
+             */
+            examples: string[];
+            /** Key */
+            key: string;
+            /** N */
+            n: number;
+            /**
+             * Variants
+             * @default []
+             */
+            variants: string[];
         };
         /** LabConfirm */
         LabConfirm: {
@@ -2645,6 +3724,63 @@ export interface components {
         MealRef: {
             /** Id */
             id: number;
+        };
+        /** MilestoneCreate */
+        MilestoneCreate: {
+            /** Deadline */
+            deadline?: string | null;
+            /**
+             * Domain
+             * @default weight
+             */
+            domain: string;
+            /** Name */
+            name: string;
+            /** Note */
+            note?: string | null;
+            /** Targetunit */
+            targetUnit?: string | null;
+            /** Targetvalue */
+            targetValue?: number | null;
+        };
+        /** MilestoneCreated */
+        MilestoneCreated: {
+            /** Id */
+            id: number;
+        };
+        /** MilestoneItem */
+        MilestoneItem: {
+            /** Closedon */
+            closedOn?: string | null;
+            /** Current */
+            current?: number | null;
+            /** Daysleft */
+            daysLeft?: number | null;
+            /** Deadline */
+            deadline?: string | null;
+            /** Deadlinemargindays */
+            deadlineMarginDays?: number | null;
+            /** Domain */
+            domain: string;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Pct */
+            pct?: number | null;
+            /** Remaining */
+            remaining?: number | null;
+            /** Status */
+            status: string;
+            /** Targetunit */
+            targetUnit?: string | null;
+            /** Targetvalue */
+            targetValue?: number | null;
+        };
+        /** MilestoneStatusUpdate */
+        MilestoneStatusUpdate: {
+            /** Status */
+            status: string;
         };
         /** Nav */
         Nav: {
@@ -3016,6 +4152,63 @@ export interface components {
              */
             today_date: string;
         };
+        /** ReportsView */
+        ReportsView: {
+            /**
+             * Activegoals
+             * @default []
+             */
+            activeGoals: components["schemas"]["MilestoneItem"][];
+            /**
+             * Activegoalscount
+             * @default 0
+             */
+            activeGoalsCount: number;
+            /**
+             * Channelconfigured
+             * @default false
+             */
+            channelConfigured: boolean;
+            /**
+             * Closedgoals
+             * @default []
+             */
+            closedGoals: components["schemas"]["MilestoneItem"][];
+            /**
+             * Closedgoalscount
+             * @default 0
+             */
+            closedGoalsCount: number;
+            /**
+             * Digesthistory
+             * @default []
+             */
+            digestHistory: components["schemas"]["DigestItem"][];
+            /**
+             * Digestscount
+             * @default 0
+             */
+            digestsCount: number;
+            /**
+             * Goaldomains
+             * @default []
+             */
+            goalDomains: string[];
+            latestBrief?: components["schemas"]["DigestItem"] | null;
+            latestDigest?: components["schemas"]["DigestItem"] | null;
+            /**
+             * Llmconfigured
+             * @default false
+             */
+            llmConfigured: boolean;
+            /** Today */
+            today: string;
+        };
+        /** RuleToggleRequest */
+        RuleToggleRequest: {
+            /** Active */
+            active: boolean;
+        };
         /** SessionView */
         SessionView: {
             /** Enabled Modules */
@@ -3032,6 +4225,466 @@ export interface components {
             rail: components["schemas"]["RailStat"][];
             /** Username */
             username: string;
+        };
+        /** SharePresetSpec */
+        SharePresetSpec: {
+            /**
+             * Domains
+             * @default []
+             */
+            domains: string[];
+            /**
+             * Labsflaggedonly
+             * @default false
+             */
+            labsFlaggedOnly: boolean;
+        };
+        /** ShareView */
+        ShareView: {
+            /**
+             * Availabledomains
+             * @default []
+             */
+            availableDomains: string[];
+            /** Defaultend */
+            defaultEnd: string;
+            /**
+             * Defaultexpiry
+             * @default 14
+             */
+            defaultExpiry: number;
+            /** Defaultstart */
+            defaultStart: string;
+            /**
+             * Expirychoices
+             * @default []
+             */
+            expiryChoices: number[];
+            /**
+             * Periodchoices
+             * @default []
+             */
+            periodChoices: number[];
+            /**
+             * Presets
+             * @default {}
+             */
+            presets: {
+                [key: string]: components["schemas"]["SharePresetSpec"];
+            };
+            /**
+             * Reports
+             * @default []
+             */
+            reports: components["schemas"]["SharedReportItem"][];
+            /** Today */
+            today: string;
+        };
+        /** SharedReportItem */
+        SharedReportItem: {
+            /** Createdat */
+            createdAt?: string | null;
+            /**
+             * Domains
+             * @default []
+             */
+            domains: string[];
+            /** Expiresat */
+            expiresAt: string;
+            /** Id */
+            id: number;
+            /** Lastopenedat */
+            lastOpenedAt?: string | null;
+            /**
+             * Openedcount
+             * @default 0
+             */
+            openedCount: number;
+            /** Periodend */
+            periodEnd: string;
+            /** Periodstart */
+            periodStart: string;
+            /** Preset */
+            preset?: string | null;
+            /** Revokedat */
+            revokedAt?: string | null;
+            /**
+             * State
+             * @default live
+             */
+            state: string;
+            /** Title */
+            title: string;
+            /** Token */
+            token: string;
+            /** Url */
+            url: string;
+        };
+        /** SignalItem */
+        SignalItem: {
+            /** Batchid */
+            batchId?: string | null;
+            /** Date */
+            date: string;
+            /** Id */
+            id: number;
+            /** Key */
+            key: string;
+            /** Kind */
+            kind: string;
+            /**
+             * Misparse
+             * @default false
+             */
+            misparse: boolean;
+            /** Note */
+            note?: string | null;
+            /** Rawkey */
+            rawKey: string;
+            /** Time */
+            time?: string | null;
+            /** Unit */
+            unit?: string | null;
+            /** Value */
+            value?: number | null;
+        };
+        /** SignalsView */
+        SignalsView: {
+            /**
+             * Frequency
+             * @default []
+             */
+            frequency: components["schemas"]["KeyFrequencyItem"][];
+            /**
+             * Keyscount
+             * @default 0
+             */
+            keysCount: number;
+            /**
+             * Kinds
+             * @default []
+             */
+            kinds: string[];
+            /**
+             * Misparsecount
+             * @default 0
+             */
+            misparseCount: number;
+            /**
+             * Signals
+             * @default []
+             */
+            signals: components["schemas"]["SignalItem"][];
+            /**
+             * Totalcount
+             * @default 0
+             */
+            totalCount: number;
+        };
+        /** SkincareAlertItem */
+        SkincareAlertItem: {
+            /** Alertkey */
+            alertKey: string;
+            /** Createdat */
+            createdAt?: string | null;
+            /** Domain */
+            domain: string;
+            /** Id */
+            id: number;
+            /** Message */
+            message: string;
+            /** Severity */
+            severity: string;
+        };
+        /** SkincareLogCreate */
+        SkincareLogCreate: {
+            /**
+             * Azelaic
+             * @default false
+             */
+            azelaic: boolean;
+            /**
+             * Benzoylperoxide
+             * @default false
+             */
+            benzoylPeroxide: boolean;
+            /** Date */
+            date: string;
+            /**
+             * Moisturizer
+             * @default false
+             */
+            moisturizer: boolean;
+            /**
+             * Niacinamidespf
+             * @default false
+             */
+            niacinamideSpf: boolean;
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /**
+             * Peel
+             * @default false
+             */
+            peel: boolean;
+            /**
+             * Retinoid
+             * @default false
+             */
+            retinoid: boolean;
+            /**
+             * Vitaminc
+             * @default false
+             */
+            vitaminC: boolean;
+        };
+        /** SkincareLogItem */
+        SkincareLogItem: {
+            /**
+             * Azelaic
+             * @default false
+             */
+            azelaic: boolean;
+            /**
+             * Benzoylperoxide
+             * @default false
+             */
+            benzoylPeroxide: boolean;
+            /** Date */
+            date: string;
+            /** Id */
+            id: number;
+            /**
+             * Moisturizer
+             * @default false
+             */
+            moisturizer: boolean;
+            /**
+             * Niacinamidespf
+             * @default false
+             */
+            niacinamideSpf: boolean;
+            /** Note */
+            note?: string | null;
+            /**
+             * Peel
+             * @default false
+             */
+            peel: boolean;
+            /**
+             * Retinoid
+             * @default false
+             */
+            retinoid: boolean;
+            /**
+             * Vitaminc
+             * @default false
+             */
+            vitaminC: boolean;
+        };
+        /** SkincareObservationCreate */
+        SkincareObservationCreate: {
+            /** Date */
+            date: string;
+            /** Inflammation */
+            inflammation?: number | null;
+            /** Note */
+            note?: string | null;
+            /** Pih */
+            pih?: number | null;
+            /** Zone */
+            zone?: string | null;
+        };
+        /** SkincareObservationCreated */
+        SkincareObservationCreated: {
+            /** Id */
+            id: number;
+        };
+        /** SkincareObservationItem */
+        SkincareObservationItem: {
+            /** Date */
+            date: string;
+            /** Id */
+            id: number;
+            /** Inf */
+            inf?: number | null;
+            /** Inflammation */
+            inflammation?: number | null;
+            /** Note */
+            note?: string | null;
+            /** Pih */
+            pih?: number | null;
+            /** Zone */
+            zone?: string | null;
+        };
+        /** SkincareProductCreate */
+        SkincareProductCreate: {
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Activeingredient */
+            activeIngredient?: string | null;
+            /**
+             * Defaulttime
+             * @default evening
+             */
+            defaultTime: string;
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Scheduledays
+             * @default []
+             */
+            scheduleDays: number[];
+            /** Type */
+            type: string;
+            /** Usageinstructions */
+            usageInstructions?: string | null;
+        };
+        /** SkincareProductCreated */
+        SkincareProductCreated: {
+            /** Id */
+            id: number;
+        };
+        /** SkincareProductItem */
+        SkincareProductItem: {
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Activeingredient */
+            activeIngredient?: string | null;
+            /**
+             * Days
+             * @default []
+             */
+            days: number[];
+            /**
+             * Defaulttime
+             * @default evening
+             */
+            defaultTime: string;
+            /** Desc */
+            desc?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Id */
+            id: number;
+            /** Ing */
+            ing?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * On
+             * @default true
+             */
+            on: boolean;
+            /**
+             * Scheduledays
+             * @default []
+             */
+            scheduleDays: number[];
+            /**
+             * Time
+             * @default evening
+             */
+            time: string;
+            /** Type */
+            type: string;
+            /** Usageinstructions */
+            usageInstructions?: string | null;
+            /** Use */
+            use?: string | null;
+        };
+        /** SkincareProductUpdate */
+        SkincareProductUpdate: {
+            /** Active */
+            active?: boolean | null;
+            /** Activeingredient */
+            activeIngredient?: string | null;
+            /** Defaulttime */
+            defaultTime?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Scheduledays */
+            scheduleDays?: number[] | null;
+            /** Type */
+            type?: string | null;
+            /** Usageinstructions */
+            usageInstructions?: string | null;
+        };
+        /** SkincareRuleItem */
+        SkincareRuleItem: {
+            /** Code */
+            code?: string | null;
+            /**
+             * Hard
+             * @default false
+             */
+            hard: boolean;
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /** Msg */
+            msg: string;
+            /** Sev */
+            sev: string;
+            /** Severity */
+            severity: string;
+        };
+        /** SkincareView */
+        SkincareView: {
+            /**
+             * Activecount
+             * @default 0
+             */
+            activeCount: number;
+            /**
+             * Alerts
+             * @default []
+             */
+            alerts: components["schemas"]["SkincareAlertItem"][];
+            /**
+             * Logs
+             * @default []
+             */
+            logs: components["schemas"]["SkincareLogItem"][];
+            /**
+             * Observations
+             * @default []
+             */
+            observations: components["schemas"]["SkincareObservationItem"][];
+            /**
+             * Products
+             * @default []
+             */
+            products: components["schemas"]["SkincareProductItem"][];
+            /**
+             * Rules
+             * @default []
+             */
+            rules: components["schemas"]["SkincareRuleItem"][];
+            /** Today */
+            today: string;
+            todayLog?: components["schemas"]["SkincareLogItem"] | null;
+            /**
+             * Totalcount
+             * @default 0
+             */
+            totalCount: number;
         };
         /** SleepNightView */
         SleepNightView: {
@@ -3121,6 +4774,163 @@ export interface components {
             /** Start Min */
             start_min: number;
         };
+        /** SupplementAlertItem */
+        SupplementAlertItem: {
+            /** Alertkey */
+            alertKey: string;
+            /** Createdat */
+            createdAt?: string | null;
+            /** Domain */
+            domain: string;
+            /** Id */
+            id: number;
+            /** Message */
+            message: string;
+            /** Severity */
+            severity: string;
+        };
+        /** SupplementCreate */
+        SupplementCreate: {
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Contraindications */
+            contraindications?: string | null;
+            /** Dose */
+            dose?: string | null;
+            /** Evidence */
+            evidence?: string | null;
+            /** Key */
+            key?: string | null;
+            /** Name */
+            name: string;
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Timing */
+            timing?: string | null;
+        };
+        /** SupplementCreated */
+        SupplementCreated: {
+            /** Id */
+            id: number;
+        };
+        /** SupplementGroup */
+        SupplementGroup: {
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["SupplementItem"][];
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Sub
+             * @default
+             */
+            sub: string;
+            /**
+             * Tone
+             * @default
+             */
+            tone: string;
+        };
+        /** SupplementItem */
+        SupplementItem: {
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Contra */
+            contra?: string | null;
+            /** Contraindications */
+            contraindications?: string | null;
+            /** Dose */
+            dose?: string | null;
+            /** Evidence */
+            evidence?: string | null;
+            /** Id */
+            id: number;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Note */
+            note?: string | null;
+            /** Timing */
+            timing?: string | null;
+            /** Timingbucket */
+            timingBucket?: string | null;
+            /** Timingslot */
+            timingSlot?: string | null;
+        };
+        /** SupplementToggle */
+        SupplementToggle: {
+            /** Active */
+            active: boolean;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+        };
+        /** SupplementUpdate */
+        SupplementUpdate: {
+            /** Active */
+            active?: boolean | null;
+            /** Contraindications */
+            contraindications?: string | null;
+            /** Dose */
+            dose?: string | null;
+            /** Evidence */
+            evidence?: string | null;
+            /** Key */
+            key?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Timing */
+            timing?: string | null;
+        };
+        /** SupplementsView */
+        SupplementsView: {
+            /**
+             * Active
+             * @default []
+             */
+            active: components["schemas"]["SupplementItem"][];
+            /** Activecount */
+            activeCount: number;
+            /**
+             * Alerts
+             * @default []
+             */
+            alerts: components["schemas"]["SupplementAlertItem"][];
+            /**
+             * Archived
+             * @default []
+             */
+            archived: components["schemas"]["SupplementItem"][];
+            /** Groups */
+            groups: components["schemas"]["SupplementGroup"][];
+            /** Totalcount */
+            totalCount: number;
+        };
         /**
          * SyncStamp
          * @description An integration that last put something in the lake, and the day it did.
@@ -3133,6 +4943,91 @@ export interface components {
             date: string;
             /** Source */
             source: string;
+        };
+        /** SystemAlertItem */
+        SystemAlertItem: {
+            /** Alertkey */
+            alertKey: string;
+            /** Createdat */
+            createdAt?: string | null;
+            /** Domain */
+            domain: string;
+            /** Entityref */
+            entityRef?: string | null;
+            /** Id */
+            id: number;
+            /** Message */
+            message: string;
+            /** Resolvedat */
+            resolvedAt?: string | null;
+            /** Severity */
+            severity: string;
+        };
+        /** TimelineEventItem */
+        TimelineEventItem: {
+            /** Date */
+            date: string;
+            /** Detail */
+            detail?: string | null;
+            /** Dom */
+            dom: string;
+            /** Domain */
+            domain: string;
+            /** Enddate */
+            endDate?: string | null;
+            /** Id */
+            id?: number | null;
+            /** Kind */
+            kind: string;
+            /**
+             * Manual
+             * @default false
+             */
+            manual: boolean;
+            /** Ref */
+            ref: string;
+            /**
+             * Source
+             * @default manual
+             */
+            source: string;
+            /** Title */
+            title: string;
+            /**
+             * Tone
+             * @default
+             */
+            tone: string;
+        };
+        /** TimelineView */
+        TimelineView: {
+            /**
+             * Domains
+             * @default []
+             */
+            domains: string[];
+            /**
+             * Events
+             * @default []
+             */
+            events: components["schemas"]["TimelineEventItem"][];
+            /**
+             * Kinds
+             * @default []
+             */
+            kinds: string[];
+            /**
+             * Manualcount
+             * @default 0
+             */
+            manualCount: number;
+            /** Today */
+            today: string;
+            /**
+             * Totalcount
+             * @default 0
+             */
+            totalCount: number;
         };
         /**
          * TodayFigure
@@ -3524,6 +5419,338 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    read_alerts: {
+        parameters: {
+            query?: {
+                domain?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertsListView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_all_alerts: {
+        parameters: {
+            query?: {
+                domain?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    override_alert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_alert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_charts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChartsView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    create_chart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChartCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChartCreated"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_chart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chart_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_genetics: {
         parameters: {
             query?: never;
@@ -5162,6 +7389,109 @@ export interface operations {
             };
         };
     };
+    read_interactions: {
+        parameters: {
+            query?: {
+                domain?: string | null;
+                severity?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InteractionsView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toggle_conflict_rule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleToggleRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_labs: {
         parameters: {
             query?: never;
@@ -6137,6 +8467,322 @@ export interface operations {
             };
         };
     };
+    read_reports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportsView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    build_brief: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DigestItem"] | null;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    send_test_brief: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    generate_digest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DigestGenerateRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DigestItem"] | null;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_milestone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MilestoneCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MilestoneCreated"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_milestone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                milestone_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_milestone_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                milestone_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MilestoneStatusUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_session: {
         parameters: {
             query?: never;
@@ -6171,6 +8817,1290 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    read_share: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    create_share_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateShareRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedShareResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_share_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_share_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_signals: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalsView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_signal_misparse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_signal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                signal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_skincare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkincareView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    upsert_skincare_log: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkincareLogCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkincareLogItem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_skincare_log: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                log_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_skincare_observation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkincareObservationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkincareObservationCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_skincare_observation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                obs_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_skincare_product: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkincareProductCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkincareProductCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_skincare_product: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_skincare_product: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkincareProductUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkincareProductItem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_supplements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplementsView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    create_supplement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplementCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplementCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_supplement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_supplement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplementUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplementItem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toggle_supplement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplementToggle"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplementItem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_timeline: {
+        parameters: {
+            query?: {
+                domain?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_annotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnotationCreated"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_annotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                annotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_annotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                annotation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnotationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEventItem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -7125,4 +11055,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: 3e6bd9ddb4d077677095824d7ae83e3ba5bce6bcfe72f804a4d060575b644152
+// openapi.json sha256: 0e8a9a4f24bb72acf605877c9e42997d641aec1606ec714071ab71c90443214d

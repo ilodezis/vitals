@@ -17,6 +17,14 @@ const loaders: Partial<Record<ScreenId, () => Promise<{ default: ComponentType }
   labs: () => import('@/features/labs/LabsScreen'),
   hrt: () => import('@/features/hrt/HrtScreen'),
   genetics: () => import('@/features/genetics/GeneticsScreen'),
+  supplements: () => import('@/features/supplements/SupplementsScreen'),
+  skincare: () => import('@/features/skincare/SkincareScreen'),
+  interactions: () => import('@/features/interactions/InteractionsScreen'),
+  signals: () => import('@/features/signals/SignalsScreen'),
+  timeline: () => import('@/features/timeline/TimelineScreen'),
+  reports: () => import('@/features/reports/ReportsScreen'),
+  charts: () => import('@/features/charts/ChartsScreen'),
+  share: () => import('@/features/share/ShareScreen'),
   more: () => import('@/features/more/MoreScreen'),
 }
 

@@ -1,0 +1,30 @@
+/* Skincare styles ported from mockup */
+.sched { display: none; }
+.sched-m .opts { margin-top: 0; }
+.opt.today:not(.on) { color: var(--accent-2); }
+.day-pane { margin-top: 12px; border-top: 1px solid var(--line); }
+.day-pane .mi { display: grid; place-items: center; color: var(--muted); }
+.day-pane .mi svg { width: 20px; height: 20px; }
+.prods { border-top: 1px solid var(--line); }
+.prod { border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+.prod .row { border-bottom: 0; padding-bottom: 6px; }
+.prod-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.prod-tags .m { font-size: var(--t-micro); color: var(--muted); }
+.prod-d { margin: 8px 0 0; color: var(--fg-2); max-width: 62ch; }
+.use { display: flex; gap: 6px; margin: 6px 0 0; font-size: var(--t-micro); color: var(--muted); }
+.use svg { width: 14px; height: 14px; flex: none; margin-top: 1px; }
+.skinmap { margin: 0 0 14px; color: var(--faint); }
+
+@container app (min-width: 768px) {
+  .sched { display: block; }
+  .sched-m { display: none; }
+  .sched table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 3px; }
+  .sched th { padding: 0 0 6px; font-size: var(--t-micro); color: var(--muted); font-weight: 500; text-align: left; padding-left: 8px; }
+  .sched th:first-child { width: 96px; }
+  .sched th.now { color: var(--accent-2); }
+  .sched td { padding: 8px; border-radius: var(--r-xs); background: var(--surface); vertical-align: top; font-size: var(--t-micro); height: 64px; }
+  .sched td.now { background: var(--surface-2); }
+  .sched td.lbl { background: none; padding-left: 0; font-size: var(--t-label); color: var(--fg-2); white-space: nowrap; vertical-align: middle; }
+  .sched td.lbl svg { display: inline-block; width: 16px; height: 16px; margin-right: 6px; vertical-align: -3px; color: var(--muted); }
+  .sched .pn { color: var(--fg-2); line-height: 1.3; margin-bottom: 4px; }
+}

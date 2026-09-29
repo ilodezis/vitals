@@ -9,9 +9,9 @@ rules triggered from *other* domains (e.g. activating isotretinoin today).
 from __future__ import annotations
 
 from datetime import date as date_type
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.enums import Domain, Source
@@ -222,3 +222,129 @@ async def delete_product(session: AsyncSession, product_id: int) -> bool:
     await session.delete(row)
     await session.flush()
     return True
+
+
+# ── Full view collection for API / UI ─────────────────────────────────────────
+async def collect(session: AsyncSession) -> dict[str, Any]:
+    """Collect everything needed by the Skincare dashboard in one round-trip."""
+    from vitals.models.conflict_rule import ConflictRule
+    from vitals.services import alerts_service
+
+    products = await list_products(session)
+    logs = await list_logs(session)
+    observations = await list_observations(session)
+    today_l = await get_log(session, today_local())
+    active_alerts = await alerts_service.list_active(session, domain=Domain.SKINCARE.value)
+
+    # Active conflict rules concerning skincare
+    rules_stmt = select(ConflictRule).where(
+        ConflictRule.active.is_(True),
+        or_(ConflictRule.domain_a == "skincare", ConflictRule.domain_b == "skincare"),
+    )
+    rules_result = await session.execute(rules_stmt)
+    conflict_rules = rules_result.scalars().all()
+
+    prods_data = [
+        {
+            "id": p.id,
+            "name": p.name,
+            "type": p.type,
+            "active_ingredient": p.active_ingredient,
+            "ing": p.active_ingredient,
+            "description": p.description,
+            "desc": p.description,
+            "usage_instructions": p.usage_instructions,
+            "use": p.usage_instructions,
+            "default_time": p.default_time,
+            "time": p.default_time,
+            "schedule_days": p.schedule_days or [],
+            "days": p.schedule_days or [],
+            "active": p.active,
+            "on": p.active,
+        }
+        for p in products
+    ]
+
+    logs_data = [
+        {
+            "id": l.id,
+            "date": l.date.isoformat(),
+            "retinoid": l.retinoid,
+            "azelaic": l.azelaic,
+            "peel": l.peel,
+            "niacinamide_spf": l.niacinamide_spf,
+            "moisturizer": l.moisturizer,
+            "vitamin_c": l.vitamin_c,
+            "benzoyl_peroxide": l.benzoyl_peroxide,
+            "note": l.note,
+        }
+        for l in logs
+    ]
+
+    obs_data = [
+        {
+            "id": o.id,
+            "date": o.date.isoformat(),
+            "inflammation": o.inflammation,
+            "inf": o.inflammation,
+            "pih": o.pih,
+            "zone": o.zone,
+            "note": o.note,
+        }
+        for o in observations
+    ]
+
+    rules_data = [
+        {
+            "id": r.id,
+            "code": r.code,
+            "severity": r.severity,
+            "sev": r.severity,
+            "kind": r.category or "Правило",
+            "msg": r.message,
+            "hard": r.severity == "block",
+        }
+        for r in conflict_rules
+    ]
+
+    today_log_data = (
+        {
+            "id": today_l.id,
+            "date": today_l.date.isoformat(),
+            "retinoid": today_l.retinoid,
+            "azelaic": today_l.azelaic,
+            "peel": today_l.peel,
+            "niacinamide_spf": today_l.niacinamide_spf,
+            "moisturizer": today_l.moisturizer,
+            "vitamin_c": today_l.vitamin_c,
+            "benzoyl_peroxide": today_l.benzoyl_peroxide,
+            "note": today_l.note,
+        }
+        if today_l
+        else None
+    )
+
+    active_prods = [p for p in prods_data if p["active"]]
+
+    return {
+        "products": prods_data,
+        "active_count": len(active_prods),
+        "total_count": len(prods_data),
+        "today_log": today_log_data,
+        "logs": logs_data,
+        "observations": obs_data,
+        "rules": rules_data,
+        "alerts": [
+            {
+                "id": a.id,
+                "domain": a.domain,
+                "severity": a.severity,
+                "alert_key": a.alert_key,
+                "message": a.message,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+            }
+            for a in active_alerts
+        ],
+        "today": today_local().isoformat(),
+    }
+

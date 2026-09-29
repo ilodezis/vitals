@@ -11,7 +11,7 @@ router turns ``ConflictBlocked`` into a 409 + violations payload.
 from __future__ import annotations
 
 import re
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -248,3 +248,71 @@ async def resolve_active(session: AsyncSession) -> list[dict]:
         }
         for s in result.scalars().all()
     ]
+
+
+# ── Full view collection for API / UI ─────────────────────────────────────────
+async def collect(session: AsyncSession) -> dict[str, Any]:
+    """Collect everything needed by the Supplements dashboard in one round-trip."""
+    from vitals.services import alerts_service
+
+    all_supps = await list_supplements(session)
+    active_alerts = await alerts_service.list_active(session, domain=Domain.SUPPLEMENTS.value)
+
+    active_items: list[dict[str, Any]] = []
+    archived_items: list[dict[str, Any]] = []
+
+    def _to_item(s: Supplement) -> dict[str, Any]:
+        return {
+            "id": s.id,
+            "name": s.name,
+            "key": s.key,
+            "dose": s.dose,
+            "timing": s.timing,
+            "timing_slot": _parse_slot(s.timing),
+            "timing_bucket": timing_bucket(s.timing),
+            "evidence": s.evidence,
+            "active": s.active,
+            "contraindications": s.contraindications,
+            "contra": s.contraindications,
+            "note": s.note,
+        }
+
+    for s in all_supps:
+        item = _to_item(s)
+        if s.active:
+            active_items.append(item)
+        else:
+            archived_items.append(item)
+
+    morning_items = [s for s in active_items if s["timing_bucket"] == "утро"]
+    day_items = [s for s in active_items if s["timing_bucket"] == "день"]
+    evening_items = [s for s in active_items if s["timing_bucket"] in ("вечер", "ночь")]
+    other_items = [s for s in active_items if s["timing_bucket"] not in ("утро", "день", "вечер", "ночь")]
+
+    groups = [
+        {"key": "morning", "label": "Утро", "sub": "с первым приёмом пищи", "tone": "cool", "items": morning_items},
+        {"key": "day", "label": "День", "sub": "в течение дня", "tone": "", "items": day_items},
+        {"key": "evening", "label": "Вечер", "sub": "перед сном", "tone": "violet", "items": evening_items},
+    ]
+    if other_items:
+        groups.append({"key": "other", "label": "Другое", "sub": "", "tone": "", "items": other_items})
+
+    return {
+        "groups": groups,
+        "active": active_items,
+        "archived": archived_items,
+        "active_count": len(active_items),
+        "total_count": len(all_supps),
+        "alerts": [
+            {
+                "id": a.id,
+                "domain": a.domain,
+                "severity": a.severity,
+                "alert_key": a.alert_key,
+                "message": a.message,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+            }
+            for a in active_alerts
+        ],
+    }
+
