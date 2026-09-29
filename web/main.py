@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
+from web.api import api_router, errors as api_errors
 from web.auth import router as auth_router
 from web.csrf import add_csrf_origin_check, add_security_headers
 from web.deps import (
@@ -156,7 +157,13 @@ async def auth_exception_handler(request: Request, exc: NotAuthenticated):
     """Redirect unauthorized browser navigation to the login form,
 
     but return JSON 401 responses for background API/HTMX calls.
+
+    Under ``/api/`` it is always JSON, whatever the client accepts: a fetch that
+    followed a redirect would get the login page's HTML where it expects data.
     """
+    if api_errors.is_api_request(request):
+        return api_errors.unauthenticated()
+
     # Check if this request accepts HTML (standard browser GET)
     accept = request.headers.get("accept", "")
     is_html = "text/html" in accept
@@ -224,6 +231,9 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     if exc.status_code != status.HTTP_404_NOT_FOUND:
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
+    if api_errors.is_api_request(request):
+        return api_errors.not_found()
+
     accept = request.headers.get("accept", "")
     is_html = "text/html" in accept
     is_htmx = request.headers.get("hx-request", "").lower() == "true"
@@ -258,6 +268,9 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 async def module_disabled_handler(request: Request, exc: ModuleDisabled):
     """A disabled Optional module behaves as if absent: redirect browser GETs to
     the dashboard, return JSON 404 for API/HTMX calls."""
+    if api_errors.is_api_request(request):
+        return api_errors.module_disabled()
+
     accept = request.headers.get("accept", "")
     if request.method == "GET" and "text/html" in accept:
         return RedirectResponse(url="/weight", status_code=status.HTTP_303_SEE_OTHER)
@@ -340,6 +353,9 @@ async def root():
 # ── Include Routers ───────────────────────────────────────────────────────────
 
 app.include_router(auth_router)
+
+# The JSON API for the React app — session-guarded as a whole, one error contract.
+app.include_router(api_router)
 
 # The React app's shell for every /app path (its assets ride the /static mount).
 from web.spa import router as spa_router  # noqa: E402

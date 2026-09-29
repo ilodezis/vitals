@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "check": "tsc -b && vitest run && vite build && node scripts/check-size.mjs",
-    "gen:api": "npx --yes -p typescript@5.9.3 -p openapi-typescript@7.13.0 openapi-typescript src/api/openapi.json -o src/api/schema.d.ts",
+    "gen": "npm run gen:openapi && npm run gen:api && npm run gen:i18n",
+    "gen:openapi": "cd .. && python scripts/dump_openapi.py",
+    "gen:api": "node scripts/gen-api.mjs",
     "gen:i18n": "cd .. && python scripts/export_i18n.py"
   },
   "dependencies": {
@@ -16,6 +18,7 @@
     "@tanstack/react-query": "5.104.0",
     "@tanstack/react-router": "1.170.40",
     "motion": "13.4.5",
+    "openapi-fetch": "0.17.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

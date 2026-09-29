@@ -15,7 +15,7 @@ from fastapi import Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from web.config import SESSION_COOKIE
+from web.config import API_PATH_PREFIX, SESSION_COOKIE
 
 from vitals.i18n import current_lang
 
@@ -149,6 +149,11 @@ async def load_nav_status(
     if request.method != "GET":
         return
     if accept and "text/html" not in accept and "*/*" not in accept:
+        return
+    # A fetch sends ``Accept: */*``, which counts as a document above — but the
+    # API serves the card's numbers itself (``/api/v1/session``), so paying for
+    # them on every call would run the four reads twice.
+    if request.url.path.startswith(API_PATH_PREFIX):
         return
     from vitals.services import nav_status_service
 
