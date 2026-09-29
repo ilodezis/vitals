@@ -104,6 +104,14 @@ async def get_active_weight(session: AsyncSession, on_date: date_type) -> Option
     return result.scalar_one_or_none()
 
 
+async def get_weight_log(session: AsyncSession, log_id: int) -> Optional[WeightLog]:
+    """One weight row by id, superseded or not — what an edit starts from."""
+    result = await session.execute(
+        select(WeightLog).where(WeightLog.id == log_id).execution_options(populate_existing=True)
+    )
+    return result.scalar_one_or_none()
+
+
 async def log_weight(
     session: AsyncSession,
     *,

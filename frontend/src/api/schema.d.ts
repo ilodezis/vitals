@@ -25,10 +25,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Today
+         * @description The whole Today screen in one request: figures, the week's changes, the day's
+         *     feed, what needs attention and the goal. A module that is switched off
+         *     contributes nothing: no calories or meals without nutrition, no timeline rows
+         *     without the timeline.
+         */
+        get: operations["read_today"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weight/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Weight Log
+         * @description Log a weight as a manual reading. A reading the day already holds comes back
+         *     with ``created: false``; a block rule answers 409 until ``override`` is set.
+         */
+        post: operations["create_weight_log"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weight/logs/{log_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Weight Log
+         * @description Take a reading back. If it was the day's active one, the reading it had
+         *     outranked (a Garmin import) becomes active again.
+         */
+        delete: operations["delete_weight_log"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Weight Log
+         * @description Correct a reading; whatever the body leaves out stays as it was.
+         */
+        patch: operations["update_weight_log"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AttentionItem */
+        AttentionItem: {
+            /** Domain */
+            domain: string | null;
+            /** Message */
+            message: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "note" | "info" | "warn" | "block";
+        };
         /**
          * ConflictBody
          * @description 409 — a ``block`` rule fired; repeat the write with ``override`` to keep it.
@@ -43,6 +124,77 @@ export interface components {
             violations: components["schemas"]["ViolationBody"][];
         };
         /**
+         * Corridor
+         * @description A band a value is read against.
+         */
+        Corridor: {
+            /** Hi */
+            hi: number;
+            /** Lo */
+            lo: number;
+        };
+        /**
+         * FeedRow
+         * @description One line of the day. ``text`` and ``detail`` are the owner's own words where
+         *     ``kind`` is an event or a signal; for the rest the client writes them from
+         *     ``kind`` and ``value``.
+         */
+        FeedRow: {
+            /** Detail */
+            detail: string;
+            /**
+             * Dot
+             * @enum {string}
+             */
+            dot: "good" | "cool" | "violet" | "amber";
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "event" | "meal" | "signal" | "brief" | "weight";
+            /** Text */
+            text: string;
+            /** Time */
+            time: string;
+            /** Value */
+            value: number | null;
+        };
+        /**
+         * Goal
+         * @description The first active weight goal, with where he started.
+         */
+        Goal: {
+            /** Current Kg */
+            current_kg: number;
+            /** Deadline */
+            deadline: string | null;
+            forecast: components["schemas"]["GoalForecast"] | null;
+            /** Name */
+            name: string;
+            /** Start Kg */
+            start_kg: number;
+            /** Target Kg */
+            target_kg: number;
+        };
+        /**
+         * GoalForecast
+         * @description Where the present trend meets the goal.
+         */
+        GoalForecast: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Days Ahead */
+            days_ahead: number | null;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
          * InvalidBody
          * @description 400 — a service refused the values (its ``ValueError`` message).
          */
@@ -54,6 +206,16 @@ export interface components {
             error: "invalid";
             /** Message */
             message: string;
+        };
+        /** LatestWeight */
+        LatestWeight: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Kg */
+            kg: number;
         };
         /** Nav */
         Nav: {
@@ -159,6 +321,69 @@ export interface components {
             username: string;
         };
         /**
+         * SyncStamp
+         * @description An integration that last put something in the lake, and the day it did.
+         */
+        SyncStamp: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Source */
+            source: string;
+        };
+        /**
+         * TodayFigure
+         * @description One of the key figures. Only the fields of its own ``key`` are filled; the rest
+         *     are null. ``value`` is null until there is a reading, and the row stays.
+         */
+        TodayFigure: {
+            /** Baseline */
+            baseline: number | null;
+            corridor: components["schemas"]["Corridor"] | null;
+            /** Gained */
+            gained: number | null;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "weight" | "sleep_score" | "hrv_avg" | "body_battery_high" | "calories";
+            /** Sleep Seconds */
+            sleep_seconds: number | null;
+            /** Trend */
+            trend: number | null;
+            /** Value */
+            value: number | null;
+        };
+        /** TodayView */
+        TodayView: {
+            /** Attention */
+            attention: components["schemas"]["AttentionItem"][];
+            /** Changes */
+            changes: components["schemas"]["WeekChange"][];
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Feed */
+            feed: components["schemas"]["FeedRow"][];
+            /** Figures */
+            figures: components["schemas"]["TodayFigure"][];
+            goal: components["schemas"]["Goal"] | null;
+            latest_weight: components["schemas"]["LatestWeight"] | null;
+            /** Narrative */
+            narrative: string;
+            /**
+             * Narrative Source
+             * @enum {string}
+             */
+            narrative_source: "digest" | "computed";
+            /** Sync */
+            sync: components["schemas"]["SyncStamp"][];
+        };
+        /**
          * UnauthenticatedBody
          * @description 401 — no valid session cookie.
          */
@@ -168,6 +393,19 @@ export interface components {
              * @constant
              */
             error: "unauthenticated";
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
         };
         /**
          * ViolationBody
@@ -196,6 +434,87 @@ export interface components {
             severity: string;
             /** Source */
             source: string | null;
+        };
+        /**
+         * WeekChange
+         * @description A metric this week against last: the two seven-day values, on the corridor of
+         *     his own norm where there is one.
+         */
+        WeekChange: {
+            /** After */
+            after: number;
+            /** Before */
+            before: number;
+            /**
+             * Domain Key
+             * @enum {string}
+             */
+            domain_key: "weight" | "garmin" | "nutrition";
+            /** Hi */
+            hi: number | null;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "weight" | "sleep_score" | "hrv_avg" | "body_battery_high" | "calories";
+            /** Lo */
+            lo: number | null;
+            /**
+             * Tone
+             * @enum {string}
+             */
+            tone: "" | "good" | "bad";
+        };
+        /** WeightLogCreate */
+        WeightLogCreate: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Weight Kg */
+            weight_kg: number;
+        };
+        /** WeightLogCreated */
+        WeightLogCreated: {
+            /** Created */
+            created: boolean;
+            /** Id */
+            id: number;
+        };
+        /**
+         * WeightLogPatch
+         * @description What to change; what is left out stays. ``note`` is the one field where an
+         *     explicit ``null`` means something: it clears the note.
+         */
+        WeightLogPatch: {
+            /** Date */
+            date?: string | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Weight Kg */
+            weight_kg?: number | null;
+        };
+        /**
+         * WeightLogRef
+         * @description The row a write ended up on. Moving a reading to another day makes a new row,
+         *     so a patch answers with the id to use from then on.
+         */
+        WeightLogRef: {
+            /** Id */
+            id: number;
         };
     };
     responses: never;
@@ -244,6 +563,231 @@ export interface operations {
             };
         };
     };
+    read_today: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    create_weight_log: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WeightLogCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeightLogCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_weight_log: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                log_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_weight_log: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                log_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WeightLogPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeightLogRef"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
 }
 
-// openapi.json sha256: 1e113bf0ff4bda86da895ecff945bba8aef6496ccae77fa7064253677b256260
+// openapi.json sha256: 7e7ab3c5a0e8c9db6dd767e9bb60186487a41cb677b5a5b460ddda2ec5bb1a94

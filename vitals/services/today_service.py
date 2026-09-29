@@ -1,11 +1,18 @@
-"""What today looks like — the assembly behind ``GET /today``.
+"""What today looks like — the assembly behind ``GET /today`` and
+``GET /api/v1/today``.
 
 The screen the app opens on. Everything here is *composition*: the morning
 brief's cross-domain context, the weight chart series, the day's feed rows and
-the alert ladder, all read through the services that already own them. No new
-metric is computed in this module; a block whose module is disabled is simply
-never assembled, so an instance running "weight + Garmin only" gets a shorter
-screen instead of five empty cards.
+the alert ladder, all read through the services that already own them. A block
+whose module is disabled is simply never assembled, so an instance running
+"weight + Garmin only" gets a shorter screen instead of five empty cards.
+
+There is one assembly, ``collect()``, and it speaks in values: numbers, dates,
+kinds and tones. ``build()`` phrases it for the server-rendered page; the JSON API
+hands it to the React screen, which phrases it in the reader's language. The
+personal range (a corridor around his own fortnight) and the goal's forecast are
+the only derived numbers here, and both are read off numbers the page already
+prints — the trend and the baseline.
 
 The narrative never waits on the LLM: when there is no ``daily_brief`` row for
 today, a deterministic sentence is built from the same context the brief would
@@ -13,7 +20,8 @@ have been written from.
 """
 from __future__ import annotations
 
-from datetime import timedelta
+import statistics
+from datetime import date as date_type, datetime, timedelta
 from typing import Any, Optional, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,6 +45,10 @@ _RECOVERY_KEYS = ("sleep_score", "hrv_avg", "body_battery_high")
 # Higher is better for everything here except weight and calories, which are
 # handled on their own.
 _HIGHER_IS_BETTER = frozenset(_RECOVERY_KEYS)
+
+# A forecast that lands further out than this is arithmetic, not a plan: at a few
+# grams a week the "date" is somewhere past any horizon the owner steers by.
+_FORECAST_HORIZON_DAYS = 730
 
 
 def _num(value: Any) -> str:
@@ -86,37 +98,170 @@ def _baseline_sub(value: Any, mean: Any) -> str:
     return t("today.baseline", value=_num(mean))
 
 
-def _figure(key: str, value: Any, *, unit: str = "", tone: str = "", sub: str = "") -> dict:
+def _as_date(value: Any) -> date_type:
+    """An ISO string (what the brief's context carries) or a date, as a date."""
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date_type):
+        return value
+    return date_type.fromisoformat(str(value)[:10])
+
+
+def _spread(rows: Sequence[Any], key: str, today: date_type, *, window: int, minimum: int) -> Optional[float]:
+    """Standard deviation of his own days *before* today, or ``None`` while there
+    are too few of them for a range to mean anything — the same rows and the same
+    threshold the baseline mean is taken from."""
+    values = [
+        v
+        for v in (getattr(r, key, None) for r in rows if 0 < (today - r.date).days <= window)
+        if v is not None
+    ]
+    return statistics.pstdev(values) if len(values) >= minimum else None
+
+
+def _corridor(mean: Any, spread: Optional[float]) -> Optional[dict]:
+    """His norm ± one standard deviation — the band a night is read against."""
+    if mean is None or spread is None:
+        return None
+    return {"lo": round(mean - spread, 1), "hi": round(mean + spread, 1)}
+
+
+def _forecast(
+    current: float, target: float, trend: Optional[float], today: date_type, deadline: Optional[date_type]
+) -> Optional[dict]:
+    """The day the present trend meets the goal, and how far that sits from the
+    deadline (positive: ahead of it). Linear, off the same kg/week the page prints;
+    nothing when the trend is flat, moves away from the goal, or lands beyond the
+    horizon."""
+    if trend is None or trend >= 0 or current <= target:
+        return None
+    days = (current - target) / -trend * 7
+    if days > _FORECAST_HORIZON_DAYS:
+        return None
+    lands = today + timedelta(days=round(days))
+    return {"date": lands, "days_ahead": (deadline - lands).days if deadline else None}
+
+
+def _raw_figure(key: str, value: Any, **extra: Any) -> dict:
+    """One of the key figures, as values. Only the fields its own ``key`` uses are
+    filled; the rest stay ``None``."""
+    return {
+        "key": key,
+        "value": value,
+        "tone": "",
+        "trend": None,
+        "baseline": None,
+        "corridor": None,
+        "sleep_seconds": None,
+        "gained": None,
+        **extra,
+    }
+
+
+def _raw_change(
+    key: str, domain_key: str, before: float, after: float, corridor: Optional[dict] = None
+) -> dict:
+    return {
+        "key": key,
+        "domain_key": domain_key,
+        "before": before,
+        "after": after,
+        "lo": corridor["lo"] if corridor else None,
+        "hi": corridor["hi"] if corridor else None,
+        "tone": _tone(round(after - before, 1), key),
+    }
+
+
+def _raw_feed(
+    kind: str, dot: str, text: str = "", detail: str = "", *, time: str = "", value: Optional[float] = None
+) -> dict:
+    return {"time": time, "kind": kind, "dot": dot, "text": text, "detail": detail, "value": value}
+
+
+# ── Phrasing, for the server-rendered page ───────────────────────────────────
+
+
+def _phrase_figure(f: dict) -> dict:
+    key, value = f["key"], f["value"]
+    if key == "weight":
+        unit = t("common.kg")
+        sub = t("today.trend_week", value=_signed(f["trend"])) if f["trend"] is not None else ""
+    elif key == "calories":
+        unit = t("common.kcal")
+        corridor = f["corridor"]
+        sub = (
+            t("today.corridor", min=_num(corridor["lo"]), max=_num(corridor["hi"]))
+            if corridor
+            else ""
+        )
+    else:
+        unit = ""
+        sub = _baseline_sub(value, f["baseline"])
     return {
         "key": key,
         "value": _num(value) if value is not None else "—",
         "unit": unit if value is not None else "",
-        "tone": tone,
+        "tone": f["tone"],
         "sub": sub,
     }
 
 
-def _change(key: str, domain_key: str, href: str, now: float, before: float) -> dict:
-    delta = round(now - before, 1)
+def _phrase_change(c: dict) -> dict:
+    delta = round(c["after"] - c["before"], 1)
     return {
-        "key": key,
-        "domain_key": domain_key,
-        "href": href,
-        "sentence": t("today.change_from_to", frm=_num(before), to=_num(now)),
+        "key": c["key"],
+        "domain_key": c["domain_key"],
+        "href": "/" + c["domain_key"],
+        "sentence": t("today.change_from_to", frm=_num(c["before"]), to=_num(c["after"])),
         "delta": _signed(delta),
-        "tone": _tone(delta, key),
+        "tone": c["tone"],
     }
 
 
-async def build(
-    session: AsyncSession, *, enabled_modules: Optional[dict[str, bool]] = None
+def _phrase_feed(row: dict) -> dict:
+    kind, text, detail = row["kind"], row["text"], row["detail"]
+    if kind == "meal":
+        detail = t("today.src_meal", value=_num(row["value"])) if row["value"] else t("nav.nutrition")
+    elif kind == "signal":
+        detail = t("today.src_bot")
+    elif kind == "brief":
+        text, detail = t("today.brief_sent"), t("today.src_proactive")
+    return {"time": row["time"], "dot": row["dot"], "text": text, "detail": detail}
+
+
+def _phrase_goal(goal: Optional[dict]) -> Optional[dict]:
+    if goal is None:
+        return None
+    done = goal["start_kg"] - goal["current_kg"]
+    total = goal["start_kg"] - goal["target_kg"]
+    return {
+        "name": goal["name"],
+        "target": _num(goal["target_kg"]),
+        "done": _num(done),
+        "total": _num(total),
+        "pct": max(0, min(100, round(done / total * 100))),
+        "deadline": goal["deadline"].isoformat() if goal["deadline"] else None,
+    }
+
+
+async def collect(
+    session: AsyncSession,
+    *,
+    enabled_modules: Optional[dict[str, bool]] = None,
+    weigh_ins: bool = False,
 ) -> dict:
-    """Everything ``today/index.html`` renders, as one plain dict."""
+    """The day as values — everything ``today/index.html`` renders and the React
+    screen draws, before any of it is phrased.
+
+    ``weigh_ins`` is where the two consumers disagree: the server-rendered page
+    never listed a weigh-in in the day's feed, the React screen adds one the moment
+    a weight is saved and the refetch that follows has to keep it. The default is
+    the old page's; the flag goes once that page does.
+    """
     from vitals.services import (
         alerts_service,
         digest_service,
         garmin_service,
-        milestones_service,
         nutrition_service,
         signals_service,
         timeline_service,
@@ -133,20 +278,31 @@ async def build(
     garmin = ctx.get("garmin") or {}
     baseline = garmin.get("baseline") or {}
     series = await weight_service.chart_series(session)
+    daily = await garmin_service.list_daily(session, limit=brief._BASELINE_DAYS + 1)
+
+    def corridor_of(key: str) -> Optional[dict]:
+        spread = _spread(
+            daily, key, today, window=brief._BASELINE_DAYS, minimum=brief._BASELINE_MIN_DAYS
+        )
+        return _corridor(baseline.get(key), spread)
 
     # ── Key figures ──────────────────────────────────────────────────────────
     trend = weight.get("trend_kg_per_week")
-    figures = [
-        _figure(
-            "weight",
-            weight.get("latest_kg"),
-            unit=t("common.kg"),
-            sub=t("today.trend_week", value=_signed(trend)) if trend is not None else "",
-        )
-    ]
+    figures = [_raw_figure("weight", weight.get("latest_kg"), trend=trend)]
     for key in _RECOVERY_KEYS:
+        extra: dict[str, Any] = {}
+        if key == "sleep_score":
+            extra["sleep_seconds"] = garmin.get("sleep_seconds")
+        elif key == "body_battery_high":
+            extra["gained"] = garmin.get("body_battery_change")
         figures.append(
-            _figure(key, garmin.get(key), sub=_baseline_sub(garmin.get(key), baseline.get(key)))
+            _raw_figure(
+                key,
+                garmin.get(key),
+                baseline=baseline.get(key),
+                corridor=corridor_of(key),
+                **extra,
+            )
         )
 
     calories = None
@@ -154,17 +310,13 @@ async def build(
         summary = await nutrition_service.daily_summary(session, today, cfg)
         calories = summary["totals"]["calories"]
         goals = summary["goals"]
+        lo, hi = goals["calories_min"], goals["calories_max"]
         figures.append(
-            _figure(
+            _raw_figure(
                 "calories",
                 calories,
-                unit=t("common.kcal"),
                 tone="" if summary["on_track"]["calories"] else "warn",
-                sub=t(
-                    "today.corridor",
-                    min=_num(goals["calories_min"]),
-                    max=_num(goals["calories_max"]),
-                ),
+                corridor={"lo": lo, "hi": hi} if lo is not None and hi is not None else None,
             )
         )
 
@@ -176,15 +328,14 @@ async def build(
     ma7 = weight.get("ma7_kg")
     weekly_delta = series.get("weekly_delta")
     if ma7 is not None and weekly_delta is not None:
-        changes.append(_change("weight", "weight", "/weight", ma7, ma7 - weekly_delta))
+        changes.append(_raw_change("weight", "weight", ma7 - weekly_delta, ma7))
 
-    daily = await garmin_service.list_daily(session, limit=14)
     this_week = [r for r in daily if 0 <= (today - r.date).days < 7]
     last_week = [r for r in daily if 7 <= (today - r.date).days < 14]
     for key in _RECOVERY_KEYS:
         now, before = _mean(this_week, key), _mean(last_week, key)
         if now is not None and before is not None:
-            changes.append(_change(key, "garmin", "/garmin", now, before))
+            changes.append(_raw_change(key, "garmin", before, now, corridor_of(key)))
 
     if em.get("nutrition"):
         this_cal = await nutrition_service.nutrition_summary(
@@ -198,12 +349,11 @@ async def build(
             # filled in would otherwise read as a crash in intake that never
             # happened.
             changes.append(
-                _change(
+                _raw_change(
                     "calories",
                     "nutrition",
-                    "/nutrition",
-                    this_cal["totals"]["calories"] / this_cal["days_with_logs"],
                     last_cal["totals"]["calories"] / last_cal["days_with_logs"],
+                    this_cal["totals"]["calories"] / this_cal["days_with_logs"],
                 )
             )
 
@@ -211,42 +361,45 @@ async def build(
     feed: list[dict] = []
     if em.get("timeline"):
         for e in await timeline_service.list_events(session, start=today, end=today):
-            feed.append({
-                "time": "",
-                "dot": "good" if e.source == "manual" else "cool",
-                "text": e.title,
-                "detail": e.detail or "",
-            })
+            feed.append(
+                _raw_feed("event", "good" if e.source == "manual" else "cool", e.title, e.detail or "")
+            )
     if em.get("nutrition"):
         for m in await nutrition_service.list_meals_for_date(session, today):
-            feed.append({
-                "time": m.eaten_at.strftime("%H:%M") if m.eaten_at else "",
-                "dot": "good",
-                "text": m.name,
-                "detail": t("today.src_meal", value=_num(m.calories)) if m.calories else t("nav.nutrition"),
-            })
+            feed.append(
+                _raw_feed(
+                    "meal",
+                    "good",
+                    m.name,
+                    time=m.eaten_at.strftime("%H:%M") if m.eaten_at else "",
+                    value=m.calories,
+                )
+            )
     if em.get("signals"):
         for s in await signals_service.list_signals(session, start=today, end=today):
-            feed.append({
-                "time": s.at_time.strftime("%H:%M") if s.at_time else "",
-                "dot": "violet",
-                "text": s.note or s.key,
-                "detail": t("today.src_bot"),
-            })
+            feed.append(
+                _raw_feed(
+                    "signal",
+                    "violet",
+                    s.note or s.key,
+                    time=s.at_time.strftime("%H:%M") if s.at_time else "",
+                )
+            )
+    if weigh_ins:
+        weigh_in = await weight_service.get_active_weight(session, today)
+        if weigh_in is not None:
+            # No time: ``created_at`` is stamped by the database in its own zone, so
+            # a clock reading off it would be a guess.
+            feed.append(_raw_feed("weight", "good", value=weigh_in.weight_kg))
 
     # ── The narrative ────────────────────────────────────────────────────────
     digest = await digest_service.latest_digest(session, kind=DigestKind.DAILY_BRIEF.value)
     brief_prose = _prose_from(digest) if digest is not None and digest.date == today else ""
     if brief_prose:
         narrative, narrative_source = brief_prose, "digest"
-        feed.append({
-            "time": "",
-            # The one place a value on this page may carry the accent: it marks
-            # the app's own message, not a measurement.
-            "dot": "amber",
-            "text": t("today.brief_sent"),
-            "detail": t("today.src_proactive"),
-        })
+        # The one place a value on this page may carry the accent: it marks the
+        # app's own message, not a measurement.
+        feed.append(_raw_feed("brief", "amber"))
     else:
         narrative, narrative_source = _fallback_narrative(ctx, calories), "computed"
 
@@ -260,17 +413,20 @@ async def build(
 
     # ── Needs attention ──────────────────────────────────────────────────────
     attention = [
-        {"severity": a.severity, "message": a.message}
+        {"severity": a.severity, "message": a.message, "domain": a.domain}
         for a in await alerts_service.list_active(session)
     ]
     advice = garmin.get("advice")
     if advice:
         # An interpretation of the numbers, not a failure — the quietest rung.
-        attention.append({"severity": Severity.NOTE.value, "message": advice})
+        attention.append(
+            {"severity": Severity.NOTE.value, "message": advice, "domain": Domain.GARMIN.value}
+        )
 
+    latest_kg, latest_date = weight.get("latest_kg"), weight.get("latest_date")
     return {
         "date": today,
-        "time": now_local().strftime("%H:%M"),
+        "now": now_local(),
         "narrative": narrative,
         "narrative_source": narrative_source,
         "sync": _sync_rows(ctx, em),
@@ -278,8 +434,35 @@ async def build(
         "changes": changes[:4],
         "feed": feed,
         "attention": attention,
-        "goal": await _goal(session, series),
-        "latest_weight": weight.get("latest_kg"),
+        "goal": await _goal(session, series, trend, today),
+        "latest_weight": (
+            {"kg": latest_kg, "date": _as_date(latest_date)}
+            if latest_kg is not None and latest_date
+            else None
+        ),
+    }
+
+
+async def build(
+    session: AsyncSession, *, enabled_modules: Optional[dict[str, bool]] = None
+) -> dict:
+    """Everything ``today/index.html`` renders, as one plain dict."""
+    data = await collect(session, enabled_modules=enabled_modules)
+    latest = data["latest_weight"]
+    return {
+        "date": data["date"],
+        "time": data["now"].strftime("%H:%M"),
+        "narrative": data["narrative"],
+        "narrative_source": data["narrative_source"],
+        "sync": [{"label": s["source"], "date": s["date"].isoformat()} for s in data["sync"]],
+        "figures": [_phrase_figure(f) for f in data["figures"]],
+        "changes": [_phrase_change(c) for c in data["changes"]],
+        "feed": [_phrase_feed(row) for row in data["feed"]],
+        "attention": [
+            {"severity": a["severity"], "message": a["message"]} for a in data["attention"]
+        ],
+        "goal": _phrase_goal(data["goal"]),
+        "latest_weight": latest["kg"] if latest else None,
     }
 
 
@@ -341,16 +524,18 @@ def _sync_rows(ctx: dict, em: dict) -> list[dict]:
     rows = []
     garmin_date = (ctx.get("garmin") or {}).get("date")
     if garmin_date:
-        rows.append({"label": "Garmin", "date": garmin_date})
+        rows.append({"source": "Garmin", "date": _as_date(garmin_date)})
     if em.get("hevy"):
         last = (ctx.get("hevy") or {}).get("last_workout")
         if last:
-            rows.append({"label": "Hevy", "date": last})
+            rows.append({"source": "Hevy", "date": _as_date(last)})
     return rows
 
 
-async def _goal(session: AsyncSession, series: dict) -> Optional[dict]:
-    """The first weight goal, as distance covered rather than distance left.
+async def _goal(
+    session: AsyncSession, series: dict, trend: Optional[float], today: date_type
+) -> Optional[dict]:
+    """The first weight goal, with where he started, where he is and where it lands.
 
     ``milestones_service.progress`` knows the target and where he is now but has
     no notion of where he started, and a bar needs all three — so the starting
@@ -368,16 +553,15 @@ async def _goal(session: AsyncSession, series: dict) -> Optional[dict]:
             continue
         if card["target_value"] is None or start is None:
             continue
-        total = start - card["target_value"]
-        done = start - card["current"]
-        if total <= 0:
+        if start - card["target_value"] <= 0:
             continue
+        deadline = _as_date(card["deadline"]) if card["deadline"] else None
         return {
             "name": card["name"],
-            "target": _num(card["target_value"]),
-            "done": _num(done),
-            "total": _num(total),
-            "pct": max(0, min(100, round(done / total * 100))),
-            "deadline": card["deadline"],
+            "start_kg": start,
+            "current_kg": card["current"],
+            "target_kg": card["target_value"],
+            "deadline": deadline,
+            "forecast": _forecast(card["current"], card["target_value"], trend, today, deadline),
         }
     return None

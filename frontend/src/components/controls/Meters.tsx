@@ -36,8 +36,9 @@ export function RangeBar({
   tone,
 }: {
   value: number
-  lo: number
-  hi: number
+  /** The corridor; left out for a metric that has none. */
+  lo?: number | null
+  hi?: number | null
   min: number
   max: number
   prev?: number

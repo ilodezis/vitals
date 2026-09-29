@@ -11,12 +11,18 @@ the old pages get in ``web/main.py``, so a module switched off answers
 ``{"error": "module_disabled"}``::
 
     api_router.include_router(glp1.router, dependencies=[Depends(require_module("glp1"))])
+
+A domain router also declares the session guard itself
+(``ApiRouter(prefix=..., dependencies=[Depends(require_auth)])``). The guard on
+``api_router`` is what answers 401 at runtime; the sweep in
+``tests/test_anonymous_surface.py`` reads each route's own dependency tree, and a
+guard held only by the parent router is not part of it.
 """
 from __future__ import annotations
 
 from fastapi import Depends
 
-from web.api import session
+from web.api import session, today, weight
 from web.api.errors import ApiRouter
 from web.api.schemas.errors import NotFoundBody, UnauthenticatedBody
 from web.deps import require_auth
@@ -28,3 +34,5 @@ api_router = ApiRouter(
 )
 
 api_router.include_router(session.router)
+api_router.include_router(today.router)
+api_router.include_router(weight.router)

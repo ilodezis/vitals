@@ -8,12 +8,12 @@ import { Icon } from '@/components/icons/Icon'
 import { openLogSheet } from '@/components/sheet/logSheetStore'
 import { ScreenLink } from '@/components/shell/navigation'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
-import { FIXTURE_TODAY } from '@/fixtures/series'
+import { FIXTURE_TODAY, latestWeight } from '@/fixtures/series'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { longDate, parseIsoDate, relativeDay } from '@/lib/dates'
 import { formatNumber } from '@/lib/format'
-import { useLoggedWeight } from './weightLog'
+import { useLatestWeight } from './weightLog'
 import type { WeightSource } from './types'
 import { useWeightView } from './useWeightView'
 import './weight.css'
@@ -24,7 +24,7 @@ export default function WeightScreen() {
   const { t, lang, plural } = useT()
   const view = useWeightView()
   const doseSince = { date: longDate(parseIsoDate(view.pace.dose.sinceIso), lang), n: view.pace.dose.days }
-  const logged = useLoggedWeight()
+  const latest = useLatestWeight()
   const [range, setRange] = useState<TrendRange>('3m')
 
   const series = useMemo(
@@ -52,7 +52,7 @@ export default function WeightScreen() {
       <Headline title={t('nav.weight')}>
         <div className="fig-hero">
           <div className="big" data-fig="weight" data-shared-target>
-            <Odometer value={formatNumber(logged.kg, lang)} />
+            <Odometer value={formatNumber(latest.kg ?? latestWeight, lang)} />
             <span className="unit">{t('app.unit.kg')}</span>
           </div>
           <div className="side">

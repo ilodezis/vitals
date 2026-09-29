@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+import pytest
+
 from vitals.enums import DigestKind, Domain, Severity, Source
 from vitals.models.milestones import DOMAIN as INSIGHTS_DOMAIN, WeeklyDigest
 from vitals.services import milestones_service, nutrition_service, today_service, weight_service
@@ -252,3 +254,222 @@ async def test_feed_stays_a_glance_on_a_busy_day(db_session):
     ctx = await today_service.build(db_session, enabled_modules={"nutrition": True})
 
     assert len(ctx["feed"]) == today_service._FEED_LIMIT
+
+
+# ── collect(): the same day as raw values, for the React screen ──────────────
+#
+# ``build()`` phrases everything for the server-rendered page. The API sends the
+# screen numbers and dates and lets it phrase them, so ``collect()`` is the one
+# assembly and ``build()`` a formatter over it.
+
+
+def _garmin(days_ago: int, **fields):
+    from vitals.models.garmin import GarminDaily
+
+    return GarminDaily(
+        date=today_local() - timedelta(days=days_ago),
+        domain=Domain.GARMIN.value,
+        source=Source.GARMIN_API.value,
+        **fields,
+    )
+
+
+async def _daily_weights(db_session, start_kg: float, end_kg: float, days: int = 15):
+    for offset in range(days):
+        kg = end_kg + (start_kg - end_kg) * offset / (days - 1)
+        await weight_service.log_weight(
+            db_session, on_date=today_local() - timedelta(days=offset), weight_kg=round(kg, 2)
+        )
+
+
+async def test_collect_hands_over_numbers_not_phrases(db_session):
+    for offset, kg in ((14, 95.0), (7, 93.5), (0, 92.0)):
+        await weight_service.log_weight(
+            db_session, on_date=today_local() - timedelta(days=offset), weight_kg=kg
+        )
+    db_session.add(
+        _garmin(0, sleep_score=82, sleep_seconds=27240, hrv_avg=46.0,
+                body_battery_high=94, body_battery_change=58)
+    )
+    await db_session.commit()
+
+    data = await today_service.collect(db_session, enabled_modules=ALL_OFF)
+
+    figures = {f["key"]: f for f in data["figures"]}
+    assert figures["weight"]["value"] == 92.0
+    assert isinstance(figures["weight"]["trend"], float)
+    assert figures["sleep_score"]["value"] == 82
+    assert figures["sleep_score"]["sleep_seconds"] == 27240
+    assert figures["body_battery_high"]["gained"] == 58
+    # A date is a date and the weight it belongs to is a number: the screen
+    # formats both, in the reader's language.
+    assert data["latest_weight"] == {"kg": 92.0, "date": today_local()}
+    assert data["date"] == today_local()
+    assert data["sync"] == [{"source": "Garmin", "date": today_local()}]
+
+
+async def test_collect_gives_recovery_its_personal_range(db_session):
+    """His own fortnight, before today, is the yardstick: mean ± one standard
+    deviation is the corridor a night is read against."""
+    for n in range(1, 15):
+        db_session.add(_garmin(n, hrv_avg=48.0 if n % 2 else 56.0))
+    db_session.add(_garmin(0, hrv_avg=46.0))
+    await db_session.commit()
+
+    data = await today_service.collect(db_session, enabled_modules=ALL_OFF)
+
+    hrv = next(f for f in data["figures"] if f["key"] == "hrv_avg")
+    assert hrv["baseline"] == 52.0
+    assert hrv["corridor"] == {"lo": 48.0, "hi": 56.0}
+    change = next(c for c in data["changes"] if c["key"] == "hrv_avg")
+    assert (change["lo"], change["hi"]) == (48.0, 56.0)
+    assert change["before"] == pytest.approx(51.43, abs=0.01)
+    assert change["after"] == pytest.approx(51.14, abs=0.01)
+    assert change["domain_key"] == "garmin"
+
+
+async def test_a_range_needs_enough_history_to_mean_anything(db_session):
+    for n in range(1, 3):
+        db_session.add(_garmin(n, hrv_avg=50.0))
+    db_session.add(_garmin(0, hrv_avg=46.0))
+    await db_session.commit()
+
+    data = await today_service.collect(db_session, enabled_modules=ALL_OFF)
+
+    hrv = next(f for f in data["figures"] if f["key"] == "hrv_avg")
+    assert hrv["baseline"] is None
+    assert hrv["corridor"] is None
+
+
+async def test_the_weight_row_has_no_corridor(db_session):
+    """A norm for a weight would be a verdict on the number; the goal has its own card."""
+    await _daily_weights(db_session, 96.0, 92.0, days=15)
+    await db_session.commit()
+
+    data = await today_service.collect(db_session, enabled_modules=ALL_OFF)
+
+    change = next(c for c in data["changes"] if c["key"] == "weight")
+    assert change["lo"] is None and change["hi"] is None
+    assert change["domain_key"] == "weight"
+    assert change["tone"] == "good"
+
+
+async def test_calories_carry_the_daily_goal_as_their_corridor(db_session):
+    await nutrition_service.log_meal(
+        db_session, on_date=today_local(), name="Обед", calories=520, protein_g=30
+    )
+    await db_session.commit()
+
+    data = await today_service.collect(db_session, enabled_modules={"nutrition": True})
+
+    calories = next(f for f in data["figures"] if f["key"] == "calories")
+    assert calories["value"] == 520
+    assert calories["corridor"]["lo"] < calories["corridor"]["hi"]
+
+
+async def test_meals_arrive_as_calories_not_as_text(db_session):
+    await nutrition_service.log_meal(
+        db_session, on_date=today_local(), name="Курица с рисом", calories=520
+    )
+    await db_session.commit()
+
+    data = await today_service.collect(db_session, enabled_modules={"nutrition": True})
+
+    assert data["feed"] == [
+        {"time": data["feed"][0]["time"], "kind": "meal", "dot": "good",
+         "text": "Курица с рисом", "detail": "", "value": 520.0}
+    ]
+
+
+async def test_todays_weigh_in_joins_the_feed_only_when_asked(db_session):
+    """The React screen adds a weigh-in to the day the moment it is saved, so a
+    refetch has to keep it there; the server-rendered feed never listed one."""
+    await weight_service.log_weight(db_session, on_date=today_local(), weight_kg=86.1)
+    await db_session.commit()
+
+    plain = await today_service.collect(db_session, enabled_modules=ALL_OFF)
+    asked = await today_service.collect(db_session, enabled_modules=ALL_OFF, weigh_ins=True)
+
+    assert plain["feed"] == []
+    assert len(asked["feed"]) == 1
+    row = asked["feed"][0]
+    assert (row["kind"], row["dot"], row["value"]) == ("weight", "good", 86.1)
+    # ``created_at`` has no reliable zone; a row without a time says so honestly.
+    assert row["time"] == ""
+
+
+async def test_the_goal_forecasts_where_the_trend_lands(db_session):
+    await _daily_weights(db_session, 100.0, 93.0)
+    await milestones_service.create_milestone(
+        db_session, name="Дойти до 85", domain=Domain.WEIGHT.value,
+        target_value=85.0, target_unit="кг", deadline=today_local() + timedelta(days=60),
+    )
+    await db_session.commit()
+
+    goal = (await today_service.collect(db_session, enabled_modules=ALL_OFF))["goal"]
+
+    assert goal["start_kg"] == 100.0
+    assert goal["current_kg"] == 93.0
+    assert goal["target_kg"] == 85.0
+    assert goal["deadline"] == today_local() + timedelta(days=60)
+    forecast = goal["forecast"]
+    assert today_local() < forecast["date"] < goal["deadline"]
+    # Positive: ahead of the deadline.
+    assert forecast["days_ahead"] == (goal["deadline"] - forecast["date"]).days
+    assert forecast["days_ahead"] > 0
+
+
+async def test_a_trend_that_moves_away_forecasts_nothing(db_session):
+    await _daily_weights(db_session, 90.0, 94.0)
+    await milestones_service.create_milestone(
+        db_session, name="Дойти до 85", domain=Domain.WEIGHT.value,
+        target_value=85.0, target_unit="кг",
+    )
+    await db_session.commit()
+
+    goal = (await today_service.collect(db_session, enabled_modules=ALL_OFF))["goal"]
+
+    assert goal["forecast"] is None
+
+
+async def test_a_goal_without_a_deadline_still_forecasts_a_date(db_session):
+    await _daily_weights(db_session, 100.0, 93.0)
+    await milestones_service.create_milestone(
+        db_session, name="Дойти до 85", domain=Domain.WEIGHT.value,
+        target_value=85.0, target_unit="кг",
+    )
+    await db_session.commit()
+
+    goal = (await today_service.collect(db_session, enabled_modules=ALL_OFF))["goal"]
+
+    assert goal["deadline"] is None
+    assert goal["forecast"]["date"] > today_local()
+    assert goal["forecast"]["days_ahead"] is None
+
+
+async def test_a_crawl_toward_the_goal_is_not_a_forecast(db_session):
+    """At a gram a week the "date" is past any horizon a person plans by."""
+    await _daily_weights(db_session, 93.01, 93.0)
+    await milestones_service.create_milestone(
+        db_session, name="Дойти до 85", domain=Domain.WEIGHT.value,
+        target_value=85.0, target_unit="кг",
+    )
+    await db_session.commit()
+
+    goal = (await today_service.collect(db_session, enabled_modules=ALL_OFF))["goal"]
+
+    assert goal["forecast"] is None
+
+
+async def test_attention_names_the_domain_it_is_about(db_session):
+    from vitals.services import alerts_service
+
+    await alerts_service.raise_alert(
+        db_session, domain=Domain.LABS.value, severity=Severity.WARN.value,
+        message="Витамин D ниже референса", alert_key="labs.out_of_range", entity_ref="lab:1",
+    )
+    await db_session.commit()
+
+    data = await today_service.collect(db_session, enabled_modules=ALL_OFF)
+
+    assert {"severity": "warn", "message": "Витамин D ниже референса", "domain": "labs"} in data["attention"]

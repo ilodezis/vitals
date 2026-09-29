@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatNumber } from './format'
+import { formatCompact, formatNumber } from './format'
 
 const MINUS = '−'
 const THIN = ' ' // narrow no-break space
@@ -29,5 +29,18 @@ describe('formatNumber', () => {
 
   it('never prints a signed zero', () => {
     expect(formatNumber(-0.04, 'ru')).toBe('0,0')
+  })
+})
+
+describe('formatCompact', () => {
+  it('drops the decimal from a whole number and keeps one otherwise', () => {
+    expect(formatCompact(94, 'ru')).toBe('94')
+    expect(formatCompact(85.0, 'en')).toBe('85')
+    expect(formatCompact(93.9, 'ru')).toBe('93,9')
+    expect(formatCompact(8.94, 'en')).toBe('8.9')
+  })
+
+  it('does not print a whole number that only rounds to one as a decimal', () => {
+    expect(formatCompact(9.04, 'ru')).toBe('9')
   })
 })

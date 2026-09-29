@@ -1,6 +1,42 @@
 {
   "components": {
     "schemas": {
+      "AttentionItem": {
+        "properties": {
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "note",
+              "info",
+              "warn",
+              "block"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "severity",
+          "message",
+          "domain"
+        ],
+        "title": "AttentionItem",
+        "type": "object"
+      },
       "ConflictBody": {
         "description": "409 — a ``block`` rule fired; repeat the write with ``override`` to keep it.",
         "properties": {
@@ -24,6 +60,177 @@
         "title": "ConflictBody",
         "type": "object"
       },
+      "Corridor": {
+        "description": "A band a value is read against.",
+        "properties": {
+          "hi": {
+            "title": "Hi",
+            "type": "number"
+          },
+          "lo": {
+            "title": "Lo",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lo",
+          "hi"
+        ],
+        "title": "Corridor",
+        "type": "object"
+      },
+      "FeedRow": {
+        "description": "One line of the day. ``text`` and ``detail`` are the owner's own words where\n``kind`` is an event or a signal; for the rest the client writes them from\n``kind`` and ``value``.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "dot": {
+            "enum": [
+              "good",
+              "cool",
+              "violet",
+              "amber"
+            ],
+            "title": "Dot",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "event",
+              "meal",
+              "signal",
+              "brief",
+              "weight"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "time": {
+            "title": "Time",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "time",
+          "kind",
+          "dot",
+          "text",
+          "detail",
+          "value"
+        ],
+        "title": "FeedRow",
+        "type": "object"
+      },
+      "Goal": {
+        "description": "The first active weight goal, with where he started.",
+        "properties": {
+          "current_kg": {
+            "title": "Current Kg",
+            "type": "number"
+          },
+          "deadline": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline"
+          },
+          "forecast": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoalForecast"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "start_kg": {
+            "title": "Start Kg",
+            "type": "number"
+          },
+          "target_kg": {
+            "title": "Target Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "start_kg",
+          "current_kg",
+          "target_kg",
+          "deadline",
+          "forecast"
+        ],
+        "title": "Goal",
+        "type": "object"
+      },
+      "GoalForecast": {
+        "description": "Where the present trend meets the goal.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "days_ahead": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Ahead"
+          }
+        },
+        "required": [
+          "date",
+          "days_ahead"
+        ],
+        "title": "GoalForecast",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
       "InvalidBody": {
         "description": "400 — a service refused the values (its ``ValueError`` message).",
         "properties": {
@@ -42,6 +249,25 @@
           "message"
         ],
         "title": "InvalidBody",
+        "type": "object"
+      },
+      "LatestWeight": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "kg": {
+            "title": "Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "kg",
+          "date"
+        ],
+        "title": "LatestWeight",
         "type": "object"
       },
       "Nav": {
@@ -337,6 +563,208 @@
         "title": "SessionView",
         "type": "object"
       },
+      "SyncStamp": {
+        "description": "An integration that last put something in the lake, and the day it did.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "date"
+        ],
+        "title": "SyncStamp",
+        "type": "object"
+      },
+      "TodayFigure": {
+        "description": "One of the key figures. Only the fields of its own ``key`` are filled; the rest\nare null. ``value`` is null until there is a reading, and the row stays.",
+        "properties": {
+          "baseline": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline"
+          },
+          "corridor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Corridor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gained": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gained"
+          },
+          "key": {
+            "enum": [
+              "weight",
+              "sleep_score",
+              "hrv_avg",
+              "body_battery_high",
+              "calories"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "sleep_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep Seconds"
+          },
+          "trend": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trend"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "trend",
+          "baseline",
+          "corridor",
+          "sleep_seconds",
+          "gained"
+        ],
+        "title": "TodayFigure",
+        "type": "object"
+      },
+      "TodayView": {
+        "properties": {
+          "attention": {
+            "items": {
+              "$ref": "#/components/schemas/AttentionItem"
+            },
+            "title": "Attention",
+            "type": "array"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/WeekChange"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "feed": {
+            "items": {
+              "$ref": "#/components/schemas/FeedRow"
+            },
+            "title": "Feed",
+            "type": "array"
+          },
+          "figures": {
+            "items": {
+              "$ref": "#/components/schemas/TodayFigure"
+            },
+            "title": "Figures",
+            "type": "array"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Goal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latest_weight": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LatestWeight"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "narrative": {
+            "title": "Narrative",
+            "type": "string"
+          },
+          "narrative_source": {
+            "enum": [
+              "digest",
+              "computed"
+            ],
+            "title": "Narrative Source",
+            "type": "string"
+          },
+          "sync": {
+            "items": {
+              "$ref": "#/components/schemas/SyncStamp"
+            },
+            "title": "Sync",
+            "type": "array"
+          }
+        },
+        "required": [
+          "date",
+          "narrative",
+          "narrative_source",
+          "sync",
+          "figures",
+          "changes",
+          "feed",
+          "attention",
+          "goal",
+          "latest_weight"
+        ],
+        "title": "TodayView",
+        "type": "object"
+      },
       "UnauthenticatedBody": {
         "description": "401 — no valid session cookie.",
         "properties": {
@@ -350,6 +778,46 @@
           "error"
         ],
         "title": "UnauthenticatedBody",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
         "type": "object"
       },
       "ViolationBody": {
@@ -439,6 +907,194 @@
         ],
         "title": "ViolationBody",
         "type": "object"
+      },
+      "WeekChange": {
+        "description": "A metric this week against last: the two seven-day values, on the corridor of\nhis own norm where there is one.",
+        "properties": {
+          "after": {
+            "title": "After",
+            "type": "number"
+          },
+          "before": {
+            "title": "Before",
+            "type": "number"
+          },
+          "domain_key": {
+            "enum": [
+              "weight",
+              "garmin",
+              "nutrition"
+            ],
+            "title": "Domain Key",
+            "type": "string"
+          },
+          "hi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hi"
+          },
+          "key": {
+            "enum": [
+              "weight",
+              "sleep_score",
+              "hrv_avg",
+              "body_battery_high",
+              "calories"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "lo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lo"
+          },
+          "tone": {
+            "enum": [
+              "",
+              "good",
+              "bad"
+            ],
+            "title": "Tone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "domain_key",
+          "before",
+          "after",
+          "lo",
+          "hi",
+          "tone"
+        ],
+        "title": "WeekChange",
+        "type": "object"
+      },
+      "WeightLogCreate": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "override": {
+            "default": false,
+            "title": "Override",
+            "type": "boolean"
+          },
+          "weight_kg": {
+            "title": "Weight Kg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "weight_kg"
+        ],
+        "title": "WeightLogCreate",
+        "type": "object"
+      },
+      "WeightLogCreated": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "created"
+        ],
+        "title": "WeightLogCreated",
+        "type": "object"
+      },
+      "WeightLogPatch": {
+        "description": "What to change; what is left out stays. ``note`` is the one field where an\nexplicit ``null`` means something: it clears the note.",
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "override": {
+            "default": false,
+            "title": "Override",
+            "type": "boolean"
+          },
+          "weight_kg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Kg"
+          }
+        },
+        "title": "WeightLogPatch",
+        "type": "object"
+      },
+      "WeightLogRef": {
+        "description": "The row a write ended up on. Moving a reading to another day makes a new row,\nso a patch answers with the id to use from then on.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "WeightLogRef",
+        "type": "object"
       }
     }
   },
@@ -485,6 +1141,265 @@
           }
         },
         "summary": "Read Session"
+      }
+    },
+    "/api/v1/today": {
+      "get": {
+        "description": "The whole Today screen in one request: figures, the week's changes, the day's\nfeed, what needs attention and the goal. A module that is switched off\ncontributes nothing: no calories or meals without nutrition, no timeline rows\nwithout the timeline.",
+        "operationId": "read_today",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Read Today"
+      }
+    },
+    "/api/v1/weight/logs": {
+      "post": {
+        "description": "Log a weight as a manual reading. A reading the day already holds comes back\nwith ``created: false``; a block rule answers 409 until ``override`` is set.",
+        "operationId": "create_weight_log",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeightLogCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeightLogCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Weight Log"
+      }
+    },
+    "/api/v1/weight/logs/{log_id}": {
+      "delete": {
+        "description": "Take a reading back. If it was the day's active one, the reading it had\noutranked (a Garmin import) becomes active again.",
+        "operationId": "delete_weight_log",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "log_id",
+            "required": true,
+            "schema": {
+              "title": "Log Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Weight Log"
+      },
+      "patch": {
+        "description": "Correct a reading; whatever the body leaves out stays as it was.",
+        "operationId": "update_weight_log",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "log_id",
+            "required": true,
+            "schema": {
+              "title": "Log Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeightLogPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeightLogRef"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Weight Log"
       }
     }
   }

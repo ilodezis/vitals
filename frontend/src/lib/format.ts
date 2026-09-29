@@ -29,6 +29,11 @@ function formatter(lang: Lang, digits: number): Intl.NumberFormat {
 /** A whole number, grouped: 2150 → "2 150". */
 export const formatInt = (value: number, lang: Lang): string => formatNumber(value, lang, 0)
 
+/** A number that reads as it was written: "94", not "94,0"; "93,9" when there is a tenth to keep. */
+export function formatCompact(value: number, lang: Lang): string {
+  return formatNumber(value, lang, Number.isInteger(Number(value.toFixed(1))) ? 0 : 1)
+}
+
 /** A change: the sign is always shown ("+0,4", "−0,6"); a value that rounds to zero has none. */
 export function formatSigned(value: number, lang: Lang, digits = 1): string {
   const rounded = Number(value.toFixed(digits))

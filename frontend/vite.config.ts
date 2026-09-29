@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 import babel from '@rolldown/plugin-babel'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
@@ -5,6 +7,13 @@ import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
 
 const backend = 'http://127.0.0.1:8000'
+
+// What the device keeps is only good for the API contract it was made under, so the persisted
+// query cache is stamped with a hash of the committed schema and dropped when the schema moves.
+const apiBuster = createHash('sha256')
+  .update(readFileSync(new URL('./src/api/openapi.json', import.meta.url)))
+  .digest('hex')
+  .slice(0, 16)
 
 // Object form on purpose: the string shorthand turns changeOrigin on, which
 // swaps the Host for the backend's while the browser's Origin stays put, and the
@@ -23,6 +32,7 @@ export default defineConfig(({ command }) => ({
     // React Compiler through Babel, as documented by @vitejs/plugin-react 6.
     babel({ presets: [reactCompilerPreset()] }),
   ],
+  define: { __API_BUSTER__: JSON.stringify(apiBuster) },
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

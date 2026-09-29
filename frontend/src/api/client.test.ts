@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ConflictError, createApiClient } from './client'
+import { ConflictError, InvalidError, createApiClient } from './client'
 
 const SESSION = {
   username: 'tester',
@@ -93,6 +93,26 @@ describe('api client', () => {
 
     expect(failure).toBeInstanceOf(ConflictError)
     expect((failure as ConflictError).violations).toEqual([])
+  })
+
+  it('turns a refused value into an InvalidError with the service’s own message', async () => {
+    const { api } = clientAnswering(() =>
+      reply(400, { error: 'invalid', message: 'weight_kg must be between 20 and 400' }),
+    )
+
+    const failure = await api.GET('/api/v1/session').catch((e: unknown) => e)
+
+    expect(failure).toBeInstanceOf(InvalidError)
+    expect((failure as InvalidError).message).toBe('weight_kg must be between 20 and 400')
+  })
+
+  it('still raises an InvalidError when the 400 body is not the expected one', async () => {
+    const { api } = clientAnswering(() => new Response('<html>oops</html>', { status: 400 }))
+
+    const failure = await api.GET('/api/v1/session').catch((e: unknown) => e)
+
+    expect(failure).toBeInstanceOf(InvalidError)
+    expect((failure as InvalidError).message).toBe('Invalid')
   })
 
   it('hands every other failure back as data, unredirected', async () => {

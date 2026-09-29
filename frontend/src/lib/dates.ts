@@ -113,3 +113,7 @@ export function syncedLabel(isoDateTime: string, today: Date, lang: Lang): strin
   if (k > 0 && k < 7) return weekdayShort(at, lang)
   return shortDate(at, lang)
 }
+
+/** "08:05" — the clock as the kicker and the log sheet print it. */
+export const clockLabel = (d: Date): string =>
+  `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`

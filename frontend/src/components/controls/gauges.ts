@@ -14,15 +14,16 @@ export interface RangeBarLayout {
 
 export function rangeBarLayout(o: {
   value: number
-  lo: number
-  hi: number
+  /** The corridor; left out (or null) for a metric that has none. */
+  lo?: number | null
+  hi?: number | null
   min: number
   max: number
   prev?: number
 }): RangeBarLayout {
   const { value, lo, hi, min, max, prev } = o
   const ref =
-    lo === hi
+    lo === undefined || lo === null || hi === undefined || hi === null || lo === hi
       ? null
       : { left: percentOf(lo, min, max), width: percentOf(hi, min, max) - percentOf(lo, min, max) }
   const point = percentOf(value, min, max)
@@ -39,4 +40,15 @@ export function changeTone(from: number, to: number, better: 1 | -1): 'good' | '
   const delta = to - from
   if (delta === 0) return ''
   return Math.sign(delta) * better > 0 ? 'good' : 'bad'
+}
+
+/** The scale a dumbbell row is drawn on: everything it shows (both weeks, the corridor) with a
+ *  margin around it — 40% of what it spans, and never less than 2% of its own magnitude, so a
+ *  weight that moved 0.8 kg still reads as small against the scale rather than filling it. */
+export function rangeAxis(values: readonly number[], corridor?: { lo: number; hi: number } | null): { min: number; max: number } {
+  const points = corridor ? [...values, corridor.lo, corridor.hi] : [...values]
+  const lowest = Math.min(...points)
+  const highest = Math.max(...points)
+  const pad = Math.max(0.4 * (highest - lowest), 0.02 * Math.abs((lowest + highest) / 2), 1)
+  return { min: lowest - pad, max: highest + pad }
 }
