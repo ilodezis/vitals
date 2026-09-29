@@ -9,6 +9,8 @@ const loaders: Partial<Record<ScreenId, () => Promise<{ default: ComponentType }
   recovery: () => import('@/features/recovery/RecoveryScreen'),
   glp1: () => import('@/features/glp1/Glp1Screen'),
   labs: () => import('@/features/labs/LabsScreen'),
+  hrt: () => import('@/features/hrt/HrtScreen'),
+  genetics: () => import('@/features/genetics/GeneticsScreen'),
   more: () => import('@/features/more/MoreScreen'),
 }
 

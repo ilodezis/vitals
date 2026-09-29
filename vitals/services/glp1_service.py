@@ -61,6 +61,10 @@ def _validate_injection(
     if dose_mg is None or dose_mg <= 0:
         raise ValueError("dose_mg must be a positive number")
     clean_site = (site or "").strip() or None
+    if clean_site == "shoulder_left":
+        clean_site = "arm_left"
+    elif clean_site == "shoulder_right":
+        clean_site = "arm_right"
     if clean_site is not None and clean_site not in _INJECTION_SITES:
         raise ValueError(f"unknown injection site: {site!r}")
     return clean_drug, clean_site
@@ -375,3 +379,130 @@ async def plateau_job(session_factory, redis=None) -> None:
 
         await refresh_plateau_alert(session)
         await session.commit()
+
+
+# ── Full view collection for API / UI ─────────────────────────────────────────
+SITE_TO_FRONTEND: dict[str, str] = {
+    "arm_left": "shoulder_left",
+    "arm_right": "shoulder_right",
+    "shoulder_left": "shoulder_left",
+    "shoulder_right": "shoulder_right",
+    "abdomen_left": "abdomen_left",
+    "abdomen_right": "abdomen_right",
+    "thigh_left": "thigh_left",
+    "thigh_right": "thigh_right",
+}
+
+
+async def collect(
+    session: AsyncSession, *, on_date: Optional[date_type] = None
+) -> dict[str, Any]:
+    """Collect everything needed by the GLP-1 screen in one round-trip."""
+    today = on_date or today_local()
+    active_phase = await active_dose_phase(session, on_date=today)
+    injections = await list_injections(session)
+    last_inj = injections[0] if injections else None
+    phases = await list_dose_phases(session)
+    side_effects = await list_side_effects(session)
+
+    drug = active_phase.drug if active_phase else (last_inj.drug if last_inj else "Семаглутид")
+    dose_mg = active_phase.dose_mg if active_phase else (last_inj.dose_mg if last_inj else 0.0)
+    since_date = active_phase.start_date if active_phase else (last_inj.date if last_inj else today)
+    since_iso = since_date.isoformat()
+    day_on_dose = max(1, (today - since_date).days + 1) if active_phase else 0
+
+    if last_inj:
+        last_iso = last_inj.date.isoformat()
+        next_date = last_inj.date + timedelta(days=7)
+        next_iso = next_date.isoformat()
+        days_to_next = max(0, (next_date - today).days)
+        unscheduled = False
+    else:
+        last_iso = None
+        next_iso = today.isoformat()
+        days_to_next = 0
+        unscheduled = True
+
+    cycle = {
+        "lastIso": last_iso,
+        "nextIso": next_iso,
+        "daysToNext": days_to_next,
+        "unscheduled": unscheduled,
+    }
+
+    dose_phases_list = []
+    for p in sorted(phases, key=lambda x: x.start_date):
+        dose_phases_list.append({
+            "id": p.id,
+            "fromIso": p.start_date.isoformat(),
+            "toIso": (p.end_date or today).isoformat(),
+            "doseMg": p.dose_mg,
+            "drug": p.drug,
+            "note": p.note,
+        })
+
+    start_trend = phases[0].start_date if phases else (today - timedelta(days=90))
+    weights = await weight_service.list_active_weights(session, start=start_trend, end=today)
+    trend = [{"date": w.date.isoformat(), "kg": w.weight_kg} for w in weights]
+
+    plateau_info = await evaluate_plateau(session, on_date=today)
+    if plateau_info:
+        summary = t(
+            "alert.glp1_plateau",
+            drug=plateau_info["drug"],
+            dose=plateau_info["dose_mg"],
+            days=plateau_info["days_on_dose"],
+            slope=plateau_info["slope_per_week"],
+        )
+    elif active_phase and len(trend) >= 2:
+        diff_kg = trend[-1]["kg"] - trend[0]["kg"]
+        sign = "−" if diff_kg < 0 else "+"
+        summary = f"На {dose_mg:g} мг: {sign}{abs(diff_kg):.1f} кг с {since_iso}."
+    else:
+        summary = ""
+
+    site_labels = {
+        "shoulder_left": "Плечо Л",
+        "shoulder_right": "Плечо П",
+        "abdomen_left": "Живот Л",
+        "abdomen_right": "Живот П",
+        "thigh_left": "Бедро Л",
+        "thigh_right": "Бедро П",
+    }
+
+    inj_list = []
+    for inj in injections:
+        site_key = SITE_TO_FRONTEND.get(inj.site, inj.site or "abdomen_left")
+        inj_list.append({
+            "id": inj.id,
+            "dateIso": inj.date.isoformat(),
+            "site": site_key,
+            "doseMg": inj.dose_mg,
+            "drug": inj.drug,
+            "note": inj.note,
+        })
+
+    se_list = []
+    for se in side_effects:
+        se_list.append({
+            "id": se.id,
+            "dateIso": se.date.isoformat(),
+            "name": se.effect_type,
+            "severity": se.severity,
+            "note": se.note,
+        })
+
+    return {
+        "drug": drug,
+        "doseMg": dose_mg,
+        "sinceIso": since_iso,
+        "dayOnDose": day_on_dose,
+        "cycle": cycle,
+        "dosePhases": dose_phases_list,
+        "trend": trend,
+        "summary": summary,
+        "siteLabels": site_labels,
+        "injections": inj_list,
+        "sideEffects": se_list,
+    }
+

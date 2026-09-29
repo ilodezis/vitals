@@ -98,7 +98,7 @@ export const MODULE_SCREEN: Record<string, { screen: ScreenId; icon: IconName }>
 
 /** Screens that are built. The rest open a placeholder until their run lands. */
 export const BUILT_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>([
-  'today', 'weight', 'recovery', 'glp1', 'labs', 'more',
+  'today', 'weight', 'recovery', 'glp1', 'labs', 'hrt', 'genetics', 'more',
 ])
 
 export const navScreen = (id: ScreenId): ScreenId => PARENT[id] ?? id
