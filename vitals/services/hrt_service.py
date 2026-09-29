@@ -43,6 +43,16 @@ RECENT_WINDOW_DAYS = 21
 
 _UNITS = frozenset(u.value for u in DoseUnit)
 _SITES = frozenset(s.value for s in HrtInjectionSite)
+HRT_SITE_MAP: dict[str, str] = {
+    "delt_l": "delt_left",
+    "delt_r": "delt_right",
+    "vg_l": "ventroglute_left",
+    "vg_r": "ventroglute_right",
+    "glute_l": "glute_left",
+    "glute_r": "glute_right",
+    "quad_l": "quad_left",
+    "quad_r": "quad_right",
+}
 
 
 # ── Compounds (catalog) ─────────────────────────────────────────────────────
@@ -149,6 +159,8 @@ async def log_dose(
         compound=compound,
     )
     site_v = _clean_str(site)
+    if site_v is not None and site_v in HRT_SITE_MAP:
+        site_v = HRT_SITE_MAP[site_v]
     if site_v is not None and site_v not in _SITES:
         raise ValueError(f"unknown injection site: {site!r}")
 
@@ -251,6 +263,8 @@ async def update_dose(
         compound=compound,
     )
     site_v = _clean_str(site)
+    if site_v is not None and site_v in HRT_SITE_MAP:
+        site_v = HRT_SITE_MAP[site_v]
     if site_v is not None and site_v not in _SITES:
         raise ValueError(f"unknown injection site: {site!r}")
 
@@ -400,3 +414,194 @@ async def resolve_active(session: AsyncSession) -> list[dict]:
                 _add(item.compound_key, None, None, None)
 
     return list(seen.values())
+
+
+# ── Full view collection for API / UI ─────────────────────────────────────────
+SITE_LABELS_RU = {
+    "delt_left": "Дельта Л",
+    "delt_right": "Дельта П",
+    "ventroglute_left": "Вентроягодица Л",
+    "ventroglute_right": "Вентроягодица П",
+    "glute_left": "Ягодица Л",
+    "glute_right": "Ягодица П",
+    "quad_left": "Квадрицепс Л",
+    "quad_right": "Квадрицепс П",
+    "vastus_lateralis_left": "ВЛБ Л",
+    "vastus_lateralis_right": "ВЛБ П",
+}
+
+
+def _cycle_progress_data(cycle: Optional[HrtCycle], today: date_type) -> Optional[dict]:
+    if cycle is None or not cycle.end_date:
+        return None
+    total = (cycle.end_date - cycle.start_date).days + 1
+    if total <= 0:
+        return None
+    elapsed = min(max((today - cycle.start_date).days + 1, 0), total)
+    return {
+        "week": (elapsed - 1) // 7 + 1 if elapsed else 0,
+        "weeks": (total - 1) // 7 + 1,
+        "pct": round(elapsed * 100 / total),
+    }
+
+
+async def collect(
+    session: AsyncSession, *, on_date: Optional[date_type] = None
+) -> dict[str, Any]:
+    """Collect everything needed by the HRT screen in one round-trip."""
+    from vitals.services import (
+        hrt_cycle_service,
+        hrt_reminders,
+        hrt_template_service,
+    )
+
+    today = on_date or today_local()
+    await hrt_reminders.refresh_all(session)
+
+    compounds = await list_compounds(session, active_only=True)
+    all_compounds = await list_compounds(session, active_only=False)
+    compound_names = {c.key: (c.name_ru or c.name) for c in all_compounds}
+
+    doses = await list_doses(session, limit=100)
+    last = await last_dose(session)
+    side_effects = await list_side_effects(session)
+    active_c = await hrt_cycle_service.active_cycle(session)
+    all_cycles = await hrt_cycle_service.list_cycles(session)
+    all_templates = await hrt_template_service.list_templates(session)
+
+    planned_admins = await hrt_cycle_service.planned_administrations(
+        session, start=today, end=today + timedelta(days=21), cycle=active_c
+    )
+    release_pts = await hrt_cycle_service.release_series(
+        session, start=today - timedelta(days=30), end=today + timedelta(days=60), cycle=active_c
+    )
+
+    # Active cycle details
+    active_cycle_dict = None
+    if active_c is not None:
+        prog = _cycle_progress_data(active_c, today)
+        cadence = hrt_reminders.PANEL_WINDOW_BY_KIND.get(active_c.kind, 90)
+        items_list = []
+        for it in active_c.items:
+            items_list.append({
+                "id": it.id,
+                "compoundKey": it.compound_key,
+                "name": compound_names.get(it.compound_key, it.compound_key),
+                "dose": it.schedule[0].get("dose", 0.0) if it.schedule else 0.0,
+                "unit": it.unit or "mg",
+                "every": it.schedule[0].get("interval_days", 3.5) if it.schedule else 3.5,
+                "from": (it.start_offset_days // 7) + 1 if it.start_offset_days else 1,
+                "durationDays": it.schedule[0].get("duration_days") if it.schedule else None,
+                "note": it.note,
+            })
+        active_cycle_dict = {
+            "id": active_c.id,
+            "kind": active_c.kind,
+            "name": active_c.name or "",
+            "start": active_c.start_date.isoformat(),
+            "end": active_c.end_date.isoformat() if active_c.end_date else None,
+            "note": active_c.note,
+            "cadence": cadence,
+            "week": prog["week"] if prog else 1,
+            "weeks": prog["weeks"] if prog else 12,
+            "pct": prog["pct"] if prog else 0,
+            "items": items_list,
+        }
+
+    # Format doses
+    doses_list = []
+    for d in doses:
+        doses_list.append({
+            "id": d.id,
+            "date": d.date.isoformat(),
+            "name": compound_names.get(d.compound_key, d.compound_key),
+            "compoundKey": d.compound_key,
+            "dose": f"{d.dose:g} {d.unit}",
+            "doseVal": d.dose,
+            "unit": d.unit,
+            "ml": d.volume_ml,
+            "brand": d.brand,
+            "lab": d.lab,
+            "batch": d.batch,
+            "site": d.site,
+            "note": d.note,
+        })
+
+    # Format side effects
+    side_list = []
+    for se in side_effects:
+        side_list.append({
+            "id": se.id,
+            "date": se.date.isoformat(),
+            "name": se.effect_type,
+            "sev": se.severity,
+            "note": se.note,
+        })
+
+    # Format templates
+    tpl_list = []
+    for t in all_templates:
+        tpl_items = []
+        for it in (t.items or []):
+            comp_key = it.get("compound_key", "")
+            comp_name = compound_names.get(comp_key, comp_key)
+            start_week = (it.get("start_offset_days", 0) // 7)
+            tpl_items.append([comp_name, start_week])
+        tpl_list.append({
+            "id": t.id,
+            "name": t.name,
+            "kind": t.kind,
+            "items": tpl_items,
+            "exportJson": hrt_template_service.export_template_json(t),
+        })
+
+    # Format planned administrations
+    planned_list = []
+    for pa in planned_admins[:12]:
+        dt_val = pa["date"]
+        comp_k = pa["compound_key"]
+        dose_val = pa["dose"]
+        unit_val = pa.get("unit") or "mg"
+        planned_list.append({
+            "date": dt_val.isoformat() if hasattr(dt_val, "isoformat") else str(dt_val),
+            "name": compound_names.get(comp_k, comp_k),
+            "dose": f"{dose_val:g} {unit_val}",
+        })
+
+    # Site counts & labels
+    site_counts = site_frequency(doses)
+
+    # Last dose dict
+    last_dict = None
+    if last is not None:
+        last_dict = {
+            "date": last.date.isoformat(),
+            "name": compound_names.get(last.compound_key, last.compound_key),
+            "dose": f"{last.dose:g} {last.unit}",
+        }
+
+    return {
+        "cycle": active_cycle_dict,
+        "doses": doses_list,
+        "sideEffects": side_list,
+        "templates": tpl_list,
+        "planned": planned_list,
+        "release": release_pts,
+        "catalog": len(compounds),
+        "compounds": [
+            {
+                "id": c.id,
+                "key": c.key,
+                "name": c.name_ru or c.name,
+                "compoundClass": c.compound_class,
+                "route": c.route,
+                "doseUnit": c.dose_unit,
+                "concMgMl": c.conc_mg_ml,
+            }
+            for c in compounds
+        ],
+        "siteLabels": SITE_LABELS_RU,
+        "siteCounts": site_counts,
+        "last": last_dict,
+    }
+

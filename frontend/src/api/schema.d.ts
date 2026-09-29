@@ -4,6 +4,699 @@
  */
 
 export interface paths {
+    "/api/v1/genetics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Genetics
+         * @description The whole Genetics catalog in one request: interpreted variants,
+         *     categories, and empty status.
+         */
+        get: operations["read_genetics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/genetics/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Genetics Vcf
+         * @description Upload and parse a genome `.vcf` file, upserting curated variants.
+         */
+        post: operations["upload_genetics_vcf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/genetics/variants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Genetics Variant
+         * @description Add a genetic variant manually or upsert if rsid is specified.
+         */
+        post: operations["create_genetics_variant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/genetics/variants/{variant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Genetics Variant
+         * @description Delete a genetic variant.
+         */
+        delete: operations["delete_genetics_variant"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/glp1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Glp1
+         * @description The whole GLP-1 screen in one request: current dose hero, cycle progression,
+         *     dose & weight trend, body-map injection site usage, side effects, and history.
+         */
+        get: operations["read_glp1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/glp1/cycles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Or Close Glp1 Cycle
+         * @description Create a new dose phase (cycle) or close an ongoing one.
+         */
+        post: operations["create_or_close_glp1_cycle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/glp1/injections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Glp1 Injection
+         * @description Log a GLP-1 injection shot.
+         */
+        post: operations["create_glp1_injection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/glp1/injections/{injection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Glp1 Injection
+         * @description Delete a recorded injection shot.
+         */
+        delete: operations["delete_glp1_injection"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/glp1/side-effects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Glp1 Side Effect
+         * @description Record a side effect symptom with 1-5 severity.
+         */
+        post: operations["create_glp1_side_effect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/glp1/side-effects/{effect_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Glp1 Side Effect
+         * @description Delete a recorded side effect.
+         */
+        delete: operations["delete_glp1_side_effect"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Hrt
+         * @description The whole HRT/TRT screen in one request: active course, position in cycle,
+         *     dose journal, body-map injection rotation, side effects, and cycle templates.
+         *     ONLY RECORDING, NO DOSE RECOMMENDATIONS.
+         */
+        get: operations["read_hrt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrt/cycle-items/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Hrt Cycle Item
+         * @description Delete a planned cycle item.
+         */
+        delete: operations["delete_hrt_cycle_item"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Hrt Cycle Item
+         * @description Update a planned cycle compound.
+         */
+        patch: operations["update_hrt_cycle_item"];
+        trace?: never;
+    };
+    "/api/v1/hrt/cycles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Hrt Cycle
+         * @description Start a new HRT/TRT cycle.
+         */
+        post: operations["create_hrt_cycle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrt/cycles/{cycle_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Hrt Cycle
+         * @description Delete a cycle and its planned items.
+         */
+        delete: operations["delete_hrt_cycle"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrt/cycles/{cycle_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close Hrt Cycle
+         * @description Close an active HRT/TRT cycle.
+         */
+        post: operations["close_hrt_cycle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrt/cycles/{cycle_id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Hrt Cycle Item
+         * @description Add a planned compound administration segment to a cycle.
+         */
+        post: operations["create_hrt_cycle_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrt/cycles/{cycle_id}/save-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Hrt Cycle Template
+         * @description Save an existing cycle as a reusable template.
+         */
+        post: operations["save_hrt_cycle_template"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrt/doses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Hrt Dose
+         * @description Record an administration of a compound.
+         */
+        post: operations["create_hrt_dose"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrt/doses/{dose_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Hrt Dose
+         * @description Delete a logged dose.
+         */
+        delete: operations["delete_hrt_dose"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Hrt Dose
+         * @description Update a previously logged dose.
+         */
+        patch: operations["update_hrt_dose"];
+        trace?: never;
+    };
+    "/api/v1/hrt/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Hrt Release
+         * @description Estimated active compound release curve over a sliding time window.
+         */
+        get: operations["read_hrt_release"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrt/side-effects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Hrt Side Effect
+         * @description Record an adverse effect / symptom.
+         */
+        post: operations["create_hrt_side_effect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrt/side-effects/{effect_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Hrt Side Effect
+         * @description Delete a recorded side effect.
+         */
+        delete: operations["delete_hrt_side_effect"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrt/templates/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Hrt Template
+         * @description Import a shared cycle template JSON payload.
+         */
+        post: operations["import_hrt_template"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrt/templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Hrt Template
+         * @description Delete a cycle template.
+         */
+        delete: operations["delete_hrt_template"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrt/templates/{template_id}/create-cycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Cycle From Hrt Template
+         * @description Instantiate a new cycle from a template.
+         */
+        post: operations["create_cycle_from_hrt_template"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hrt/templates/{template_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Hrt Template
+         * @description Export a template as a portable JSON payload.
+         */
+        get: operations["export_hrt_template"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Labs
+         * @description The whole Labs dashboard in one request: latest values with reference
+         *     ranges, category groupings, and collection history.
+         */
+        get: operations["read_labs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labs/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Lab Document
+         * @description Save user-reviewed biomarker results from the extraction preview.
+         */
+        post: operations["confirm_lab_document"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labs/markers/{marker_id_or_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Lab Marker
+         * @description Detailed history and reference information for a single biomarker.
+         */
+        get: operations["read_lab_marker"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labs/markers/{marker_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Lab Marker
+         * @description Update metadata for a catalog marker.
+         */
+        patch: operations["update_lab_marker"];
+        trace?: never;
+    };
+    "/api/v1/labs/markers/{marker_name}/defer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Defer Lab Marker
+         * @description Defer retesting a marker until a future date.
+         */
+        post: operations["defer_lab_marker"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labs/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Lab Result
+         * @description Record a single biomarker measurement manually.
+         */
+        post: operations["create_lab_result"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labs/results/{result_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Lab Result
+         * @description Delete a biomarker result.
+         */
+        delete: operations["delete_lab_result"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labs/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Lab Document
+         * @description Upload a PDF or image of a lab test report and extract markers with LLM vision.
+         */
+        post: operations["upload_lab_document"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/nutrition": {
         parameters: {
             query?: never;
@@ -763,6 +1456,16 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Body_upload_genetics_vcf */
+        Body_upload_genetics_vcf: {
+            /** File */
+            file: string;
+        };
+        /** Body_upload_lab_document */
+        Body_upload_lab_document: {
+            /** File */
+            file: string;
+        };
         /** Body_upload_progress_photos */
         Body_upload_progress_photos: {
             /** Date */
@@ -890,6 +1593,257 @@ export interface components {
              */
             synced_days: number;
         };
+        /** GeneticVariantCreate */
+        GeneticVariantCreate: {
+            /** Actionnotes */
+            actionNotes?: string | null;
+            /** Gene */
+            gene: string;
+            /** Genotype */
+            genotype?: string | null;
+            /** Impact */
+            impact?: string | null;
+            /** Impactdomain */
+            impactDomain?: string | null;
+            /** Interpretation */
+            interpretation?: string | null;
+            /** Marker */
+            marker?: string | null;
+            /** Rsid */
+            rsid?: string | null;
+        };
+        /** GeneticVariantCreated */
+        GeneticVariantCreated: {
+            /** Id */
+            id: number;
+        };
+        /** GeneticVariantItem */
+        GeneticVariantItem: {
+            /** Action */
+            action?: string | null;
+            /** Actionnotes */
+            actionNotes?: string | null;
+            /** Dom */
+            dom?: string | null;
+            /** Gene */
+            gene: string;
+            /** Genotype */
+            genotype?: string | null;
+            /** Gt */
+            gt?: string | null;
+            /**
+             * Hasrisk
+             * @default false
+             */
+            hasRisk: boolean;
+            /** Id */
+            id: number;
+            /** Impact */
+            impact?: string | null;
+            /** Impactdomain */
+            impactDomain?: string | null;
+            /** Interp */
+            interp?: string | null;
+            /** Interpretation */
+            interpretation?: string | null;
+            /** Marker */
+            marker?: string | null;
+            /** Rsid */
+            rsid?: string | null;
+            /** Source */
+            source?: string | null;
+        };
+        /** GeneticsUploadResponse */
+        GeneticsUploadResponse: {
+            /** Imported */
+            imported: number;
+            /** Markers */
+            markers: number;
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated: boolean;
+        };
+        /** GeneticsView */
+        GeneticsView: {
+            /** Count */
+            count: number;
+            /**
+             * Empty
+             * @default false
+             */
+            empty: boolean;
+            /** Variants */
+            variants: components["schemas"]["GeneticVariantItem"][];
+        };
+        /** Glp1CycleCreate */
+        Glp1CycleCreate: {
+            /** Action */
+            action?: string | null;
+            /** Cycleid */
+            cycleId?: number | null;
+            /** Dosemg */
+            doseMg?: number | null;
+            /** Drug */
+            drug?: string | null;
+            /** Enddate */
+            endDate?: string | null;
+            /** Note */
+            note?: string | null;
+            /** Startdate */
+            startDate?: string | null;
+        };
+        /** Glp1CycleInfo */
+        Glp1CycleInfo: {
+            /** Daystonext */
+            daysToNext: number;
+            /** Lastiso */
+            lastIso?: string | null;
+            /** Nextiso */
+            nextIso: string;
+            /**
+             * Unscheduled
+             * @default false
+             */
+            unscheduled: boolean;
+        };
+        /** Glp1CycleResponse */
+        Glp1CycleResponse: {
+            /** Id */
+            id?: number | null;
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+        };
+        /** Glp1DosePhase */
+        Glp1DosePhase: {
+            /** Dosemg */
+            doseMg: number;
+            /** Drug */
+            drug?: string | null;
+            /** Fromiso */
+            fromIso: string;
+            /** Id */
+            id?: number | null;
+            /** Note */
+            note?: string | null;
+            /** Toiso */
+            toIso: string;
+        };
+        /** Glp1Injection */
+        Glp1Injection: {
+            /** Dateiso */
+            dateIso: string;
+            /** Dosemg */
+            doseMg: number;
+            /** Drug */
+            drug?: string | null;
+            /** Id */
+            id?: number | null;
+            /** Note */
+            note?: string | null;
+            /** Site */
+            site?: string | null;
+        };
+        /** Glp1InjectionCreate */
+        Glp1InjectionCreate: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Dosemg */
+            doseMg: number;
+            /** Drug */
+            drug?: string | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Site */
+            site?: string | null;
+        };
+        /** Glp1InjectionCreated */
+        Glp1InjectionCreated: {
+            /** Id */
+            id: number;
+        };
+        /** Glp1SideEffect */
+        Glp1SideEffect: {
+            /** Dateiso */
+            dateIso: string;
+            /** Id */
+            id?: number | null;
+            /** Name */
+            name: string;
+            /** Note */
+            note?: string | null;
+            /** Severity */
+            severity: number;
+        };
+        /** Glp1SideEffectCreate */
+        Glp1SideEffectCreate: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Effecttype */
+            effectType: string;
+            /** Note */
+            note?: string | null;
+            /** Severity */
+            severity: number;
+        };
+        /** Glp1SideEffectCreated */
+        Glp1SideEffectCreated: {
+            /** Id */
+            id: number;
+        };
+        /** Glp1TrendPoint */
+        Glp1TrendPoint: {
+            /** Date */
+            date: string;
+            /** Kg */
+            kg: number;
+        };
+        /** Glp1View */
+        Glp1View: {
+            cycle: components["schemas"]["Glp1CycleInfo"];
+            /** Dayondose */
+            dayOnDose: number;
+            /** Dosemg */
+            doseMg: number;
+            /** Dosephases */
+            dosePhases: components["schemas"]["Glp1DosePhase"][];
+            /** Drug */
+            drug: string;
+            /** Injections */
+            injections: components["schemas"]["Glp1Injection"][];
+            /** Sideeffects */
+            sideEffects: components["schemas"]["Glp1SideEffect"][];
+            /** Sinceiso */
+            sinceIso: string;
+            /** Sitelabels */
+            siteLabels: {
+                [key: string]: string;
+            };
+            /** Summary */
+            summary: string;
+            /** Trend */
+            trend: components["schemas"]["Glp1TrendPoint"][];
+        };
         /**
          * Goal
          * @description The first active weight goal, with where he started.
@@ -996,6 +1950,346 @@ export interface components {
              */
             working_sets: number;
         };
+        /** HrtActiveCycle */
+        HrtActiveCycle: {
+            /** Cadence */
+            cadence: number;
+            /** End */
+            end?: string | null;
+            /** Id */
+            id: number;
+            /** Items */
+            items: components["schemas"]["HrtCyclePlanItem"][];
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Note */
+            note?: string | null;
+            /** Pct */
+            pct: number;
+            /** Start */
+            start: string;
+            /** Week */
+            week: number;
+            /** Weeks */
+            weeks: number;
+        };
+        /** HrtCompoundItem */
+        HrtCompoundItem: {
+            /** Compoundclass */
+            compoundClass?: string | null;
+            /** Concmgml */
+            concMgMl?: number | null;
+            /** Doseunit */
+            doseUnit?: string | null;
+            /** Id */
+            id: number;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Route */
+            route?: string | null;
+        };
+        /** HrtCycleClose */
+        HrtCycleClose: {
+            /** Enddate */
+            endDate?: string | null;
+        };
+        /** HrtCycleCreate */
+        HrtCycleCreate: {
+            /** Enddate */
+            endDate?: string | null;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name?: string | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Startdate
+             * Format: date
+             */
+            startDate: string;
+        };
+        /** HrtCycleCreated */
+        HrtCycleCreated: {
+            /** Id */
+            id: number;
+        };
+        /** HrtCycleItemCreate */
+        HrtCycleItemCreate: {
+            /** Compoundkey */
+            compoundKey: string;
+            /** Dose */
+            dose: number;
+            /** Durationdays */
+            durationDays?: number | null;
+            /** Intervaldays */
+            intervalDays: number;
+            /** Note */
+            note?: string | null;
+            /** Startweek */
+            startWeek?: number | null;
+            /** Unit */
+            unit?: string | null;
+        };
+        /** HrtCycleItemCreated */
+        HrtCycleItemCreated: {
+            /** Id */
+            id: number;
+        };
+        /** HrtCycleItemPatch */
+        HrtCycleItemPatch: {
+            /** Dose */
+            dose?: number | null;
+            /** Durationdays */
+            durationDays?: number | null;
+            /** Intervaldays */
+            intervalDays?: number | null;
+            /** Startweek */
+            startWeek?: number | null;
+        };
+        /** HrtCyclePlanItem */
+        HrtCyclePlanItem: {
+            /** Compoundkey */
+            compoundKey: string;
+            /** Dose */
+            dose: number;
+            /** Durationdays */
+            durationDays?: number | null;
+            /** Every */
+            every: number;
+            /** From */
+            from: number;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Note */
+            note?: string | null;
+            /** Unit */
+            unit: string;
+        };
+        /** HrtDoseCreate */
+        HrtDoseCreate: {
+            /** Batch */
+            batch?: string | null;
+            /** Brand */
+            brand?: string | null;
+            /** Compoundkey */
+            compoundKey: string;
+            /** Concentrationmgml */
+            concentrationMgMl?: number | null;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Dose */
+            dose?: number | null;
+            /** Lab */
+            lab?: string | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Site */
+            site?: string | null;
+            /** Unit */
+            unit?: string | null;
+            /** Volumeml */
+            volumeMl?: number | null;
+        };
+        /** HrtDoseCreated */
+        HrtDoseCreated: {
+            /** Id */
+            id: number;
+        };
+        /** HrtDoseItem */
+        HrtDoseItem: {
+            /** Batch */
+            batch?: string | null;
+            /** Brand */
+            brand?: string | null;
+            /** Compoundkey */
+            compoundKey: string;
+            /** Date */
+            date: string;
+            /** Dose */
+            dose: string;
+            /** Doseval */
+            doseVal: number;
+            /** Id */
+            id: number;
+            /** Lab */
+            lab?: string | null;
+            /** Ml */
+            ml?: number | null;
+            /** Name */
+            name: string;
+            /** Note */
+            note?: string | null;
+            /** Site */
+            site?: string | null;
+            /** Unit */
+            unit: string;
+        };
+        /** HrtDosePatch */
+        HrtDosePatch: {
+            /** Batch */
+            batch?: string | null;
+            /** Brand */
+            brand?: string | null;
+            /** Compoundkey */
+            compoundKey?: string | null;
+            /** Concentrationmgml */
+            concentrationMgMl?: number | null;
+            /** Date */
+            date?: string | null;
+            /** Dose */
+            dose?: number | null;
+            /** Lab */
+            lab?: string | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Site */
+            site?: string | null;
+            /** Unit */
+            unit?: string | null;
+            /** Volumeml */
+            volumeMl?: number | null;
+        };
+        /** HrtLastDose */
+        HrtLastDose: {
+            /** Date */
+            date: string;
+            /** Dose */
+            dose: string;
+            /** Name */
+            name: string;
+        };
+        /** HrtPlannedItem */
+        HrtPlannedItem: {
+            /** Date */
+            date: string;
+            /** Dose */
+            dose: string;
+            /** Name */
+            name: string;
+        };
+        /** HrtReleaseResponse */
+        HrtReleaseResponse: {
+            /** Series */
+            series: {
+                [key: string]: unknown;
+            }[];
+            /** Today */
+            today: string;
+        };
+        /** HrtSideEffectCreate */
+        HrtSideEffectCreate: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Effecttype */
+            effectType: string;
+            /** Note */
+            note?: string | null;
+            /** Severity */
+            severity: number;
+        };
+        /** HrtSideEffectCreated */
+        HrtSideEffectCreated: {
+            /** Id */
+            id: number;
+        };
+        /** HrtSideEffectItem */
+        HrtSideEffectItem: {
+            /** Date */
+            date: string;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Note */
+            note?: string | null;
+            /** Sev */
+            sev: number;
+        };
+        /** HrtTemplateCreateCycle */
+        HrtTemplateCreateCycle: {
+            /** Name */
+            name?: string | null;
+            /**
+             * Startdate
+             * Format: date
+             */
+            startDate: string;
+        };
+        /** HrtTemplateImport */
+        HrtTemplateImport: {
+            /** Payload */
+            payload: string;
+        };
+        /** HrtTemplateItem */
+        HrtTemplateItem: {
+            /** Exportjson */
+            exportJson: string;
+            /** Id */
+            id: number;
+            /** Items */
+            items: unknown[];
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+        };
+        /** HrtTemplateSave */
+        HrtTemplateSave: {
+            /** Name */
+            name: string;
+        };
+        /** HrtView */
+        HrtView: {
+            /** Catalog */
+            catalog: number;
+            /** Compounds */
+            compounds: components["schemas"]["HrtCompoundItem"][];
+            cycle?: components["schemas"]["HrtActiveCycle"] | null;
+            /** Doses */
+            doses: components["schemas"]["HrtDoseItem"][];
+            last?: components["schemas"]["HrtLastDose"] | null;
+            /** Planned */
+            planned: components["schemas"]["HrtPlannedItem"][];
+            /** Release */
+            release: {
+                [key: string]: unknown;
+            }[];
+            /** Sideeffects */
+            sideEffects: components["schemas"]["HrtSideEffectItem"][];
+            /** Sitecounts */
+            siteCounts: {
+                [key: string]: number;
+            };
+            /** Sitelabels */
+            siteLabels: {
+                [key: string]: string;
+            };
+            /** Templates */
+            templates: components["schemas"]["HrtTemplateItem"][];
+        };
         /** IntradaySeriesPoint */
         IntradaySeriesPoint: {
             /** Time */
@@ -1015,6 +2309,208 @@ export interface components {
             error: "invalid";
             /** Message */
             message: string;
+        };
+        /** LabConfirm */
+        LabConfirm: {
+            /** Date */
+            date: string;
+            /** Filekey */
+            fileKey?: string | null;
+            /** Labname */
+            labName?: string | null;
+            /**
+             * Markers
+             * @default []
+             */
+            markers: components["schemas"]["LabExtractedMarker"][];
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Rawpayloadid */
+            rawPayloadId?: number | null;
+        };
+        /** LabConfirmResponse */
+        LabConfirmResponse: {
+            /** Created */
+            created: number;
+            /** Ok */
+            ok: boolean;
+        };
+        /** LabExtractedMarker */
+        LabExtractedMarker: {
+            /** Marker */
+            marker?: string | null;
+            /** Refhigh */
+            refHigh?: number | null;
+            /** Reflow */
+            refLow?: number | null;
+            /** Unit */
+            unit?: string | null;
+            /** Value */
+            value?: number | null;
+        };
+        /** LabExtractedPreview */
+        LabExtractedPreview: {
+            /** Date */
+            date: string;
+            /** Filekey */
+            fileKey?: string | null;
+            /** Labname */
+            labName?: string | null;
+            /**
+             * Markers
+             * @default []
+             */
+            markers: components["schemas"]["LabExtractedMarker"][];
+            /** Rawpayloadid */
+            rawPayloadId?: number | null;
+        };
+        /** LabHistoryPoint */
+        LabHistoryPoint: {
+            /** Dateiso */
+            dateIso: string;
+            /** Value */
+            value: number;
+        };
+        /** LabMarker */
+        LabMarker: {
+            /** Decimals */
+            decimals: number;
+            /** Group */
+            group: string;
+            /** Groupkey */
+            groupKey: string;
+            /** Hi */
+            hi: number;
+            /** History */
+            history: components["schemas"]["LabHistoryPoint"][];
+            /** Id */
+            id: string;
+            /** Lo */
+            lo: number;
+            /** Max */
+            max: number;
+            /** Min */
+            min: number;
+            /** Name */
+            name: string;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: number;
+        };
+        /** LabMarkerDefer */
+        LabMarkerDefer: {
+            /** Note */
+            note?: string | null;
+            /**
+             * Until
+             * Format: date
+             */
+            until: string;
+        };
+        /** LabMarkerDetail */
+        LabMarkerDetail: {
+            /** Category */
+            category?: string | null;
+            /** Deferuntil */
+            deferUntil?: string | null;
+            /** History */
+            history: {
+                [key: string]: unknown;
+            }[];
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Refhigh */
+            refHigh?: number | null;
+            /** Reflow */
+            refLow?: number | null;
+            /**
+             * Tier
+             * @default 2
+             */
+            tier: number;
+            /** Unit */
+            unit?: string | null;
+        };
+        /** LabMarkerPatch */
+        LabMarkerPatch: {
+            /** Category */
+            category?: string | null;
+            /** Note */
+            note?: string | null;
+            /** Refhigh */
+            refHigh?: number | null;
+            /** Reflow */
+            refLow?: number | null;
+            /** Retestintervaldays */
+            retestIntervalDays?: number | null;
+            /** Tier */
+            tier?: number | null;
+        };
+        /** LabMarkerResponse */
+        LabMarkerResponse: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+        };
+        /** LabResultCreate */
+        LabResultCreate: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Labname */
+            labName?: string | null;
+            /** Marker */
+            marker: string;
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Refhigh */
+            refHigh?: number | null;
+            /** Reflow */
+            refLow?: number | null;
+            /** Unit */
+            unit?: string | null;
+            /** Value */
+            value: number;
+        };
+        /** LabResultCreated */
+        LabResultCreated: {
+            /** Id */
+            id: number;
+        };
+        /** LabUploadResponse */
+        LabUploadResponse: {
+            lab?: components["schemas"]["LabExtractedPreview"] | null;
+            /** Message */
+            message?: string | null;
+            /** Ok */
+            ok: boolean;
+            /** Reason */
+            reason?: string | null;
+        };
+        /** LabsView */
+        LabsView: {
+            /** Collectediso */
+            collectedIso: string;
+            /** Lab */
+            lab: string;
+            /** Markers */
+            markers: components["schemas"]["LabMarker"][];
+            /** Source */
+            source: string;
         };
         /** LastScanRow */
         LastScanRow: {
@@ -2028,6 +3524,2109 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    read_genetics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneticsView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    upload_genetics_vcf: {
+        parameters: {
+            query?: {
+                only_interpreted?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_genetics_vcf"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneticsUploadResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_genetics_variant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GeneticVariantCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneticVariantCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_genetics_variant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variant_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_glp1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Glp1View"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    create_or_close_glp1_cycle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Glp1CycleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Glp1CycleResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_glp1_injection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Glp1InjectionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Glp1InjectionCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_glp1_injection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                injection_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_glp1_side_effect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Glp1SideEffectCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Glp1SideEffectCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_glp1_side_effect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                effect_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_hrt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrtView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    delete_hrt_cycle_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_hrt_cycle_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrtCycleItemPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrtCycleItemCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_hrt_cycle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrtCycleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrtCycleCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_hrt_cycle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cycle_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_hrt_cycle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cycle_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrtCycleClose"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrtCycleCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_hrt_cycle_item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cycle_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrtCycleItemCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrtCycleItemCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_hrt_cycle_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cycle_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrtTemplateSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrtCycleCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_hrt_dose: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrtDoseCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrtDoseCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_hrt_dose: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dose_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_hrt_dose: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dose_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrtDosePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrtDoseCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_hrt_release: {
+        parameters: {
+            query?: {
+                days_back?: number;
+                days_forward?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrtReleaseResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_hrt_side_effect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrtSideEffectCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrtSideEffectCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_hrt_side_effect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                effect_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_hrt_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrtTemplateImport"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrtCycleCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_hrt_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_cycle_from_hrt_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HrtTemplateCreateCycle"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HrtCycleCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_hrt_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_labs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabsView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    confirm_lab_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabConfirm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabConfirmResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_lab_marker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                marker_id_or_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabMarkerDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_lab_marker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                marker_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabMarkerPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabMarkerResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    defer_lab_marker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                marker_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabMarkerDefer"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabMarkerResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_lab_result: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabResultCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabResultCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_lab_result: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                result_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_lab_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_lab_document"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabUploadResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_nutrition: {
         parameters: {
             query?: {
@@ -3526,4 +7125,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: 649c86d5f6523a5be612074005881f5ae960182eb1ec8a7444914445b95f0994
+// openapi.json sha256: 3e6bd9ddb4d077677095824d7ae83e3ba5bce6bcfe72f804a4d060575b644152

@@ -152,3 +152,34 @@ async def resolve_variants(session: AsyncSession) -> list[dict]:
         for v in result.scalars().all()
         if v.marker
     ]
+
+
+# ── Full view collection for API / UI ─────────────────────────────────────────
+async def collect(session: AsyncSession) -> dict[str, Any]:
+    """Collect everything needed by the Genetics dashboard in one round-trip."""
+    variants = await list_variants(session)
+    items = []
+    for v in variants:
+        items.append({
+            "id": v.id,
+            "gene": v.gene,
+            "rsid": v.rsid,
+            "genotype": v.genotype,
+            "gt": v.genotype,
+            "marker": v.marker,
+            "impact": v.impact,
+            "impactDomain": v.impact_domain,
+            "dom": v.impact_domain or "health",
+            "interpretation": v.interpretation,
+            "interp": v.interpretation,
+            "actionNotes": v.action_notes,
+            "action": v.action_notes,
+            "source": v.source,
+            "hasRisk": bool(v.marker),
+        })
+    return {
+        "variants": items,
+        "count": len(items),
+        "empty": len(items) == 0,
+    }
+

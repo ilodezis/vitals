@@ -1,0 +1,61 @@
+/* Genetics Screen Styles */
+.genetics-hero { display: flex; align-items: baseline; gap: 16px; margin-top: 4px; }
+.genetics-hero .big { font-size: 56px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; }
+
+.genetics-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 20px; }
+@container app (min-width: 768px) {
+  .genetics-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.gen-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--d2), border-color var(--d2);
+}
+.gen-card.risk { border-color: rgba(240, 178, 74, 0.35); }
+.gen-card-top-bar { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--line-2); }
+.gen-card-top-bar.risk { background: var(--warn); }
+
+.gen-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.gen-title-grp { display: flex; flex-direction: column; gap: 4px; }
+.gen-gene { font-size: var(--t-h3); font-weight: 700; color: var(--fg); }
+.gen-rsid { font-size: var(--t-micro); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.gen-gt-box { text-align: right; }
+.gen-gt-badge {
+  display: inline-block;
+  font-weight: 800;
+  font-size: var(--t-body);
+  padding: 4px 10px;
+  border-radius: var(--r);
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  color: var(--fg);
+}
+.gen-gt-badge.risk {
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-color: rgba(240, 178, 74, 0.4);
+}
+
+.gen-body { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+.gen-impact { font-size: var(--t-body); font-weight: 600; color: var(--fg); line-height: 1.4; }
+.gen-interp { font-size: var(--t-caption); color: var(--fg-2); line-height: 1.5; }
+.gen-action {
+  font-size: var(--t-caption);
+  color: var(--violet);
+  background: rgba(167, 139, 250, 0.08);
+  padding: 8px 12px;
+  border-radius: var(--r);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+}
+
+.gen-card-foot { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); padding-top: 10px; }

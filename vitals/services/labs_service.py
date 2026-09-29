@@ -748,3 +748,77 @@ def _parse_date(v: Any) -> Optional[date_type]:
         return date_type.fromisoformat(str(v)[:10])
     except ValueError:
         return None
+
+
+# ── Full view collection for API / UI ─────────────────────────────────────────
+async def collect(session: AsyncSession) -> dict[str, Any]:
+    """Collect everything needed by the Labs dashboard in one round-trip."""
+    today = today_local()
+    await refresh_alerts(session)
+    latest_results = await latest_per_marker(session)
+    markers_catalog = {m.name: m for m in await list_markers(session)}
+
+    latest_sorted = sorted(
+        latest_results,
+        key=lambda r: (is_out_of_range(r.flag), r.date),
+        reverse=True,
+    )
+
+    latest_date = latest_sorted[0].date.isoformat() if latest_sorted else today.isoformat()
+    latest_lab = (latest_sorted[0].lab_name or "Инвитро") if latest_sorted else "—"
+    latest_source = (latest_sorted[0].source or "PDF") if latest_sorted else "PDF"
+
+    markers_out = []
+    for r in latest_sorted:
+        m_cat = markers_catalog.get(r.marker)
+        history_rows = await marker_history(session, r.marker)
+
+        cat_key = (m_cat.category if m_cat and m_cat.category else "").lower()
+        if not cat_key:
+            name_lower = r.marker.lower()
+            if any(k in name_lower for k in ("тестостерон", "ттг", "т4", "эстрадиол", "прогестерон", "пролактин", "фсг", "лг", "инсулин", "гспг")):
+                cat_key = "hormones"
+                cat_name = "Гормоны"
+            elif any(k in name_lower for k in ("витамин", "ферритин", "b12", "железо", "цинк", "магний")):
+                cat_key = "vitamins"
+                cat_name = "Витамины"
+            else:
+                cat_key = "metabolism"
+                cat_name = "Метаболизм"
+        else:
+            cat_name = m_cat.category
+
+        lo = r.ref_low if r.ref_low is not None else (m_cat.ref_low if m_cat and m_cat.ref_low is not None else 0.0)
+        hi = r.ref_high if r.ref_high is not None else (m_cat.ref_high if m_cat and m_cat.ref_high is not None else (lo * 2 or 100.0))
+        span = hi - lo if hi > lo else max(hi, 1.0)
+        min_val = max(0.0, lo - span * 0.3)
+        max_val = hi + span * 0.3
+
+        decimals = 2 if r.value < 1 else (1 if r.value < 100 else 0)
+
+        hist_list = [{"dateIso": h["date"], "value": h["value"]} for h in history_rows]
+        if not hist_list:
+            hist_list = [{"dateIso": r.date.isoformat(), "value": r.value}]
+
+        markers_out.append({
+            "id": str(r.id),
+            "name": r.marker,
+            "groupKey": cat_key,
+            "group": cat_name,
+            "unit": r.unit or "",
+            "value": r.value,
+            "lo": lo,
+            "hi": hi,
+            "min": round(min_val, 2),
+            "max": round(max_val, 2),
+            "decimals": decimals,
+            "history": hist_list,
+        })
+
+    return {
+        "collectedIso": latest_date,
+        "lab": latest_lab,
+        "source": latest_source,
+        "markers": markers_out,
+    }
+
