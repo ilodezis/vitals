@@ -3,7 +3,7 @@ import { createRootRouteWithContext, Navigate } from '@tanstack/react-router'
 import { sessionQuery } from '@/app/session'
 import { AppShell } from '@/components/shell/AppShell'
 import { todayQuery } from '@/features/today/useTodayView'
-import { loadDictionary } from '@/i18n/load'
+import { lastLanguage, loadDictionary, preloadDictionary, rememberLanguage } from '@/i18n/load'
 
 export type RouterContext = {
   queryClient: QueryClient
@@ -13,7 +13,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   // Who is signed in, and in which language, before anything draws: the shell is built from it.
   loader: async ({ context }) => {
     void context.queryClient.prefetchQuery(todayQuery)
+    // The dictionary is fetched alongside the session, not after it: the language is the cached
+    // session's, or on a cold visit the one this device last opened in.
+    const guess = context.queryClient.getQueryData(sessionQuery.queryKey)?.lang ?? lastLanguage()
+    if (guess !== null) preloadDictionary(guess)
     const session = await context.queryClient.ensureQueryData(sessionQuery)
+    rememberLanguage(session.lang)
     return { lang: session.lang, dictionary: await loadDictionary(session.lang) }
   },
   component: Root,

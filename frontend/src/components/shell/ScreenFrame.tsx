@@ -40,6 +40,7 @@ interface ScreenFrameProps {
 export function ScreenFrame({ id, hidden, register, children }: ScreenFrameProps) {
   const node = useRef<HTMLElement | null>(null)
   const saved = useRef(0)
+  const progress = useRef('0.000')
 
   // A hidden screen has no layout, so its scroll position is put back when it returns.
   useLayoutEffect(() => {
@@ -62,7 +63,13 @@ export function ScreenFrame({ id, hidden, register, children }: ScreenFrameProps
       onScroll={(e) => {
         const el = e.currentTarget
         saved.current = el.scrollTop
-        el.style.setProperty('--p', scrollProgress(el.scrollTop).toFixed(3))
+        // `--p` is inherited, so each write restyles the whole screen: only a new value is
+        // written, and past the 64px run (most of any scroll) the value no longer moves.
+        const p = scrollProgress(el.scrollTop).toFixed(3)
+        if (p !== progress.current) {
+          progress.current = p
+          el.style.setProperty('--p', p)
+        }
       }}
     >
       <div className="page">{children}</div>

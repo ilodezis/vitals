@@ -40,6 +40,8 @@ export default function WorkoutsScreen() {
     },
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ['workouts'] })
+      // The rail's workouts row.
+      void queryClient.invalidateQueries({ queryKey: ['session'] })
       toast(t('app.workouts.synced', { count: data.synced }))
     },
     onError: () => toast(t('hevy.sync_error'), { icon: 'warn' }),

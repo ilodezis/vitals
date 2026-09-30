@@ -35,6 +35,8 @@ export function HealthImport() {
       if (input.current !== null) input.current.value = ''
       void queryClient.invalidateQueries({ queryKey: ['recovery'] })
       void queryClient.invalidateQueries({ queryKey: ['today'] })
+      // The rail's recovery row.
+      void queryClient.invalidateQueries({ queryKey: ['session'] })
     } catch (err) {
       toast(failText(err, t('app.upload_failed')), { icon: 'warn' })
     } finally {

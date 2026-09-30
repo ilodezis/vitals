@@ -241,12 +241,15 @@ export function LogSheet() {
             label={t('app.log')}
           />
           {/* Every opening starts the forms fresh: a reading typed and abandoned is not still there. */}
-          <div key={opening}>
-            {tab === 'weight' && <WeightPane enter={switched} />}
-            {tab === 'meal' && <MealPane enter={switched} />}
-            {tab === 'dose' && <DosePane enter={switched} />}
-            {tab === 'measure' && <MeasurePane enter={switched} />}
-          </div>
+          {/* A shut sheet draws no form: nothing behind it reads the cache or keeps a clock. */}
+          {(open || visible) && (
+            <div key={opening}>
+              {tab === 'weight' && <WeightPane enter={switched} />}
+              {tab === 'meal' && <MealPane enter={switched} />}
+              {tab === 'dose' && <DosePane enter={switched} />}
+              {tab === 'measure' && <MeasurePane enter={switched} />}
+            </div>
+          )}
         </div>
       </div>
     </>

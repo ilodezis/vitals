@@ -8,6 +8,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Performance — the app's read paths
+
+- **Workouts no longer asks once per set** — the exercise catalog read every exercise's sessions three times over, and each session's sets with a query of its own: 159 queries for the demo's 50 workouts, growing with every one logged. Every exercise's history now comes from two reads (8 queries, ~125 → ~15 ms).
+- **Labs reads each result once** — the latest value per marker and every marker's history come from the same read, and the out-of-range/retest alert pass answers from two reads of `system_alerts` instead of a handful per marker (38 → 5 queries).
+- **Today reads the weight history once, not five times** — the brief's context, the chart series, the plateau check and the goal card each loaded the whole history; it is now kept for the unit of work and dropped by any flush, write statement, commit or rollback. Today also stops assembling the parts of the brief only the model reads (yesterday's signals, meals, day plan).
+- **The React shell skips the rail's numbers** — `/app/...` computed the rail status card for a page that never draws it; the app reads it from `/api/v1/session`.
+- **The app's JSON and assets are gzipped** — `/api/` and `/static/app/` only; server-rendered HTML (CSRF token beside user text) and `/mcp` are left as they were.
+- **The device cache is written at most once a second** — the IndexedDB persister copied the whole query cache on the main thread on every fetch start and finish, several times per screen change and in the middle of its motion. Writes are now coalesced, and flushed at once when the app is hidden.
+- **Moving between screens no longer refetches the session and alerts** — the session was refetched on every mount (every screen's header reads it), alerts had no freshness at all. Both now follow the screens' one-minute window; the session is still refetched whenever the app regains focus, and the syncs that change the rail invalidate it explicitly.
+- **Smaller first load** — the log sheet and its four forms load when the app is idle (or at the first "+"), not with the entry chunk: startup JS 138.7 → 126.0 KB gzip. A shut sheet mounts no forms. The dictionary is fetched alongside the session instead of after it, and the scroll handler writes the inherited `--p` only when it changes. The unused `motion` dependency is gone.
+
 ### Fixed — "Method Not Allowed" on a save
 
 - **Script-submitted forms now declare `method="POST"`** — the weight, measurement, meal, injection and supplement forms are saved by Alpine through `@submit.prevent`, but carried no `method` of their own. Whenever the browser submitted one itself — before Alpine had wired the page up on a slow cold start, or after a boosted swap lost the init race — it went out as a GET to a POST-only route, and the owner got a bare 405 page instead of a saved entry. The native fallback now posts and lands back on the page with the entry saved; a static contract keeps every such form honest.

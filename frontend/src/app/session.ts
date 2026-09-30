@@ -13,10 +13,12 @@ export const sessionQuery = queryOptions({
     if (data === undefined) throw new Error('The session could not be read')
     return data
   },
-  // The shell is drawn from it on every screen; a switched module refreshes it explicitly.
-  staleTime: 5 * 60_000,
-  refetchOnWindowFocus: true,
-  refetchOnMount: 'always',
+  // The shell is drawn from it on every screen, and every screen's header reads it: a refetch on
+  // each mount was a request per navigation. A write that changes it (a switched module, a new
+  // weigh-in in the rail) invalidates it explicitly; what can change on its own — the date, at
+  // midnight — is caught on the next screen after a minute, and whenever the app comes back.
+  staleTime: 60_000,
+  refetchOnWindowFocus: 'always',
 })
 
 export const useSession = (): SessionView => useSuspenseQuery(sessionQuery).data

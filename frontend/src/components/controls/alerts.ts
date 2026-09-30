@@ -30,6 +30,9 @@ export const alertsQuery = (scope: string, domain?: string) =>
     queryKey: [scope, 'alerts'],
     queryFn: async (): Promise<SystemAlert[]> =>
       (await ok(api.GET('/api/v1/alerts', { params: { query: domain === undefined ? {} : { domain } } }))).alerts ?? [],
+    // As fresh as the screen it sits on (its view is kept for a minute too): a write invalidates
+    // the screen's key and this one with it, and passing through a screen no longer reads it again.
+    staleTime: 60_000,
   })
 
 /** Hide one alert, or every alert of a domain. The alert leaves the list at once; if the

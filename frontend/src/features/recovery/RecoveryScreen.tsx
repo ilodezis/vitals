@@ -58,6 +58,8 @@ export default function RecoveryScreen() {
       }
       void queryClient.invalidateQueries({ queryKey: ['recovery'] })
       void queryClient.invalidateQueries({ queryKey: ['today'] })
+      // The rail's recovery row.
+      void queryClient.invalidateQueries({ queryKey: ['session'] })
       toast(result.synced_days === 0 ? t('app.recovery.sync_none') : t('app.recovery.sync_done'))
     },
     onError: (err) => toast(failText(err, t('app.recovery.sync_failed')), { icon: 'warn' }),
