@@ -1,16 +1,23 @@
 import { useRef, useState } from 'react'
 import { MutationObserver, type QueryClient, useMutation } from '@tanstack/react-query'
-import { ConflictError, InvalidError, type Violation } from '@/api/client'
+import { ConflictError, failText, type Violation } from '@/api/client'
 
 export type ConflictVars<TVars> = TVars extends void
   ? { override: boolean }
   : TVars & { override: boolean }
 
-export interface UseConflictMutationOptions<TData = unknown, TVars = void> {
+export interface ConflictMutationOptions<TData = unknown, TVars = void> {
   mutationFn: (vars: ConflictVars<TVars>, context: { override: boolean }) => Promise<TData>
   onSuccess?: (data: TData, vars: ConflictVars<TVars>, context: { override: boolean }) => void | Promise<void>
   onError?: (error: Error, vars: ConflictVars<TVars>, context: { override: boolean }) => void
+  /** What the form says when the write failed and the service gave no reason of its own —
+   *  in the user's language. An exception's text is never shown. */
   fallbackErrorMessage?: string
+}
+
+/** A form always has its own words for a failed write. */
+export interface UseConflictMutationOptions<TData = unknown, TVars = void> extends ConflictMutationOptions<TData, TVars> {
+  fallbackErrorMessage: string
 }
 
 interface InternalPayload<TVars> {
@@ -34,7 +41,7 @@ function buildConflictVars<TVars>(vars: TVars, override: boolean): ConflictVars<
 /** Headless conflict-aware mutation controller backed by TanStack Query's MutationObserver. */
 export function createConflictMutation<TData = unknown, TVars = void>(
   queryClient: QueryClient,
-  options: UseConflictMutationOptions<TData, TVars>,
+  options: ConflictMutationOptions<TData, TVars>,
 ) {
   let violations: Violation[] = []
   let problem: string | null = null
@@ -58,10 +65,7 @@ export function createConflictMutation<TData = unknown, TVars = void>(
         return
       }
       violations = []
-      problem =
-        error instanceof InvalidError
-          ? error.message
-          : options.fallbackErrorMessage ?? (error instanceof Error ? error.message : 'Request failed')
+      problem = failText(error, options.fallbackErrorMessage ?? '')
       const merged = buildConflictVars(vars, override)
       options.onError?.(error, merged, { override })
     },
@@ -145,11 +149,7 @@ export function useConflictMutation<TData = unknown, TVars = void>(
         return
       }
       setViolations([])
-      const msg =
-        error instanceof InvalidError
-          ? error.message
-          : options.fallbackErrorMessage ?? (error instanceof Error ? error.message : 'Request failed')
-      setProblem(msg)
+      setProblem(failText(error, options.fallbackErrorMessage))
       const merged = buildConflictVars(vars, override)
       options.onError?.(error, merged, { override })
     },

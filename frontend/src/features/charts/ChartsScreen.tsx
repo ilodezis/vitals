@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, ok, failText } from '@/api/client'
 import { PrimaryButton } from '@/components/controls/PrimaryButton'
 import { TextButton } from '@/components/controls/Marks'
 import { toast } from '@/components/controls/toast'
@@ -9,21 +9,10 @@ import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { parseIsoDate, shortDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/format'
+import { seriesColor } from './seriesColors'
 import type { CustomChartItem } from './types'
 import { useChartsView } from './useChartsView'
 import './charts.css'
-
-// Palette without amber (--accent)
-const SERIES_COLORS = [
-  'var(--cool)',
-  'var(--violet)',
-  'var(--good)',
-  'var(--warn)',
-  '#686DE0',
-  '#E056FD',
-  '#22A6B3',
-  '#30336B',
-]
 
 interface SeriesDraft {
   domain: string
@@ -75,7 +64,7 @@ export default function ChartsScreen() {
     }
     setIsSubmitting(true)
     try {
-      await api.POST('/api/v1/charts', {
+      await ok(api.POST('/api/v1/charts', {
         body: {
           name: chartName.trim(),
           normalize,
@@ -85,14 +74,14 @@ export default function ChartsScreen() {
             param: r.param || null,
           })),
         },
-      })
+      }))
       toast(t('app.charts.chart_saved'))
       setFormOpen(false)
       setChartName('')
       refresh()
       return true
-    } catch (err: any) {
-      toast(err.message || t('app.charts.save_failed'), { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.charts.save_failed')), { icon: 'warn' })
       return false
     } finally {
       setIsSubmitting(false)
@@ -106,13 +95,13 @@ export default function ChartsScreen() {
     }
     setConfirmDeleteId(null)
     try {
-      await api.DELETE('/api/v1/charts/{chart_id}', {
+      await ok(api.DELETE('/api/v1/charts/{chart_id}', {
         params: { path: { chart_id: id } },
-      })
+      }))
       toast(t('common.deleted'))
       refresh()
-    } catch (err: any) {
-      toast(err.message || t('app.charts.delete_failed'), { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.charts.delete_failed')), { icon: 'warn' })
     }
   }
 
@@ -238,7 +227,7 @@ export default function ChartsScreen() {
         {/* Polylines for each series */}
         {chart.series.map((s, sIdx) => {
           if (!s.points.length) return null
-          const color = SERIES_COLORS[s.colorSlot % SERIES_COLORS.length]
+          const color = seriesColor(s.colorSlot)
           const coords = s.points.map((p, i) => {
             const x = padLeft + (i / Math.max(s.points.length - 1, 1)) * plotW
             const y = padTop + plotH - ((p.value - minVal) / valRange) * plotH
@@ -306,7 +295,7 @@ export default function ChartsScreen() {
 
       {/* New Chart Constructor Form Modal */}
       {formOpen && (
-        <div className="panel fpanel" style={{ marginTop: 'var(--s6)' }}>
+        <div className="panel fpanel">
           <div className="panel-h">
             <h3>{t('app.charts.new_chart')}</h3>
             <button type="button" className="ibtn" onClick={() => setFormOpen(false)}>
@@ -420,7 +409,7 @@ export default function ChartsScreen() {
                 <div className="chart">{renderSvgChart(c)}</div>
                 <div className="legend">
                   {c.series.map((s, idx) => {
-                    const color = SERIES_COLORS[s.colorSlot % SERIES_COLORS.length]
+                    const color = seriesColor(s.colorSlot)
                     return (
                       <span key={idx}>
                         <i style={{ background: color }} />

@@ -17,7 +17,7 @@ import { useLastWeighed } from '@/features/weight/useLastWeighed'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { fullDate, longDate, parseIsoDate, relativeDay } from '@/lib/dates'
-import { formatCompact, formatInt, formatNumber, formatSigned } from '@/lib/format'
+import { formatCompact, formatInt, formatNumber, formatPercent, formatSigned } from '@/lib/format'
 import { prefersReducedMotion } from '@/lib/motion'
 import { durationText } from '@/lib/units'
 import { useClock } from '@/lib/useClock'
@@ -312,7 +312,7 @@ export default function TodayScreen() {
                   const screen = item.domain === null ? undefined : MODULE_SCREEN[item.domain]?.screen
                   const body = (
                     <>
-                      {item.severity === 'note' && <span style={{ color: 'var(--muted)' }}>{t('today.observation_prefix')}</span>}
+                      {item.severity === 'note' && <span className="obs">{t('today.observation_prefix')}</span>}
                       {item.message}
                     </>
                   )
@@ -327,12 +327,8 @@ export default function TodayScreen() {
                   )
                 })}
                 {!expandedAttention && view.attention.length > 3 && (
-                  <button
-                    type="button"
-                    className="more-btn"
-                    onClick={() => setExpandedAttention(true)}
-                  >
-                    {t('app.today.attention_more', { n: view.attention.length - 3 })}
+                  <button type="button" className="ghost more-btn" onClick={() => setExpandedAttention(true)}>
+                    {t('app.today.attention_more', { count: view.attention.length - 3 })}
                   </button>
                 )}
               </div>
@@ -379,7 +375,7 @@ function GoalCard({ goal }: { goal: NonNullable<TodayView['goal']> }) {
           {formatNumber(done, lang)}
           <span className="u">{t('app.today.goal_of', { total: formatCompact(total, lang) })}</span>
         </span>
-        <span className="sub num">{pct} %</span>
+        <span className="sub num">{formatPercent(pct, lang)}</span>
       </div>
       <Meter value={pct} ticks={[25, 50, 75]} />
       <div className="goal-scale">

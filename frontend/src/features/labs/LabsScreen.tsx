@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, failText, InvalidError, ok, RequestError } from '@/api/client'
 import { MarkerChart } from '@/components/charts/MarkerChart'
 import { FilterRow } from '@/components/controls/Choices'
 import { ConflictAlert } from '@/components/controls/ConflictAlert'
@@ -57,7 +57,7 @@ interface ExtractedPreview {
 }
 
 export default function LabsScreen() {
-  const { t, lang } = useT()
+  const { t, tOr, lang } = useT()
   const view = useLabsView()
   const { desktop } = useLayout()
   const queryClient = useQueryClient()
@@ -103,16 +103,16 @@ export default function LabsScreen() {
         body: fd,
         credentials: 'same-origin',
       })
-      if (!res.ok) throw new Error('Lab report upload failed')
+      if (!res.ok) throw new RequestError(res.status)
       const data = await res.json()
       if (!data.ok) {
-        toast(data.message || t('app.error'), { icon: 'warn' })
+        toast(data.message || t('app.upload_failed'), { icon: 'warn' })
       } else if (data.lab) {
         setPreview(data.lab)
         toast(t('app.labs.preview_title'), { icon: 'pulse' })
       }
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.upload_failed')), { icon: 'warn' })
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -122,8 +122,8 @@ export default function LabsScreen() {
   // Confirm extracted markers
   const confirmConflict = useConflictMutation({
     mutationFn: async ({ override }) => {
-      if (!preview) throw new Error('No preview')
-      await api.POST('/api/v1/labs/confirm', {
+      if (!preview) throw new InvalidError('')
+      await ok(api.POST('/api/v1/labs/confirm', {
         body: {
           date: preview.date,
           labName: preview.labName || null,
@@ -138,27 +138,29 @@ export default function LabsScreen() {
           })),
           override,
         },
-      })
+      }))
       toast(t('common.saved'))
       setPreview(null)
       refresh()
     },
+    fallbackErrorMessage: t('app.save_failed'),
     onError: (err) => {
-      toast(err.message, { icon: 'warn' })
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     },
   })
 
   // Create manual result
   const manualConflict = useConflictMutation({
     mutationFn: async ({ override }) => {
-      if (!manMarker.trim() || !manVal) {
-        throw new Error(t('common.required_field'))
+      const value = Number.parseFloat(manVal)
+      if (!manMarker.trim() || !Number.isFinite(value)) {
+        throw new InvalidError(t('app.labs.manual_required'))
       }
-      await api.POST('/api/v1/labs/results', {
+      await ok(api.POST('/api/v1/labs/results', {
         body: {
           date: manDate,
           marker: manMarker.trim(),
-          value: parseFloat(manVal) || 0,
+          value,
           unit: manUnit.trim() || null,
           refLow: manRefLow ? parseFloat(manRefLow) : null,
           refHigh: manRefHigh ? parseFloat(manRefHigh) : null,
@@ -166,7 +168,7 @@ export default function LabsScreen() {
           note: manNote.trim() || null,
           override,
         },
-      })
+      }))
       toast(t('common.saved'))
       setManualOpen(false)
       setManMarker('')
@@ -178,21 +180,22 @@ export default function LabsScreen() {
       setManNote('')
       refresh()
     },
+    fallbackErrorMessage: t('app.save_failed'),
     onError: (err) => {
-      toast(err.message, { icon: 'warn' })
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     },
   })
 
   // Delete result
   const handleDeleteResult = async (resultId: string) => {
     try {
-      await api.DELETE('/api/v1/labs/results/{result_id}', {
+      await ok(api.DELETE('/api/v1/labs/results/{result_id}', {
         params: { path: { result_id: parseInt(resultId, 10) } },
-      })
+      }))
       toast(t('common.deleted'))
       refresh()
-    } catch (err: any) {
-      toast(err.message, { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.delete_failed')), { icon: 'warn' })
     }
   }
 
@@ -202,7 +205,7 @@ export default function LabsScreen() {
     for (const m of view.markers) {
       const normKey = normalizeGroupKey(m.groupKey)
       if (!seen.has(normKey)) {
-        const translatedLabel = t(`app.lab_cat.${normKey}`) || m.group
+        const translatedLabel = tOr(`app.lab_cat.${normKey}`, m.group)
         seen.set(normKey, translatedLabel)
       }
     }
@@ -211,7 +214,7 @@ export default function LabsScreen() {
       return i === -1 ? GROUP_ORDER.length : i
     }
     return [...seen].sort(([a], [b]) => rank(a) - rank(b))
-  }, [view.markers, t])
+  }, [view.markers, tOr])
 
   const visible = view.markers.filter((m) => {
     if (filter === 'all') return true
@@ -240,7 +243,9 @@ export default function LabsScreen() {
   }
   const historyOf = (m: LabMarker) => m.history.map((h) => ({ date: parseIsoDate(h.dateIso), value: h.value }))
 
-  const sourceLabel = t(`app.source.${view.source}`) || view.source
+  // With no result there is no collection date either: the server's stand-in (today) is not shown.
+  const hasResults = view.markers.length > 0
+  const sourceLabel = tOr(`app.source.${view.source}`, view.source)
 
   return (
     <>
@@ -281,7 +286,11 @@ export default function LabsScreen() {
             />
           </div>
           <div className="f">
-            <FigureBody value={shortDate(collected, lang)} label={t('app.labs.fig_date')} sub={`${view.lab} · ${sourceLabel}`} />
+            <FigureBody
+              value={hasResults ? shortDate(collected, lang) : '—'}
+              label={t('app.labs.fig_date')}
+              sub={hasResults ? [view.lab, sourceLabel].filter((part) => part !== '').join(' · ') || undefined : undefined}
+            />
           </div>
         </div>
       </Headline>
@@ -323,27 +332,22 @@ export default function LabsScreen() {
               const bad = status !== 'ok'
               const open = selected === m.id
               const normKey = normalizeGroupKey(m.groupKey)
-              const groupDisplay = t(`app.lab_cat.${normKey}`) || m.group
+              const groupDisplay = tOr(`app.lab_cat.${normKey}`, m.group)
               return (
                 <div
                   key={m.id}
                   className={cx('row', 'mk', open && 'sel', filtered && 'enter')}
                   style={filtered ? { animationDelay: `${i * 25}ms` } : undefined}
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={desktop ? undefined : open}
+                  role="group"
+                  aria-label={m.name}
                   onClick={() => pick(m.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      pick(m.id)
-                    }
-                  }}
                 >
-                  <div>
-                    <div className="t">{m.name}</div>
-                    <div className="m">{groupDisplay}</div>
-                  </div>
+                  {/* The row opens on a click anywhere; the name is its one real button, so the
+                      delete button further down is a sibling and not a control inside a control. */}
+                  <button type="button" className="mk-name" aria-expanded={desktop ? undefined : open}>
+                    <span className="t">{m.name}</span>
+                    <span className="m">{groupDisplay}</span>
+                  </button>
                   <div className="mk-value">
                     <div className={cx('v', bad && 'bad')}>
                       {num(m, m.value)}
@@ -459,7 +463,7 @@ export default function LabsScreen() {
                   <input
                     className="input"
                     value={preview.labName || ''}
-                    placeholder="e.g. Invitro, Synevo"
+                    placeholder={t('app.labs.clinic_ph')}
                     onChange={(e) => setPreview({ ...preview, labName: e.target.value })}
                   />
                 </label>
@@ -519,7 +523,7 @@ export default function LabsScreen() {
                             <input
                               type="number"
                               step="any"
-                              placeholder="min"
+                              placeholder={t('app.labs.ref_min_ph')}
                               className="input input-compact"
                               value={m.refLow ?? ''}
                               onChange={(e) => {
@@ -532,7 +536,7 @@ export default function LabsScreen() {
                             <input
                               type="number"
                               step="any"
-                              placeholder="max"
+                              placeholder={t('app.labs.ref_max_ph')}
                               className="input input-compact"
                               value={m.refHigh ?? ''}
                               onChange={(e) => {
@@ -618,7 +622,7 @@ export default function LabsScreen() {
                 </label>
                 <label className="field">
                   <span className="flabel">{t('app.labs.unit_label')}</span>
-                  <input className="input" placeholder="e.g. ng/mL, mIU/L" value={manUnit} onChange={(e) => setManUnit(e.target.value)} />
+                  <input className="input" placeholder={t('app.labs.unit_ph')} value={manUnit} onChange={(e) => setManUnit(e.target.value)} />
                 </label>
               </div>
               <div className="lab-modal-grid2">
@@ -633,7 +637,7 @@ export default function LabsScreen() {
               </div>
               <label className="field">
                 <span className="flabel">{t('app.labs.clinic_label')}</span>
-                <input className="input" placeholder="e.g. Invitro" value={manLab} onChange={(e) => setManLab(e.target.value)} />
+                <input className="input" placeholder={t('app.labs.clinic_ph')} value={manLab} onChange={(e) => setManLab(e.target.value)} />
               </label>
               <label className="field">
                 <span className="flabel">{t('app.labs.note_label')}</span>

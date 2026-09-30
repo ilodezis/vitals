@@ -6,14 +6,9 @@
 .r-supp .acts { grid-column: 2; margin-right: -10px; }
 .flag { display: flex; gap: 6px; align-items: flex-start; font-size: var(--t-micro); color: var(--warn); margin-top: 3px; }
 .flag svg { width: 14px; height: 14px; flex: none; margin-top: 1px; }
-.arch-h { height: 52px; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; }
-.arch-h > svg:first-child { width: 20px; height: 20px; color: var(--muted); }
-.arch-h h2 { margin: 0; font-family: var(--f-display); font-weight: 600; font-size: var(--t-heading); letter-spacing: -.015em; display: flex; align-items: center; gap: 8px; }
-.arch-h .caret { margin-left: auto; width: 18px; height: 18px; color: var(--muted); transition: transform var(--d2); }
-.arch-h.open .caret { transform: rotate(180deg); }
 .arch { border-top: 1px solid var(--line); }
 
-.fpanel { margin-bottom: var(--s6); }
+.fpanel { margin-top: var(--s6); margin-bottom: var(--s6); }
 .fpanel .form { display: grid; gap: 12px; }
 .fpanel .form-g2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .fpanel .form-acts { display: flex; gap: 8px; padding-top: 8px; }

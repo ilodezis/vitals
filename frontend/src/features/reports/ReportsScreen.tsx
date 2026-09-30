@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, ok, failText } from '@/api/client'
+import { Disclosure } from '@/components/controls/Disclosure'
 import { Badge } from '@/components/controls/Marks'
+import { Meter } from '@/components/controls/Meters'
 import { PrimaryButton } from '@/components/controls/PrimaryButton'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { parseIsoDate, shortDate } from '@/lib/dates'
-import { formatNumber } from '@/lib/format'
+import { formatCompact, formatNumber, formatPercent } from '@/lib/format'
 import { Markdown } from '@/lib/markdown'
 import type { MilestoneItem } from './types'
 import { useReportsView } from './useReportsView'
@@ -21,7 +23,7 @@ const DOM_TONE: Record<string, 'good' | 'cool' | 'violet'> = {
 }
 
 export default function ReportsScreen() {
-  const { t, lang } = useT()
+  const { t, tOr, lang } = useT()
   const view = useReportsView()
   const queryClient = useQueryClient()
 
@@ -29,8 +31,8 @@ export default function ReportsScreen() {
   const [goalFormOpen, setGoalFormOpen] = useState(false)
   const [goalName, setGoalName] = useState('')
   const [goalDom, setGoalDom] = useState('weight')
-  const [goalTarget, setGoalTarget] = useState('82')
-  const [goalUnit, setGoalUnit] = useState(() => t('app.unit.kg') || 'kg')
+  const [goalTarget, setGoalTarget] = useState('')
+  const [goalUnit, setGoalUnit] = useState(() => t('app.unit.kg'))
   const [goalDeadline, setGoalDeadline] = useState('')
   const [isSubmittingGoal, setIsSubmittingGoal] = useState(false)
 
@@ -48,24 +50,16 @@ export default function ReportsScreen() {
     void queryClient.invalidateQueries({ queryKey: ['reports'] })
   }
 
-  const getDomainLabel = (d: string): string => {
-    const key = `nav.${d}`
-    const trans = t(key)
-    if (trans && trans !== key) return trans
-    const domKey = `app.domain.${d}`
-    const domTrans = t(domKey)
-    if (domTrans && domTrans !== domKey) return domTrans
-    return d
-  }
+  const getDomainLabel = (d: string): string => tOr(`nav.${d}`, tOr(`app.domain.${d}`, d))
 
   const handleCreateGoal = async (): Promise<boolean> => {
     if (!goalName.trim()) {
-      toast(t('common.required_field') || 'Name is required', { icon: 'warn' })
+      toast(t('app.name_required'), { icon: 'warn' })
       return false
     }
     setIsSubmittingGoal(true)
     try {
-      await api.POST('/api/v1/reports/milestones', {
+      await ok(api.POST('/api/v1/reports/milestones', {
         body: {
           name: goalName.trim(),
           domain: goalDom,
@@ -73,14 +67,14 @@ export default function ReportsScreen() {
           targetUnit: goalUnit.trim() || null,
           deadline: goalDeadline || null,
         },
-      })
+      }))
       toast(t('app.reports.toast_goal_created'))
       setGoalFormOpen(false)
       setGoalName('')
       refresh()
       return true
-    } catch (err: any) {
-      toast(err.message || 'Error creating goal', { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     } finally {
       setIsSubmittingGoal(false)
@@ -89,39 +83,39 @@ export default function ReportsScreen() {
 
   const handleGoalStatus = async (id: number, status: string) => {
     try {
-      await api.PATCH('/api/v1/reports/milestones/{milestone_id}/status', {
+      await ok(api.PATCH('/api/v1/reports/milestones/{milestone_id}/status', {
         params: { path: { milestone_id: id } },
         body: { status },
-      })
+      }))
       toast(t('app.reports.toast_status_updated'))
       refresh()
-    } catch (err: any) {
-      toast(err.message || 'Error updating status', { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     }
   }
 
   const handleDeleteGoal = async (id: number) => {
     try {
-      await api.DELETE('/api/v1/reports/milestones/{milestone_id}', {
+      await ok(api.DELETE('/api/v1/reports/milestones/{milestone_id}', {
         params: { path: { milestone_id: id } },
-      })
+      }))
       toast(t('common.deleted'))
       refresh()
-    } catch (err: any) {
-      toast(err.message || 'Error deleting goal', { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.delete_failed')), { icon: 'warn' })
     }
   }
 
   const handleGenerateDigest = async () => {
     setIsGeneratingDigest(true)
     try {
-      await api.POST('/api/v1/reports/digests', {
+      await ok(api.POST('/api/v1/reports/digests', {
         body: { periodDays: digestDays },
-      })
+      }))
       toast(t('app.reports.toast_digest_ready'))
       refresh()
-    } catch (err: any) {
-      toast(err.message || t('app.reports.toast_digest_failed'), { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.reports.toast_digest_failed')), { icon: 'warn' })
     } finally {
       setIsGeneratingDigest(false)
     }
@@ -131,12 +125,12 @@ export default function ReportsScreen() {
     setIsLoadingBrief(true)
     setBriefStatus(null)
     try {
-      await api.POST('/api/v1/reports/briefs/build', {})
+      await ok(api.POST('/api/v1/reports/briefs/build', {}))
       setBriefStatus(t('app.reports.brief_built'))
       setBriefStatusTone('info')
       refresh()
-    } catch (err: any) {
-      setBriefStatus(err.message || 'Error building brief')
+    } catch (err) {
+      setBriefStatus(failText(err, t('app.action_failed')))
       setBriefStatusTone('warn')
     } finally {
       setIsLoadingBrief(false)
@@ -147,12 +141,12 @@ export default function ReportsScreen() {
     setIsLoadingBrief(true)
     setBriefStatus(null)
     try {
-      await api.POST('/api/v1/reports/briefs/test', {})
+      await ok(api.POST('/api/v1/reports/briefs/test', {}))
       setBriefStatus(t('app.reports.brief_test_sent'))
       setBriefStatusTone('info')
       refresh()
-    } catch (err: any) {
-      setBriefStatus(err.message || 'Error sending test message')
+    } catch (err) {
+      setBriefStatus(failText(err, t('app.action_failed')))
       setBriefStatusTone('warn')
     } finally {
       setIsLoadingBrief(false)
@@ -322,7 +316,7 @@ export default function ReportsScreen() {
                         <div className="v">
                           {g.current != null ? formatNumber(g.current, lang) : '—'}
                           <span className="u">
-                            / {g.targetValue != null ? formatNumber(g.targetValue, lang) : '—'} {g.targetUnit || ''}
+                            / {g.targetValue != null ? formatCompact(g.targetValue, lang) : '—'} {g.targetUnit || ''}
                           </span>
                         </div>
                         <span className="acts">
@@ -346,18 +340,13 @@ export default function ReportsScreen() {
                       </div>
                       {pct != null && (
                         <>
-                          <div className="meter">
-                            <i style={{ width: `${pct}%` }} />
-                            <span className="tick" style={{ left: '25%' }} />
-                            <span className="tick" style={{ left: '50%' }} />
-                            <span className="tick" style={{ left: '75%' }} />
-                          </div>
+                          <Meter value={pct} ticks={[25, 50, 75]} />
                           <div className="goal-scale">
-                            <span>{formatNumber(pct, lang, 0)}%</span>
+                            <span>{formatPercent(pct, lang)}</span>
                             <span>
                               {g.remaining != null ? t('app.reports.remaining_val', { rem: formatNumber(g.remaining, lang), unit: g.targetUnit || '' }) : ''}
                             </span>
-                            <span>{g.targetValue != null ? formatNumber(g.targetValue, lang) : ''}</span>
+                            <span>{g.targetValue != null ? formatCompact(g.targetValue, lang) : ''}</span>
                           </div>
                         </>
                       )}
@@ -382,18 +371,14 @@ export default function ReportsScreen() {
               </div>
               <div className="rows">
                 {view.closedGoals.map((g) => {
-                  const ok = g.status === 'achieved'
+                  const achieved = g.status === 'achieved'
                   return (
-                    <div
-                      key={g.id}
-                      className={`row arch-g ${ok ? 'ok' : 'dim-soft'}`}
-                      style={{ gridTemplateColumns: '22px minmax(0,1fr) auto' }}
-                    >
-                      <Icon name={ok ? 'check' : 'x'} />
+                    <div key={g.id} className={`row arch-g ${achieved ? 'ok' : 'dim-soft'}`}>
+                      <Icon name={achieved ? 'check' : 'x'} />
                       <div>
                         <div className="t">{g.name}</div>
                         <div className="m num">
-                          {ok
+                          {achieved
                             ? t('app.reports.achieved_on', { date: g.closedOn ? shortDate(parseIsoDate(g.closedOn), lang) : '' })
                             : t('app.reports.not_achieved')}
                         </div>
@@ -466,35 +451,24 @@ export default function ReportsScreen() {
             )}
 
             {view.digestHistory.length > 0 && (
-              <div className="acc dg-prev">
-                <div
-                  className="acc-h rep-acc-h"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setOlderDigestsOpen(!olderDigestsOpen)}
-                >
-                  <span>
-                    {t('app.reports.previous_digests')} <span className="m num">({view.digestHistory.length})</span>
-                  </span>
-                  <Icon name="chevD" />
+              <Disclosure
+                className="dg-prev"
+                open={olderDigestsOpen}
+                onToggle={() => setOlderDigestsOpen(!olderDigestsOpen)}
+                title={t('app.reports.previous_digests')}
+                count={view.digestHistory.length}
+              >
+                <div className="rows">
+                  {view.digestHistory.map((d) => (
+                    <div key={d.id} className="row dg-row">
+                      <span className="m num">{d.date ? shortDate(parseIsoDate(d.date), lang) : ''}</span>
+                      <article className="digest dg-old">
+                        <Markdown source={d.content} />
+                      </article>
+                    </div>
+                  ))}
                 </div>
-                {olderDigestsOpen && (
-                  <div className="rows">
-                    {view.digestHistory.map((d) => (
-                      <div
-                        key={d.id}
-                        className="row"
-                        style={{ gridTemplateColumns: '84px minmax(0,1fr)' }}
-                      >
-                        <span className="m num">{d.date ? shortDate(parseIsoDate(d.date), lang) : ''}</span>
-                        <article className="digest dg-old">
-                          <Markdown source={d.content} />
-                        </article>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              </Disclosure>
             )}
           </section>
 
@@ -509,9 +483,7 @@ export default function ReportsScreen() {
                 </span>
               )}
             </div>
-            <p className="sub" style={{ margin: '-4px 0 12px' }}>
-              {t('app.reports.brief_sub')}
-            </p>
+            <p className="sub brief-sub">{t('app.reports.brief_sub')}</p>
             <div className="row-acts rep-acts">
               <button
                 type="button"

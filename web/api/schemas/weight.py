@@ -67,12 +67,12 @@ class WeightHistoryItem(BaseModel):
 
 
 class WeightPaceDose(BaseModel):
-    label: str = ""
     drug: Optional[str] = None
     dose_mg: Optional[float] = None
     since_date: dt.date
     days: int
-    delta_kg: float
+    # ``None`` until the phase holds two weigh-ins to take a difference of.
+    delta_kg: Optional[float] = None
 
 
 class WeightPaceGoal(BaseModel):

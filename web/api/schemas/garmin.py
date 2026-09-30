@@ -11,7 +11,7 @@ class RecoveryNorm(BaseModel):
     lo: float
     hi: float
     better: int  # 1 or -1
-    unit: str
+    unit: str  # "" | "ms" | "bpm" — a code; the screen prints it in its language
 
 
 class RecoveryHeadline(BaseModel):
@@ -20,7 +20,7 @@ class RecoveryHeadline(BaseModel):
     hrv: Optional[float] = None
     hrv_nights_below: int = 0
     rhr: Optional[int] = None
-    rhr_note: str = ""
+    rhr_note: str = ""  # "" | "normal" | "upper" | "above" | "below"
     body_battery_from: Optional[int] = None
     body_battery_to: Optional[int] = None
 

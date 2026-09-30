@@ -58,7 +58,10 @@
 
 /* Activities */
 .acts-list { display: grid; gap: 12px; }
-.act-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.act { padding: var(--s4); }
+.act-h { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); }
+.act-t { font-weight: 600; }
+.act-h .m { font-size: var(--t-micro); color: var(--muted); }
 .act-s { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-top: 8px; }
 .act-s > div b { display: block; font-family: var(--f-display); font-size: var(--t-ui); }
 .act-s > div small { font-size: var(--t-micro); color: var(--muted); }

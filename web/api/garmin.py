@@ -48,8 +48,8 @@ router = ApiRouter(prefix="/recovery", dependencies=[Depends(require_auth)])
 # User norms reference
 DEFAULT_NORMS: dict[str, RecoveryNorm] = {
     "sleep": RecoveryNorm(lo=72, hi=88, better=1, unit=""),
-    "hrv": RecoveryNorm(lo=45, hi=65, better=1, unit="мс"),
-    "rhr": RecoveryNorm(lo=48, hi=58, better=-1, unit="уд/мин"),
+    "hrv": RecoveryNorm(lo=45, hi=65, better=1, unit="ms"),
+    "rhr": RecoveryNorm(lo=48, hi=58, better=-1, unit="bpm"),
     "stress": RecoveryNorm(lo=15, hi=35, better=-1, unit=""),
     "steps": RecoveryNorm(lo=8000, hi=12000, better=1, unit=""),
     "bb": RecoveryNorm(lo=40, hi=90, better=1, unit=""),
@@ -122,14 +122,18 @@ async def read_recovery_overview(
 
     # RHR note
     rhr_norm = DEFAULT_NORMS["rhr"]
-    rhr_note = "норма"
+    # Where the resting pulse stands against the corridor — a code, the screen words
+    # it; empty when there is no reading to place.
+    rhr_note = ""
     if latest and latest.resting_hr is not None:
         if latest.resting_hr > rhr_norm.hi:
-            rhr_note = "выше нормы"
+            rhr_note = "above"
         elif latest.resting_hr > (rhr_norm.lo + rhr_norm.hi) / 2:
-            rhr_note = "верх нормы"
+            rhr_note = "upper"
         elif latest.resting_hr < rhr_norm.lo:
-            rhr_note = "ниже нормы"
+            rhr_note = "below"
+        else:
+            rhr_note = "normal"
 
     headline = RecoveryHeadline(
         sleep_score=latest.sleep_score if latest else None,
@@ -145,8 +149,9 @@ async def read_recovery_overview(
     # Night preview
     night_preview = None
     if latest and latest.sleep_seconds:
-        start_str = latest.sleep_start.strftime("%H:%M") if latest.sleep_start else "23:00"
-        end_str = latest.sleep_end.strftime("%H:%M") if latest.sleep_end else "07:00"
+        # No bedtime recorded is no bedtime shown — never a typical 23:00–07:00.
+        start_str = latest.sleep_start.strftime("%H:%M") if latest.sleep_start else ""
+        end_str = latest.sleep_end.strftime("%H:%M") if latest.sleep_end else ""
 
         stage_mins = [
             round((latest.awake_seconds or 0) / 60),

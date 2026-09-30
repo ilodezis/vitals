@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, failText, ok } from '@/api/client'
 import { useToday, useTodayIso } from '@/app/session'
 import { Alert } from '@/components/controls/Alert'
 import { OptionGroup } from '@/components/controls/Choices'
@@ -12,13 +12,14 @@ import { Icon } from '@/components/icons/Icon'
 import { useLayout } from '@/components/shell/layout'
 import { sheetCloses } from '@/components/shell/stageMotion'
 import { siteUsage } from '@/features/glp1/sites'
-import { useGlp1View } from '@/features/glp1/useGlp1View'
+import { doseLabel } from '@/features/glp1/doseLabel'
+import { useGlp1Snapshot } from '@/features/glp1/useGlp1View'
 import { WeightForm } from '@/features/weight/WeightForm'
 import { computeNavyFatPct } from '@/features/weight/navy'
 import { measuresQuery } from '@/features/weight/WeightMeasuresScreen'
 import { useT } from '@/i18n/useT'
 import { parseIsoDate, weekdayLongDate } from '@/lib/dates'
-import { formatNumber } from '@/lib/format'
+import { formatCompact, formatNumber } from '@/lib/format'
 import { EASE_SHEET, animate, settle } from '@/lib/motion'
 import { useClock } from '@/lib/useClock'
 import { useConflictMutation } from '@/lib/useConflictMutation'
@@ -57,17 +58,20 @@ export function buildMealBody(input: MealInput) {
 export interface InjectionInput {
   date: string
   mode: 'current' | 'other'
-  currentDoseMg: number
+  /** The dose of the current phase; null when no injection has been logged yet. */
+  currentDoseMg: number | null
   customDoseRaw?: string
-  drug: string
+  drug: string | null
   site: string
   override?: boolean
 }
 
+/** The injection to send, or null while there is no dose to send: the dose is the current phase's
+ *  or the one typed in — never a likely one. */
 export function buildInjectionBody(input: InjectionInput) {
-  const parsedCustom = parseLocaleNumber(input.customDoseRaw ?? '')
-  const fallbackDose = input.currentDoseMg > 0 ? input.currentDoseMg : 0.5
-  const doseMg = input.mode === 'other' && parsedCustom !== undefined && parsedCustom > 0 ? parsedCustom : fallbackDose
+  const typed = parseLocaleNumber(input.customDoseRaw ?? '')
+  const doseMg = input.mode === 'other' ? typed : input.currentDoseMg
+  if (doseMg === undefined || doseMg === null || doseMg <= 0) return null
   return {
     date: input.date,
     doseMg,
@@ -100,7 +104,8 @@ export interface DoseAlertInfo {
   evidenceKey?: 'app.log.dose.unscheduled'
 }
 
-export function selectDoseAlert(cycle: { daysToNext: number; overdue?: boolean }): DoseAlertInfo | null {
+export function selectDoseAlert(cycle: { daysToNext: number | null; overdue?: boolean }): DoseAlertInfo | null {
+  if (cycle.daysToNext === null) return null
   const isOverdue = Boolean(cycle.overdue) || cycle.daysToNext < 0
   if (isOverdue) {
     return {
@@ -266,7 +271,6 @@ function MealPane({ enter }: { enter: boolean }) {
   const [name, setName] = useState('')
   const [kcal, setKcal] = useState('')
   const [protein, setProtein] = useState('')
-  const [kind, setKind] = useState('lunch')
   const button = useRef<PrimaryButtonHandle>(null)
 
   const invalidateMealQueries = () =>
@@ -286,8 +290,7 @@ function MealPane({ enter }: { enter: boolean }) {
         proteinRaw: protein,
         override,
       })
-      const { data } = await api.POST('/api/v1/nutrition/meals', { body })
-      if (data === undefined) throw new Error(t('app.log.weight.failed'))
+      const data = await ok(api.POST('/api/v1/nutrition/meals', { body }))
       toast(t('app.log.meal.saved'), {
         undo: () =>
           void api
@@ -297,8 +300,9 @@ function MealPane({ enter }: { enter: boolean }) {
       await invalidateMealQueries()
       return data
     },
+    fallbackErrorMessage: t('app.save_failed'),
     onError: (err) => {
-      toast(err.message || t('app.log.weight.failed'), { icon: 'warn' })
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     },
   })
 
@@ -347,14 +351,6 @@ function MealPane({ enter }: { enter: boolean }) {
           />
         </label>
       </div>
-      <div className="field">
-        <span className="flabel">{t('app.log.meal.kind')}</span>
-        <OptionGroup
-          value={kind}
-          onChange={setKind}
-          options={['breakfast', 'lunch', 'dinner', 'snack'].map((id) => ({ id, label: t(`app.log.meal.${id}`) }))}
-        />
-      </div>
       <ConflictAlert
         violations={conflict.violations}
         onFix={() => conflict.clearConflict()}
@@ -382,19 +378,27 @@ function MealPane({ enter }: { enter: boolean }) {
 const SITES = ['abdomen_left', 'abdomen_right', 'shoulder_left', 'thigh_left', 'thigh_right', 'shoulder_right'] as const
 
 function DosePane({ enter }: { enter: boolean }) {
-  const { t, lang } = useT()
+  const { t, tOr, lang } = useT()
   const queryClient = useQueryClient()
   const today = useToday()
   const todayIso = useTodayIso()
-  const view = useGlp1View()
-  const usage = useMemo(() => siteUsage(view.injections, today, parseIsoDate), [view.injections, today])
-  const leastUsedSite = usage[0]?.site ?? 'abdomen_left'
+  // The sheet is always mounted, so it reads the injections without waiting on them: until they
+  // are in, there is no current dose and no "least used" site to offer.
+  const view = useGlp1Snapshot()
+  const injections = useMemo(() => view?.injections ?? [], [view?.injections])
+  const usage = useMemo(() => siteUsage(injections, today, parseIsoDate), [injections, today])
+  const leastUsedSite = injections.length > 0 ? (usage[0]?.site ?? null) : null
+  const currentDose = view?.doseMg ?? null
+  const currentDrug = view?.drug ?? null
 
   const [drugMode, setDrugMode] = useState<'current' | 'other'>('current')
   const [customDose, setCustomDose] = useState('')
   const [selectedSite, setSelectedSite] = useState<string | null>(null)
-  const site = selectedSite ?? leastUsedSite
+  const site = selectedSite ?? leastUsedSite ?? SITES[0]
   const button = useRef<PrimaryButtonHandle>(null)
+  // Without a current phase the dose can only be typed in.
+  const mode = currentDose === null ? 'other' : drugMode
+  const bodyNow = buildInjectionBody({ date: todayIso, mode, currentDoseMg: currentDose, customDoseRaw: customDose, drug: currentDrug, site })
 
   const invalidateGlp1Queries = () =>
     Promise.all([
@@ -407,16 +411,16 @@ function DosePane({ enter }: { enter: boolean }) {
     mutationFn: async ({ override }) => {
       const body = buildInjectionBody({
         date: todayIso,
-        mode: drugMode,
-        currentDoseMg: view.doseMg,
+        mode,
+        currentDoseMg: currentDose,
         customDoseRaw: customDose,
-        drug: view.drug,
+        drug: currentDrug,
         site,
         override,
       })
-      const { data } = await api.POST('/api/v1/glp1/injections', { body })
-      if (data === undefined) throw new Error(t('app.log.weight.failed'))
-      toast(t('app.log.dose.saved', { site: t(`app.site.${site}`) }), {
+      if (body === null) throw new Error('no dose to log')
+      const data = await ok(api.POST('/api/v1/glp1/injections', { body }))
+      toast(t('app.log.dose.saved', { site: tOr(`app.site.${site}`, site) }), {
         undo: () =>
           void api
             .DELETE('/api/v1/glp1/injections/{injection_id}', { params: { path: { injection_id: data.id } } })
@@ -425,37 +429,43 @@ function DosePane({ enter }: { enter: boolean }) {
       await invalidateGlp1Queries()
       return data
     },
+    fallbackErrorMessage: t('app.save_failed'),
     onError: (err) => {
-      toast(err.message || t('app.log.weight.failed'), { icon: 'warn' })
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     },
   })
 
-  const alertInfo = view.cycle.nextIso ? selectDoseAlert(view.cycle) : null
+  const alertInfo = view?.cycle.nextIso ? selectDoseAlert(view.cycle) : null
 
   return (
     <div className={enter ? 'sheet-pane enter' : 'sheet-pane'} data-pane="dose">
-      <div className="field">
-        <span className="flabel">{t('app.log.dose.drug')}</span>
-        <OptionGroup
-          value={drugMode}
-          onChange={(id) => {
-            setDrugMode(id as 'current' | 'other')
-            conflict.clearConflict()
-          }}
-          options={[
-            { id: 'current', label: t('app.log.dose.current') },
-            { id: 'other', label: t('app.log.dose.other') },
-          ]}
-        />
-      </div>
-      {drugMode === 'other' && (
+      {currentDose !== null && (
+        <div className="field">
+          <span className="flabel">{t('app.log.dose.drug')}</span>
+          <OptionGroup
+            value={drugMode}
+            onChange={(id) => {
+              setDrugMode(id as 'current' | 'other')
+              conflict.clearConflict()
+            }}
+            options={[
+              {
+                id: 'current',
+                label: currentDrug === null ? formatCompact(currentDose, lang, 3) + ' ' + t('app.unit.mg') : doseLabel(currentDrug, currentDose, lang, t, tOr),
+              },
+              { id: 'other', label: t('app.log.dose.other') },
+            ]}
+          />
+        </div>
+      )}
+      {mode === 'other' && (
         <label className="field">
           <span className="flabel">{t('app.unit.mg')}</span>
           <input
             className="input"
             name="dose_mg"
             inputMode="decimal"
-            placeholder={formatNumber(view.doseMg > 0 ? view.doseMg : 0.5, lang)}
+            placeholder={currentDose === null ? t('app.unit.mg') : formatCompact(currentDose, lang, 3)}
             value={customDose}
             onChange={(e) => {
               setCustomDose(e.target.value)
@@ -474,7 +484,7 @@ function DosePane({ enter }: { enter: boolean }) {
           }}
           options={SITES.map((id) => ({
             id,
-            label: t(`app.site.${id}`),
+            label: tOr(`app.site.${id}`, id),
             hint: id === leastUsedSite ? t('app.glp1.least_used') : undefined,
           }))}
         />
@@ -485,7 +495,7 @@ function DosePane({ enter }: { enter: boolean }) {
           evidence={alertInfo.evidenceKey ? t(alertInfo.evidenceKey) : undefined}
         >
           {t(alertInfo.textKey, {
-            date: weekdayLongDate(parseIsoDate(view.cycle.nextIso), lang),
+            date: weekdayLongDate(parseIsoDate(view?.cycle.nextIso ?? todayIso), lang),
             days: alertInfo.days,
           })}
         </Alert>
@@ -500,7 +510,7 @@ function DosePane({ enter }: { enter: boolean }) {
           <Alert tone="warn">{conflict.problem}</Alert>
         </div>
       </div>
-      <PrimaryButton ref={button} className="w" onPress={conflict.submit} onDone={closeLogSheet} resetMs={420}>
+      <PrimaryButton ref={button} className="w" disabled={bodyNow === null} onPress={conflict.submit} onDone={closeLogSheet} resetMs={420}>
         {t('app.log.dose.save')}
       </PrimaryButton>
     </div>
@@ -521,9 +531,10 @@ function MeasurePane({ enter }: { enter: boolean }) {
   const liveNavy = useMemo(() => {
     const waist = parseLocaleNumber(waistRaw) ?? latestMeasure?.waist_cm ?? undefined
     const neck = parseLocaleNumber(neckRaw) ?? latestMeasure?.neck_cm ?? undefined
-    const height = measuresView?.height_cm ?? 190
-    const sex = measuresView?.sex ?? 'male'
-    if (waist === undefined || neck === undefined || waist <= 0 || neck <= 0) {
+    // Without the user's height and sex (the settings not read yet) there is nothing to compute from.
+    const height = measuresView?.height_cm
+    const sex = measuresView?.sex
+    if (waist === undefined || neck === undefined || waist <= 0 || neck <= 0 || !height || !sex) {
       return measuresView?.body_fat_pct ?? null
     }
     return computeNavyFatPct(waist, neck, height, sex)
@@ -532,7 +543,6 @@ function MeasurePane({ enter }: { enter: boolean }) {
   const invalidateMeasureQueries = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ['weight'] }),
-      queryClient.invalidateQueries({ queryKey: ['weight-measures'] }),
       queryClient.invalidateQueries({ queryKey: ['today'] }),
       queryClient.invalidateQueries({ queryKey: ['session'] }),
     ])
@@ -545,8 +555,7 @@ function MeasurePane({ enter }: { enter: boolean }) {
         neckRaw,
         override,
       })
-      const { data } = await api.POST('/api/v1/weight/measures', { body })
-      if (data === undefined) throw new Error(t('app.log.weight.failed'))
+      const data = await ok(api.POST('/api/v1/weight/measures', { body }))
       toast(t('app.log.measure.saved'), {
         undo: () =>
           void api
@@ -556,8 +565,9 @@ function MeasurePane({ enter }: { enter: boolean }) {
       await invalidateMeasureQueries()
       return data
     },
+    fallbackErrorMessage: t('app.save_failed'),
     onError: (err) => {
-      toast(err.message || t('app.log.weight.failed'), { icon: 'warn' })
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     },
   })
 

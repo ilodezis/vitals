@@ -2389,8 +2389,15 @@
       "Glp1CycleInfo": {
         "properties": {
           "daysToNext": {
-            "title": "Daystonext",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daystonext"
           },
           "lastIso": {
             "anyOf": [
@@ -2404,8 +2411,15 @@
             "title": "Lastiso"
           },
           "nextIso": {
-            "title": "Nextiso",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextiso"
           },
           "overdue": {
             "default": false,
@@ -2418,10 +2432,6 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "nextIso",
-          "daysToNext"
-        ],
         "title": "Glp1CycleInfo",
         "type": "object"
       },
@@ -2752,8 +2762,15 @@
             "$ref": "#/components/schemas/Glp1CycleInfo"
           },
           "dayOnDose": {
-            "title": "Dayondose",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dayondose"
           },
           "deltaOnDoseKg": {
             "anyOf": [
@@ -2767,8 +2784,15 @@
             "title": "Deltaondosekg"
           },
           "doseMg": {
-            "title": "Dosemg",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dosemg"
           },
           "dosePhases": {
             "items": {
@@ -2778,8 +2802,15 @@
             "type": "array"
           },
           "drug": {
-            "title": "Drug",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drug"
           },
           "injections": {
             "items": {
@@ -2796,8 +2827,15 @@
             "type": "array"
           },
           "sinceIso": {
-            "title": "Sinceiso",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sinceiso"
           },
           "siteLabels": {
             "additionalProperties": {
@@ -2805,10 +2843,6 @@
             },
             "title": "Sitelabels",
             "type": "object"
-          },
-          "summary": {
-            "title": "Summary",
-            "type": "string"
           },
           "trend": {
             "items": {
@@ -2819,14 +2853,9 @@
           }
         },
         "required": [
-          "drug",
-          "doseMg",
-          "sinceIso",
-          "dayOnDose",
           "cycle",
           "dosePhases",
           "trend",
-          "summary",
           "siteLabels",
           "injections",
           "sideEffects"
@@ -10411,8 +10440,15 @@
             "type": "integer"
           },
           "delta_kg": {
-            "title": "Delta Kg",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Kg"
           },
           "dose_mg": {
             "anyOf": [
@@ -10436,11 +10472,6 @@
             ],
             "title": "Drug"
           },
-          "label": {
-            "default": "",
-            "title": "Label",
-            "type": "string"
-          },
           "since_date": {
             "format": "date",
             "title": "Since Date",
@@ -10449,8 +10480,7 @@
         },
         "required": [
           "since_date",
-          "days",
-          "delta_kg"
+          "days"
         ],
         "title": "WeightPaceDose",
         "type": "object"

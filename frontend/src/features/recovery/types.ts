@@ -1,48 +1,54 @@
 export type NormKey = 'sleep' | 'hrv' | 'rhr' | 'stress' | 'steps' | 'bb'
 
-/** The user's own corridor for one metric (60 days of their data), and which way is better. */
+/** Where the resting pulse stands against its corridor; empty when there is no reading. */
+export type RhrNote = '' | 'normal' | 'upper' | 'above' | 'below'
+
+/** The corridor for one metric, and which way is better. */
 export interface Norm {
   lo: number
   hi: number
   better: 1 | -1
+  /** A code — "", "ms" or "bpm" — that the screen prints in its language. */
   unit: string
 }
 
+/** One day of the table. A metric the watch did not record is `null`. */
 export interface NightDay {
   dateIso: string
-  sleep: number
-  hrv: number
-  rhr: number
-  stress: number
-  steps: number
-  bb: number
+  sleep: number | null
+  hrv: number | null
+  rhr: number | null
+  stress: number | null
+  steps: number | null
+  bb: number | null
 }
 
-/** `GET /api/v1/recovery`. */
+/** `GET /api/v1/recovery`. What the watch has not reported is `null`: the screen prints a dash. */
 export interface RecoveryView {
+  /** Garmin is connected; without it there is nothing to sync. */
+  isConfigured: boolean
   headline: {
-    sleepScore: number
-    sleepMinutes: number
-    hrv: number
+    sleepScore: number | null
+    sleepMinutes: number | null
+    hrv: number | null
     hrvNightsBelow: number
-    rhr: number
-    /** Where the resting pulse stands against the norm, as a ready phrase. */
-    rhrNote: string
-    bodyBatteryFrom: number
-    bodyBatteryTo: number
+    rhr: number | null
+    rhrNote: RhrNote
+    bodyBatteryFrom: number | null
+    bodyBatteryTo: number | null
   }
   night: {
     dateIso: string
-    /** Lights out and wake-up, "HH:MM". */
-    start: string
-    end: string
+    /** Lights out and wake-up, "HH:MM"; null when the night has no bedtime recorded. */
+    start: string | null
+    end: string | null
     /** Sleep stages in 5-minute blocks: 0 awake, 1 REM, 2 light, 3 deep. */
     stages: number[]
-    /** Minutes per stage, the same order. */
-    stageMinutes: [number, number, number, number]
-  }
-  norms: Record<NormKey, Norm>
-  /** The four "against your norm" rows and how wide their bar is drawn. */
-  bars: { key: 'sleep' | 'hrv' | 'rhr' | 'stress'; min: number; max: number }[]
+    /** Minutes per stage, the same order; null when the night carries no breakdown. */
+    stageMinutes: [number, number, number, number] | null
+  } | null
+  norms: Partial<Record<NormKey, Norm>>
+  /** The "against your norm" rows: the latest value and how wide the bar is drawn. */
+  bars: { key: 'sleep' | 'hrv' | 'rhr' | 'stress'; min: number; max: number; value: number | null }[]
   days: NightDay[]
 }

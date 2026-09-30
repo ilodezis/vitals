@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { api, failText, ok } from '@/api/client'
 import { Hypnogram, STAGE_COLOR } from '@/components/charts/Hypnogram'
 import { FigureBody, Section } from '@/components/controls/Section'
 import { RangeBar } from '@/components/controls/Meters'
@@ -13,11 +14,10 @@ import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { daysBetween, longDate, parseIsoDate, shortDate, weekdayShort } from '@/lib/dates'
-import { formatCompactNumber, formatInt, formatNumber } from '@/lib/format'
-import { wait } from '@/lib/motion'
+import { formatCompact, formatCompactNumber, formatInt } from '@/lib/format'
 import { durationShort, durationText } from '@/lib/units'
 import { isWorse, toneCell } from './tones'
-import type { NormKey } from './types'
+import type { Norm, NormKey } from './types'
 import { useRecoveryView } from './useRecoveryView'
 import './recovery.css'
 
@@ -33,30 +33,35 @@ const minutesOf = (hhmm: string): number => {
   return h * 60 + m
 }
 
+/** A norm's unit code in the user's language ("ms" → "мс"); a dimensionless one is empty. */
+const unitName = (unit: string, t: (key: string) => string): string => (unit === 'ms' ? t('app.unit.ms') : unit === 'bpm' ? t('app.unit.bpm') : '')
+
 export default function RecoveryScreen() {
   const { t, lang, plural } = useT()
   const today = useToday()
   const view = useRecoveryView()
   const go = useGo()
-  const [syncing, setSyncing] = useState(false)
+  const queryClient = useQueryClient()
+
+  const syncMutation = useMutation({
+    mutationFn: () => ok(api.POST('/api/v1/recovery/sync')),
+    onSuccess: (result) => {
+      if (!result.ok) {
+        toast(result.error === 'not_configured' ? t('app.recovery.sync_not_configured') : t('app.recovery.sync_failed'), { icon: 'warn' })
+        return
+      }
+      void queryClient.invalidateQueries({ queryKey: ['recovery'] })
+      void queryClient.invalidateQueries({ queryKey: ['today'] })
+      toast(result.synced_days === 0 ? t('app.recovery.sync_none') : t('app.recovery.sync_done'))
+    },
+    onError: (err) => toast(failText(err, t('app.recovery.sync_failed')), { icon: 'warn' }),
+  })
 
   const { headline: h, night, norms } = view
-  const [awake, rem, light, deep] = night.stageMinutes
-  const last = view.days[view.days.length - 1]
-  const cellText = (key: NormKey, value: number) => (key === 'steps' ? formatCompactNumber(value, lang) : formatNumber(value, lang))
-
-  const sync = async () => {
-    if (syncing) return
-    setSyncing(true)
-    await wait(1400)
-    setSyncing(false)
-    toast(t('app.recovery.sync_none', { time: '08:14' }))
-  }
-
-  const rangeText = (key: NormKey) => {
-    const n = norms[key]
-    return `${formatInt(n.lo, lang)}–${formatInt(n.hi, lang)}`
-  }
+  const dash = '—'
+  const num = (v: number | null) => (v === null ? dash : formatCompact(v, lang))
+  const cellText = (key: NormKey, value: number | null) => (value === null ? dash : key === 'steps' ? formatCompactNumber(value, lang) : formatCompact(value, lang))
+  const rangeText = (norm: Norm) => `${formatInt(norm.lo, lang)}–${formatInt(norm.hi, lang)}`
   const relative = (iso: string) => {
     const k = daysBetween(parseIsoDate(iso), today)
     return k === 0 ? t('app.today_word_lower') : k === 1 ? t('app.yesterday_word_lower') : weekdayShort(parseIsoDate(iso), lang)
@@ -68,9 +73,11 @@ export default function RecoveryScreen() {
       <Mast
         screen="recovery"
         actions={
-          <TextButton icon="sync" spinning={syncing} onClick={sync}>
-            {t('app.sync')}
-          </TextButton>
+          view.isConfigured ? (
+            <TextButton icon="sync" spinning={syncMutation.isPending} onClick={() => !syncMutation.isPending && syncMutation.mutate()}>
+              {t('app.sync')}
+            </TextButton>
+          ) : undefined
         }
         sub={
           <SectionTabs
@@ -85,88 +92,102 @@ export default function RecoveryScreen() {
       <Headline title={t('nav.garmin')}>
         <div className="figs inline">
           <div className="f">
-            <FigureBody value={h.sleepScore} label={t('today.metric_sleep_score')} sub={durationText(h.sleepMinutes, t)} />
+            <FigureBody value={num(h.sleepScore)} label={t('today.metric_sleep_score')} sub={h.sleepMinutes === null ? undefined : durationText(h.sleepMinutes, t)} />
           </div>
           <div className="f">
             <FigureBody
-              value={formatNumber(h.hrv, lang)}
-              unit={t('app.unit.ms')}
+              value={num(h.hrv)}
+              unit={h.hrv === null ? undefined : t('app.unit.ms')}
               label={t('today.metric_hrv_avg')}
-              sub={plural(h.hrvNightsBelow, t('app.recovery.below.one', { n: h.hrvNightsBelow }), t('app.recovery.below.few', { n: h.hrvNightsBelow }), t('app.recovery.below.many', { n: h.hrvNightsBelow }))}
+              sub={
+                h.hrvNightsBelow === 0
+                  ? undefined
+                  : plural(h.hrvNightsBelow, t('app.recovery.below.one', { n: h.hrvNightsBelow }), t('app.recovery.below.few', { n: h.hrvNightsBelow }), t('app.recovery.below.many', { n: h.hrvNightsBelow }))
+              }
               tone={isWorse(h.hrv, norms.hrv) ? 'bad' : undefined}
             />
           </div>
           <div className="f">
-            <FigureBody value={formatNumber(h.rhr, lang)} unit={t('app.unit.bpm')} label={t('app.metric.rhr')} sub={h.rhrNote === 'normal' || h.rhrNote === '\u043d\u043e\u0440\u043c\u0430' ? t('app.recovery.norm_word') : h.rhrNote} />
+            <FigureBody value={num(h.rhr)} unit={h.rhr === null ? undefined : t('app.unit.bpm')} label={t('app.metric.rhr')} sub={h.rhrNote === '' ? undefined : t(`app.recovery.rhr_note.${h.rhrNote}`)} />
           </div>
           <div className="f">
-            <FigureBody value={`${h.bodyBatteryFrom}→${h.bodyBatteryTo}`} label={t('today.metric_body_battery_high')} sub={t('app.recovery.bb_charge')} />
+            <FigureBody
+              value={h.bodyBatteryFrom === null || h.bodyBatteryTo === null ? dash : `${h.bodyBatteryFrom}→${h.bodyBatteryTo}`}
+              label={t('today.metric_body_battery_high')}
+              sub={h.bodyBatteryFrom === null || h.bodyBatteryTo === null ? undefined : t('app.recovery.bb_charge')}
+            />
           </div>
         </div>
       </Headline>
 
       <div className="grid recovery-grid">
-        <div className="c7">
-          <Section
-            title={t('app.recovery.night_of', { date: longDate(parseIsoDate(night.dateIso), lang) })}
-            meta={<span className="meta num">{`${night.start} → ${night.end}`}</span>}
-          >
-            <div className="panel bare">
-              <Hypnogram stages={night.stages} startMinutes={minutesOf(night.start)} />
-              <div className="compo intro">
-                <i style={{ flex: deep, background: STAGE_COLOR[3] }} />
-                <i style={{ flex: light, background: STAGE_COLOR[2] }} />
-                <i style={{ flex: rem, background: STAGE_COLOR[1] }} />
-                <i style={{ flex: awake, background: STAGE_COLOR[0] }} />
+        {night !== null && (
+          <div className="c7">
+            <Section
+              title={t('app.recovery.night_of', { date: longDate(parseIsoDate(night.dateIso), lang) })}
+              meta={night.start !== null && night.end !== null ? <span className="meta num">{`${night.start} → ${night.end}`}</span> : undefined}
+            >
+              <div className="panel bare">
+                {night.start !== null && night.stages.length > 0 && <Hypnogram stages={night.stages} startMinutes={minutesOf(night.start)} />}
+                {night.stageMinutes !== null && (
+                  <>
+                    <div className="compo intro">
+                      <i style={{ flex: night.stageMinutes[3], background: STAGE_COLOR[3] }} />
+                      <i style={{ flex: night.stageMinutes[2], background: STAGE_COLOR[2] }} />
+                      <i style={{ flex: night.stageMinutes[1], background: STAGE_COLOR[1] }} />
+                      <i style={{ flex: night.stageMinutes[0], background: STAGE_COLOR[0] }} />
+                    </div>
+                    <div className="hyp-legend">
+                      <div>
+                        <i style={{ background: STAGE_COLOR[3] }} />
+                        {t('app.stage.deep')}
+                        <b>{durationShort(night.stageMinutes[3], t)}</b>
+                      </div>
+                      <div>
+                        <i style={{ background: STAGE_COLOR[2] }} />
+                        {t('app.stage.light')}
+                        <b>{durationShort(night.stageMinutes[2], t)}</b>
+                      </div>
+                      <div>
+                        <i style={{ background: STAGE_COLOR[1] }} />
+                        {t('app.stage.rem')}
+                        <b>{durationShort(night.stageMinutes[1], t)}</b>
+                      </div>
+                      <div>
+                        <i style={{ background: STAGE_COLOR[0] }} />
+                        {t('app.stage.awake')}
+                        <b>{t('app.duration.min', { m: night.stageMinutes[0] })}</b>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-              <div className="hyp-legend">
-                <div>
-                  <i style={{ background: STAGE_COLOR[3] }} />
-                  {t('app.stage.deep')}
-                  <b>{durationShort(deep, t)}</b>
-                </div>
-                <div>
-                  <i style={{ background: STAGE_COLOR[2] }} />
-                  {t('app.stage.light')}
-                  <b>{durationShort(light, t)}</b>
-                </div>
-                <div>
-                  <i style={{ background: STAGE_COLOR[1] }} />
-                  {t('app.stage.rem')}
-                  <b>{durationShort(rem, t)}</b>
-                </div>
-                <div>
-                  <i style={{ background: STAGE_COLOR[0] }} />
-                  {t('app.stage.awake')}
-                  <b>{t('app.duration.min', { m: awake })}</b>
-                </div>
-              </div>
-            </div>
-          </Section>
-        </div>
+            </Section>
+          </div>
+        )}
 
         <div className="c5">
           <Section title={t('app.recovery.norms_title')} meta={t('app.recovery.norms_meta')}>
             <div className="rows norms">
               {view.bars.map((bar) => {
                 const norm = norms[bar.key]
-                const value = last === undefined ? 0 : last[bar.key]
-                const bad = isWorse(value, norm)
-                const unitLabel = norm.unit === 'ms' || norm.unit === '\u043c\u0441' ? t('app.unit.ms') : norm.unit === 'bpm' || norm.unit === '\u0443\u0434' ? t('app.unit.bpm') : norm.unit
+                if (norm === undefined) return null
+                const bad = isWorse(bar.value, norm)
+                const unitLabel = unitName(norm.unit, t)
                 return (
                   <div key={bar.key} className="row">
                     <div>
                       <div className="t">{t(`app.metric.${bar.key}`)}</div>
                       <div className="m">
-                        {t('app.recovery.norm', { range: rangeText(bar.key) })}
+                        {t('app.recovery.norm', { range: rangeText(norm) })}
                         {unitLabel !== '' && ` ${unitLabel}`}
                       </div>
                     </div>
                     <div className={cx('v', bad && 'bad')}>
-                      {formatNumber(value, lang)}
-                      {unitLabel !== '' && <span className="u">{unitLabel}</span>}
+                      {num(bar.value)}
+                      {bar.value !== null && unitLabel !== '' && <span className="u">{unitLabel}</span>}
                     </div>
-                    <RangeBar value={value} lo={norm.lo} hi={norm.hi} min={bar.min} max={bar.max} tone={bad ? 'bad' : ''} />
+                    {bar.value !== null && <RangeBar value={bar.value} lo={norm.lo} hi={norm.hi} min={bar.min} max={bar.max} tone={bad ? 'bad' : ''} />}
                   </div>
                 )
               })}
@@ -204,9 +225,7 @@ export default function RecoveryScreen() {
                 <tr key={key}>
                   <td className="lbl">
                     {t(`app.metric.${key}`)}
-                    <small>
-                      {formatInt(norms[key].lo, lang)}–{formatInt(norms[key].hi, lang)}
-                    </small>
+                    {norms[key] !== undefined && <small>{rangeText(norms[key])}</small>}
                   </td>
                   {view.days.map((d) => (
                     <td key={d.dateIso}>

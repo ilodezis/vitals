@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, ok, failText } from '@/api/client'
 import { Badge } from '@/components/controls/Marks'
 import { PrimaryButton } from '@/components/controls/PrimaryButton'
 import { toast } from '@/components/controls/toast'
@@ -31,6 +31,7 @@ const TL_KIND_TONE: Record<string, string> = {
   injury: 'bad',
   illness: 'bad',
   trip: 'warn',
+  travel: 'warn',
   note: 'plain',
   milestone: 'good',
   photo: 'plain',
@@ -38,14 +39,17 @@ const TL_KIND_TONE: Record<string, string> = {
 }
 
 export default function TimelineScreen() {
-  const { t, lang } = useT()
+  const { t, tOr, lang } = useT()
   const [selectedDomain, setSelectedDomain] = useState('all')
-  const view = useTimelineView(selectedDomain)
+  // The list follows the chosen filter a beat later: the previous one stays on screen until the
+  // next is read, instead of the screen blinking on every tap.
+  const shownDomain = useDeferredValue(selectedDomain)
+  const view = useTimelineView(shownDomain)
   const queryClient = useQueryClient()
 
   const [formOpen, setFormOpen] = useState(false)
   const [title, setTitle] = useState('')
-  const [date, setDate] = useState(() => view.today || new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(view.today)
   const [endDate, setEndDate] = useState('')
   const [kind, setKind] = useState('life_event')
   const [domain, setDomain] = useState('timeline')
@@ -58,12 +62,12 @@ export default function TimelineScreen() {
 
   const handleCreate = async (): Promise<boolean> => {
     if (!title.trim()) {
-      toast(t('common.required_field') || 'Title is required', { icon: 'warn' })
+      toast(t('app.name_required'), { icon: 'warn' })
       return false
     }
     setIsSubmitting(true)
     try {
-      await api.POST('/api/v1/timeline/annotations', {
+      await ok(api.POST('/api/v1/timeline/annotations', {
         body: {
           title: title.trim(),
           date,
@@ -72,7 +76,7 @@ export default function TimelineScreen() {
           domain,
           note: note.trim() || null,
         },
-      })
+      }))
       toast(t('common.saved'))
       setFormOpen(false)
       setTitle('')
@@ -80,8 +84,8 @@ export default function TimelineScreen() {
       setNote('')
       refresh()
       return true
-    } catch (err: any) {
-      toast(err.message || 'Error saving event', { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     } finally {
       setIsSubmitting(false)
@@ -91,13 +95,13 @@ export default function TimelineScreen() {
   const handleDelete = async (item: TimelineEventItem) => {
     if (!item.id) return
     try {
-      await api.DELETE('/api/v1/timeline/annotations/{annotation_id}', {
+      await ok(api.DELETE('/api/v1/timeline/annotations/{annotation_id}', {
         params: { path: { annotation_id: item.id } },
-      })
+      }))
       toast(t('common.deleted'))
       refresh()
-    } catch (err: any) {
-      toast(err.message || 'Error deleting event', { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.delete_failed')), { icon: 'warn' })
     }
   }
 
@@ -111,19 +115,9 @@ export default function TimelineScreen() {
     return map
   }, [view.events])
 
-  const domainList = useMemo(() => {
-    return Array.from(new Set(['weight', 'glp1', 'workouts', 'garmin', 'labs', 'skincare', 'supplements', 'timeline', ...view.domains]))
-  }, [view.domains])
+  const domainList = view.domains
 
-  const getDomainLabel = (d: string): string => {
-    const key = `nav.${d}`
-    const trans = t(key)
-    if (trans && trans !== key) return trans
-    const domKey = `app.domain.${d}`
-    const domTrans = t(domKey)
-    if (domTrans && domTrans !== domKey) return domTrans
-    return d
-  }
+  const getDomainLabel = (d: string): string => tOr(`nav.${d}`, tOr(`app.domain.${d}`, d))
 
   return (
     <>
@@ -163,7 +157,7 @@ export default function TimelineScreen() {
 
       {/* Add Event Form Modal */}
       {formOpen && (
-        <div className="panel fpanel tl-fpanel" style={{ marginTop: 'var(--s6)' }}>
+        <div className="panel fpanel tl-fpanel">
           <div className="panel-h">
             <h3>{t('app.timeline.new_event')}</h3>
             <button type="button" className="ibtn" onClick={() => setFormOpen(false)}>
@@ -209,12 +203,11 @@ export default function TimelineScreen() {
                   value={kind}
                   onChange={(e) => setKind(e.target.value)}
                 >
-                  <option value="life_event">{t('app.timeline.kind.life_event')}</option>
-                  <option value="protocol_change">{t('app.timeline.kind.protocol_change')}</option>
-                  <option value="injury">{t('app.timeline.kind.injury')}</option>
-                  <option value="illness">{t('app.timeline.kind.illness')}</option>
-                  <option value="trip">{t('app.timeline.kind.trip')}</option>
-                  <option value="note">{t('app.timeline.kind.note')}</option>
+                  {view.kinds.map((k) => (
+                    <option key={k} value={k}>
+                      {tOr(`app.timeline.kind.${k}`, k)}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="field">
@@ -284,7 +277,7 @@ export default function TimelineScreen() {
       </div>
 
       {/* Timeline Feed */}
-      <section className="sec tl-sec">
+      <section className="sec tl-sec" aria-busy={selectedDomain !== shownDomain}>
         {view.events.length > 0 ? (
           <div className="tl">
             {Array.from(groupedByDay.entries()).map(([dStr, events]) => (
@@ -293,7 +286,7 @@ export default function TimelineScreen() {
                 <div className="tl-list">
                   {events.map((e, idx) => {
                     const dom = e.domain || e.dom
-                    const kindLabel = t(`app.timeline.kind.${e.kind}`) || e.kind
+                    const kindLabel = tOr(`app.timeline.kind.${e.kind}`, e.kind)
                     const tone = e.tone || TL_KIND_TONE[e.kind] || 'plain'
                     const domIcon = DOM_ICON[dom] || 'timeline'
                     return (

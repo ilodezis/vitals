@@ -25,6 +25,7 @@ from typing import Optional, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from vitals import i18n
 from vitals.enums import Domain, DoseUnit, HrtInjectionSite, Source
 from vitals.models.hrt import (
     DOMAIN,
@@ -417,18 +418,32 @@ async def resolve_active(session: AsyncSession) -> list[dict]:
 
 
 # ── Full view collection for API / UI ─────────────────────────────────────────
-SITE_LABELS_RU = {
-    "delt_left": "Дельта Л",
-    "delt_right": "Дельта П",
-    "ventroglute_left": "Вентроягодица Л",
-    "ventroglute_right": "Вентроягодица П",
-    "glute_left": "Ягодица Л",
-    "glute_right": "Ягодица П",
-    "quad_left": "Квадрицепс Л",
-    "quad_right": "Квадрицепс П",
-    "vastus_lateralis_left": "ВЛБ Л",
-    "vastus_lateralis_right": "ВЛБ П",
-}
+# The order the site picker lists them in.
+_SITE_ORDER: tuple[str, ...] = (
+    HrtInjectionSite.DELT_LEFT.value,
+    HrtInjectionSite.DELT_RIGHT.value,
+    HrtInjectionSite.VENTROGLUTE_LEFT.value,
+    HrtInjectionSite.VENTROGLUTE_RIGHT.value,
+    HrtInjectionSite.GLUTE_LEFT.value,
+    HrtInjectionSite.GLUTE_RIGHT.value,
+    HrtInjectionSite.QUAD_LEFT.value,
+    HrtInjectionSite.QUAD_RIGHT.value,
+    HrtInjectionSite.VGL_LEFT.value,
+    HrtInjectionSite.VGL_RIGHT.value,
+)
+
+
+def site_labels() -> dict[str, str]:
+    """Injection sites by name, in the current language."""
+    return {site: i18n.t(f"app.hrt.site.{site}") for site in _SITE_ORDER}
+
+
+def compound_label(compound: HrtCompound) -> str:
+    """A compound's name in the current language: the catalog carries a Russian
+    name next to the international one."""
+    if i18n.current_lang.get() == "ru":
+        return compound.name_ru or compound.name
+    return compound.name or compound.name_ru
 
 
 def _cycle_progress_data(cycle: Optional[HrtCycle], today: date_type) -> Optional[dict]:
@@ -467,7 +482,7 @@ async def collect(
 
     compounds = await list_compounds(session, active_only=True)
     all_compounds = await list_compounds(session, active_only=False)
-    compound_names = {c.key: (c.name_ru or c.name) for c in all_compounds}
+    compound_names = {c.key: compound_label(c) for c in all_compounds}
 
     doses = await list_doses(session, limit=100)
     last = await last_dose(session)
@@ -599,7 +614,7 @@ async def collect(
             {
                 "id": c.id,
                 "key": c.key,
-                "name": c.name_ru or c.name,
+                "name": compound_label(c),
                 "compoundClass": c.compound_class,
                 "route": c.route,
                 "doseUnit": c.dose_unit,
@@ -607,7 +622,7 @@ async def collect(
             }
             for c in compounds
         ],
-        "siteLabels": SITE_LABELS_RU,
+        "siteLabels": site_labels(),
         "siteCounts": site_counts,
         "last": last_dict,
     }

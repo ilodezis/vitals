@@ -1,8 +1,8 @@
 import { queryOptions, useQuery } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, ok } from '@/api/client'
 import type { components } from '@/api/schema'
 import { useT } from '@/i18n/useT'
-import { formatNumber } from '@/lib/format'
+import { formatInt, formatNumber } from '@/lib/format'
 
 export interface MoreStatus {
   text: string
@@ -19,15 +19,12 @@ type RawMoreView = components['schemas']['MoreView']
 
 export const moreQuery = queryOptions({
   queryKey: ['more'],
-  queryFn: async (): Promise<RawMoreView> => {
-    const { data, error } = await api.GET('/api/v1/more')
-    if (error || data === undefined) throw new Error('More stats could not be read')
-    return data
-  },
+  queryFn: async (): Promise<RawMoreView> => ok(api.GET('/api/v1/more')),
   staleTime: 60_000,
 })
 
-/** The More screen's live statuses from `/api/v1/more`. */
+/** The More screen's live statuses from `/api/v1/more`. Until they are read — or when the read
+ *  fails — a section simply has no status line; nothing is made up. */
 export function useMoreView(): MoreView {
   const { t, lang, plural } = useT()
   const { data } = useQuery(moreQuery)
@@ -55,17 +52,12 @@ export function useMoreView(): MoreView {
           ? t('app.today_word_lower')
           : d === 1
             ? t('app.yesterday_word_lower')
-            : plural(
-                d,
-                t('nav.status.days_ago.one', { count: d }),
-                t('nav.status.days_ago.few', { count: d }),
-                t('nav.status.days_ago.many', { count: d }),
-              ),
+            : t('app.rail.days_ago', { n: d }),
     }
   }
   if (stats.nutrition?.calories != null) {
     status.nutrition = {
-      text: `${stats.nutrition.calories} ${t('app.unit.kcal')}`,
+      text: t('app.unit.kcal_value', { value: formatInt(Number(stats.nutrition.calories), lang) }),
     }
   }
   if (stats.glp1?.days_to_next != null) {
@@ -152,7 +144,7 @@ export function useMoreView(): MoreView {
       settings: {
         text:
           settingsStat?.enabled != null && settingsStat?.total != null
-            ? t('more.modules_on_sub', { on: Number(settingsStat.enabled), total: Number(settingsStat.total) })
+            ? t('app.more.modules', { on: Number(settingsStat.enabled), total: Number(settingsStat.total) })
             : '',
       },
     },

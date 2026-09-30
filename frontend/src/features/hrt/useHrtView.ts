@@ -1,32 +1,13 @@
-import { queryOptions, useQuery } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
+import { api, ok } from '@/api/client'
 import type { HrtView } from './types'
-
-export const defaultHrtView: HrtView = {
-  cycle: null,
-  doses: [],
-  sideEffects: [],
-  templates: [],
-  planned: [],
-  release: [],
-  catalog: 0,
-  compounds: [],
-  siteLabels: {},
-  siteCounts: {},
-  last: null,
-}
 
 export const hrtQuery = queryOptions({
   queryKey: ['hrt'],
-  queryFn: async (): Promise<HrtView> => {
-    const { data, error } = await api.GET('/api/v1/hrt')
-    if (error || data === undefined) throw new Error('HRT data could not be read')
-    return data as unknown as HrtView
-  },
+  queryFn: async (): Promise<HrtView> => (await ok(api.GET('/api/v1/hrt'))) as unknown as HrtView,
   staleTime: 60_000,
 })
 
-export function useHrtView(): HrtView {
-  const { data } = useQuery(hrtQuery)
-  return data ?? defaultHrtView
-}
+/** `GET /api/v1/hrt`. A failed read is the screen's error state, not an empty screen: the throw goes
+ *  to the boundary around the screen. */
+export const useHrtView = (): HrtView => useSuspenseQuery(hrtQuery).data

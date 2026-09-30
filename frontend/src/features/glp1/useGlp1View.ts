@@ -1,49 +1,44 @@
-import { queryOptions, useQuery } from '@tanstack/react-query'
-import { api } from '@/api/client'
-import { toIsoDate } from '@/lib/dates'
-import type { Glp1View } from './types'
+import { queryOptions, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { api, ok } from '@/api/client'
+import type { components } from '@/api/schema'
+import type { Glp1View, SiteId } from './types'
 
-const todayIso = () => toIsoDate(new Date())
+type RawGlp1View = components['schemas']['Glp1View']
 
-const EMPTY_GLP1: Glp1View = {
-  drug: 'semaglutide',
-  doseMg: 0,
-  sinceIso: todayIso(),
-  dayOnDose: 0,
-  deltaOnDoseKg: null,
-  cycle: {
-    lastIso: null,
-    nextIso: todayIso(),
-    daysToNext: 0,
-    overdue: false,
-    unscheduled: true,
-  },
-  dosePhases: [],
-  trend: [],
-  summary: '',
-  siteLabels: {
-    shoulder_left: 'Shoulder L',
-    shoulder_right: 'Shoulder R',
-    abdomen_left: 'Abdomen L',
-    abdomen_right: 'Abdomen R',
-    thigh_left: 'Thigh L',
-    thigh_right: 'Thigh R',
-  },
-  injections: [],
-  sideEffects: [],
+const clampSeverity = (n: number): 1 | 2 | 3 | 4 | 5 => Math.min(5, Math.max(1, Math.round(n))) as 1 | 2 | 3 | 4 | 5
+
+/** The API's answer as the screen reads it. */
+export function toGlp1View(data: RawGlp1View): Glp1View {
+  return {
+    drug: data.drug ?? null,
+    doseMg: data.doseMg ?? null,
+    sinceIso: data.sinceIso ?? null,
+    dayOnDose: data.dayOnDose ?? null,
+    deltaOnDoseKg: data.deltaOnDoseKg ?? null,
+    cycle: {
+      lastIso: data.cycle.lastIso ?? null,
+      nextIso: data.cycle.nextIso ?? null,
+      daysToNext: data.cycle.daysToNext ?? null,
+      overdue: data.cycle.overdue,
+      unscheduled: data.cycle.unscheduled,
+    },
+    dosePhases: data.dosePhases.map((p) => ({ fromIso: p.fromIso, toIso: p.toIso, doseMg: p.doseMg })),
+    trend: data.trend,
+    siteLabels: data.siteLabels,
+    injections: data.injections.map((i) => ({ dateIso: i.dateIso, site: (i.site ?? null) as SiteId | null, doseMg: i.doseMg })),
+    sideEffects: data.sideEffects.map((e) => ({ dateIso: e.dateIso, name: e.name, severity: clampSeverity(e.severity) })),
+  }
 }
 
 export const glp1Query = queryOptions({
   queryKey: ['glp1'],
-  queryFn: async (): Promise<Glp1View> => {
-    const { data, error } = await api.GET('/api/v1/glp1')
-    if (error || data === undefined) throw new Error('GLP-1 data could not be read')
-    return data as unknown as Glp1View
-  },
+  queryFn: async (): Promise<Glp1View> => toGlp1View(await ok(api.GET('/api/v1/glp1'))),
   staleTime: 60_000,
 })
 
-export function useGlp1View(): Glp1View {
-  const { data } = useQuery(glp1Query)
-  return data ?? EMPTY_GLP1
-}
+/** `GET /api/v1/glp1` for the screen: a failed read is the screen's error state. */
+export const useGlp1View = (): Glp1View => useSuspenseQuery(glp1Query).data
+
+/** The same data for what is always on screen (the log sheet): it never suspends, and is
+ *  `undefined` until the read is in — or when it failed. */
+export const useGlp1Snapshot = (): Glp1View | undefined => useQuery(glp1Query).data

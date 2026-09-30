@@ -136,7 +136,8 @@
 .set-row-wrap {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 0 var(--s2);
+  margin-left: -12px;
 }
 
 .settings-desc {
@@ -232,3 +233,26 @@
     align-items: center;
   }
 }
+
+/* Labels, hints and stacks (replace one-off inline spacing) */
+.flabel.block { display: block; margin-bottom: var(--s2); }
+.flabel.strong { font-weight: 600; }
+.flabel.split { display: flex; justify-content: space-between; align-items: center; }
+.flabel.micro { font-size: var(--t-micro); color: var(--muted); }
+.set-mt1 { margin-top: var(--s1); }
+.set-mt2 { margin-top: var(--s2); }
+.set-mt3 { margin-top: var(--s3); }
+.set-mb3 { margin-bottom: var(--s3); }
+.set-stack3 { display: grid; gap: var(--s3); }
+.set-stack4 { display: grid; gap: var(--s4); }
+.set-narrow-field { max-width: 160px; }
+.set-note { display: block; margin-top: var(--s1); font-size: var(--t-micro); color: var(--muted); }
+.tfa-key { flex: 1; }
+.opts-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+.opts-col { display: flex; flex-direction: column; gap: var(--s2); }
+.opts-col .opt { text-align: left; }
+.wk-day { font-weight: 500; }
+.data-drop-name { display: block; font-size: var(--t-body); }
+.data-drop-meta { font-size: var(--t-micro); color: var(--muted); }
+.set-save .ghost { margin-left: -12px; }
+.set-sub-sec > .ghost, .set-mt3 > .ghost, .tfa-acts .ghost:first-child { margin-left: -12px; }

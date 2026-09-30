@@ -1,14 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useMemo, useState } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { api, ok } from '@/api/client'
+import { useTodayIso } from '@/app/session'
 import { Segmented } from '@/components/controls/Segmented'
 import { Section } from '@/components/controls/Section'
 import { Hypnogram } from '@/components/charts/Hypnogram'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
-import { longDate, parseIsoDate, toIsoDate } from '@/lib/dates'
+import { longDate, parseIsoDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/format'
 import type { components } from '@/api/schema'
 import './recovery.css'
@@ -19,43 +20,35 @@ export default function SleepNightScreen() {
   const { t, lang } = useT()
   const navigate = useNavigate()
   const params = useParams({ strict: false }) as { date?: string }
-  const selectedDate = params.date || toIsoDate(new Date())
+  const todayIso = useTodayIso()
+  // Paging to the next night keeps the current one on screen until the next is read.
+  const selectedDate = useDeferredValue(params.date || todayIso)
 
-  const { data: night, isLoading } = useQuery({
+  const { data: night } = useSuspenseQuery({
     queryKey: ['recovery', 'sleep', selectedDate],
-    queryFn: async (): Promise<SleepNightView> => {
-      const { data } = await api.GET('/api/v1/recovery/sleep/{on_date}', {
-        params: { path: { on_date: selectedDate } },
-      })
-      if (!data) throw new Error('Sleep night data unavailable')
-      return data
-    },
+    queryFn: async (): Promise<SleepNightView> =>
+      ok(api.GET('/api/v1/recovery/sleep/{on_date}', { params: { path: { on_date: selectedDate } } })),
   })
 
   const [activeCurveGroup, setActiveCurveGroup] = useState<'pulse' | 'breathing' | 'movement'>('pulse')
 
+  // The night's breakdown, when the watch reported one.
   const stageMins = useMemo(() => {
-    if (!night?.stages_minutes) return { deep: 0, light: 0, rem: 0, awake: 0 }
-    return {
-      deep: night.stages_minutes.deep ?? 0,
-      light: night.stages_minutes.light ?? 0,
-      rem: night.stages_minutes.rem ?? 0,
-      awake: night.stages_minutes.awake ?? 0,
-    }
-  }, [night?.stages_minutes])
+    const m = night.stages_minutes
+    if (m.deep === undefined && m.light === undefined && m.rem === undefined && m.awake === undefined) return null
+    return { deep: m.deep ?? 0, light: m.light ?? 0, rem: m.rem ?? 0, awake: m.awake ?? 0 }
+  }, [night.stages_minutes])
 
-  // Start minutes since midnight for Hypnogram
+  // Start minutes since midnight for the hypnogram; without a recorded bedtime there is no axis.
   const startMinutes = useMemo(() => {
-    if (!night?.start_time) return 23 * 60
+    if (!night.start_time) return null
     const [hh, mm] = night.start_time.split(':').map((s) => parseInt(s, 10))
     return (hh || 0) * 60 + (mm || 0)
-  }, [night?.start_time])
+  }, [night.start_time])
 
-  // Convert stage series to 5-minute blocks for Hypnogram
+  // Convert stage series to 5-minute blocks for the hypnogram; no series, no blocks.
   const stagesArray = useMemo(() => {
-    if (!night?.stages_series || night.stages_series.length === 0) {
-      return [2, 2, 3, 3, 3, 1, 1, 2, 2, 3, 1, 0] // fallback blocks
-    }
+    if (night.stages_series.length === 0) return []
     const blocks: number[] = []
     const stageMap: Record<string, number> = { awake: 0, rem: 1, light: 2, deep: 3 }
     for (const seg of night.stages_series) {
@@ -64,11 +57,10 @@ export default function SleepNightScreen() {
       for (let i = 0; i < blockCount; i++) blocks.push(stageCode)
     }
     return blocks
-  }, [night?.stages_series])
+  }, [night.stages_series])
 
   // Active curve points
   const activeSeries = useMemo(() => {
-    if (!night) return []
     if (activeCurveGroup === 'pulse') {
       return [
         { label: t('app.sleep.curve.heart_rate'), color: '#F4F0F6', points: night.heart_rate ?? [] },
@@ -89,16 +81,6 @@ export default function SleepNightScreen() {
     const h = Math.floor(mins / 60)
     const m = mins % 60
     return h > 0 ? t('app.duration.hm', { h, m }) : t('app.duration.min', { m })
-  }
-
-  if (isLoading || !night) {
-    return (
-      <>
-        <TopBar title={t('app.title.sleep')} />
-        <Headline title={t('app.title.sleep')} />
-        <div style={{ padding: '24px', color: 'var(--muted)' }}>{t('app.loading')}</div>
-      </>
-    )
   }
 
   const dateObj = parseIsoDate(night.date)
@@ -147,7 +129,7 @@ export default function SleepNightScreen() {
 
       {(night.awake_count != null || night.restless_moments != null) && (
         <p className="night-note">
-          {t('app.sleep.awakenings_and_restless', { awake: night.awake_count ?? 0, restless: night.restless_moments ?? 0 })}
+          {t('app.sleep.awakenings_and_restless', { awake: night.awake_count ?? '—', restless: night.restless_moments ?? '—' })}
         </p>
       )}
 
@@ -157,39 +139,43 @@ export default function SleepNightScreen() {
         meta={night.start_time && night.end_time ? `${night.start_time} → ${night.end_time}` : undefined}
       >
         <div className="panel bare">
-          <Hypnogram stages={stagesArray} startMinutes={startMinutes} />
+          {startMinutes !== null && stagesArray.length > 0 && <Hypnogram stages={stagesArray} startMinutes={startMinutes} />}
 
-          {/* Phase bar */}
-          <div className="compo">
-            <i style={{ flex: stageMins.deep, background: 'var(--deep)' }} />
-            <i style={{ flex: stageMins.light, background: 'var(--cool)' }} />
-            <i style={{ flex: stageMins.rem, background: 'var(--violet)' }} />
-            <i style={{ flex: stageMins.awake, background: 'var(--bad)' }} />
-          </div>
+          {stageMins !== null && (
+            <>
+              {/* Phase bar */}
+              <div className="compo">
+                <i style={{ flex: stageMins.deep, background: 'var(--deep)' }} />
+                <i style={{ flex: stageMins.light, background: 'var(--cool)' }} />
+                <i style={{ flex: stageMins.rem, background: 'var(--violet)' }} />
+                <i style={{ flex: stageMins.awake, background: 'var(--bad)' }} />
+              </div>
 
-          {/* Legend */}
-          <div className="hyp-legend">
-            <div>
-              <i style={{ background: 'var(--deep)' }} />
-              {t('app.stage.deep')}
-              <b>{fmtHM(stageMins.deep)}</b>
-            </div>
-            <div>
-              <i style={{ background: 'var(--cool)' }} />
-              {t('app.stage.light')}
-              <b>{fmtHM(stageMins.light)}</b>
-            </div>
-            <div>
-              <i style={{ background: 'var(--violet)' }} />
-              {t('app.stage.rem')}
-              <b>{fmtHM(stageMins.rem)}</b>
-            </div>
-            <div>
-              <i style={{ background: 'var(--bad)' }} />
-              {t('app.stage.awake')}
-              <b>{t('app.duration.min', { m: stageMins.awake })}</b>
-            </div>
-          </div>
+              {/* Legend */}
+              <div className="hyp-legend">
+                <div>
+                  <i style={{ background: 'var(--deep)' }} />
+                  {t('app.stage.deep')}
+                  <b>{fmtHM(stageMins.deep)}</b>
+                </div>
+                <div>
+                  <i style={{ background: 'var(--cool)' }} />
+                  {t('app.stage.light')}
+                  <b>{fmtHM(stageMins.light)}</b>
+                </div>
+                <div>
+                  <i style={{ background: 'var(--violet)' }} />
+                  {t('app.stage.rem')}
+                  <b>{fmtHM(stageMins.rem)}</b>
+                </div>
+                <div>
+                  <i style={{ background: 'var(--bad)' }} />
+                  {t('app.stage.awake')}
+                  <b>{t('app.duration.min', { m: stageMins.awake })}</b>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </Section>
 

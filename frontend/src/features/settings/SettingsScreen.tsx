@@ -12,7 +12,7 @@ import './settings.css'
 
 export default function SettingsScreen() {
   const { t } = useT()
-  const { data: settings } = useSettingsView()
+  const settings = useSettingsView()
   const [activeTab, setActiveTab] = useState<string>('main')
 
   const tabs = [

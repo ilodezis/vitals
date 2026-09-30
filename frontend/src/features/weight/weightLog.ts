@@ -6,7 +6,7 @@
    for the day and for the rail, so what stays is what the server made of it. */
 
 import { type MutationOptions, type QueryClient, MutationObserver, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, ok } from '@/api/client'
 import { applyLoggedWeight } from '@/features/today/optimistic'
 import { todayQuery } from '@/features/today/useTodayView'
 import type { TodayView } from '@/features/today/types'
@@ -71,7 +71,7 @@ export async function saveWeight(
   if (!saved.created) return { undo: undefined }
   return {
     undo: async () => {
-      await api.DELETE('/api/v1/weight/logs/{log_id}', { params: { path: { log_id: saved.id } } })
+      await ok(api.DELETE('/api/v1/weight/logs/{log_id}', { params: { path: { log_id: saved.id } } }))
       await refetchAfterWeight(queryClient)
     },
   }

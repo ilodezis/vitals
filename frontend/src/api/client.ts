@@ -10,7 +10,7 @@ export class ConflictError extends Error {
   readonly violations: Violation[]
 
   constructor(violations: Violation[]) {
-    super(violations.map((v) => v.message).join('; ') || 'Conflict')
+    super(violations.map((v) => v.message).join('; '))
     this.name = 'ConflictError'
     this.violations = violations
   }
@@ -25,13 +25,45 @@ export class InvalidError extends Error {
   }
 }
 
+/** The message of a 400 that came without one: a marker for the code, never shown. */
+const UNEXPLAINED = 'Invalid'
+
+/** A request the server did not carry out for any other reason (5xx, 404, 422, no network).
+ *  It has no words for the user: the screen says what failed in its own language. */
+export class RequestError extends Error {
+  readonly status: number
+
+  constructor(status: number) {
+    super(`Request failed (${status})`)
+    this.name = 'RequestError'
+    this.status = status
+  }
+}
+
+/** The data of a call, or a throw: a response the server refused is never taken for a
+ *  success. `openapi-fetch` hands a refusal back as `{ error }` and would otherwise let a
+ *  "Saved" toast follow a 500. */
+export async function ok<T>(call: Promise<{ data?: T; error?: unknown; response: Response }>): Promise<T> {
+  const { data, error, response } = await call
+  if (error !== undefined || response.status >= 400) throw new RequestError(response.status)
+  return data as T
+}
+
+/** What to tell the user about a failed write: the service's own words when it explained
+ *  itself (400, 409 — already in the user's language), otherwise the screen's `fallback`.
+ *  A raw exception text never reaches the screen. */
+export function failText(error: unknown, fallback: string): string {
+  const explained = error instanceof InvalidError || error instanceof ConflictError
+  return explained && error.message !== '' && error.message !== UNEXPLAINED ? error.message : fallback
+}
+
 async function messageOf(response: Response): Promise<string> {
   try {
     const body: unknown = await response.clone().json()
     const message = (body as Partial<components['schemas']['InvalidBody']> | null)?.message
-    return typeof message === 'string' && message !== '' ? message : 'Invalid'
+    return typeof message === 'string' && message !== '' ? message : UNEXPLAINED
   } catch {
-    return 'Invalid'
+    return UNEXPLAINED
   }
 }
 

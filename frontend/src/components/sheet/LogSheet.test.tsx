@@ -127,6 +127,44 @@ describe('selectDoseAlert', () => {
   })
 })
 
+describe('an injection is never logged with a dose nobody gave', () => {
+  const base = { date: '2026-09-30', drug: 'semaglutide', site: 'abdomen_left' }
+
+  it('builds no body while there is no current dose and none typed in', () => {
+    expect(buildInjectionBody({ ...base, mode: 'current', currentDoseMg: null })).toBeNull()
+    expect(buildInjectionBody({ ...base, mode: 'other', currentDoseMg: null })).toBeNull()
+    expect(buildInjectionBody({ ...base, mode: 'other', currentDoseMg: null, customDoseRaw: '' })).toBeNull()
+  })
+
+  it('does not fall back to the current dose (or to a likely one) when the typed one is not a number', () => {
+    expect(buildInjectionBody({ ...base, mode: 'other', currentDoseMg: 0.5, customDoseRaw: 'abc' })).toBeNull()
+    expect(buildInjectionBody({ ...base, mode: 'other', currentDoseMg: 0.5, customDoseRaw: '0' })).toBeNull()
+    expect(buildInjectionBody({ ...base, mode: 'other', currentDoseMg: 0.5, customDoseRaw: '-1' })).toBeNull()
+  })
+
+  it('takes the typed dose when there is no current phase at all', () => {
+    expect(buildInjectionBody({ ...base, mode: 'other', currentDoseMg: null, customDoseRaw: '0,25', drug: null })).toEqual({
+      date: '2026-09-30',
+      doseMg: 0.25,
+      drug: undefined,
+      site: 'abdomen_left',
+      override: false,
+    })
+  })
+
+  it('has no alert to give while the cycle is not known', () => {
+    expect(selectDoseAlert({ daysToNext: null })).toBeNull()
+  })
+
+  it('carries no made-up height, sex or dose in the sheet itself', () => {
+    const source = Object.entries(componentAndFeatureSources).find(([file]) => file.endsWith('/sheet/LogSheet.tsx'))?.[1] ?? ''
+    expect(source).not.toBe('')
+    expect(source).not.toMatch(/\?\?\s*190\b|\?\?\s*'male'|fallbackDose|\?\s*[a-zA-Z.]+\s*:\s*0\.5\b/)
+    // The API has no such field, so the sheet has no control for it.
+    expect(source).not.toMatch(/breakfast|lunch|dinner|snack/)
+  })
+})
+
 describe('no fake save timers in components/ and features/', () => {
   it('forbids setTimeout(resolve outside lib/motion.ts and shell/stageMotion.ts', () => {
     const entries = Object.entries(componentAndFeatureSources)

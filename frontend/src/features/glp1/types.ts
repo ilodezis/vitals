@@ -6,26 +6,35 @@ export type SiteId =
 
 export interface Injection {
   dateIso: string
-  site: SiteId
+  /** Null for an entry that was logged without a site. */
+  site: SiteId | null
   doseMg: number
 }
 
-/** `GET /api/v1/glp1`. */
+/** `GET /api/v1/glp1`. What the server does not have yet — no injection logged — stays `null`:
+ *  the screen prints a dash, never a likely dose. */
 export interface Glp1View {
-  drug: string
-  doseMg: number
-  sinceIso: string
+  drug: string | null
+  doseMg: number | null
+  sinceIso: string | null
   /** Days on the current dose, counting the first. */
-  dayOnDose: number
-  deltaOnDoseKg?: number | null
-  cycle: { lastIso: string | null; nextIso: string; daysToNext: number; overdue?: boolean; unscheduled: boolean }
+  dayOnDose: number | null
+  /** Weight change since the current dose began; null with fewer than two weigh-ins. */
+  deltaOnDoseKg: number | null
+  cycle: {
+    lastIso: string | null
+    nextIso: string | null
+    /** Negative when the injection is overdue. */
+    daysToNext: number | null
+    overdue: boolean
+    unscheduled: boolean
+  }
   /** Steps of the dose over time, oldest first, and the weight trend under them. */
   dosePhases: { fromIso: string; toIso: string; doseMg: number }[]
   trend: { date: string; kg: number }[]
-  /** A generated sentence about how the weight moved on each dose. */
-  summary: string
-  /** Sites in the order they were used most recently first; the map dims older ones. */
-  siteLabels: Record<SiteId, string>
+  /** Site names in the user's language. */
+  siteLabels: Record<string, string>
+  /** Newest first. */
   injections: Injection[]
   sideEffects: { dateIso: string; name: string; severity: 1 | 2 | 3 | 4 | 5 }[]
 }

@@ -1,30 +1,13 @@
-import { queryOptions, useQuery } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
+import { api, ok } from '@/api/client'
 import type { SkincareView } from './types'
-
-export const defaultSkincareView: SkincareView = {
-  products: [],
-  activeCount: 0,
-  totalCount: 0,
-  todayLog: null,
-  logs: [],
-  observations: [],
-  rules: [],
-  alerts: [],
-  today: new Date().toISOString().slice(0, 10),
-}
 
 export const skincareQuery = queryOptions({
   queryKey: ['skincare'],
-  queryFn: async (): Promise<SkincareView> => {
-    const { data, error } = await api.GET('/api/v1/skincare')
-    if (error || data === undefined) throw new Error('Skincare data could not be read')
-    return data as unknown as SkincareView
-  },
+  queryFn: async (): Promise<SkincareView> => (await ok(api.GET('/api/v1/skincare'))) as unknown as SkincareView,
   staleTime: 60_000,
 })
 
-export function useSkincareView(): SkincareView {
-  const { data } = useQuery(skincareQuery)
-  return data ?? defaultSkincareView
-}
+/** `GET /api/v1/skincare`. A failed read is the screen's error state, not an empty screen: the throw goes
+ *  to the boundary around the screen. */
+export const useSkincareView = (): SkincareView => useSuspenseQuery(skincareQuery).data

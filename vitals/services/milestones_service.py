@@ -209,6 +209,19 @@ def _unit_matches_domain(domain: str, target_unit: Optional[str]) -> bool:
     return True
 
 
+async def active_weight_target_kg(session: AsyncSession) -> Optional[float]:
+    """The target of the first active weight goal — the one the goal card shows —
+    or ``None`` when no weight goal is open."""
+    for m in await list_milestones(session, status=MilestoneStatus.ACTIVE.value):
+        if (
+            m.domain == Domain.WEIGHT.value
+            and m.target_value is not None
+            and _unit_matches_domain(m.domain, m.target_unit)
+        ):
+            return float(m.target_value)
+    return None
+
+
 async def progress(session: AsyncSession, milestone: Milestone) -> dict:
     """Live progress for a goal. Weight goals get current/remaining/pct vs target;
     others just echo status + days-to-deadline."""

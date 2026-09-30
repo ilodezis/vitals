@@ -22,3 +22,13 @@
 .r-meal .tm { color: var(--muted); }
 .r-day { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--line); padding: 8px 0; cursor: pointer; color: inherit; }
 .r-day:hover, .r-day.sel { color: var(--violet); }
+.nutr-hero { display: flex; gap: var(--s6); flex-wrap: wrap; }
+.nutr-hero-v { font-size: var(--t-title); font-weight: 600; }
+.nutr-form-panel { padding: var(--s4); }
+.nutr-macro-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s2); }
+.nutr-today-btn { font-size: var(--t-micro); color: var(--violet); }
+.nutr-bar { cursor: pointer; }
+.hyp-legend.three { grid-template-columns: repeat(3, 1fr); }
+.hyp-legend i.good, .compo i.good { background: var(--good); }
+.hyp-legend i.violet, .compo i.violet { background: var(--violet); }
+.hyp-legend i.cool, .compo i.cool { background: var(--cool); }

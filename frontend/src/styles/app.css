@@ -610,22 +610,35 @@ textarea.input { height: auto; min-height: 48px; padding: 12px 14px; line-height
 .st-body .empty small { font-family: var(--f-text); font-size: var(--t-body); letter-spacing: 0; font-weight: 400; }
 .st-h1 { margin-top: var(--s3); }
 
-.more-btn {
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: var(--r-xs);
-  color: var(--fg-2);
-  font-family: var(--f-text);
-  font-size: var(--t-label);
-  padding: 8px 12px;
-  cursor: pointer;
-  text-align: center;
-  width: 100%;
-  margin-top: 6px;
-  transition: background 150ms var(--ease-out), color 150ms var(--ease-out);
-}
-.more-btn:hover {
-  background: var(--surface);
-  color: var(--fg);
-}
+/* "Show more" under a short list: a text action, like every secondary one */
+.more-btn { margin: var(--s2) 0 0 -12px; }
+
+/* A list that opens on a tap: a small arrow, the name, the count on the right */
+.disc { border-bottom: 1px solid var(--line); }
+.disc-h { display: flex; align-items: center; gap: var(--s1); }
+.disc-b { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: var(--s2); min-height: 48px; padding: var(--s2) 0; text-align: left; color: var(--fg); touch-action: manipulation; }
+.disc-b > .disc-chev { width: 18px; height: 18px; color: var(--muted); transition: transform var(--d2) var(--ease-out); }
+.disc.open > .disc-h .disc-chev { transform: rotate(90deg); }
+.disc-b:hover > .disc-chev { color: var(--fg); }
+.disc-t { min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
+.disc-t small { display: block; margin-top: 1px; font-size: var(--t-micro); font-weight: 400; color: var(--muted); }
+.disc-n { font-size: var(--t-label); color: var(--muted); white-space: nowrap; }
+.disc-h > .ibtn { flex: none; width: 40px; height: 40px; color: var(--muted); }
+.disc-h > .ibtn svg { width: 18px; height: 18px; }
+.disc-body { padding: 0 0 var(--s3) 26px; }
+.disc-body > .rows { border-top: 0; }
+.disc-body > .rows > .row:last-child { border-bottom: 0; }
+
+/* A destructive icon action: quiet until it is pointed at */
+.ibtn.danger:hover { color: var(--bad-strong); background: var(--bad-soft); }
+.row .v.empty { color: var(--faint); font-weight: 300; }
+
+/* A screen whose data could not be read */
+.st-fail .ghost { margin-left: -12px; }
+
+/* Helpers the screens share instead of one-off inline styles */
+.mt-s3 { margin-top: var(--s3); }
+.mt-s4 { margin-top: var(--s4); }
+.row-line { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
+.sub.flush { margin: 0; }
 

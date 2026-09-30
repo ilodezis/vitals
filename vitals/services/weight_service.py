@@ -815,8 +815,12 @@ async def dose_phase_delta(
     *,
     weights: Optional[Sequence[WeightLog]] = None,
     end: Optional[date_type] = None,
-) -> float:
-    """Weight change (last - first, negative = weight loss) across a GLP-1 dose phase."""
+) -> Optional[float]:
+    """Weight change (last - first, negative = weight loss) across a GLP-1 dose phase.
+
+    ``None`` while the phase holds fewer than two weigh-ins: there is no change to
+    report yet, and a zero would read as "the weight stood still".
+    """
     if isinstance(phase, date_type):
         start_d: Optional[date_type] = phase
         end_d: Optional[date_type] = end
@@ -833,7 +837,7 @@ async def dose_phase_delta(
         start_d = getattr(phase, "start_date", None) or getattr(phase, "from_date", None)
         end_d = getattr(phase, "end_date", None) or getattr(phase, "to_date", None) or end
     if start_d is None:
-        return 0.0
+        return None
     if weights is None:
         weights_on_dose = await list_active_weights(session, start=start_d, end=end_d)
     else:
@@ -844,7 +848,20 @@ async def dose_phase_delta(
         ]
     if len(weights_on_dose) >= 2:
         return round(weights_on_dose[-1].weight_kg - weights_on_dose[0].weight_kg, 1)
-    return 0.0
+    return None
+
+
+def weeks_to_goal(
+    current_kg: Optional[float], target_kg: float, per_week_kg: Optional[float]
+) -> Optional[int]:
+    """Whole weeks until the present trend meets a "get below" goal.
+
+    ``None`` when there is nothing to extrapolate: no reading, no trend, a trend
+    that is flat or moves away from the goal, or a goal already reached.
+    """
+    if current_kg is None or per_week_kg is None or per_week_kg >= 0 or current_kg <= target_kg:
+        return None
+    return max(1, round((current_kg - target_kg) / -per_week_kg))
 
 
 def _norm_source(src: str) -> str:
@@ -872,7 +889,7 @@ async def collect(
     lang: str = "ru",
 ) -> dict:
     """Assemble the full Weight dashboard payload in one service call."""
-    from vitals.services import body_scan_service
+    from vitals.services import body_scan_service, milestones_service
     from vitals.services.analytics import body_metrics
 
     await refresh_noise_alert(session)
@@ -984,7 +1001,6 @@ async def collect(
         drug_val = active_phase.get("drug") or ""
         dose_val = float(active_phase.get("dose_mg") or 0.0)
         dose_pace = {
-            "label": f"{drug_val} {dose_val:g} мг" if drug_val else "0,5 мг",
             "drug": drug_val,
             "dose_mg": dose_val,
             "since_date": active_phase["from_date"],
@@ -992,18 +1008,15 @@ async def collect(
             "delta_kg": delta_kg,
         }
 
+    # The goal is the active weight milestone — the one Today's goal card shows —
+    # and the distance to it is read off the same weekly trend printed above.
     goal_pace = None
-    projection = series.get("projection")
-    if projection and projection.get("target_kg"):
-        target_kg = projection["target_kg"]
-        weeks = None
-        if projection.get("date"):
-            try:
-                proj_date = date_type.fromisoformat(projection["date"])
-                weeks = max(0, (proj_date - today_local()).days // 7)
-            except (ValueError, TypeError):
-                logger.debug("Invalid projection date: %r", projection.get("date"))
-        goal_pace = {"target_kg": target_kg, "weeks": weeks}
+    target_kg = await milestones_service.active_weight_target_kg(session)
+    if target_kg is not None:
+        goal_pace = {
+            "target_kg": target_kg,
+            "weeks": weeks_to_goal(latest_kg, target_kg, per_week_kg),
+        }
 
     pace = {"per_week_kg": per_week_kg, "dose": dose_pace, "goal": goal_pace}
 
@@ -1018,7 +1031,7 @@ async def collect(
                     {
                         "label": body_metrics.display_name(key, lang) or m.label,
                         "value": m.value,
-                        "unit": body_metrics.METRIC_REGISTRY[key].unit or "",
+                        "unit": body_metrics.display_unit(key, lang),
                     }
                 )
         last_scan = {
@@ -1121,7 +1134,7 @@ async def collect_measures(
                     {
                         "label": body_metrics.display_name(key, lang) or m.label,
                         "value": m.value,
-                        "unit": body_metrics.METRIC_REGISTRY[key].unit or "",
+                        "unit": body_metrics.display_unit(key, lang),
                     }
                 )
 
@@ -1139,7 +1152,7 @@ async def collect_measures(
                     "metric_key": m.metric_key,
                     "label": m.label,
                     "value": m.value,
-                    "unit": m.unit,
+                    "unit": body_metrics.display_unit(m.metric_key, lang, m.unit),
                     "ref_low": m.ref_low,
                     "ref_high": m.ref_high,
                     "segment": m.segment,

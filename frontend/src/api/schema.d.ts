@@ -3146,11 +3146,11 @@ export interface components {
         /** Glp1CycleInfo */
         Glp1CycleInfo: {
             /** Daystonext */
-            daysToNext: number;
+            daysToNext?: number | null;
             /** Lastiso */
             lastIso?: string | null;
             /** Nextiso */
-            nextIso: string;
+            nextIso?: string | null;
             /**
              * Overdue
              * @default false
@@ -3271,27 +3271,25 @@ export interface components {
         Glp1View: {
             cycle: components["schemas"]["Glp1CycleInfo"];
             /** Dayondose */
-            dayOnDose: number;
+            dayOnDose?: number | null;
             /** Deltaondosekg */
             deltaOnDoseKg?: number | null;
             /** Dosemg */
-            doseMg: number;
+            doseMg?: number | null;
             /** Dosephases */
             dosePhases: components["schemas"]["Glp1DosePhase"][];
             /** Drug */
-            drug: string;
+            drug?: string | null;
             /** Injections */
             injections: components["schemas"]["Glp1Injection"][];
             /** Sideeffects */
             sideEffects: components["schemas"]["Glp1SideEffect"][];
             /** Sinceiso */
-            sinceIso: string;
+            sinceIso?: string | null;
             /** Sitelabels */
             siteLabels: {
                 [key: string]: string;
             };
-            /** Summary */
-            summary: string;
             /** Trend */
             trend: components["schemas"]["Glp1TrendPoint"][];
         };
@@ -6032,16 +6030,11 @@ export interface components {
             /** Days */
             days: number;
             /** Delta Kg */
-            delta_kg: number;
+            delta_kg?: number | null;
             /** Dose Mg */
             dose_mg?: number | null;
             /** Drug */
             drug?: string | null;
-            /**
-             * Label
-             * @default
-             */
-            label: string;
             /**
              * Since Date
              * Format: date
@@ -12772,4 +12765,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: 094323aea3e74095f931eb87320d1d64274b8cab1e88b61970e6fbe736b7d860
+// openapi.json sha256: e2cb1a82d60e21ce3d0f0b2eba606d489bdb15f7b9d2ce0f0121cb0bae0f08d4

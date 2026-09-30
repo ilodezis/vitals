@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { api, failText, InvalidError, ok, RequestError } from '@/api/client'
+import { useTodayIso } from '@/app/session'
 import { ConflictAlert } from '@/components/controls/ConflictAlert'
+import { Disclosure } from '@/components/controls/Disclosure'
 import { Delta } from '@/components/controls/Marks'
 import { Odometer } from '@/components/controls/Odometer'
 import { Segmented } from '@/components/controls/Segmented'
@@ -10,36 +12,37 @@ import { Icon } from '@/components/icons/Icon'
 import { Headline, TopBar } from '@/components/shell/PageHead'
 import { toast } from '@/components/controls/toast'
 import { useT } from '@/i18n/useT'
-import { cx } from '@/lib/cx'
-import { longDate, parseIsoDate, shortDate, toIsoDate } from '@/lib/dates'
-import { formatNumber } from '@/lib/format'
+import { longDate, parseIsoDate, shortDate } from '@/lib/dates'
+import { formatCompact, formatNumber, formatPercent } from '@/lib/format'
 import { useConflictMutation } from '@/lib/useConflictMutation'
 import { computeNavyFatPct } from './navy'
+import { readScanMetrics, toScanPreview, type ScanPreviewMetric } from './scanMetrics'
 import type { components } from '@/api/schema'
 import './weight.css'
 
 type WeightMeasuresView = components['schemas']['WeightMeasuresView']
-type BodyScanMetricItem = components['schemas']['BodyScanMetricItem']
+type BodyScanUploadResponse = components['schemas']['BodyScanUploadResponse']
 
 export const measuresQuery = {
   queryKey: ['weight', 'measures'],
   queryFn: async (): Promise<WeightMeasuresView> => {
-    const { data } = await api.GET('/api/v1/weight/measures')
-    if (!data) throw new Error('Could not load measures')
+    const { data, error } = await api.GET('/api/v1/weight/measures')
+    if (error !== undefined || data === undefined) throw new Error('Measures could not be read')
     return data
   },
 }
 
 export default function WeightMeasuresScreen() {
-  const { t, lang } = useT()
+  const { t, lang, plural } = useT()
   const queryClient = useQueryClient()
-  const { data: view } = useQuery(measuresQuery)
+  const view = useSuspenseQuery(measuresQuery).data
+  const metricsCount = (n: number) => plural(n, t('app.weight.metrics.one', { n }), t('app.weight.metrics.few', { n }), t('app.weight.metrics.many', { n }))
 
   const [activePane, setActivePane] = useState<'measure' | 'noise' | 'photo' | 'body'>('measure')
   const [openScanId, setOpenScanId] = useState<number | null>(null)
 
   // Measure form state
-  const todayStr = toIsoDate(new Date())
+  const todayStr = useTodayIso()
   const [mDate, setMDate] = useState(todayStr)
   const [neckCm, setNeckCm] = useState('')
   const [waistCm, setWaistCm] = useState('')
@@ -59,10 +62,11 @@ export default function WeightMeasuresScreen() {
 
   // BIA scan upload state
   const [scanFile, setScanFile] = useState<File | null>(null)
-  const [previewMetrics, setPreviewMetrics] = useState<BodyScanMetricItem[]>([])
+  const [previewMetrics, setPreviewMetrics] = useState<ScanPreviewMetric[]>([])
   const [previewDate, setPreviewDate] = useState(todayStr)
-  const [previewDevice, setPreviewDevice] = useState('InBody 770')
+  const [previewDevice, setPreviewDevice] = useState('')
   const [previewFileKey, setPreviewFileKey] = useState('')
+  const [previewRawId, setPreviewRawId] = useState<number | null>(null)
   const [isScanning, setIsScanning] = useState(false)
 
   // Calculated Navy Fat % preview
@@ -70,11 +74,9 @@ export default function WeightMeasuresScreen() {
     const neck = parseFloat(neckCm)
     const waist = parseFloat(waistCm)
     const hips = parseFloat(hipsCm)
-    const height = view?.height_cm ?? 190
-    const sex = view?.sex ?? 'male'
     if (isNaN(neck) || isNaN(waist) || neck <= 0 || waist <= 0) return null
-    return computeNavyFatPct(waist, neck, height, sex, isNaN(hips) ? undefined : hips)
-  }, [neckCm, waistCm, hipsCm, view?.height_cm, view?.sex])
+    return computeNavyFatPct(waist, neck, view.height_cm, view.sex, isNaN(hips) ? undefined : hips)
+  }, [neckCm, waistCm, hipsCm, view.height_cm, view.sex])
 
   const invalidateMeasures = () => {
     void queryClient.invalidateQueries({ queryKey: ['weight'] })
@@ -86,17 +88,20 @@ export default function WeightMeasuresScreen() {
       const neck = parseFloat(neckCm)
       const waist = parseFloat(waistCm)
       const hips = hipsCm ? parseFloat(hipsCm) : undefined
-      await api.POST('/api/v1/weight/measures', {
-        body: {
-          date: mDate,
-          neck_cm: isNaN(neck) ? undefined : neck,
-          waist_cm: isNaN(waist) ? undefined : waist,
-          hips_cm: hips && !isNaN(hips) ? hips : undefined,
-          note: mNote.trim() || undefined,
-          override,
-        },
-      })
+      await ok(
+        api.POST('/api/v1/weight/measures', {
+          body: {
+            date: mDate,
+            neck_cm: isNaN(neck) ? undefined : neck,
+            waist_cm: isNaN(waist) ? undefined : waist,
+            hips_cm: hips && !isNaN(hips) ? hips : undefined,
+            note: mNote.trim() || undefined,
+            override,
+          },
+        }),
+      )
     },
+    fallbackErrorMessage: t('app.save_failed'),
     onSuccess: () => {
       invalidateMeasures()
       toast(t('app.weight.measures_saved'))
@@ -105,50 +110,49 @@ export default function WeightMeasuresScreen() {
       setHipsCm('')
       setMNote('')
     },
-    onError: (err) => toast(err.message),
+    onError: (err) => toast(failText(err, t('app.save_failed')), { icon: 'warn' }),
   })
+
+  const deleteFailed = () => toast(t('app.delete_failed'), { icon: 'warn' })
+  const deleted = () => {
+    invalidateMeasures()
+    toast(t('common.deleted'))
+  }
 
   // Delete measurement mutation
   const deleteMeasureMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await api.DELETE('/api/v1/weight/measures/{measurement_id}', { params: { path: { measurement_id: id } } })
-    },
-    onSuccess: () => {
-      invalidateMeasures()
-      toast(t('app.saved'))
-    },
+    mutationFn: (id: number) => ok(api.DELETE('/api/v1/weight/measures/{measurement_id}', { params: { path: { measurement_id: id } } })),
+    onSuccess: deleted,
+    onError: deleteFailed,
   })
 
   // Save noise marker mutation
   const noiseMutation = useMutation({
-    mutationFn: async () => {
-      await api.POST('/api/v1/weight/noise-markers', {
-        body: {
-          start_date: nStart,
-          end_date: nEnd || undefined,
-          reason: nReason.trim(),
-          direction: nDirection === 'n' ? undefined : nDirection,
-        },
-      })
-    },
+    mutationFn: () =>
+      ok(
+        api.POST('/api/v1/weight/noise-markers', {
+          body: {
+            start_date: nStart,
+            end_date: nEnd || undefined,
+            reason: nReason.trim(),
+            direction: nDirection === 'n' ? undefined : nDirection,
+          },
+        }),
+      ),
     onSuccess: () => {
       invalidateMeasures()
       toast(t('app.saved'))
       setNReason('')
       setNEnd('')
     },
-    onError: (err) => toast(err.message),
+    onError: (err) => toast(failText(err, t('app.save_failed')), { icon: 'warn' }),
   })
 
   // Delete noise marker mutation
   const deleteNoiseMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await api.DELETE('/api/v1/weight/noise-markers/{marker_id}', { params: { path: { marker_id: id } } })
-    },
-    onSuccess: () => {
-      invalidateMeasures()
-      toast(t('app.saved'))
-    },
+    mutationFn: (id: number) => ok(api.DELETE('/api/v1/weight/noise-markers/{marker_id}', { params: { path: { marker_id: id } } })),
+    onSuccess: deleted,
+    onError: deleteFailed,
   })
 
   // Upload photo mutation
@@ -162,11 +166,12 @@ export default function WeightMeasuresScreen() {
         fd.append('file', file)
         fd.append('date', phDate)
         if (phNote) fd.append('note', phNote)
-        await fetch('/api/v1/weight/photos', {
+        const res = await fetch('/api/v1/weight/photos', {
           method: 'POST',
           body: fd,
           credentials: 'same-origin',
         })
+        if (!res.ok) throw new RequestError(res.status)
       }
     },
     onSuccess: () => {
@@ -175,17 +180,18 @@ export default function WeightMeasuresScreen() {
       setPhFiles(null)
       setPhNote('')
     },
+    onError: () => {
+      // Some of the files may have gone through before the one that failed.
+      invalidateMeasures()
+      toast(t('app.upload_failed'), { icon: 'warn' })
+    },
   })
 
   // Delete photo mutation
   const deletePhotoMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await api.DELETE('/api/v1/weight/photos/{photo_id}', { params: { path: { photo_id: id } } })
-    },
-    onSuccess: () => {
-      invalidateMeasures()
-      toast(t('app.saved'))
-    },
+    mutationFn: (id: number) => ok(api.DELETE('/api/v1/weight/photos/{photo_id}', { params: { path: { photo_id: id } } })),
+    onSuccess: deleted,
+    onError: deleteFailed,
   })
 
   // Upload BIA scan file
@@ -200,14 +206,20 @@ export default function WeightMeasuresScreen() {
         body: fd,
         credentials: 'same-origin',
       })
-      if (!res.ok) throw new Error('Upload failed')
-      const json = await res.json()
-      setPreviewFileKey(json.file_key)
-      setPreviewDate(json.date || todayStr)
-      setPreviewDevice(json.device || 'InBody 770')
-      setPreviewMetrics(json.metrics || [])
-    } catch (err: unknown) {
-      toast(err instanceof Error ? err.message : 'Error')
+      if (!res.ok) throw new RequestError(res.status)
+      const json = (await res.json()) as BodyScanUploadResponse
+      const scan = json.scan
+      if (!json.ok || scan === undefined || scan === null) {
+        toast(t(json.reason === 'not_configured' ? 'app.weight.scan_no_llm' : 'body.upload.error'), { icon: 'warn' })
+        return
+      }
+      setPreviewFileKey(scan.file_key)
+      setPreviewRawId(scan.raw_payload_id)
+      setPreviewDate(scan.date)
+      setPreviewDevice(scan.device ?? '')
+      setPreviewMetrics(toScanPreview(scan.metrics ?? []))
+    } catch {
+      toast(t('body.upload.error'), { icon: 'warn' })
     } finally {
       setIsScanning(false)
     }
@@ -216,44 +228,61 @@ export default function WeightMeasuresScreen() {
   // Confirm BIA scan
   const confirmScanMutation = useConflictMutation({
     mutationFn: async ({ override }) => {
-      await api.POST('/api/v1/weight/body-scans/confirm', {
-        body: {
-          file_key: previewFileKey,
-          date: previewDate,
-          device: previewDevice,
-          metrics: previewMetrics,
-          override,
-        },
-      })
+      const metrics = readScanMetrics(previewMetrics)
+      if (metrics === null) throw new InvalidError(t('app.weight.scan_value_invalid'))
+      await ok(
+        api.POST('/api/v1/weight/body-scans/confirm', {
+          body: {
+            file_key: previewFileKey,
+            raw_payload_id: previewRawId,
+            date: previewDate,
+            device: previewDevice,
+            metrics,
+            override,
+          },
+        }),
+      )
     },
+    fallbackErrorMessage: t('app.save_failed'),
     onSuccess: () => {
       invalidateMeasures()
       toast(t('app.weight.scan_saved'))
       setScanFile(null)
       setPreviewFileKey('')
+      setPreviewRawId(null)
       setPreviewMetrics([])
     },
-    onError: (err) => toast(err.message),
+    onError: (err) => toast(failText(err, t('app.save_failed')), { icon: 'warn' }),
   })
 
   // Delete BIA scan
   const deleteScanMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await api.DELETE('/api/v1/weight/body-scans/{scan_id}', { params: { path: { scan_id: id } } })
-    },
-    onSuccess: () => {
-      invalidateMeasures()
-      toast(t('app.saved'))
-    },
+    mutationFn: (id: number) => ok(api.DELETE('/api/v1/weight/body-scans/{scan_id}', { params: { path: { scan_id: id } } })),
+    onSuccess: deleted,
+    onError: deleteFailed,
   })
 
-  const drop = (view?.week_delta_kg ?? 0) <= 0
-  const latestWeight = view?.latest_kg ?? 0
-  const measurements = view?.measurements ?? []
-  const noiseMarkers = view?.noise_markers ?? []
-  const photos = view?.photos ?? []
-  const scans = view?.scans ?? []
-  const headlineMetrics = view?.headline_metrics ?? []
+  const weekDelta = view.week_delta_kg ?? null
+  const drop = weekDelta !== null && weekDelta <= 0
+  const latestWeight = view.latest_kg ?? null
+  const average7 = view.average7 ?? null
+  const bodyFat = view.body_fat_pct ?? null
+  const measurements = view.measurements ?? []
+  const noiseMarkers = view.noise_markers ?? []
+  const photos = view.photos ?? []
+  const scans = view.scans ?? []
+  const headlineMetrics = view.headline_metrics ?? []
+  // The last tape reading is what the empty fields hint at — nothing when there is none.
+  const lastTape = measurements.find((m) => m.source !== 'scan')
+  const hint = (value: number | null | undefined) => (value == null ? '' : formatCompact(value, lang))
+  const underHero = [
+    average7 === null ? null : t('app.weight.avg7', { avg: formatNumber(average7, lang) }),
+    bodyFat === null
+      ? null
+      : view.body_fat_source == null
+        ? t('app.weight.fat', { fat: formatPercent(bodyFat, lang, 1) })
+        : t('app.weight.fat_from', { fat: formatPercent(bodyFat, lang, 1), source: view.body_fat_source }),
+  ].filter((line): line is string => line !== null)
 
   return (
     <>
@@ -261,19 +290,16 @@ export default function WeightMeasuresScreen() {
       <Headline title={t('app.title.measures')}>
         <div className="fig-hero">
           <div className="big" data-fig="weight">
-            <Odometer value={formatNumber(latestWeight, lang)} />
+            {latestWeight === null ? '—' : <Odometer value={formatNumber(latestWeight, lang)} />}
             <span className="unit">{t('app.unit.kg')}</span>
           </div>
           <div className="side">
-            <Delta tone={drop ? 'good' : undefined} icon={drop ? 'down' : 'up'}>
-              {t('app.weight.week_delta', { value: formatNumber(Math.abs(view?.week_delta_kg ?? 0), lang) })}
-            </Delta>
-            <span className="sub">
-              {t('app.weight.avg_line', {
-                avg: formatNumber(view?.average7 ?? 0, lang),
-                fat: formatNumber(view?.body_fat_pct ?? 0, lang),
-              })}
-            </span>
+            {weekDelta !== null && (
+              <Delta tone={drop ? 'good' : undefined} icon={drop ? 'down' : 'up'}>
+                {t('app.weight.week_delta', { value: formatNumber(Math.abs(weekDelta), lang) })}
+              </Delta>
+            )}
+            {underHero.length > 0 && <span className="sub">{underHero.join(' · ')}</span>}
           </div>
         </div>
       </Headline>
@@ -295,7 +321,7 @@ export default function WeightMeasuresScreen() {
                 ]}
               />
 
-              <div style={{ marginTop: '16px' }}>
+              <div className="mt-s4">
                 {activePane === 'measure' && (
                   <form onSubmit={(e) => { e.preventDefault(); measureMutation.mutate() }}>
                     <div className="fld">
@@ -308,7 +334,7 @@ export default function WeightMeasuresScreen() {
                         <input
                           type="number"
                           step="0.1"
-                          placeholder={formatNumber(38, lang)}
+                          placeholder={hint(lastTape?.neck_cm)}
                           className="input"
                           value={neckCm}
                           onChange={(e) => setNeckCm(e.target.value)}
@@ -319,20 +345,20 @@ export default function WeightMeasuresScreen() {
                         <input
                           type="number"
                           step="0.1"
-                          placeholder={formatNumber(85, lang)}
+                          placeholder={hint(lastTape?.waist_cm)}
                           className="input"
                           value={waistCm}
                           onChange={(e) => setWaistCm(e.target.value)}
                         />
                       </div>
                     </div>
-                    {view?.sex === 'female' && (
+                    {view.sex === 'female' && (
                       <div className="fld">
                         <label>{t('app.weight.hips_cm')}</label>
                         <input
                           type="number"
                           step="0.1"
-                          placeholder={formatNumber(95, lang)}
+                          placeholder={hint(lastTape?.hips_cm)}
                           className="input"
                           value={hipsCm}
                           onChange={(e) => setHipsCm(e.target.value)}
@@ -349,11 +375,9 @@ export default function WeightMeasuresScreen() {
                         onChange={(e) => setMNote(e.target.value)}
                       />
                     </div>
-                    <p className="sub" style={{ margin: '8px 0 16px' }}>
+                    <p className="sub navy-line">
                       {t('app.weight.navy_immediate')}:{' '}
-                      <span className="navyfig">
-                        {liveNavyFat !== null ? `${formatNumber(liveNavyFat, lang)} %` : '—'}
-                      </span>
+                      <span className="navyfig">{liveNavyFat !== null ? formatPercent(liveNavyFat, lang, 1) : '—'}</span>
                     </p>
                     <ConflictAlert
                       violations={measureMutation.violations}
@@ -449,7 +473,7 @@ export default function WeightMeasuresScreen() {
                   <div>
                     {!previewFileKey ? (
                       <div>
-                        <p className="sub" style={{ margin: '0 0 12px' }}>{t('app.weight.body_comp_sub')}</p>
+                        <p className="sub scan-lead">{t('app.weight.body_comp_sub')}</p>
                         <div className="fld">
                           <input
                             type="file"
@@ -471,7 +495,7 @@ export default function WeightMeasuresScreen() {
                       </div>
                     ) : (
                       <form onSubmit={(e) => { e.preventDefault(); confirmScanMutation.mutate() }}>
-                        <h4 style={{ margin: '0 0 8px' }}>{t('app.weight.verify_metrics')}</h4>
+                        <h4 className="pv-title">{t('app.weight.verify_metrics')}</h4>
                         <div className="g2">
                           <div className="fld">
                             <label>{t('common.date')}</label>
@@ -516,11 +540,12 @@ export default function WeightMeasuresScreen() {
                               />
                               <input
                                 className="input sm num"
+                                inputMode="decimal"
                                 value={m.value}
                                 onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0
+                                  const value = e.target.value
                                   setPreviewMetrics((prev) =>
-                                    prev.map((item, i) => (i === idx ? { ...item, value: val } : item))
+                                    prev.map((item, i) => (i === idx ? { ...item, value } : item))
                                   )
                                 }}
                               />
@@ -550,14 +575,14 @@ export default function WeightMeasuresScreen() {
                           onFix={() => confirmScanMutation.clearConflict()}
                           onSaveAnyway={() => void confirmScanMutation.retryWithOverride()}
                         />
-                        <div className="form-acts" style={{ marginTop: '12px' }}>
+                        <div className="form-acts">
                           <button
                             type="button"
                             className="ghost"
                             onClick={() => {
                               setPreviewMetrics([
                                 ...previewMetrics,
-                                { category: 'custom', label: t('app.weight.new_metric'), value: 0, unit: '' },
+                                { category: 'custom', label: t('app.weight.new_metric'), value: '', unit: '' },
                               ])
                             }}
                           >
@@ -585,7 +610,7 @@ export default function WeightMeasuresScreen() {
                 <div className="row"><span className="m">{t('app.empty')}</span></div>
               ) : (
                 noiseMarkers.map((n) => (
-                  <div key={n.id} className="row" style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
+                  <div key={n.id} className="row r-kv">
                     <div>
                       <div className="t num">
                         {shortDate(parseIsoDate(n.start_date), lang)}{' '}
@@ -615,19 +640,19 @@ export default function WeightMeasuresScreen() {
           <Section title={t('app.weight.progress_gallery')}>
             <div className="ribbon">
               {photos.length === 0 ? (
-                <span className="m" style={{ padding: '8px 0' }}>{t('app.empty')}</span>
+                <span className="m ribbon-empty">{t('app.empty')}</span>
               ) : (
                 photos.map((ph) => (
                   <div key={ph.id} className="ph-tile">
                     <div className="im">
-                      <img src={`/static/uploads/${ph.file_key}`} alt={ph.note || 'Photo'} />
+                      <img src={ph.url} alt={ph.note ?? t('app.weight.tab_photo')} />
                     </div>
                     <span className="m num">{shortDate(parseIsoDate(ph.date), lang)}</span>
                     <button
                       type="button"
                       className="ibtn danger"
                       onClick={() => deletePhotoMutation.mutate(ph.id)}
-                      style={{ fontSize: '11px' }}
+                      aria-label={t('app.delete')}
                     >
                       <Icon name="trash" />
                     </button>
@@ -647,7 +672,7 @@ export default function WeightMeasuresScreen() {
                 {headlineMetrics.map((m, idx) => (
                   <div key={idx} className="f">
                     <div className="f-v">
-                      {typeof m.value === 'number' ? formatNumber(m.value, lang) : m.value}
+                      {formatCompact(m.value, lang, 3)}
                       {m.unit && <span className="u">{m.unit}</span>}
                     </div>
                     <div className="f-l">{m.label}</div>
@@ -664,7 +689,7 @@ export default function WeightMeasuresScreen() {
                 <div className="row"><span className="m">{t('app.empty')}</span></div>
               ) : (
                 measurements.map((m) => (
-                  <div key={m.id} className="row t-meas">
+                  <div key={`${m.source}:${m.id}`} className="row t-meas">
                     <div>
                       <div className="t">{longDate(parseIsoDate(m.date), lang)}</div>
                       <div className="m hd">
@@ -677,19 +702,17 @@ export default function WeightMeasuresScreen() {
                     </div>
                     <div className="v hs">{m.neck_cm != null ? formatNumber(m.neck_cm, lang) : '—'}</div>
                     <div className="v hs">{m.waist_cm != null ? formatNumber(m.waist_cm, lang) : '—'}</div>
-                    <div className="v">
-                      {m.body_fat_pct != null ? formatNumber(m.body_fat_pct, lang) : '—'}
-                      <span className="u">%</span>
-                    </div>
+                    <div className="v">{m.body_fat_pct != null ? formatPercent(m.body_fat_pct, lang, 1) : '—'}</div>
                     <div className="v hs">
                       {m.lbm_kg != null ? formatNumber(m.lbm_kg, lang) : '—'}
-                      <span className="u">{t('app.unit.kg')}</span>
+                      {m.lbm_kg != null && <span className="u">{t('app.unit.kg')}</span>}
                     </div>
                     <div className="acts">
+                      {/* A row that came from a scan is the scan: it is deleted as one, by its own id. */}
                       <button
                         type="button"
                         className="ibtn danger"
-                        onClick={() => deleteMeasureMutation.mutate(m.id)}
+                        onClick={() => (m.source === 'scan' ? deleteScanMutation : deleteMeasureMutation).mutate(m.id)}
                         aria-label={t('app.delete')}
                       >
                         <Icon name="trash" />
@@ -707,48 +730,34 @@ export default function WeightMeasuresScreen() {
               {scans.length === 0 ? (
                 <div className="row"><span className="m">{t('app.empty')}</span></div>
               ) : (
-                scans.map((s) => {
-                  const isOpen = openScanId === s.id
-                  return (
-                    <div key={s.id} className={cx('acc', isOpen && 'open')}>
-                      <div
-                        className="row acc-h r-scan"
-                        onClick={() => setOpenScanId(isOpen ? null : s.id)}
-                        role="button"
-                        tabIndex={0}
-                      >
-                        <Icon name={isOpen ? 'chevD' : 'chevR'} />
-                        <div>
-                          <div className="t">{longDate(parseIsoDate(s.date), lang)}</div>
-                          <div className="m">{s.device} · {t('app.weight.metrics_count', { count: s.metrics_count })}</div>
-                        </div>
-                        <span className="acts" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            className="ibtn danger"
-                            onClick={() => deleteScanMutation.mutate(s.id)}
-                            aria-label={t('app.delete')}
-                          >
-                            <Icon name="trash" />
-                          </button>
-                        </span>
+                scans.map((s) => (
+                  <Disclosure
+                    key={s.id}
+                    open={openScanId === s.id}
+                    onToggle={() => setOpenScanId(openScanId === s.id ? null : s.id)}
+                    title={longDate(parseIsoDate(s.date), lang)}
+                    sub={[s.device, metricsCount(s.metrics_count)].filter(Boolean).join(' · ')}
+                    actions={
+                      <button type="button" className="ibtn danger" onClick={() => deleteScanMutation.mutate(s.id)} aria-label={t('app.delete')}>
+                        <Icon name="trash" />
+                      </button>
+                    }
+                  >
+                    <div className="disc-body">
+                      <div className="rows">
+                        {(s.metrics ?? []).map((met, mIdx) => (
+                          <div key={mIdx} className="row r-kv tight">
+                            <span className="t plain">{met.label}</span>
+                            <span className="v">
+                              {formatCompact(met.value, lang, 3)}
+                              {met.unit && <span className="u">{met.unit}</span>}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                      {isOpen && (
-                        <div className="acc-b">
-                          {s.metrics.map((met, mIdx) => (
-                            <div key={mIdx} className="row kv" style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
-                              <span>{met.label}</span>
-                              <span className="v">
-                                {typeof met.value === 'number' ? formatNumber(met.value, lang) : met.value}{' '}
-                                {met.unit && <span className="u">{met.unit}</span>}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
-                  )
-                })
+                  </Disclosure>
+                ))
               )}
             </div>
           </Section>

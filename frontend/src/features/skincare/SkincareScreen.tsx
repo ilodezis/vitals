@@ -1,15 +1,17 @@
 import { useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, ok, failText } from '@/api/client'
 import { ConflictAlert } from '@/components/controls/ConflictAlert'
+import { Disclosure } from '@/components/controls/Disclosure'
 import { Badge } from '@/components/controls/Marks'
 import { PrimaryButton, type PrimaryButtonHandle } from '@/components/controls/PrimaryButton'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
-import { parseIsoDate, shortDate } from '@/lib/dates'
+import { longDate, parseIsoDate, shortDate } from '@/lib/dates'
 import { useConflictMutation } from '@/lib/useConflictMutation'
+import { buildObservationScores } from './observationBody'
 import type { SkincareProductItem, SkincareRuleItem } from './types'
 import { useSkincareView } from './useSkincareView'
 import './skincare.css'
@@ -25,13 +27,15 @@ const DOW_KEYS: [number, string][] = [
 ]
 
 export default function SkincareScreen() {
-  const { t, lang } = useT()
+  const { t, tOr, lang } = useT()
   const view = useSkincareView()
   const queryClient = useQueryClient()
 
   const [formOpen, setFormOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<SkincareProductItem | null>(null)
-  const [selectedDay, setSelectedDay] = useState(() => new Date().getDay())
+  // "Today" is the server's date (the user's timezone), not the browser's.
+  const todayDow = parseIsoDate(view.today).getDay()
+  const [selectedDay, setSelectedDay] = useState(todayDow)
 
   // Product form states
   const [name, setName] = useState('')
@@ -57,8 +61,8 @@ export default function SkincareScreen() {
 
   // Observation dialog states
   const [obsOpen, setObsOpen] = useState(false)
-  const [obsInf, setObsInf] = useState(1)
-  const [obsPih, setObsPih] = useState(1)
+  const [obsInf, setObsInf] = useState('')
+  const [obsPih, setObsPih] = useState('')
   const [obsZone, setObsZone] = useState('chin')
   const [obsNote, setObsNote] = useState('')
 
@@ -74,7 +78,6 @@ export default function SkincareScreen() {
     })
   }
 
-  const todayDow = useMemo(() => new Date().getDay(), [])
   const activeProducts = useMemo(
     () => view.products.filter((p) => p.active || p.on),
     [view.products]
@@ -119,17 +122,17 @@ export default function SkincareScreen() {
 
   const handleSaveProduct = async (): Promise<boolean> => {
     if (!name.trim()) {
-      toast(t('common.required_field') || 'Name is required', { icon: 'warn' })
+      toast(t('app.name_required'), { icon: 'warn' })
       return false
     }
     setIsSubmitting(true)
     try {
       if (editingProduct) {
-        await api.PATCH('/api/v1/skincare/products/{product_id}', {
+        await ok(api.PATCH('/api/v1/skincare/products/{product_id}', {
           params: { path: { product_id: editingProduct.id } },
           body: {
             name: name.trim(),
-            type: type.trim() || 'General',
+            type: type.trim() || t('app.skincare.type_default'),
             activeIngredient: activeIngredient.trim() || null,
             defaultTime,
             scheduleDays,
@@ -137,12 +140,12 @@ export default function SkincareScreen() {
             usageInstructions: usageInstructions.trim() || null,
             active,
           },
-        })
+        }))
       } else {
-        await api.POST('/api/v1/skincare/products', {
+        await ok(api.POST('/api/v1/skincare/products', {
           body: {
             name: name.trim(),
-            type: type.trim() || 'General',
+            type: type.trim() || t('app.skincare.type_default'),
             activeIngredient: activeIngredient.trim() || null,
             defaultTime,
             scheduleDays,
@@ -150,14 +153,14 @@ export default function SkincareScreen() {
             usageInstructions: usageInstructions.trim() || null,
             active,
           },
-        })
+        }))
       }
       toast(t('common.saved'))
       setFormOpen(false)
       refresh()
       return true
-    } catch (err: any) {
-      toast(err.message || 'Error saving product', { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     } finally {
       setIsSubmitting(false)
@@ -166,87 +169,93 @@ export default function SkincareScreen() {
 
   const handleDeleteProduct = async (id: number) => {
     try {
-      await api.DELETE('/api/v1/skincare/products/{product_id}', {
+      await ok(api.DELETE('/api/v1/skincare/products/{product_id}', {
         params: { path: { product_id: id } },
-      })
+      }))
       toast(t('common.deleted'))
       refresh()
-    } catch (err: any) {
-      toast(err.message || 'Error deleting product', { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.delete_failed')), { icon: 'warn' })
     }
   }
 
   const logConflict = useConflictMutation({
     mutationFn: async ({ override }) => {
-      const res = await api.POST('/api/v1/skincare/logs', {
-        body: {
-          date: view.today,
-          retinoid,
-          azelaic,
-          peel,
-          niacinamideSpf,
-          moisturizer,
-          vitaminC,
-          benzoylPeroxide: false,
-          note: logNote.trim() || null,
-          override,
-        },
-      })
-      if (!res.data) throw new Error('Error saving log')
+      const data = await ok(
+        api.POST('/api/v1/skincare/logs', {
+          body: {
+            date: view.today,
+            retinoid,
+            azelaic,
+            peel,
+            niacinamideSpf,
+            moisturizer,
+            vitaminC,
+            benzoylPeroxide: false,
+            note: logNote.trim() || null,
+            override,
+          },
+        }),
+      )
       toast(t('app.skincare.toast_saved'))
       setLogOpen(false)
       setLogNote('')
       refresh()
-      return res.data
+      return data
     },
+    fallbackErrorMessage: t('app.save_failed'),
     onError: (err) => {
-      toast(err.message || 'Error saving log', { icon: 'warn' })
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     },
   })
 
+  const obsScores = buildObservationScores({ inflammation: obsInf, pih: obsPih })
+
   const handleSaveObservation = async (): Promise<boolean> => {
+    if (obsScores === null) return false
     try {
-      await api.POST('/api/v1/skincare/observations', {
+      await ok(api.POST('/api/v1/skincare/observations', {
         body: {
           date: view.today,
-          inflammation: obsInf,
-          pih: obsPih,
+          ...obsScores,
           zone: obsZone,
           note: obsNote.trim() || null,
         },
-      })
+      }))
       toast(t('app.skincare.toast_obs_saved'))
       setObsOpen(false)
       setObsNote('')
       refresh()
       return true
-    } catch (err: any) {
-      toast(err.message || 'Error saving observation', { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     }
   }
 
   const handleDeleteLog = async (id: number) => {
     try {
-      await api.DELETE('/api/v1/skincare/logs/{log_id}', {
+      await ok(api.DELETE('/api/v1/skincare/logs/{log_id}', {
         params: { path: { log_id: id } },
-      })
+      }))
       toast(t('common.deleted'))
       refresh()
-    } catch (err: any) {
-      toast(err.message || 'Error deleting log', { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.delete_failed')), { icon: 'warn' })
     }
   }
 
   const handleDeleteObservation = async (id: number) => {
     try {
-      await (api as any).DELETE('/api/v1/skincare/observations/{observation_id}', {
-        params: { path: { observation_id: id } },
-      })
+      await ok(
+        api.DELETE('/api/v1/skincare/observations/{obs_id}', {
+          params: { path: { obs_id: id } },
+        }),
+      )
       toast(t('common.deleted'))
       refresh()
-    } catch (err: any) {
-      toast(err.message || 'Error deleting observation', { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.delete_failed')), { icon: 'warn' })
     }
   }
 
@@ -614,7 +623,7 @@ export default function SkincareScreen() {
                   >
                     <Icon name={r.hard ? 'block' : 'warn'} />
                     <div>
-                      <b>{t(`app.rule_cat.${r.kind}`) || r.kind}</b>
+                      <b>{tOr(`app.rule_cat.${r.kind}`, r.kind)}</b>
                       <br />
                       {r.msg}
                     </div>
@@ -629,29 +638,22 @@ export default function SkincareScreen() {
             <div className="sk-cat-list" style={{ marginTop: 'var(--s3)' }}>
               {Array.from(groupedRules.entries()).map(([cat, rules]) => {
                 const isOpen = openCats.has(cat)
-                const catLabel = t(`app.rule_cat.${cat}`) || cat
+                const catLabel = tOr(`app.rule_cat.${cat}`, cat)
                 return (
-                  <div key={cat} className="sk-cat-block">
-                    <button type="button" className="sk-cat-h" onClick={() => toggleCat(cat)}>
-                      <span className="t">{catLabel}</span>
-                      <span className="meta num">{rules.length}</span>
-                      <Icon name="chevD" className={isOpen ? 'rot-180' : ''} />
-                    </button>
-                    {isOpen && (
-                      <div className="rows">
-                        {rules.map((r) => (
-                          <div key={r.id} className="row sk-rule-row">
-                            <div className="sk-rule-main">
-                              <div className="t">{r.msg}</div>
-                              <div className="m">
-                                {r.code || (r.hard ? t('app.severity.block') : t('app.severity.warn'))}
-                              </div>
+                  <Disclosure key={cat} open={isOpen} onToggle={() => toggleCat(cat)} title={catLabel} count={rules.length}>
+                    <div className="rows">
+                      {rules.map((r) => (
+                        <div key={r.id} className="row sk-rule-row">
+                          <div className="sk-rule-main">
+                            <div className="t">{r.msg}</div>
+                            <div className="m">
+                              {r.code || (r.hard ? t('app.severity.block') : t('app.severity.warn'))}
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Disclosure>
                 )
               })}
             </div>
@@ -686,7 +688,7 @@ export default function SkincareScreen() {
             {logOpen && (
               <div className="panel fpanel mb-s4">
                 <div className="panel-h">
-                  <h3>{t('app.skincare.applied_today', { date: view.today })}</h3>
+                  <h3>{t('app.skincare.applied_today', { date: longDate(parseIsoDate(view.today), lang) })}</h3>
                   <button type="button" className="ibtn" onClick={() => setLogOpen(false)}>
                     <Icon name="x" />
                   </button>
@@ -816,7 +818,7 @@ export default function SkincareScreen() {
             {obsOpen && (
               <div className="panel fpanel mb-s4">
                 <div className="panel-h">
-                  <h3>{t('app.skincare.state_score_today', { date: view.today })}</h3>
+                  <h3>{t('app.skincare.state_score_today', { date: longDate(parseIsoDate(view.today), lang) })}</h3>
                   <button type="button" className="ibtn" onClick={() => setObsOpen(false)}>
                     <Icon name="x" />
                   </button>
@@ -845,7 +847,7 @@ export default function SkincareScreen() {
                         min={0}
                         max={5}
                         value={obsInf}
-                        onChange={(e) => setObsInf(parseInt(e.target.value) || 0)}
+                        onChange={(e) => setObsInf(e.target.value)}
                       />
                     </label>
                     <label className="field">
@@ -856,7 +858,7 @@ export default function SkincareScreen() {
                         min={0}
                         max={5}
                         value={obsPih}
-                        onChange={(e) => setObsPih(parseInt(e.target.value) || 0)}
+                        onChange={(e) => setObsPih(e.target.value)}
                       />
                     </label>
                   </div>
@@ -867,7 +869,7 @@ export default function SkincareScreen() {
                     onChange={(e) => setObsNote(e.target.value)}
                   />
                   <div className="form-acts sk-form-acts">
-                    <PrimaryButton className="btn grow" onPress={handleSaveObservation}>
+                    <PrimaryButton className="btn grow" disabled={obsScores === null} onPress={handleSaveObservation}>
                       {t('common.save')}
                     </PrimaryButton>
                     <button
@@ -883,10 +885,9 @@ export default function SkincareScreen() {
             )}
             <div className="rows">
               {view.observations.map((o) => {
-                const inf = o.inflammation ?? o.inf ?? 0
-                const pih = o.pih ?? 0
-                const zoneKey = o.zone || 'face'
-                const zoneLabel = t(`app.skincare.zone.${zoneKey}`) || o.zone || t('app.skincare.zone.face')
+                const inf = o.inflammation ?? o.inf ?? '—'
+                const pih = o.pih ?? '—'
+                const zoneLabel = o.zone ? tOr(`app.skincare.zone.${o.zone}`, o.zone) : '—'
                 return (
                   <div
                     key={o.id}

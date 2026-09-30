@@ -20,6 +20,7 @@ have been written from.
 """
 from __future__ import annotations
 
+import math
 import statistics
 from datetime import date as date_type, datetime, timedelta
 from typing import Any, Optional, Sequence
@@ -58,6 +59,16 @@ def _num(value: Any) -> str:
     except (TypeError, ValueError):
         return str(value)
     return decimal(f"{round(value, 1):g}")
+
+
+def _whole(value: Any) -> str:
+    """``1316.5 → "1 317"`` — a count said the way its tile shows it: halves round
+    up and thousands are grouped with a narrow no-break space."""
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    return f"{math.floor(value + 0.5):,}".replace(",", " ")
 
 
 def _signed(value: Any) -> str:
@@ -530,7 +541,7 @@ def _fallback_narrative(ctx: dict, calories: Optional[float]) -> str:
         if garmin.get(key) is not None:
             parts.append(t("today.said_" + key, value=_num(garmin[key])))
     if calories:
-        parts.append(t("today.said_calories", value=_num(calories)))
+        parts.append(t("today.said_calories", value=_whole(calories)))
     return ", ".join(parts) + "." if parts else t("today.said_nothing")
 
 

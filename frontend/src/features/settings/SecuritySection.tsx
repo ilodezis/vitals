@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, failText, ok } from '@/api/client'
 import { PrimaryButton } from '@/components/controls/PrimaryButton'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
@@ -41,23 +41,20 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
     }
 
     try {
-      const res = await api.POST('/api/v1/settings/password', {
+      await ok(api.POST('/api/v1/settings/password', {
         body: {
           old_password: oldPassword,
           new_password: newPassword,
           new_password_confirm: confirmPassword,
         },
-      })
-      if (res.data) {
-        toast(t('settings.saved.password'))
-        setOldPassword('')
-        setNewPassword('')
-        setConfirmPassword('')
-        return true
-      }
-      return false
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+      }))
+      toast(t('settings.saved.password'))
+      setOldPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      return true
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     }
   }
@@ -65,14 +62,12 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
   // Start 2FA setup
   const handleStartTfa = async () => {
     try {
-      const res = await api.POST('/api/v1/settings/2fa/start')
-      if (res.data) {
-        setSetupData(res.data)
-        setTfaMode('setup')
-        setCode('')
-      }
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+      const data = await ok(api.POST('/api/v1/settings/2fa/start'))
+      setSetupData(data)
+      setTfaMode('setup')
+      setCode('')
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     }
   }
 
@@ -80,18 +75,16 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
   const handleConfirmTfa = async () => {
     if (!code.trim()) return
     try {
-      const res = await api.POST('/api/v1/settings/2fa/enable', {
+      await ok(api.POST('/api/v1/settings/2fa/enable', {
         body: { code: code.trim() },
-      })
-      if (res.data) {
-        toast(t('settings.saved.twofa'))
-        setTfaMode('on')
-        setSetupData(null)
-        setCode('')
-        void queryClient.invalidateQueries({ queryKey: ['settings'] })
-      }
-    } catch (err: any) {
-      toast(err.message || t('settings.error.twofa_bad_code'), { icon: 'warn' })
+      }))
+      toast(t('settings.saved.twofa'))
+      setTfaMode('on')
+      setSetupData(null)
+      setCode('')
+      void queryClient.invalidateQueries({ queryKey: ['settings'] })
+    } catch (err) {
+      toast(failText(err, t('settings.error.twofa_bad_code')), { icon: 'warn' })
     }
   }
 
@@ -99,17 +92,15 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
   const handleDisableTfa = async () => {
     if (!disableCode.trim()) return
     try {
-      const res = await api.POST('/api/v1/settings/2fa/disable', {
+      await ok(api.POST('/api/v1/settings/2fa/disable', {
         body: { code: disableCode.trim() },
-      })
-      if (res.data) {
-        toast(t('settings.saved.twofa_off'))
-        setTfaMode('off')
-        setDisableCode('')
-        void queryClient.invalidateQueries({ queryKey: ['settings'] })
-      }
-    } catch (err: any) {
-      toast(err.message || t('settings.error.twofa_bad_code'), { icon: 'warn' })
+      }))
+      toast(t('settings.saved.twofa_off'))
+      setTfaMode('off')
+      setDisableCode('')
+      void queryClient.invalidateQueries({ queryKey: ['settings'] })
+    } catch (err) {
+      toast(failText(err, t('settings.error.twofa_bad_code')), { icon: 'warn' })
     }
   }
 
@@ -182,8 +173,7 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
                   </div>
                   <button
                     type="button"
-                    className="btn ghost"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                    className="ghost"
                     onClick={handleStartTfa}
                   >
                     <Icon name="lock" />
@@ -194,14 +184,14 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
 
               {/* SETUP */}
               {tfaMode === 'setup' && setupData && (
-                <div style={{ display: 'grid', gap: '16px' }}>
+                <div className="set-stack4">
                   <div className="tfa-setup">
                     <div
                       className="tfa-qr"
                       dangerouslySetInnerHTML={{ __html: setupData.qr_svg }}
                     />
-                    <div className="tfa-key" style={{ flex: 1 }}>
-                      <span className="flabel" style={{ fontSize: 'var(--t-micro)', color: 'var(--muted)' }}>
+                    <div className="tfa-key">
+                      <span className="flabel micro">
                         {t('settings.twofa_secret_key_hint')}
                       </span>
                       <div className="tfa-key-display">
@@ -210,8 +200,7 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
                       <div className="tfa-acts">
                         <button
                           type="button"
-                          className="btn ghost"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: 'var(--t-caption)' }}
+                          className="ghost"
                           onClick={handleCopyKey}
                         >
                           <Icon name="copy" />
@@ -220,8 +209,7 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
                         {setupData.otpauth_uri && (
                           <a
                             href={setupData.otpauth_uri}
-                            className="btn ghost"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: 'var(--t-caption)' }}
+                            className="ghost"
                           >
                             <Icon name="link" />
                             <span>{t('settings.twofa_open_app')}</span>
@@ -248,8 +236,7 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
                   <div className="tfa-acts">
                     <button
                       type="button"
-                      className="btn ghost"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      className="ghost"
                       onClick={handleConfirmTfa}
                     >
                       <Icon name="check" />
@@ -257,7 +244,7 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
                     </button>
                     <button
                       type="button"
-                      className="btn ghost"
+                      className="ghost"
                       onClick={() => {
                         setTfaMode('off')
                         setSetupData(null)
@@ -278,7 +265,7 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
                   </div>
                   <button
                     type="button"
-                    className="btn ghost danger"
+                    className="ghost danger"
                     onClick={() => {
                       setTfaMode('disable')
                       setDisableCode('')
@@ -291,7 +278,7 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
 
               {/* DISABLE */}
               {tfaMode === 'disable' && (
-                <div style={{ display: 'grid', gap: '12px' }}>
+                <div className="set-stack3">
                   <label className="field">
                     <span className="flabel">{t('settings.twofa_disable_code_hint')}</span>
                     <input
@@ -309,14 +296,14 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
                   <div className="tfa-acts">
                     <button
                       type="button"
-                      className="btn ghost danger"
+                      className="ghost danger"
                       onClick={handleDisableTfa}
                     >
                       {t('settings.twofa_disable')}
                     </button>
                     <button
                       type="button"
-                      className="btn ghost"
+                      className="ghost"
                       onClick={() => setTfaMode('on')}
                     >
                       {t('common.cancel')}

@@ -28,3 +28,4 @@
   .tl-day { grid-template-columns: 112px minmax(0, 1fr); gap: 24px; padding: 12px 0 4px; }
   .tl-day .d { padding-top: 8px; }
 }
+.sig-desc { margin: calc(-1 * var(--s1)) 0 var(--s3); max-width: 64ch; }

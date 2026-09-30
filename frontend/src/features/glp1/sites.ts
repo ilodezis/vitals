@@ -36,6 +36,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 export function siteUsage(injections: readonly Pick<Injection, 'site' | 'dateIso'>[], today: Date, parse: (iso: string) => Date): SiteUsage[] {
   const last = new Map<SiteId, Date>()
   for (const inj of injections) {
+    if (inj.site === null) continue
     const d = parse(inj.dateIso)
     const seen = last.get(inj.site)
     if (seen === undefined || d > seen) last.set(inj.site, d)

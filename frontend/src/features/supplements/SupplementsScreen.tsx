@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, failText, InvalidError, ok } from '@/api/client'
 import { ConflictAlert } from '@/components/controls/ConflictAlert'
+import { Disclosure } from '@/components/controls/Disclosure'
 import { Badge } from '@/components/controls/Marks'
 import { PrimaryButton, type PrimaryButtonHandle } from '@/components/controls/PrimaryButton'
 import { toast } from '@/components/controls/toast'
@@ -40,10 +41,10 @@ export default function SupplementsScreen() {
   const saveConflict = useConflictMutation({
     mutationFn: async ({ override }) => {
       if (!name.trim()) {
-        throw new Error(t('common.required_field'))
+        throw new InvalidError(t('app.name_required'))
       }
       if (editingItem) {
-        await api.PATCH('/api/v1/supplements/{supplement_id}', {
+        await ok(api.PATCH('/api/v1/supplements/{supplement_id}', {
           params: { path: { supplement_id: editingItem.id } },
           body: {
             name: name.trim(),
@@ -55,9 +56,9 @@ export default function SupplementsScreen() {
             note: note.trim() || null,
             override,
           },
-        })
+        }))
       } else {
-        await api.POST('/api/v1/supplements', {
+        await ok(api.POST('/api/v1/supplements', {
           body: {
             name: name.trim(),
             dose: dose.trim() || null,
@@ -68,28 +69,30 @@ export default function SupplementsScreen() {
             note: note.trim() || null,
             override,
           },
-        })
+        }))
       }
       toast(t('common.saved'))
       setFormOpen(false)
       refresh()
     },
+    fallbackErrorMessage: t('app.save_failed'),
     onError: (err) => {
-      toast(err.message, { icon: 'warn' })
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     },
   })
 
   const toggleConflict = useConflictMutation<void, { item: SupplementItem }>({
     mutationFn: async ({ item, override }) => {
-      await api.POST('/api/v1/supplements/{supplement_id}/toggle', {
+      await ok(api.POST('/api/v1/supplements/{supplement_id}/toggle', {
         params: { path: { supplement_id: item.id } },
         body: { active: !item.active, override },
-      })
+      }))
       toast(item.active ? t('app.supplements.toast_archived') : t('app.supplements.toast_restored'))
       refresh()
     },
+    fallbackErrorMessage: t('app.action_failed'),
     onError: (err) => {
-      toast(err.message, { icon: 'warn' })
+      toast(failText(err, t('app.action_failed')), { icon: 'warn' })
     },
   })
 
@@ -125,13 +128,13 @@ export default function SupplementsScreen() {
 
   const handleDelete = async (item: SupplementItem) => {
     try {
-      await api.DELETE('/api/v1/supplements/{supplement_id}', {
+      await ok(api.DELETE('/api/v1/supplements/{supplement_id}', {
         params: { path: { supplement_id: item.id } },
-      })
+      }))
       toast(t('common.deleted'))
       refresh()
-    } catch (err: any) {
-      toast(err.message, { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.delete_failed')), { icon: 'warn' })
     }
   }
 
@@ -221,7 +224,7 @@ export default function SupplementsScreen() {
 
       {/* Form modal */}
       {formOpen && (
-        <div className="panel fpanel" style={{ marginTop: 'var(--s6)' }}>
+        <div className="panel fpanel">
           <div className="panel-h">
             <h3>{editingItem ? t('app.supplements.edit') : t('app.supplements.new')}</h3>
             <button type="button" className="ibtn" onClick={() => setFormOpen(false)}>
@@ -325,13 +328,12 @@ export default function SupplementsScreen() {
 
       {/* Timing Groups */}
       {view.groups.map((g) => {
-        const groupLabel = t(`app.supplements.timing.${g.key}`) || g.label
         return (
           <section key={g.key} className="sec tgrp">
             <div className="sec-h">
               <h2>
                 <span className={`dot ${g.tone}`} />
-                {groupLabel}
+                {g.label}
               </h2>
               {g.sub && <span className="meta">{g.sub}</span>}
             </div>
@@ -350,32 +352,17 @@ export default function SupplementsScreen() {
 
       {/* Archive Accordion */}
       <section className="sec">
-        <div className="acc">
-          <div
-            className={`acc-h arch-h ${archOpen ? 'open' : ''}`}
-            role="button"
-            tabIndex={0}
-            onClick={() => setArchOpen(!archOpen)}
-          >
-            <Icon name="archive" />
-            <h2>
-              {t('app.supplements.archive_title')}{' '}
-              <span className="m num">({view.archived.length})</span>
-            </h2>
-            <Icon name="chevD" className="caret" />
+        <Disclosure open={archOpen} onToggle={() => setArchOpen(!archOpen)} title={t('app.supplements.archive_title')} count={view.archived.length}>
+          <div className="rows arch">
+            {view.archived.length ? (
+              view.archived.map((s) => renderRow(s, true))
+            ) : (
+              <div className="row">
+                <span className="m">{t('app.supplements.archive_empty')}</span>
+              </div>
+            )}
           </div>
-          {archOpen && (
-            <div className="rows arch">
-              {view.archived.length ? (
-                view.archived.map((s) => renderRow(s, true))
-              ) : (
-                <div className="row">
-                  <span className="m">{t('app.supplements.archive_empty')}</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        </Disclosure>
       </section>
     </>
   )

@@ -1,30 +1,15 @@
-import { queryOptions, useQuery } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
+import { api, ok } from '@/api/client'
 import type { TimelineView } from './types'
-
-export const defaultTimelineView: TimelineView = {
-  events: [],
-  manualCount: 0,
-  totalCount: 0,
-  domains: ['weight', 'glp1', 'workouts', 'garmin', 'labs', 'skincare', 'supplements', 'timeline'],
-  kinds: ['life_event', 'protocol_change', 'injury', 'trip', 'note'],
-  today: new Date().toISOString().slice(0, 10),
-}
 
 export const timelineQuery = (domain?: string) =>
   queryOptions({
     queryKey: ['timeline', domain ?? 'all'],
-    queryFn: async (): Promise<TimelineView> => {
-      const { data, error } = await api.GET('/api/v1/timeline', {
-        params: { query: { domain: domain === 'all' ? undefined : domain } },
-      })
-      if (error || data === undefined) throw new Error('Timeline data could not be read')
-      return data as unknown as TimelineView
-    },
+    queryFn: async (): Promise<TimelineView> =>
+      (await ok(api.GET('/api/v1/timeline', { params: { query: { domain: domain === undefined || domain === 'all' ? undefined : domain } } }))) as unknown as TimelineView,
     staleTime: 60_000,
   })
 
-export function useTimelineView(domain?: string): TimelineView {
-  const { data } = useQuery(timelineQuery(domain))
-  return data ?? defaultTimelineView
-}
+/** `GET /api/v1/timeline` for one domain (or all of them). Pass a deferred filter value: the
+ *  screen then keeps the previous list on screen while the next one is read. */
+export const useTimelineView = (domain?: string): TimelineView => useSuspenseQuery(timelineQuery(domain)).data

@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, failText, ok } from '@/api/client'
 import { PrimaryButton } from '@/components/controls/PrimaryButton'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
+import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
+import { longDate, parseIsoDate, syncedLabel } from '@/lib/dates'
+import { formatCompact } from '@/lib/format'
 import type { SettingsView } from './useSettingsView'
 
 interface ConnectionsSectionProps {
@@ -13,7 +16,8 @@ interface ConnectionsSectionProps {
 }
 
 export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
-  const { t } = useT()
+  const { t, tOr, lang } = useT()
+  const today = useToday()
   const queryClient = useQueryClient()
 
   // AI form state
@@ -38,7 +42,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
   // Save AI
   const handleSaveAi = async () => {
     try {
-      const res = await api.POST('/api/v1/settings/ai', {
+      await ok(api.POST('/api/v1/settings/ai', {
         body: {
           openrouter_api_key: apiKey.trim() || undefined,
           openrouter_base_url: baseUrl.trim() || undefined,
@@ -46,16 +50,13 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
           llm_model_parser: parserModel.trim() || undefined,
           llm_model_brief: briefModel.trim() || undefined,
         },
-      })
-      if (res.data) {
-        toast(t('settings.saved.ai'))
-        setApiKey('')
-        void queryClient.invalidateQueries({ queryKey: ['settings'] })
-        return true
-      }
-      return false
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+      }))
+      toast(t('settings.saved.ai'))
+      setApiKey('')
+      void queryClient.invalidateQueries({ queryKey: ['settings'] })
+      return true
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     }
   }
@@ -63,20 +64,17 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
   // Save Hevy
   const handleSaveHevy = async () => {
     try {
-      const res = await api.POST('/api/v1/settings/hevy', {
+      await ok(api.POST('/api/v1/settings/hevy', {
         body: {
           hevy_api_key: hevyKey.trim() || undefined,
         },
-      })
-      if (res.data) {
-        toast(t('settings.saved.hevy'))
-        setHevyKey('')
-        void queryClient.invalidateQueries({ queryKey: ['settings'] })
-        return true
-      }
-      return false
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+      }))
+      toast(t('settings.saved.hevy'))
+      setHevyKey('')
+      void queryClient.invalidateQueries({ queryKey: ['settings'] })
+      return true
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     }
   }
@@ -84,21 +82,18 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
   // Save Garmin credentials
   const handleSaveGarmin = async () => {
     try {
-      const res = await api.POST('/api/v1/settings/garmin', {
+      await ok(api.POST('/api/v1/settings/garmin', {
         body: {
           garmin_email: garminEmail.trim() || undefined,
           garmin_password: garminPassword.trim() || undefined,
         },
-      })
-      if (res.data) {
-        toast(t('settings.saved.garmin'))
-        setGarminPassword('')
-        void queryClient.invalidateQueries({ queryKey: ['settings'] })
-        return true
-      }
-      return false
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+      }))
+      toast(t('settings.saved.garmin'))
+      setGarminPassword('')
+      void queryClient.invalidateQueries({ queryKey: ['settings'] })
+      return true
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     }
   }
@@ -107,20 +102,18 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
   const handleToggleWeightExport = async () => {
     const next = !weightExportEnabled
     try {
-      const res = await api.POST('/api/v1/settings/garmin/weight-toggle', {
+      await ok(api.POST('/api/v1/settings/garmin/weight-toggle', {
         body: { enabled: next },
-      })
-      if (res.data) {
-        setWeightExportEnabled(next)
-        toast(
-          next
-            ? t('settings.garmin_weight_action.toggle_enabled')
-            : t('settings.garmin_weight_action.toggle_disabled')
-        )
-        void queryClient.invalidateQueries({ queryKey: ['settings'] })
-      }
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+      }))
+      setWeightExportEnabled(next)
+      toast(
+        next
+          ? t('settings.garmin_weight_action.toggle_enabled')
+          : t('settings.garmin_weight_action.toggle_disabled')
+      )
+      void queryClient.invalidateQueries({ queryKey: ['settings'] })
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     }
   }
 
@@ -128,43 +121,38 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
   const handleSendWeightNow = async () => {
     try {
       toast(t('settings.garmin_weight_action.manual_sync_started'))
-      const res = await (api as any).POST('/api/v1/settings/garmin/weight-export', {})
-      if (res?.data) {
-        toast((res.data as any).message || t('settings.garmin_weight_action.manual_sync_success'))
-        void queryClient.invalidateQueries({ queryKey: ['settings'] })
-      }
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+      const result = await ok(api.POST('/api/v1/weight/garmin-export'))
+      toast(result.ok ? t('settings.garmin_weight_action.manual_sync_success') : t('settings.garmin_weight_action.manual_sync_failed'), result.ok ? undefined : { icon: 'warn' })
+      void queryClient.invalidateQueries({ queryKey: ['settings'] })
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     }
   }
 
   // Save MCP credentials
   const handleSaveMcp = async () => {
     try {
-      const res = await api.POST('/api/v1/settings/mcp', {
+      await ok(api.POST('/api/v1/settings/mcp', {
         body: {
           mcp_client_id: mcpClientId.trim() || undefined,
           mcp_client_secret: mcpClientSecret.trim() || undefined,
         },
-      })
-      if (res.data) {
-        toast(t('settings.saved.mcp'))
-        setMcpClientSecret('')
-        void queryClient.invalidateQueries({ queryKey: ['settings'] })
-        return true
-      }
-      return false
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+      }))
+      toast(t('settings.saved.mcp'))
+      setMcpClientSecret('')
+      void queryClient.invalidateQueries({ queryKey: ['settings'] })
+      return true
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     }
   }
 
-  const weightStatus = (settings.garmin.garmin_weight_status ?? (settings.garmin as any).garmin_weight_export_status) as {
-    status?: string
-    message?: string
-    last_attempt?: string
-    next_attempt?: string
+  const weightStatus = settings.garmin.garmin_weight_status as {
+    status?: string | null
+    date?: string | null
+    weight_kg?: number | null
+    next_attempt_at?: string | null
   } | null
 
   return (
@@ -175,7 +163,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
           <p className="sub set-d">{t('settings.ai_description')}</p>
           <div className="form">
             <label className="field">
-              <span className="flabel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="flabel split">
                 <span>{t('settings.api_key')}</span>
                 <span className={`badge ${settings.ai.openrouter_api_key_set ? 'good' : ''}`}>
                   {settings.ai.openrouter_api_key_set ? t('settings.key_set') : t('settings.key_not_set')}
@@ -232,7 +220,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
             </label>
 
             <div className="set-save">
-              <button type="button" className="btn ghost" onClick={handleSaveAi}>
+              <button type="button" className="ghost" onClick={handleSaveAi}>
                 {t('settings.save_ai')}
               </button>
             </div>
@@ -244,7 +232,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
           <p className="sub set-d">{t('settings.hevy_description')}</p>
           <div className="form">
             <label className="field">
-              <span className="flabel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="flabel split">
                 <span>{t('settings.hevy_key')}</span>
                 <span className={`badge ${settings.hevy.hevy_api_key_set ? 'good' : ''}`}>
                   {settings.hevy.hevy_api_key_set ? t('settings.key_set') : t('settings.key_not_set')}
@@ -260,7 +248,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
             </label>
 
             <div className="set-save">
-              <button type="button" className="btn ghost" onClick={handleSaveHevy}>
+              <button type="button" className="ghost" onClick={handleSaveHevy}>
                 {t('settings.save_hevy')}
               </button>
             </div>
@@ -284,7 +272,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
                 />
               </label>
               <label className="field">
-                <span className="flabel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="flabel split">
                   <span>{t('settings.garmin_password')}</span>
                   <span className={`badge ${settings.garmin.garmin_password_set ? 'good' : ''}`}>
                     {settings.garmin.garmin_password_set ? t('settings.key_set') : t('settings.key_not_set')}
@@ -301,14 +289,14 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
             </div>
 
             <div className="set-save">
-              <button type="button" className="btn ghost" onClick={handleSaveGarmin}>
+              <button type="button" className="ghost" onClick={handleSaveGarmin}>
                 {t('settings.save_garmin')}
               </button>
             </div>
 
             {/* Garmin Weight Export */}
             <div className="set-sub-sec">
-              <span className="flabel" style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+              <span className="flabel block strong">
                 {t('settings.garmin_weight_export_label')}
               </span>
               <button
@@ -318,27 +306,31 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
               >
                 {weightExportEnabled ? t('common.enabled') : t('common.disabled')}
               </button>
-              <p className="fhint" style={{ marginTop: '8px' }}>{t('settings.garmin_weight_export_hint')}</p>
+              <p className="fhint set-mt2">{t('settings.garmin_weight_export_hint')}</p>
 
               {weightStatus && weightStatus.status && (
-                <div className="alert info" style={{ marginTop: '12px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <div className="alert info set-mt3">
                   <Icon name="check" />
                   <div>
-                    <div>{String(weightStatus.message || `Garmin: ${weightStatus.status}`)}</div>
-                    {Boolean(weightStatus.next_attempt) && (
-                      <span style={{ fontSize: 'var(--t-micro)', color: 'var(--muted)', display: 'block', marginTop: '4px' }}>
-                        {t('settings.garmin_weight_next_attempt', { at: String(weightStatus.next_attempt) })}
+                    <div>
+                      {tOr(`settings.garmin_weight_status.${weightStatus.status}`, weightStatus.status, {
+                        weight: weightStatus.weight_kg == null ? '—' : formatCompact(weightStatus.weight_kg, lang),
+                        date: weightStatus.date ? longDate(parseIsoDate(weightStatus.date), lang) : '—',
+                      })}
+                    </div>
+                    {Boolean(weightStatus.next_attempt_at) && (
+                      <span className="set-note">
+                        {t('settings.garmin_weight_next_attempt', { at: syncedLabel(String(weightStatus.next_attempt_at), today, lang) })}
                       </span>
                     )}
                   </div>
                 </div>
               )}
 
-              <div style={{ marginTop: '12px' }}>
+              <div className="set-mt3">
                 <button
                   type="button"
-                  className="btn ghost"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                  className="ghost"
                   onClick={handleSendWeightNow}
                 >
                   <Icon name="upload" />
@@ -363,7 +355,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
             </label>
 
             <label className="field">
-              <span className="flabel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="flabel split">
                 <span>{t('settings.mcp_secret')}</span>
                 <span className={`badge ${settings.mcp.mcp_client_secret_set ? 'good' : ''}`}>
                   {settings.mcp.mcp_client_secret_set ? t('settings.key_set') : t('settings.key_not_set')}

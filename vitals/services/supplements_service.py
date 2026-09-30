@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.enums import Domain, Source
+from vitals.i18n import t
 from vitals.models.supplements import DOMAIN, Supplement
 from vitals.services import conflict_engine
 
@@ -290,12 +291,12 @@ async def collect(session: AsyncSession) -> dict[str, Any]:
     other_items = [s for s in active_items if s["timing_bucket"] not in ("утро", "день", "вечер", "ночь")]
 
     groups = [
-        {"key": "morning", "label": "Утро", "sub": "с первым приёмом пищи", "tone": "cool", "items": morning_items},
-        {"key": "day", "label": "День", "sub": "в течение дня", "tone": "", "items": day_items},
-        {"key": "evening", "label": "Вечер", "sub": "перед сном", "tone": "violet", "items": evening_items},
+        {"key": "morning", "label": t("app.supplements.timing.morning"), "sub": t("app.supplements.timing_sub.morning"), "tone": "cool", "items": morning_items},
+        {"key": "day", "label": t("app.supplements.timing.day"), "sub": t("app.supplements.timing_sub.day"), "tone": "", "items": day_items},
+        {"key": "evening", "label": t("app.supplements.timing.evening"), "sub": t("app.supplements.timing_sub.evening"), "tone": "violet", "items": evening_items},
     ]
     if other_items:
-        groups.append({"key": "other", "label": "Другое", "sub": "", "tone": "", "items": other_items})
+        groups.append({"key": "other", "label": t("app.supplements.timing.other"), "sub": "", "tone": "", "items": other_items})
 
     return {
         "groups": groups,

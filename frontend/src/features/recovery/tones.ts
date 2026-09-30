@@ -2,7 +2,8 @@ import type { Norm } from './types'
 
 /** How far outside the user's corridor a value is, in corridor-widths, signed so that positive
  *  is the good side: above the corridor is good when higher is better, below it when lower is. */
-export function deviation(value: number, norm: Norm): number {
+export function deviation(value: number | null, norm: Norm | undefined): number {
+  if (value === null || norm === undefined) return 0
   const span = norm.hi - norm.lo
   let z = 0
   if (value < norm.lo) z = (value - norm.lo) / span
@@ -12,7 +13,7 @@ export function deviation(value: number, norm: Norm): number {
 
 /** The heat-table class of a cell: `g1`/`g2` a little/a lot better than the norm, `b1`/`b2` worse,
  *  nothing inside the corridor. A quarter of a corridor-width out is where "a little" ends. */
-export function toneCell(value: number, norm: Norm): '' | 'g1' | 'g2' | 'b1' | 'b2' {
+export function toneCell(value: number | null, norm: Norm | undefined): '' | 'g1' | 'g2' | 'b1' | 'b2' {
   const z = deviation(value, norm)
   if (z === 0) return ''
   const strength = Math.abs(z) > 0.25 ? 2 : 1
@@ -20,6 +21,6 @@ export function toneCell(value: number, norm: Norm): '' | 'g1' | 'g2' | 'b1' | '
 }
 
 /** Outside the corridor on the worse side — the value that is printed in the alarm colour. */
-export function isWorse(value: number, norm: Norm): boolean {
+export function isWorse(value: number | null, norm: Norm | undefined): boolean {
   return deviation(value, norm) < 0
 }

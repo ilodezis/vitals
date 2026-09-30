@@ -38,6 +38,8 @@
 .labs-grid { margin-top: 8px; }
 .mk-list { margin-top: 12px; border-top: 0; }
 .mk-value { text-align: right; }
+.mk-name { text-align: left; min-width: 0; }
+.mk-name > span { display: block; }
 .mk .st.fine { color: var(--faint); }
 .lab-side { margin-top: 12px; }
 .lab-hero { margin-top: 4px; }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, failText, ok } from '@/api/client'
 import { DoseChart } from '@/components/charts/DoseChart'
 import { Badge, TextButton } from '@/components/controls/Marks'
 import { Section } from '@/components/controls/Section'
@@ -11,16 +11,18 @@ import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { addDays, daysBetween, longDate, parseIsoDate, relativeDay, shortDate, toIsoDate, weekdayLongDate, weekdayShort } from '@/lib/dates'
-import { formatNumber, formatSigned } from '@/lib/format'
+import { formatCompact, formatSigned } from '@/lib/format'
 import { BodyMap } from './BodyMap'
+import { drugName } from './doseLabel'
 import { siteUsage } from './sites'
+import type { SiteId } from './types'
 import { useGlp1View } from './useGlp1View'
 import './glp1.css'
 
 const CYCLE_DAYS = 8
 
 export default function Glp1Screen() {
-  const { t, lang, plural } = useT()
+  const { t, tOr, lang, plural } = useT()
   const today = useToday()
   const queryClient = useQueryClient()
   const view = useGlp1View()
@@ -32,17 +34,16 @@ export default function Glp1Screen() {
   const [seSeverity, setSeSeverity] = useState(1)
 
   const sideEffectMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await api.POST('/api/v1/glp1/side-effects', {
-        body: {
-          date: seDate,
-          effectType: seName.trim(),
-          severity: seSeverity,
-        },
-      })
-      if (error || !data) throw new Error('Failed to log side effect')
-      return data
-    },
+    mutationFn: () =>
+      ok(
+        api.POST('/api/v1/glp1/side-effects', {
+          body: {
+            date: seDate,
+            effectType: seName.trim(),
+            severity: seSeverity,
+          },
+        }),
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['glp1'] })
       setShowSeForm(false)
@@ -51,53 +52,62 @@ export default function Glp1Screen() {
       toast(t('app.saved'))
     },
     onError: (err) => {
-      toast(err instanceof Error ? err.message : t('app.error'), { icon: 'warn' })
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     },
   })
 
   const usage = useMemo(() => siteUsage(view.injections, today, parseIsoDate), [view.injections, today])
   const phases = useMemo(() => view.dosePhases.map((p) => ({ from: parseIsoDate(p.fromIso), doseMg: p.doseMg })), [view.dosePhases])
   const trend = useMemo(() => view.trend.map((p) => ({ date: parseIsoDate(p.date), kg: p.kg })), [view.trend])
-  const first = view.cycle.lastIso ? parseIsoDate(view.cycle.lastIso) : today
-  const next = parseIsoDate(view.cycle.nextIso)
   const labels = { today: t('app.today_word'), yesterday: t('app.yesterday_word') }
+  const siteName = (site: SiteId | null): string => (site === null ? '—' : tOr(`app.site.${site}`, view.siteLabels[site] ?? site))
 
-  const summaryText = useMemo(() => {
-    if (view.deltaOnDoseKg != null) {
-      return t('app.glp1.summary_on_dose', {
-        dose: formatNumber(view.doseMg, lang),
-        delta: formatSigned(view.deltaOnDoseKg, lang),
-        date: longDate(parseIsoDate(view.sinceIso), lang),
-      })
-    }
-    return view.summary
-  }, [view.deltaOnDoseKg, view.doseMg, view.sinceIso, view.summary, lang, t])
+  // Only what the weight really did on this dose; with a single weigh-in there is no phrase.
+  const summaryText =
+    view.deltaOnDoseKg !== null && view.doseMg !== null && view.sinceIso !== null
+      ? t('app.glp1.summary_on_dose', {
+          dose: formatCompact(view.doseMg, lang, 3),
+          delta: formatSigned(view.deltaOnDoseKg, lang),
+          date: longDate(parseIsoDate(view.sinceIso), lang),
+        })
+      : null
+
+  // The cycle needs an injection to count from and a date to count to.
+  const cycle =
+    view.cycle.lastIso !== null && view.cycle.nextIso !== null && view.cycle.daysToNext !== null
+      ? { first: parseIsoDate(view.cycle.lastIso), next: parseIsoDate(view.cycle.nextIso), daysToNext: view.cycle.daysToNext }
+      : null
 
   // The days of one cycle as a line: the last injection, the days since, the next one.
-  const days = Array.from({ length: CYCLE_DAYS }, (_, i) => {
-    const date = addDays(first, i)
-    const k = daysBetween(today, date)
-    const kind = i === 0 ? 'inj past' : i === CYCLE_DAYS - 1 ? 'next' : k === 0 ? 'now' : k < 0 ? 'past' : ''
-    return { date, k, kind }
-  })
+  const days =
+    cycle === null
+      ? []
+      : Array.from({ length: CYCLE_DAYS }, (_, i) => {
+          const date = addDays(cycle.first, i)
+          const k = daysBetween(today, date)
+          const kind = i === 0 ? 'inj past' : i === CYCLE_DAYS - 1 ? 'next' : k === 0 ? 'now' : k < 0 ? 'past' : ''
+          return { date, k, kind }
+        })
 
-  const overdueDays = Math.abs(view.cycle.daysToNext)
-  const isOverdue = Boolean(view.cycle.overdue) || view.cycle.daysToNext < 0
-  const cycleStatusText = isOverdue
-    ? plural(
-        overdueDays,
-        t('app.glp1.overdue.one', { n: overdueDays }),
-        t('app.glp1.overdue.few', { n: overdueDays }),
-        t('app.glp1.overdue.many', { n: overdueDays }),
-      )
-    : view.cycle.daysToNext === 0
-      ? t('app.glp1.due_today')
-      : plural(
-          view.cycle.daysToNext,
-          t('app.glp1.in_days.one', { n: view.cycle.daysToNext }),
-          t('app.glp1.in_days.few', { n: view.cycle.daysToNext }),
-          t('app.glp1.in_days.many', { n: view.cycle.daysToNext }),
-        )
+  const isOverdue = cycle !== null && (view.cycle.overdue || cycle.daysToNext < 0)
+  const cycleStatusText =
+    cycle === null
+      ? ''
+      : isOverdue
+        ? plural(
+            Math.abs(cycle.daysToNext),
+            t('app.glp1.overdue.one', { n: Math.abs(cycle.daysToNext) }),
+            t('app.glp1.overdue.few', { n: Math.abs(cycle.daysToNext) }),
+            t('app.glp1.overdue.many', { n: Math.abs(cycle.daysToNext) }),
+          )
+        : cycle.daysToNext === 0
+          ? t('app.glp1.due_today')
+          : plural(
+              cycle.daysToNext,
+              t('app.glp1.in_days.one', { n: cycle.daysToNext }),
+              t('app.glp1.in_days.few', { n: cycle.daysToNext }),
+              t('app.glp1.in_days.many', { n: cycle.daysToNext }),
+            )
 
   return (
     <>
@@ -113,40 +123,42 @@ export default function Glp1Screen() {
       <Headline title={t('nav.glp1')}>
         <div className="fig-hero">
           <div className="big">
-            {formatNumber(view.doseMg, lang)}
-            <span className="unit">{t('app.unit.mg')}</span>
+            {view.doseMg === null ? '—' : formatCompact(view.doseMg, lang, 3)}
+            {view.doseMg !== null && <span className="unit">{t('app.unit.mg')}</span>}
           </div>
           <div className="side">
-            <Badge tone="violet">{t(('enum.drug.' + (view.drug || '').toLowerCase()) as any) || view.drug}</Badge>
-            <span className="sub">{t('app.glp1.day_on_dose', { n: view.dayOnDose, date: longDate(parseIsoDate(view.sinceIso), lang) })}</span>
+            {view.drug !== null && <Badge tone="violet">{drugName(view.drug, tOr)}</Badge>}
+            {view.dayOnDose !== null && view.sinceIso !== null && (
+              <span className="sub">{t('app.glp1.day_on_dose', { n: view.dayOnDose, date: longDate(parseIsoDate(view.sinceIso), lang) })}</span>
+            )}
           </div>
         </div>
       </Headline>
 
       <div className="grid">
         <div className="c7">
-          <Section title={t('app.glp1.cycle_title')}>
-            <div className="panel bare">
-              <div className="cyc-cap">
-                <div className="big">
-                  {t('app.glp1.next_is')} <span className="nw">{weekdayLongDate(next, lang)}</span>
-                </div>
-                <span className={cx('sub', isOverdue && 'warn')}>
-                  {cycleStatusText}
-                </span>
-              </div>
-              <div className="cycle">
-                <span className="prog" />
-                {days.map(({ date, k, kind }) => (
-                  <div key={date.getTime()} className={cx('cyc', kind)}>
-                    <i />
-                    <b>{date.getDate()}</b>
-                    <span>{k === 0 ? t('app.today_word_lower') : weekdayShort(date, lang)}</span>
+          {cycle !== null && (
+            <Section title={t('app.glp1.cycle_title')}>
+              <div className="panel bare">
+                <div className="cyc-cap">
+                  <div className="big">
+                    {t('app.glp1.next_is')} <span className="nw">{weekdayLongDate(cycle.next, lang)}</span>
                   </div>
-                ))}
+                  <span className={cx('sub', isOverdue && 'warn')}>{cycleStatusText}</span>
+                </div>
+                <div className="cycle">
+                  <span className="prog" />
+                  {days.map(({ date, k, kind }) => (
+                    <div key={date.getTime()} className={cx('cyc', kind)}>
+                      <i />
+                      <b>{date.getDate()}</b>
+                      <span>{k === 0 ? t('app.today_word_lower') : weekdayShort(date, lang)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          </Section>
+            </Section>
+          )}
 
           <Section title={t('app.glp1.dose_weight_title')} meta={t('app.glp1.dose_weight_meta')}>
             <div className="panel bare">
@@ -161,7 +173,7 @@ export default function Glp1Screen() {
                   {t('app.glp1.legend_weight')}
                 </span>
               </div>
-              <p className="sub glp1-summary">{summaryText}</p>
+              {summaryText !== null && <p className="sub glp1-summary">{summaryText}</p>}
             </div>
           </Section>
         </div>
@@ -175,7 +187,7 @@ export default function Glp1Screen() {
               <div className="site-list">
                 {[...usage].reverse().map((u) => (
                   <div key={u.site} className={u.mark.kind === 'next' ? 'sug' : undefined}>
-                    <span>{t(('app.site.' + u.site) as any) || view.siteLabels[u.site]}</span>
+                    <span>{siteName(u.site)}</span>
                     <span>{u.mark.kind === 'next' ? t('app.glp1.least_used') : u.last === null ? '—' : shortDate(u.last, lang)}</span>
                   </div>
                 ))}
@@ -278,12 +290,12 @@ export default function Glp1Screen() {
             meta={plural(view.injections.length, t('app.glp1.injections.one', { n: view.injections.length }), t('app.glp1.injections.few', { n: view.injections.length }), t('app.glp1.injections.many', { n: view.injections.length }))}
           >
             <div className="rows">
-              {(showAllInjections ? view.injections : view.injections.slice(0, 5)).map((j) => (
-                <div key={j.dateIso} className="row r-3">
+              {(showAllInjections ? view.injections : view.injections.slice(0, 5)).map((j, i) => (
+                <div key={`${j.dateIso}-${i}`} className="row r-3">
                   <div className="t">{relativeDay(parseIsoDate(j.dateIso), today, lang, labels)}</div>
-                  <span className="m">{t(('app.site.' + j.site) as any) || view.siteLabels[j.site]}</span>
+                  <span className="m">{siteName(j.site)}</span>
                   <div className="v">
-                    {formatNumber(j.doseMg, lang, j.doseMg < 0.5 ? 2 : 1)}
+                    {formatCompact(j.doseMg, lang, 3)}
                     <span className="u">{t('app.unit.mg')}</span>
                   </div>
                 </div>
@@ -292,7 +304,7 @@ export default function Glp1Screen() {
             {view.injections.length > 5 && !showAllInjections && (
               <button
                 type="button"
-                className="more-btn"
+                className="ghost more-btn"
                 onClick={() => setShowAllInjections(true)}
               >
                 {t('app.glp1.all_injections', { count: view.injections.length })}

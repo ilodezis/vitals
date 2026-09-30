@@ -7,7 +7,8 @@ export const glp1Fixture: Glp1View = {
   doseMg: 0.5,
   sinceIso: '2026-08-02',
   dayOnDose: 58,
-  cycle: { lastIso: '2026-09-27', nextIso: '2026-10-04', daysToNext: 5, unscheduled: false },
+  deltaOnDoseKg: -3.1,
+  cycle: { lastIso: '2026-09-27', nextIso: '2026-10-04', daysToNext: 5, overdue: false, unscheduled: false },
   dosePhases: [
     { fromIso: '2026-07-05', toIso: '2026-08-01', doseMg: 0.25 },
     { fromIso: '2026-08-02', toIso: toIsoDate(FIXTURE_TODAY), doseMg: 0.5 },
@@ -15,7 +16,6 @@ export const glp1Fixture: Glp1View = {
   trend: weightTrend
     .filter((p) => p.date >= new Date(2026, 5, 29))
     .map((p) => ({ date: toIsoDate(p.date), kg: p.value })),
-  summary: 'На 0,25 мг: −2,1 кг за 4 недели. На 0,5 мг: −3,1 кг за 58 дней, темп замедлился с середины сентября.',
   siteLabels: {
     shoulder_left: 'Плечо Л',
     shoulder_right: 'Плечо П',

@@ -12,29 +12,23 @@
 .gen-row {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--line);
+  align-items: stretch;
+  gap: var(--s2);
+  padding: var(--s4) 0;
+  text-align: left;
 }
 
 .gen-head {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-}
-
-.gen-lead {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
+  gap: var(--s1) var(--s3);
 }
 
 .gen-gene {
   font-family: var(--f-display);
-  font-size: var(--t-body);
-  font-weight: 700;
+  font-size: var(--t-ui);
+  font-weight: 600;
   color: var(--fg);
 }
 
@@ -44,26 +38,23 @@
   font-variant-numeric: tabular-nums;
 }
 
-.gen-trail {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .gen-gt {
   font-family: var(--f-display);
-  font-weight: 600;
+  font-weight: 500;
   font-size: var(--t-body);
-  color: var(--fg);
+  color: var(--fg-2);
+  letter-spacing: .04em;
 }
 
 .gen-sig {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: var(--t-caption);
+  font-size: var(--t-micro);
   color: var(--muted);
 }
+
+.gen-head .ibtn { margin-left: auto; }
 
 .gen-body {
   display: grid;
@@ -96,10 +87,11 @@
 }
 
 .gen-meta {
-  display: flex;
-  justify-content: space-between;
+  display: inline-flex;
   align-items: center;
-  margin-top: 2px;
+  gap: 6px;
+  font-size: var(--t-micro);
+  color: var(--muted);
 }
 
 .gen-empty-box {

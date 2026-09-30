@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, ok } from '@/api/client'
+import { Disclosure } from '@/components/controls/Disclosure'
 import { Badge } from '@/components/controls/Marks'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
@@ -13,7 +14,7 @@ import { useInteractionsView } from './useInteractionsView'
 import './interactions.css'
 
 export default function InteractionsScreen() {
-  const { t } = useT()
+  const { t, tOr } = useT()
   const view = useInteractionsView()
   const queryClient = useQueryClient()
 
@@ -31,14 +32,14 @@ export default function InteractionsScreen() {
 
   const handleToggle = async (rule: ConflictRuleItem) => {
     try {
-      await api.POST('/api/v1/interactions/{rule_id}/toggle', {
+      await ok(api.POST('/api/v1/interactions/{rule_id}/toggle', {
         params: { path: { rule_id: rule.id } },
         body: { active: !rule.active },
-      })
+      }))
       toast(rule.active ? t('app.interactions.rule_disabled') : t('app.interactions.rule_enabled'))
       refresh()
-    } catch (err: any) {
-      toast(err.message || 'Error toggling rule', { icon: 'warn' })
+    } catch {
+      toast(t('app.interactions.toggle_failed'), { icon: 'warn' })
     }
   }
 
@@ -82,7 +83,7 @@ export default function InteractionsScreen() {
     ]
   }, [])
 
-  const domainLabel = (d: string) => t(('app.domain.' + d) as any) || d
+  const domainLabel = (d: string) => tOr(`app.domain.${d}`, d)
 
   const renderRule = (r: ConflictRuleItem) => {
     const sev = r.severity
@@ -124,31 +125,8 @@ export default function InteractionsScreen() {
           </div>
         </div>
         <div className="opts tg">
-          <button
-            type="button"
-            className="toggle-text-btn"
-            onClick={() => handleToggle(r)}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: '4px 8px',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: 'var(--t-label)',
-              color: r.active ? 'var(--fg)' : 'var(--muted)',
-            }}
-          >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                background: r.active ? 'var(--good)' : 'var(--muted)',
-                display: 'inline-block',
-              }}
-            />
+          <button type="button" className={cx('rule-tg', r.active && 'on')} aria-pressed={r.active} onClick={() => handleToggle(r)}>
+            <i />
             {r.active ? t('app.on_short') : t('app.off_short')}
           </button>
         </div>
@@ -245,27 +223,19 @@ export default function InteractionsScreen() {
 
       {/* Categories with Rules (Collapsible catalog) */}
       {filteredRules.length > 0 ? (
-        Array.from(groupedByCategory.entries()).map(([cat, rules]) => {
-          const isOpen = Boolean(openCats[cat])
-          return (
-            <section key={cat} className="sec rgrp">
-              <div
-                className="sec-h"
-                onClick={() => toggleCat(cat)}
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                role="button"
-                tabIndex={0}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Icon name={isOpen ? 'chevD' : 'chevR'} />
-                  <h2>{t(('app.rule_cat.' + cat) as any) || cat}</h2>
-                </div>
-                <span className="meta num">{rules.length}</span>
-              </div>
-              {isOpen && <div className="rows">{rules.map(renderRule)}</div>}
-            </section>
-          )
-        })
+        <div className="rgrp">
+          {Array.from(groupedByCategory.entries()).map(([cat, rules]) => (
+            <Disclosure
+              key={cat}
+              open={Boolean(openCats[cat])}
+              onToggle={() => toggleCat(cat)}
+              title={tOr(`app.rule_cat.${cat}`, cat)}
+              count={rules.length}
+            >
+              <div className="rows">{rules.map(renderRule)}</div>
+            </Disclosure>
+          ))}
+        </div>
       ) : (
         <div className="empty">
           <Icon name="info" />

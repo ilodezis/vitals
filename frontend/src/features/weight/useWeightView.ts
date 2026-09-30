@@ -1,91 +1,75 @@
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
-import { toIsoDate } from '@/lib/dates'
-import type { WeightView } from './types'
+import type { components } from '@/api/schema'
+import type { WeightSource, WeightView } from './types'
 
-const todayIso = () => toIsoDate(new Date())
+type RawWeightView = components['schemas']['WeightView']
 
-const EMPTY_WEIGHT: WeightView = {
-  kg: 0,
-  average7: 0,
-  weekDeltaKg: 0,
-  bodyFatPct: 0,
-  drug: 'GLP-1',
-  weighings: [],
-  trend: [],
-  dosePhases: [],
-  history: [],
-  pace: {
-    perWeekKg: 0,
-    dose: { label: 'Dose', sinceIso: todayIso(), days: 0, deltaKg: 0 },
-    goal: { targetKg: 80, weeks: 0 },
-  },
-  lastScan: { device: 'InBody', dateIso: todayIso(), rows: [] },
+/** The API's answer as the screen reads it. What the server does not have stays `null` — the
+ *  screen prints a dash or leaves the row out; nothing is filled in with a likely number. */
+export function toWeightView(data: RawWeightView): WeightView {
+  const dose = data.pace.dose ?? null
+  const goal = data.pace.goal ?? null
+  const scan = data.last_scan ?? null
+  return {
+    kg: data.latest_kg ?? null,
+    average7: data.average7 ?? null,
+    weekDeltaKg: data.week_delta_kg ?? null,
+    bodyFatPct: data.body_fat_pct ?? null,
+    bodyFatSource: data.body_fat_source ?? null,
+    drug: data.drug,
+    weighings: (data.weighings ?? []).map((p) => ({ date: p.date, kg: p.kg })),
+    trend: (data.trend ?? []).map((p) => ({ date: p.date, kg: p.kg })),
+    dosePhases: (data.dose_phases ?? []).map((p) => ({
+      from: p.from_date,
+      to: p.to_date ?? null,
+      drug: p.drug,
+      doseMg: p.dose_mg,
+    })),
+    history: (data.history ?? []).map((h) => ({
+      date: h.date,
+      time: h.time ?? '',
+      kg: h.weight_kg,
+      source: h.source as WeightSource,
+      superseded: h.superseded,
+      supersededBy: h.superseded_by ?? null,
+      note: h.note ?? undefined,
+    })),
+    pace: {
+      perWeekKg: data.pace.per_week_kg ?? null,
+      dose:
+        dose === null
+          ? null
+          : {
+              drug: dose.drug ?? null,
+              doseMg: dose.dose_mg ?? null,
+              sinceIso: dose.since_date,
+              days: dose.days,
+              deltaKg: dose.delta_kg ?? null,
+            },
+      goal: goal === null ? null : { targetKg: goal.target_kg, weeks: goal.weeks ?? null },
+    },
+    lastScan:
+      scan === null
+        ? null
+        : {
+            device: scan.device ?? null,
+            dateIso: scan.date,
+            rows: (scan.rows ?? []).map((r) => ({ label: r.label, value: r.value, unit: r.unit ?? '' })),
+          },
+  }
 }
 
 export const weightQuery = queryOptions({
   queryKey: ['weight'],
   queryFn: async (): Promise<WeightView> => {
-    const { data } = await api.GET('/api/v1/weight')
-    if (!data) return EMPTY_WEIGHT
-    return {
-      kg: data.latest_kg ?? 0,
-      average7: data.average7 ?? 0,
-      weekDeltaKg: data.week_delta_kg ?? 0,
-      bodyFatPct: data.body_fat_pct ?? 0,
-      drug: data.drug || 'GLP-1',
-      weighings: (data.weighings ?? []).map((p) => ({ date: p.date, kg: p.kg })),
-      trend: (data.trend ?? []).map((p) => ({ date: p.date, kg: p.kg })),
-      dosePhases: (data.dose_phases ?? []).map((p) => ({
-        from: p.from_date,
-        to: p.to_date ?? p.from_date,
-        drug: p.drug,
-        doseMg: p.dose_mg,
-      })),
-      history: (data.history ?? []).map((h) => ({
-        date: h.date,
-        time: h.time,
-        kg: h.weight_kg,
-        source: h.source as 'manual' | 'bia' | 'garmin',
-        superseded: h.superseded,
-        supersededBy: h.superseded_by ?? null,
-        note: h.note ?? undefined,
-      })),
-      pace: {
-        perWeekKg: data.pace?.per_week_kg ?? 0,
-        dose: {
-          label: data.pace?.dose?.label ?? 'Dose',
-          drug: data.pace?.dose?.drug ?? undefined,
-          doseMg: data.pace?.dose?.dose_mg ?? undefined,
-          sinceIso: data.pace?.dose?.since_date ?? data.latest_date ?? todayIso(),
-          days: data.pace?.dose?.days ?? 0,
-          deltaKg: data.pace?.dose?.delta_kg ?? 0,
-        },
-        goal: {
-          targetKg: data.pace?.goal?.target_kg ?? 80,
-          weeks: data.pace?.goal?.weeks ?? 0,
-        },
-      },
-      lastScan: data.last_scan
-        ? {
-            device: data.last_scan.device || 'InBody',
-            dateIso: data.last_scan.date,
-            rows: (data.last_scan.rows ?? []).map((r) => ({
-              label: r.label,
-              value: String(r.value),
-              unit: r.unit ?? '',
-            })),
-          }
-        : EMPTY_WEIGHT.lastScan,
-    }
+    const { data, error } = await api.GET('/api/v1/weight')
+    if (error !== undefined || data === undefined) throw new Error('Weight could not be read')
+    return toWeightView(data)
   },
   staleTime: 60_000,
 })
 
-export function useWeightView(): WeightView {
-  try {
-    return useSuspenseQuery(weightQuery).data
-  } catch {
-    return EMPTY_WEIGHT
-  }
-}
+/** `GET /api/v1/weight`. A request that fails is the screen's error state, not a screen of
+ *  zeros: the throw goes to the boundary around the screen. */
+export const useWeightView = (): WeightView => useSuspenseQuery(weightQuery).data

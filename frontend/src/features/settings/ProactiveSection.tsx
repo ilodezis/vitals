@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, failText, ok } from '@/api/client'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { useT } from '@/i18n/useT'
+import { buildProactiveNumbers, type ProactiveNumberKey } from './proactiveBody'
 import type { SettingsView } from './useSettingsView'
 
 interface ProactiveSectionProps {
@@ -19,6 +20,16 @@ const WEEKDAYS = [
   { id: 'sat' },
   { id: 'sun' },
 ]
+
+const NUMBER_LABELS: Record<ProactiveNumberKey, string> = {
+  dailyBudget: 'settings.daily_budget',
+  syncHours: 'settings.sync_hours',
+  weightExportMinutes: 'settings.weight_export_minutes',
+  weightMaxAgeDays: 'settings.weight_max_age_days',
+  pulseSeconds: 'settings.pulse_seconds',
+  pulseStartHour: 'settings.pulse_start_hour',
+  pulseEndHour: 'settings.pulse_end_hour',
+}
 
 export function ProactiveSection({ settings }: ProactiveSectionProps) {
   const { t } = useT()
@@ -79,37 +90,42 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
   }
 
   const handleSave = async () => {
+    const read = buildProactiveNumbers({
+      dailyBudget,
+      syncHours,
+      weightExportMinutes,
+      weightMaxAgeDays,
+      pulseSeconds,
+      pulseStartHour,
+      pulseEndHour,
+    })
+    if (!read.ok) {
+      const fields = read.invalid.map((key) => t(NUMBER_LABELS[key])).join(', ')
+      toast(t('settings.proactive_invalid', { fields }), { icon: 'warn' })
+      return false
+    }
     try {
       const nudgesList: string[] = []
       if (nudgeActivity) nudgesList.push('activity')
       if (nudgeNutrition) nudgesList.push('nutrition')
       if (nudgeData) nudgesList.push('data')
 
-      const res = await api.POST('/api/v1/settings/proactive', {
+      await ok(api.POST('/api/v1/settings/proactive', {
         body: {
           brief_time: briefTime,
           evening_time: eveningTime,
           quiet_start: quietStart,
           quiet_end: quietEnd,
-          daily_budget: parseInt(dailyBudget, 10) || 4,
-          garmin_sync_hours: parseInt(syncHours, 10) || 4,
-          garmin_weight_export_minutes: parseInt(weightExportMinutes, 10) || 30,
-          garmin_weight_max_age_days: parseInt(weightMaxAgeDays, 10) || 2,
-          pulse_seconds: parseInt(pulseSeconds, 10) || 900,
-          pulse_start_hour: parseInt(pulseStartHour, 10) || 8,
-          pulse_end_hour: parseInt(pulseEndHour, 10) || 22,
+          ...read.numbers,
           nudges: nudgesList,
           week_template: weekTemplate as any,
         },
-      })
-      if (res.data) {
-        toast(t('settings.saved.proactive'))
-        void queryClient.invalidateQueries({ queryKey: ['settings'] })
-        return true
-      }
-      return false
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+      }))
+      toast(t('settings.saved.proactive'))
+      void queryClient.invalidateQueries({ queryKey: ['settings'] })
+      return true
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     }
   }
@@ -164,7 +180,7 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
         </div>
 
         {/* Daily budget */}
-        <label className="field" style={{ maxWidth: '160px' }}>
+        <label className="field set-narrow-field">
           <span className="flabel">{t('settings.daily_budget')}</span>
           <input
             type="text"
@@ -178,14 +194,13 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
 
         {/* Nudges */}
         <div>
-          <span className="flabel" style={{ display: 'block', marginBottom: '8px' }}>
+          <span className="flabel block">
             {t('settings.nudges_label')}
           </span>
-          <div className="opts" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className="opts opts-col">
             <button
               type="button"
               className={`opt ${nudgeActivity ? 'on' : ''}`}
-              style={{ textAlign: 'left' }}
               onClick={() => setNudgeActivity(!nudgeActivity)}
             >
               {t('settings.nudge.activity')}
@@ -193,7 +208,6 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
             <button
               type="button"
               className={`opt ${nudgeNutrition ? 'on' : ''}`}
-              style={{ textAlign: 'left' }}
               onClick={() => setNudgeNutrition(!nudgeNutrition)}
             >
               {t('settings.nudge.nutrition')}
@@ -201,18 +215,17 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
             <button
               type="button"
               className={`opt ${nudgeData ? 'on' : ''}`}
-              style={{ textAlign: 'left' }}
               onClick={() => setNudgeData(!nudgeData)}
             >
               {t('settings.nudge.data')}
             </button>
           </div>
-          <p className="fhint" style={{ marginTop: '4px' }}>{t('settings.nudges_hint')}</p>
+          <p className="fhint set-mt1">{t('settings.nudges_hint')}</p>
         </div>
 
         {/* Week template */}
         <div>
-          <span className="flabel" style={{ display: 'block', marginBottom: '8px' }}>
+          <span className="flabel block">
             {t('settings.week_template_label')}
           </span>
           <div className="wk">
@@ -226,7 +239,7 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
               const current = weekTemplate[d.id] || { where: 'office', gym: false, load: 'normal' }
               return (
                 <div key={d.id} className="wk-r">
-                  <span className="m" style={{ fontWeight: 500 }}>
+                  <span className="m wk-day">
                     {t(`proactive.day.${d.id}`)}
                   </span>
                   <select
@@ -259,15 +272,15 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
               )
             })}
           </div>
-          <p className="fhint" style={{ marginTop: '8px' }}>{t('settings.week_template_hint')}</p>
+          <p className="fhint set-mt2">{t('settings.week_template_hint')}</p>
         </div>
 
         {/* Garmin schedule */}
         <div className="set-sub-sec">
-          <span className="flabel" style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+          <span className="flabel block strong">
             {t('settings.garmin_schedule_label')}
           </span>
-          <p className="fhint" style={{ marginBottom: '12px' }}>
+          <p className="fhint set-mb3">
             {t('settings.garmin_schedule_hint')}
           </p>
 
@@ -318,7 +331,7 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
             </label>
           </div>
 
-          <div className="set-grid-2" style={{ marginTop: '12px' }}>
+          <div className="set-grid-2 set-mt3">
             <label className="field">
               <span className="flabel">{t('settings.pulse_start_hour')}</span>
               <input
@@ -344,10 +357,10 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
           </div>
 
           {breaker && (
-            <div className="alert info" style={{ marginTop: '12px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+            <div className="alert info set-mt3">
               <div>
                 <b>{t('settings.garmin_breaker')}</b>
-                <p style={{ fontSize: 'var(--t-micro)', color: 'var(--muted)', marginTop: '4px' }}>
+                <p className="set-note">
                   {breaker.paused
                     ? t('settings.breaker_paused')
                     : breaker.used !== undefined
@@ -360,7 +373,7 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
         </div>
 
         <div className="set-save">
-          <button type="button" className="btn ghost" onClick={handleSave}>
+          <button type="button" className="ghost" onClick={handleSave}>
             {t('settings.save_proactive')}
           </button>
         </div>

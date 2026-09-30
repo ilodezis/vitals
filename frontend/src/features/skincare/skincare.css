@@ -26,11 +26,6 @@
 .sk-sec-grid { margin-top: var(--s6); }
 .sk-log-box { display: grid; gap: var(--s2); }
 .sk-no-alerts { padding: var(--s3) 0; color: var(--muted); font-size: var(--t-caption); }
-.sk-cat-block { border-bottom: 1px solid var(--line); }
-.sk-cat-h { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: var(--s3) 0; text-align: left; background: none; border: none; cursor: pointer; color: inherit; }
-.sk-cat-h:hover { color: var(--violet); }
-.sk-cat-h .t { font-weight: 600; font-size: var(--t-label); }
-.sk-cat-h .meta { margin-left: auto; margin-right: var(--s2); }
 .sk-rule-row { padding: var(--s2) 0; border-top: 1px solid var(--line); }
 .sk-rule-main { display: flex; flex-direction: column; gap: 2px; }
 

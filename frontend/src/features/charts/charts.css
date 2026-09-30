@@ -9,7 +9,7 @@
 .srow .ibtn { width: 40px; height: 48px; color: var(--muted); }
 .srow .ibtn svg { width: 18px; height: 18px; }
 
-.fpanel { margin-bottom: var(--s6); }
+.fpanel { margin-top: var(--s6); margin-bottom: var(--s6); }
 .fpanel .form { display: grid; gap: 16px; }
 .norm-check { display: flex; align-items: center; gap: 8px; cursor: pointer; padding-top: 4px; font-size: var(--t-ui); }
 .fpanel .form-acts { display: flex; gap: 8px; padding-top: 8px; }

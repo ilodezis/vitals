@@ -394,6 +394,17 @@ SITE_TO_FRONTEND: dict[str, str] = {
 }
 
 
+# The six sites the body map draws, in its order.
+FRONTEND_SITES: tuple[str, ...] = (
+    "shoulder_left",
+    "shoulder_right",
+    "abdomen_left",
+    "abdomen_right",
+    "thigh_left",
+    "thigh_right",
+)
+
+
 async def collect(
     session: AsyncSession, *, on_date: Optional[date_type] = None
 ) -> dict[str, Any]:
@@ -405,11 +416,13 @@ async def collect(
     phases = await list_dose_phases(session)
     side_effects = await list_side_effects(session)
 
-    drug = active_phase.drug if active_phase else (last_inj.drug if last_inj else "Семаглутид")
-    dose_mg = active_phase.dose_mg if active_phase else (last_inj.dose_mg if last_inj else 0.0)
-    since_date = active_phase.start_date if active_phase else (last_inj.date if last_inj else today)
-    since_iso = since_date.isoformat()
-    day_on_dose = max(1, (today - since_date).days + 1) if active_phase else 0
+    # Before anything is logged there is no drug, no dose and no cycle: the screen
+    # gets nulls and says so, never a default drug or a cycle that starts today.
+    drug = active_phase.drug if active_phase else (last_inj.drug if last_inj else None)
+    dose_mg = active_phase.dose_mg if active_phase else (last_inj.dose_mg if last_inj else None)
+    since_date = active_phase.start_date if active_phase else (last_inj.date if last_inj else None)
+    since_iso = since_date.isoformat() if since_date else None
+    day_on_dose = max(1, (today - since_date).days + 1) if active_phase else None
 
     if last_inj:
         last_iso = last_inj.date.isoformat()
@@ -420,8 +433,8 @@ async def collect(
         unscheduled = False
     else:
         last_iso = None
-        next_iso = today.isoformat()
-        days_to_next = 0
+        next_iso = None
+        days_to_next = None
         overdue = False
         unscheduled = True
 
@@ -448,42 +461,14 @@ async def collect(
     weights = await weight_service.list_active_weights(session, start=start_trend, end=today)
     trend = [{"date": w.date.isoformat(), "kg": w.weight_kg} for w in weights]
 
+    # The change on the current dose goes out as a number; the screen words it.
     delta_on_dose_kg: Optional[float] = None
-    weights_on_active_dose = []
     if active_phase:
-        weights_on_active_dose = [
-            w
-            for w in weights
-            if w.date >= active_phase.start_date
-            and (active_phase.end_date is None or w.date <= active_phase.end_date)
-        ]
         delta_on_dose_kg = await weight_service.dose_phase_delta(
             session, active_phase, weights=weights, end=today
         )
 
-    plateau_info = await evaluate_plateau(session, on_date=today)
-    if plateau_info:
-        summary = t(
-            "alert.glp1_plateau",
-            drug=plateau_info["drug"],
-            dose=plateau_info["dose_mg"],
-            days=plateau_info["days_on_dose"],
-            slope=plateau_info["slope_per_week"],
-        )
-    elif active_phase and delta_on_dose_kg is not None and len(weights_on_active_dose) >= 2:
-        sign = "−" if delta_on_dose_kg < 0 else "+"
-        summary = f"На {dose_mg:g} мг: {sign}{abs(delta_on_dose_kg):.1f} кг с {since_iso}."
-    else:
-        summary = ""
-
-    site_labels = {
-        "shoulder_left": "Плечо Л",
-        "shoulder_right": "Плечо П",
-        "abdomen_left": "Живот Л",
-        "abdomen_right": "Живот П",
-        "thigh_left": "Бедро Л",
-        "thigh_right": "Бедро П",
-    }
+    site_labels = {site: t(f"app.site.{site}") for site in FRONTEND_SITES}
 
     inj_list = []
     for inj in injections:
@@ -516,7 +501,6 @@ async def collect(
         "cycle": cycle,
         "dosePhases": dose_phases_list,
         "trend": trend,
-        "summary": summary,
         "siteLabels": site_labels,
         "injections": inj_list,
         "sideEffects": se_list,

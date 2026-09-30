@@ -1,24 +1,13 @@
-import { queryOptions, useQuery } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
+import { api, ok } from '@/api/client'
 import type { GeneticsView } from './types'
-
-export const defaultGeneticsView: GeneticsView = {
-  variants: [],
-  count: 0,
-  empty: true,
-}
 
 export const geneticsQuery = queryOptions({
   queryKey: ['genetics'],
-  queryFn: async (): Promise<GeneticsView> => {
-    const { data, error } = await api.GET('/api/v1/genetics')
-    if (error || data === undefined) throw new Error('Genetics data could not be read')
-    return data as unknown as GeneticsView
-  },
+  queryFn: async (): Promise<GeneticsView> => (await ok(api.GET('/api/v1/genetics'))) as unknown as GeneticsView,
   staleTime: 60_000,
 })
 
-export function useGeneticsView(): GeneticsView {
-  const { data } = useQuery(geneticsQuery)
-  return data ?? defaultGeneticsView
-}
+/** `GET /api/v1/genetics`. A failed read is the screen's error state, not an empty screen: the throw goes
+ *  to the boundary around the screen. */
+export const useGeneticsView = (): GeneticsView => useSuspenseQuery(geneticsQuery).data

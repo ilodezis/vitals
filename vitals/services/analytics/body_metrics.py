@@ -19,6 +19,8 @@ import re
 from dataclasses import dataclass
 from typing import Any, Iterable, Optional
 
+from vitals.i18n import STRINGS
+
 # ── UI categories ──────────────────────────────────────────────────────────────
 CAT_COMPOSITION = "composition"
 CAT_WATER = "water"
@@ -258,6 +260,37 @@ def display_name(metric_key: str, lang: str = "ru") -> Optional[str]:
     if spec is None:
         return None
     return spec.ru if lang == "ru" else spec.en
+
+
+# The registry (and a Russian sheet) writes units in Russian; an English sheet
+# prints the Latin ones. Both spellings map onto one i18n key, so a unit reads in
+# the language of the screen whatever the device printed.
+_UNIT_KEYS: dict[str, str] = {
+    "кг": "app.unit.kg", "kg": "app.unit.kg",
+    "см": "app.unit.cm", "cm": "app.unit.cm",
+    "см²": "app.unit.cm2", "cm²": "app.unit.cm2", "см2": "app.unit.cm2", "cm2": "app.unit.cm2",
+    "л": "app.unit.l", "l": "app.unit.l",
+    "кг/м²": "app.unit.kg_m2", "kg/m²": "app.unit.kg_m2",
+    "ккал": "app.unit.kcal", "kcal": "app.unit.kcal",
+    "ккал/м²": "app.unit.kcal_m2", "kcal/m²": "app.unit.kcal_m2",
+}
+
+
+def display_unit(metric_key: Optional[str], lang: str = "ru", raw: Optional[str] = None) -> str:
+    """The unit of a metric in the screen's language.
+
+    ``raw`` is the unit a stored row carries (what the sheet printed); without it
+    the registry's unit for ``metric_key`` is used. A unit the map does not know
+    (a device-specific one) is returned as it is; no unit gives ``""``.
+    """
+    spec = METRIC_REGISTRY.get(metric_key) if metric_key else None
+    unit = (raw or "").strip() or ((spec.unit or "") if spec is not None else "")
+    if not unit:
+        return ""
+    key = _UNIT_KEYS.get(unit.lower())
+    if key is None:
+        return unit
+    return STRINGS.get(lang, STRINGS["en"]).get(key, unit)
 
 
 # ── Headline extraction (for the weight-chart bridge & summary chips) ──────────

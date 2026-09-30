@@ -3,7 +3,9 @@
 .fgroup + .fgroup { margin-top: var(--s4); }
 .fgroup .filters { margin-top: 6px; }
 .fgroup .flabel { font-size: var(--t-label); color: var(--muted); font-weight: 500; }
-.rgrp { margin-top: var(--s8); }
+.rgrp { margin-top: var(--s8); border-top: 1px solid var(--line); }
+.rgrp .disc > .rows { border-top: 1px solid var(--line); }
+.rgrp .disc > .rows > .row:last-child { border-bottom: 0; }
 .rule { grid-template-columns: minmax(0, 1fr) auto; align-items: start; padding: 16px 0; gap: 12px; }
 .rule.firing { border-left: 2px solid var(--bad); padding-left: 12px; }
 .rl-h, .rl-t { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
@@ -11,3 +13,8 @@
 .rl-m { margin: 8px 0 8px; color: var(--fg); max-width: 64ch; text-wrap: pretty; line-height: 1.5; }
 .opts.tg { margin: -2px 0 0; flex-wrap: nowrap; }
 .opts.tg .opt { height: 32px; font-size: var(--t-label); }
+/* On / off as a dot and a word, never a capsule */
+.rule-tg { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 var(--s2); font-size: var(--t-label); color: var(--muted); touch-action: manipulation; }
+.rule-tg i { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+.rule-tg.on { color: var(--fg); }
+.rule-tg.on i { background: var(--good); }

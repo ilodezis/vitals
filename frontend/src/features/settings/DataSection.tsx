@@ -1,28 +1,39 @@
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, failText, InvalidError, ok, RequestError } from '@/api/client'
 import { TextButton } from '@/components/controls/Marks'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { useT } from '@/i18n/useT'
+import { formatNumber } from '@/lib/format'
+
+export type RestartPhase = 'idle' | 'confirm' | 'restarting'
+
+/** First press asks "sure?", the second one fires the restart. While the app is coming
+ *  back up the button does nothing. */
+export function pressRestart(phase: RestartPhase): { phase: RestartPhase; fire: boolean } {
+  if (phase === 'idle') return { phase: 'confirm', fire: false }
+  if (phase === 'confirm') return { phase: 'restarting', fire: true }
+  return { phase, fire: false }
+}
 
 export function DataSection() {
-  const { t } = useT()
+  const { t, lang } = useT()
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isRestoring, setIsRestoring] = useState(false)
   const [restoreResult, setRestoreResult] = useState<string | null>(null)
-  const [confirmRestart, setConfirmRestart] = useState(false)
+  const [restartPhase, setRestartPhase] = useState<RestartPhase>('idle')
 
   // Download full backup
   const handleExportFull = async () => {
     try {
       toast(t('settings.export_started'))
       const res = await fetch('/api/v1/settings/export/full', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error(`Export failed with status ${res.status}`)
+      if (!res.ok) throw new RequestError(res.status)
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -32,8 +43,8 @@ export function DataSection() {
       a.click()
       a.remove()
       URL.revokeObjectURL(url)
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.action_failed')), { icon: 'warn' })
     }
   }
 
@@ -42,7 +53,7 @@ export function DataSection() {
     try {
       toast(t('settings.export_started'))
       const res = await fetch('/api/v1/settings/export/llm', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error(`Export failed with status ${res.status}`)
+      if (!res.ok) throw new RequestError(res.status)
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -52,8 +63,8 @@ export function DataSection() {
       a.click()
       a.remove()
       URL.revokeObjectURL(url)
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.action_failed')), { icon: 'warn' })
     }
   }
 
@@ -89,17 +100,18 @@ export function DataSection() {
       })
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.detail || errorData.message || `Import failed with status ${res.status}`)
+        // A refused backup says why in the user's language (`detail`); anything else is a plain failure.
+        const errorData: { detail?: unknown } = await res.json().catch(() => ({}))
+        throw typeof errorData.detail === 'string' && errorData.detail !== '' ? new InvalidError(errorData.detail) : new RequestError(res.status)
       }
 
       const data = await res.json()
-      setRestoreResult(data.summary || 'Restored successfully')
+      setRestoreResult(data.summary || t('settings.import_restored'))
       setSelectedFile(null)
       toast(t('settings.import_result_hint'))
       void queryClient.invalidateQueries()
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.action_failed')), { icon: 'warn' })
     } finally {
       setIsRestoring(false)
     }
@@ -107,18 +119,15 @@ export function DataSection() {
 
   // Container restart with 2-step confirmation
   const handleRestart = async () => {
-    if (!confirmRestart) {
-      setConfirmRestart(true)
-      return
-    }
-    setConfirmRestart(false)
+    const step = pressRestart(restartPhase)
+    setRestartPhase(step.phase)
+    if (!step.fire) return
     try {
-      const res = await api.POST('/api/v1/settings/restart')
-      if (res.data) {
-        toast(t('settings.saved.restart'))
-      }
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+      await ok(api.POST('/api/v1/settings/restart'))
+      toast(t('settings.saved.restart'))
+    } catch (err) {
+      setRestartPhase('idle')
+      toast(failText(err, t('app.action_failed')), { icon: 'warn' })
     }
   }
 
@@ -129,14 +138,13 @@ export function DataSection() {
       <div className="form">
         {/* Export */}
         <div>
-          <span className="flabel" style={{ display: 'block', marginBottom: '8px' }}>
+          <span className="flabel block">
             {t('settings.export_label')}
           </span>
           <div className="set-row-wrap">
             <button
               type="button"
-              className="btn ghost"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+              className="ghost"
               onClick={handleExportFull}
             >
               <Icon name="download" />
@@ -144,24 +152,23 @@ export function DataSection() {
             </button>
             <button
               type="button"
-              className="btn ghost"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+              className="ghost"
               onClick={handleExportLlm}
             >
               <Icon name="download" />
               <span>{t('settings.export_llm')}</span>
             </button>
           </div>
-          <p className="fhint" style={{ marginTop: '8px' }}>{t('settings.export_hint')}</p>
+          <p className="fhint set-mt2">{t('settings.export_hint')}</p>
         </div>
 
         {/* Import */}
         <div className="set-sub-sec">
-          <span className="flabel" style={{ display: 'block', marginBottom: '8px' }}>
+          <span className="flabel block">
             {t('settings.import_label')}
           </span>
 
-          <div className="alert warn" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '12px' }}>
+          <div className="alert warn set-mb3">
             <Icon name="warn" />
             <div>{t('settings.import_warning')}</div>
           </div>
@@ -170,7 +177,7 @@ export function DataSection() {
             ref={fileInputRef}
             type="file"
             accept=".json"
-            style={{ display: 'none' }}
+            hidden
             onChange={handleFileChange}
           />
 
@@ -183,22 +190,21 @@ export function DataSection() {
               <Icon name="upload" />
             </span>
             <span>
-              <b style={{ display: 'block', fontSize: 'var(--t-body)' }}>
+              <b className="data-drop-name">
                 {selectedFile ? selectedFile.name : t('settings.import_drop_text')}
               </b>
-              <small style={{ fontSize: 'var(--t-caption)', color: 'var(--muted)' }}>
+              <small className="data-drop-meta">
                 {selectedFile
-                  ? `${(selectedFile.size / 1024).toFixed(1)} KB`
+                  ? t('settings.file_size_kb', { size: formatNumber(selectedFile.size / 1024, lang, 1) })
                   : t('settings.import_drop_hint')}
               </small>
             </span>
           </button>
 
-          <div style={{ marginTop: '12px' }}>
+          <div className="set-mt3">
             <button
               type="button"
-              className="btn ghost"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--bad)' }}
+              className="ghost danger"
               onClick={handleRestore}
               disabled={isRestoring || !selectedFile}
             >
@@ -208,11 +214,11 @@ export function DataSection() {
           </div>
 
           {restoreResult && (
-            <div className="alert info" style={{ marginTop: '12px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+            <div className="alert info set-mt3">
               <Icon name="check" />
               <div>
                 <b>{restoreResult}</b>
-                <p style={{ fontSize: 'var(--t-micro)', color: 'var(--muted)', marginTop: '4px' }}>
+                <p className="set-note">
                   {t('settings.import_result_hint')}
                 </p>
               </div>
@@ -222,18 +228,20 @@ export function DataSection() {
 
         {/* Container Restart */}
         <div className="set-sub-sec">
-          <span className="flabel" style={{ display: 'block', marginBottom: '8px' }}>
+          <span className="flabel block">
             {t('settings.restart_title')}
           </span>
-          <p className="fhint" style={{ marginBottom: '12px' }}>
-            {t('settings.restart_text')}
+          <p className="fhint set-mb3">
+            {restartPhase === 'restarting' ? t('settings.restart_text') : t('settings.restart_hint')}
           </p>
           <TextButton
             icon="sync"
             danger
+            spinning={restartPhase === 'restarting'}
+            disabled={restartPhase === 'restarting'}
             onClick={handleRestart}
           >
-            {confirmRestart ? t('common.confirm_question') : t('settings.restart_btn')}
+            {restartPhase === 'confirm' ? t('common.confirm_question') : t('settings.restart_btn')}
           </TextButton>
         </div>
       </div>

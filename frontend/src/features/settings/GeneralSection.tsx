@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, failText, ok } from '@/api/client'
 import { useSession } from '@/app/session'
 import { OptionGroup } from '@/components/controls/Choices'
 import { PrimaryButton } from '@/components/controls/PrimaryButton'
@@ -118,7 +118,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
   // Profile save
   const handleSaveProfile = async () => {
     try {
-      const res = await api.POST('/api/v1/settings/profile', {
+      await ok(api.POST('/api/v1/settings/profile', {
         body: {
           height_cm: heightCm,
           user_age: userAge,
@@ -127,15 +127,12 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
           user_program: userProgram,
           user_goals: userGoals,
         },
-      })
-      if (res.data) {
-        toast(t('settings.saved.profile'))
-        void queryClient.invalidateQueries({ queryKey: ['settings'] })
-        return true
-      }
-      return false
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+      }))
+      toast(t('settings.saved.profile'))
+      void queryClient.invalidateQueries({ queryKey: ['settings'] })
+      return true
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     }
   }
@@ -143,21 +140,18 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
   // Nutrition save
   const handleSaveNutrition = async () => {
     try {
-      const res = await api.POST('/api/v1/settings/nutrition', {
+      await ok(api.POST('/api/v1/settings/nutrition', {
         body: {
           nutrition_protein_target_g: proteinTarget,
           nutrition_calories_min: calMin,
           nutrition_calories_max: calMax,
         },
-      })
-      if (res.data) {
-        toast(t('settings.saved.nutrition'))
-        void queryClient.invalidateQueries({ queryKey: ['settings'] })
-        return true
-      }
-      return false
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+      }))
+      toast(t('settings.saved.nutrition'))
+      void queryClient.invalidateQueries({ queryKey: ['settings'] })
+      return true
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     }
   }
@@ -165,19 +159,16 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
   // Language save
   const handleSaveLanguage = async () => {
     try {
-      const res = await api.POST('/api/v1/settings/language', {
+      await ok(api.POST('/api/v1/settings/language', {
         body: { language: lang },
-      })
-      if (res.data) {
-        toast(t('settings.saved.language'))
-        void queryClient.invalidateQueries({ queryKey: ['settings'] })
-        void queryClient.invalidateQueries({ queryKey: ['session'] })
-        window.location.reload()
-        return true
-      }
-      return false
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+      }))
+      toast(t('settings.saved.language'))
+      void queryClient.invalidateQueries({ queryKey: ['settings'] })
+      void queryClient.invalidateQueries({ queryKey: ['session'] })
+      window.location.reload()
+      return true
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     }
   }
@@ -186,16 +177,14 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
   const handleToggleModule = async (moduleId: string, currentEnabled: boolean) => {
     if (CORE_MODULES.has(moduleId)) return
     try {
-      const res = await api.POST('/api/v1/settings/modules', {
+      await ok(api.POST('/api/v1/settings/modules', {
         body: { module: moduleId, enabled: !currentEnabled },
-      })
-      if (res.data) {
-        toast(t('settings.saved.modules'))
-        void queryClient.invalidateQueries({ queryKey: ['settings'] })
-        void queryClient.invalidateQueries({ queryKey: ['session'] })
-      }
-    } catch (err: any) {
-      toast(err.message || t('app.error'), { icon: 'warn' })
+      }))
+      toast(t('settings.saved.modules'))
+      void queryClient.invalidateQueries({ queryKey: ['settings'] })
+      void queryClient.invalidateQueries({ queryKey: ['session'] })
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     }
   }
 
@@ -215,7 +204,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
               onChange={(id) => setLang(id as 'ru' | 'en')}
             />
             <div className="set-save">
-              <button type="button" className="btn ghost" onClick={handleSaveLanguage}>
+              <button type="button" className="ghost" onClick={handleSaveLanguage}>
                 {t('settings.language_save')}
               </button>
             </div>
@@ -229,7 +218,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
             {moduleGroups.map((group, idx) => (
               <div key={idx} className="mod-g">
                 <span className="flabel">{t(group.rubricKey)}</span>
-                <div className="opts" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                <div className="opts opts-wrap">
                   {group.items.map((it) => {
                     const isCore = it.core
                     const isEnabled = it.enabled
@@ -244,7 +233,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
                       >
                         {t(it.titleKey)}
                         {isCore && (
-                          <span className="hint" style={{ marginLeft: '4px', opacity: 0.6, fontSize: '10px' }}>
+                          <span className="hint">
                             {t('settings.module_core_badge')}
                           </span>
                         )}
@@ -297,7 +286,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
               </label>
             </div>
 
-            <label className="field" style={{ marginTop: '12px' }}>
+            <label className="field set-mt3">
               <span className="flabel">{t('settings.timezone')}</span>
               <select
                 className="input"
@@ -380,7 +369,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
             </div>
 
             <div className="set-save">
-              <button type="button" className="btn ghost" onClick={handleSaveNutrition}>
+              <button type="button" className="ghost" onClick={handleSaveNutrition}>
                 {t('settings.save_nutrition')}
               </button>
             </div>

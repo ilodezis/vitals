@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { api } from '@/api/client'
+import { api, ok } from '@/api/client'
 import { Section } from '@/components/controls/Section'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, TopBar } from '@/components/shell/PageHead'
@@ -14,19 +14,16 @@ type NightsListView = components['schemas']['NightsListView']
 export default function NightsListScreen() {
   const { t, lang } = useT()
 
-  const { data, isLoading } = useQuery({
+  const { data } = useSuspenseQuery({
     queryKey: ['recovery', 'nights'],
-    queryFn: async (): Promise<NightsListView> => {
-      const res = await api.GET('/api/v1/recovery/nights', { params: { query: { limit: 60 } } })
-      if (!res.data) throw new Error('Nights list unavailable')
-      return res.data
-    },
+    queryFn: async (): Promise<NightsListView> => ok(api.GET('/api/v1/recovery/nights', { params: { query: { limit: 60 } } })),
   })
 
-  const nights = data?.nights ?? []
+  const nights = data.nights
   const n0 = nights[0]
 
-  const fmtHM = (seconds: number) => {
+  const fmtHM = (seconds: number | null | undefined) => {
+    if (seconds == null) return '—'
     const mins = Math.round(seconds / 60)
     const h = Math.floor(mins / 60)
     const m = mins % 60
@@ -45,7 +42,7 @@ export default function NightsListScreen() {
             <div className="hr-l">
               <div className="sub">{t('app.sleep.last_night')}</div>
               <div className="hr-t">{longDate(parseIsoDate(n0.date), lang)}</div>
-              <div className="sub num">{fmtHM(n0.duration_seconds ?? 0)}</div>
+              <div className="sub num">{fmtHM(n0.duration_seconds)}</div>
             </div>
             <div className="hr-f">
               <div className="f">
@@ -67,12 +64,11 @@ export default function NightsListScreen() {
       {/* Nights table */}
       <Section title={t('app.sleep.nights_history', { count: nights.length })}>
         <div className="rows">
-          {isLoading && <div className="row"><span className="m">{t('app.loading')}</span></div>}
-          {!isLoading && nights.length === 0 && <div className="row"><span className="m">{t('app.empty')}</span></div>}
+          {nights.length === 0 && <div className="row"><span className="m">{t('app.empty')}</span></div>}
           {nights.map((n) => (
             <Link key={n.date} to="/recovery/sleep/$date" params={{ date: n.date }} className="row r-night">
               <span className="t num">{longDate(parseIsoDate(n.date), lang)}</span>
-              <span className="m num">{fmtHM(n.duration_seconds ?? 0)}</span>
+              <span className="m num">{fmtHM(n.duration_seconds)}</span>
               <span className="v">{n.score ?? '—'}</span>
               <div className="compo mini" style={{ width: 80 }}>
                 <i style={{ flex: n.deep_seconds ?? 0, background: 'var(--deep)' }} />

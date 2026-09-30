@@ -12,8 +12,8 @@ import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { longDate, parseIsoDate, relativeDay } from '@/lib/dates'
-import { formatCompactNumber, formatNumber, formatSigned } from '@/lib/format'
-import { useLatestWeight } from './weightLog'
+import { formatCompact, formatNumber, formatPercent, formatSigned } from '@/lib/format'
+import { doseLabel, drugName } from '@/features/glp1/doseLabel'
 import type { WeightSource } from './types'
 import { useWeightView } from './useWeightView'
 import './weight.css'
@@ -21,22 +21,13 @@ import './weight.css'
 const SOURCE_TONE: Record<WeightSource, 'good' | 'violet' | 'cool'> = { manual: 'good', bia: 'violet', garmin: 'cool' }
 
 export default function WeightScreen() {
-  const { t, lang, plural } = useT()
+  const { t, tOr, lang, plural } = useT()
   const today = useToday()
   const view = useWeightView()
-  const doseSince = { date: longDate(parseIsoDate(view.pace.dose.sinceIso), lang), n: view.pace.dose.days }
-  const latest = useLatestWeight()
-  const heroKg = view.kg || latest.kg || 0
+  const { dose, goal } = view.pace
+  const scan = view.lastScan
   const [range, setRange] = useState<TrendRange>('3m')
   const [historyLimit, setHistoryLimit] = useState(14)
-
-  const formatDose = (drug?: string, doseMg?: number, fallback = '') => {
-    if (drug && doseMg != null) {
-      const drugName = t(`enum.drug.${drug}`)
-      return `${drugName} ${formatCompactNumber(doseMg, lang)} ${t('app.unit.mg')}`
-    }
-    return fallback
-  }
 
   const series = useMemo(
     () => ({
@@ -44,16 +35,26 @@ export default function WeightScreen() {
       trend: view.trend.map((p) => ({ date: parseIsoDate(p.date), kg: p.kg })),
       phases: view.dosePhases.map((p) => ({
         from: parseIsoDate(p.from),
-        to: parseIsoDate(p.to),
-        label: formatDose(p.drug, p.doseMg, p.label),
+        to: p.to === null ? today : parseIsoDate(p.to),
+        label: doseLabel(p.drug, p.doseMg, lang, t, tOr),
       })),
     }),
-    [view, lang, t],
+    [view, today, lang, t, tOr],
   )
   const labels = { today: t('app.today_word'), yesterday: t('app.yesterday_word') }
-  const drop = view.weekDeltaKg <= 0
+  const drop = view.weekDeltaKg !== null && view.weekDeltaKg <= 0
   const visibleHistory = view.history.slice(0, historyLimit)
   const remainingHistory = view.history.length - historyLimit
+  const doseSince = dose === null ? null : { date: longDate(parseIsoDate(dose.sinceIso), lang), n: dose.days }
+  // What stands under the hero figure: the average and the body fat, each only when there is one.
+  const underHero = [
+    view.average7 === null ? null : t('app.weight.avg7', { avg: formatNumber(view.average7, lang) }),
+    view.bodyFatPct === null
+      ? null
+      : view.bodyFatSource === null
+        ? t('app.weight.fat', { fat: formatPercent(view.bodyFatPct, lang, 1) })
+        : t('app.weight.fat_from', { fat: formatPercent(view.bodyFatPct, lang, 1), source: view.bodyFatSource }),
+  ].filter((line): line is string => line !== null)
 
   return (
     <>
@@ -69,16 +70,16 @@ export default function WeightScreen() {
       <Headline title={t('nav.weight')}>
         <div className="fig-hero">
           <div className="big" data-fig="weight" data-shared-target>
-            <Odometer value={formatNumber(heroKg, lang)} />
+            {view.kg === null ? '—' : <Odometer value={formatNumber(view.kg, lang)} />}
             <span className="unit">{t('app.unit.kg')}</span>
           </div>
           <div className="side">
-            <Delta tone={drop ? 'good' : undefined} icon={drop ? 'down' : 'up'}>
-              {t('app.weight.week_delta', { value: formatNumber(Math.abs(view.weekDeltaKg), lang) })}
-            </Delta>
-            <span className="sub">
-              {t('app.weight.avg_line', { avg: formatNumber(view.average7, lang), fat: formatNumber(view.bodyFatPct, lang) })}
-            </span>
+            {view.weekDeltaKg !== null && (
+              <Delta tone={drop ? 'good' : undefined} icon={drop ? 'down' : 'up'}>
+                {t('app.weight.week_delta', { value: formatNumber(Math.abs(view.weekDeltaKg), lang) })}
+              </Delta>
+            )}
+            {underHero.length > 0 && <span className="sub">{underHero.join(' · ')}</span>}
           </div>
         </div>
       </Headline>
@@ -108,10 +109,12 @@ export default function WeightScreen() {
               <i className="dots" />
               {t('app.weight.legend_weighings')}
             </span>
-            <span>
-              <i className="band" />
-              {t(`enum.drug.${view.drug}`) !== `enum.drug.${view.drug}` ? t(`enum.drug.${view.drug}`) : view.drug}
-            </span>
+            {view.dosePhases.length > 0 && (
+              <span>
+                <i className="band" />
+                {drugName(view.drug, tOr)}
+              </span>
+            )}
             <span>
               <i className="now" />
               {t('app.now')}
@@ -150,12 +153,8 @@ export default function WeightScreen() {
                 </div>
               ))}
               {remainingHistory > 0 && (
-                <button
-                  type="button"
-                  className="more-btn"
-                  onClick={() => setHistoryLimit((n) => n + 50)}
-                >
-                  {t('app.weight.show_more_50', { n: Math.min(50, remainingHistory) })}
+                <button type="button" className="ghost more-btn" onClick={() => setHistoryLimit((n) => n + 50)}>
+                  {t('app.show_more_n', { n: Math.min(50, remainingHistory) })}
                 </button>
               )}
             </div>
@@ -170,65 +169,85 @@ export default function WeightScreen() {
                   <div className="t">{t('app.weight.pace_trend')}</div>
                   <div className="m">{t('app.weight.pace_trend_sub')}</div>
                 </div>
-                <div className={cx('v', view.pace.perWeekKg <= 0 && 'good')}>
-                  {formatNumber(view.pace.perWeekKg, lang)}
-                  <span className="u">{t('app.unit.kg_week')}</span>
-                </div>
-              </div>
-              <div className="row r-kv">
-                <div>
-                  <div className="t">{t('app.weight.pace_dose', { label: formatDose(view.pace.dose.drug, view.pace.dose.doseMg, view.pace.dose.label) })}</div>
-                  <div className="m">
-                    {plural(
-                      view.pace.dose.days,
-                      t('app.weight.pace_dose_sub.one', doseSince),
-                      t('app.weight.pace_dose_sub.few', doseSince),
-                      t('app.weight.pace_dose_sub.many', doseSince),
-                    )}
+                {view.pace.perWeekKg === null ? (
+                  <div className="v empty">—</div>
+                ) : (
+                  <div className={cx('v', view.pace.perWeekKg <= 0 && 'good')}>
+                    {formatNumber(view.pace.perWeekKg, lang)}
+                    <span className="u">{t('app.unit.kg_week')}</span>
                   </div>
-                </div>
-                <div className="v">
-                  {formatSigned(view.pace.dose.deltaKg, lang)}
-                  <span className="u">{t('app.unit.kg')}</span>
-                </div>
+                )}
               </div>
-              <div className="row r-kv">
-                <div>
-                  <div className="t">{t('app.weight.pace_goal', { kg: formatNumber(view.pace.goal.targetKg, lang, 0) })}</div>
-                  <div className="m">{t('app.weight.pace_goal_sub')}</div>
+              {dose !== null && doseSince !== null && (
+                <div className="row r-kv">
+                  <div>
+                    <div className="t">
+                      {dose.drug === null || dose.doseMg === null
+                        ? t('app.weight.pace_dose_bare')
+                        : t('app.weight.pace_dose', { label: doseLabel(dose.drug, dose.doseMg, lang, t, tOr) })}
+                    </div>
+                    <div className="m">
+                      {plural(
+                        dose.days,
+                        t('app.weight.pace_dose_sub.one', doseSince),
+                        t('app.weight.pace_dose_sub.few', doseSince),
+                        t('app.weight.pace_dose_sub.many', doseSince),
+                      )}
+                    </div>
+                  </div>
+                  {dose.deltaKg === null ? (
+                    <div className="v empty">—</div>
+                  ) : (
+                    <div className="v">
+                      {formatSigned(dose.deltaKg, lang)}
+                      <span className="u">{t('app.unit.kg')}</span>
+                    </div>
+                  )}
                 </div>
-                <div className="v">
-                  ≈{view.pace.goal.weeks}
-                  <span className="u">{t('app.unit.week')}</span>
+              )}
+              {goal !== null && (
+                <div className="row r-kv">
+                  <div>
+                    <div className="t">{t('app.weight.pace_goal', { kg: formatCompact(goal.targetKg, lang) })}</div>
+                    <div className="m">{t('app.weight.pace_goal_sub')}</div>
+                  </div>
+                  {goal.weeks === null ? (
+                    <div className="v empty">—</div>
+                  ) : (
+                    <div className="v">
+                      ≈{goal.weeks}
+                      <span className="u">{t('app.unit.week')}</span>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           </Section>
 
-          <Section
-            title={t('app.weight.scan_title')}
-            meta={
-              <ScreenLink screen="measures" mode="push" className="link">
-                {t('app.weight.all_measures')}
-                <Icon name="chevR" />
-              </ScreenLink>
-            }
-          >
-            <p className="sub scan-sub">
-              {view.lastScan.device} · {longDate(parseIsoDate(view.lastScan.dateIso), lang)}
-            </p>
-            <div className="rows">
-              {view.lastScan.rows.map((row) => (
-                <div key={row.label} className="row r-kv tight">
-                  <div className="t plain">{row.label}</div>
-                  <div className="v">
-                    {typeof row.value === 'number' ? formatNumber(row.value, lang) : row.value}
-                    <span className="u">{row.unit}</span>
+          {scan !== null && (
+            <Section
+              title={t('app.weight.scan_title')}
+              meta={
+                <ScreenLink screen="measures" mode="push" className="link">
+                  {t('app.weight.all_measures')}
+                  <Icon name="chevR" />
+                </ScreenLink>
+              }
+            >
+              <p className="sub scan-sub">{[scan.device, longDate(parseIsoDate(scan.dateIso), lang)].filter(Boolean).join(' · ')}</p>
+              <div className="rows">
+                {scan.rows.map((row) => (
+                  <div key={row.label} className="row r-kv tight">
+                    <div className="t plain">{row.label}</div>
+                    <div className="v">
+                      {formatCompact(row.value, lang, 3)}
+                      {row.unit !== '' && <span className="u">{row.unit}</span>}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </Section>
+                ))}
+              </div>
+            </Section>
+          )}
         </div>
       </div>
     </>

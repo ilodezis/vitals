@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatCompact, formatCompactNumber, formatNumber } from './format'
+import { clockTime, formatCompact, formatCompactNumber, formatNumber, formatPercent } from './format'
 
 const MINUS = '−'
 const THIN = ' ' // narrow no-break space
@@ -42,6 +42,38 @@ describe('formatCompact', () => {
 
   it('does not print a whole number that only rounds to one as a decimal', () => {
     expect(formatCompact(9.04, 'ru')).toBe('9')
+  })
+})
+
+describe('formatCompact with finer digits', () => {
+  it('keeps a dose and a ratio as they were written', () => {
+    expect(formatCompact(0.25, 'ru', 2)).toBe('0,25')
+    expect(formatCompact(0.5, 'ru', 2)).toBe('0,5')
+    expect(formatCompact(3.5, 'ru', 2)).toBe('3,5')
+    expect(formatCompact(0.381, 'ru', 3)).toBe('0,381')
+    expect(formatCompact(0.381, 'en', 3)).toBe('0.381')
+  })
+
+  it('never pads a whole number', () => {
+    expect(formatCompact(79, 'ru', 3)).toBe('79')
+    expect(formatCompact(86.0, 'ru', 2)).toBe('86')
+    expect(formatCompact(19.6, 'ru', 3)).toBe('19,6')
+  })
+})
+
+describe('formatPercent', () => {
+  it('sets the sign apart in Russian and against the number in English', () => {
+    expect(formatPercent(92, 'ru')).toBe('92\u00a0%')
+    expect(formatPercent(92, 'en')).toBe('92%')
+    expect(formatPercent(19.6, 'ru', 1)).toBe('19,6\u00a0%')
+  })
+})
+
+describe('clockTime', () => {
+  it('drops the seconds', () => {
+    expect(clockTime('09:00:00')).toBe('09:00')
+    expect(clockTime('9:05')).toBe('9:05')
+    expect(clockTime('')).toBe('')
   })
 })
 

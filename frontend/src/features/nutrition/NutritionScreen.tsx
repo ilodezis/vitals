@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { useDeferredValue, useState } from 'react'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { api, failText, ok } from '@/api/client'
+import { useTodayIso } from '@/app/session'
 import { ConflictAlert } from '@/components/controls/ConflictAlert'
 import { TextButton } from '@/components/controls/Marks'
 import { Meter } from '@/components/controls/Meters'
@@ -10,18 +11,19 @@ import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { toast } from '@/components/controls/toast'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
-import { longDate, parseIsoDate, toIsoDate } from '@/lib/dates'
-import { formatNumber } from '@/lib/format'
+import { clockLabel, longDate, parseIsoDate } from '@/lib/dates'
+import { formatInt, formatNumber, formatPercent } from '@/lib/format'
 import { useConflictMutation } from '@/lib/useConflictMutation'
+import { mealsLabel } from './mealsLabel'
 import type { components } from '@/api/schema'
 import './nutrition.css'
 
 type NutritionView = components['schemas']['NutritionView']
 
 export default function NutritionScreen() {
-  const { t, lang } = useT()
+  const { t, lang, plural } = useT()
   const queryClient = useQueryClient()
-  const todayStr = toIsoDate(new Date())
+  const todayStr = useTodayIso()
 
   const [selectedDate, setSelectedDate] = useState<string>(todayStr)
   const [formOpen, setFormOpen] = useState(false)
@@ -29,7 +31,7 @@ export default function NutritionScreen() {
 
   // Meal Form fields
   const [mealDate, setMealDate] = useState(todayStr)
-  const [mealTime, setMealTime] = useState('13:00')
+  const [mealTime, setMealTime] = useState('')
   const [mealName, setMealName] = useState('')
   const [mealCal, setMealCal] = useState('')
   const [mealP, setMealP] = useState('')
@@ -37,15 +39,12 @@ export default function NutritionScreen() {
   const [mealC, setMealC] = useState('')
   const [mealNote, setMealNote] = useState('')
 
-  const { data: view, isLoading } = useQuery({
-    queryKey: ['nutrition', selectedDate],
-    queryFn: async (): Promise<NutritionView> => {
-      const res = await api.GET('/api/v1/nutrition', {
-        params: { query: { date: selectedDate } },
-      })
-      if (!res.data) throw new Error('Nutrition data unavailable')
-      return res.data
-    },
+  // The day being read follows the selected one a beat later, so paging through days keeps the
+  // previous one on screen instead of blanking it; a failed read goes to the screen's boundary.
+  const shownDate = useDeferredValue(selectedDate)
+  const { data: view } = useSuspenseQuery({
+    queryKey: ['nutrition', shownDate],
+    queryFn: async (): Promise<NutritionView> => ok(api.GET('/api/v1/nutrition', { params: { query: { date: shownDate } } })),
   })
 
   const invalidateNutrition = () => {
@@ -62,7 +61,7 @@ export default function NutritionScreen() {
       const carbs = mealC ? parseFloat(mealC) : undefined
 
       if (editingMealId) {
-        await api.PATCH('/api/v1/nutrition/meals/{meal_id}', {
+        await ok(api.PATCH('/api/v1/nutrition/meals/{meal_id}', {
           params: { path: { meal_id: editingMealId } },
           body: {
             date: mealDate,
@@ -75,9 +74,9 @@ export default function NutritionScreen() {
             note: mealNote.trim() || undefined,
             override,
           },
-        })
+        }))
       } else {
-        await api.POST('/api/v1/nutrition/meals', {
+        await ok(api.POST('/api/v1/nutrition/meals', {
           body: {
             date: mealDate,
             time: mealTime || undefined,
@@ -89,7 +88,7 @@ export default function NutritionScreen() {
             note: mealNote.trim() || undefined,
             override,
           },
-        })
+        }))
       }
     },
     onSuccess: () => {
@@ -104,27 +103,28 @@ export default function NutritionScreen() {
       setMealC('')
       setMealNote('')
     },
-    onError: (err) => toast(err.message),
+    fallbackErrorMessage: t('app.save_failed'),
+    onError: (err) => toast(failText(err, t('app.save_failed')), { icon: 'warn' }),
   })
 
   // Delete Meal Mutation
   const deleteMealMutation = useMutation({
     mutationFn: async (id: number) => {
-      await api.DELETE('/api/v1/nutrition/meals/{meal_id}', {
+      await ok(api.DELETE('/api/v1/nutrition/meals/{meal_id}', {
         params: { path: { meal_id: id } },
-      })
+      }))
     },
     onSuccess: () => {
       invalidateNutrition()
       toast(t('app.saved'))
     },
-    onError: (err) => toast(err.message),
+    onError: (err) => toast(failText(err, t('app.delete_failed')), { icon: 'warn' }),
   })
 
   const openEdit = (m: components['schemas']['MealItem']) => {
     setEditingMealId(m.id)
     setMealDate(m.date)
-    setMealTime(m.time || '13:00')
+    setMealTime(m.time ?? '')
     setMealName(m.name)
     setMealCal(m.calories != null ? String(m.calories) : '')
     setMealP(m.protein_g != null ? String(m.protein_g) : '')
@@ -134,22 +134,23 @@ export default function NutritionScreen() {
     setFormOpen(true)
   }
 
-  const totals = view?.totals
-  const goals = view?.goals
-  const cal = totals?.calories ?? 0
-  const prot = totals?.protein_g ?? 0
-  const fat = totals?.fat_g ?? 0
-  const carbs = totals?.carbs_g ?? 0
+  const { totals, goals } = view
+  const cal = totals.calories
+  const prot = totals.protein_g
+  const fat = totals.fat_g
+  const carbs = totals.carbs_g
 
-  const calMin = goals?.calories_min ?? 1800
-  const calMax = goals?.calories_max ?? 2000
-  const protTarget = goals?.protein_target_g ?? 150
+  const calMin = goals.calories_min
+  const calMax = goals.calories_max
+  const protTarget = goals.protein_target_g
   const calTone = cal > calMax ? 'bad' : cal < calMin ? 'warn' : undefined
   const protTone = prot >= protTarget ? undefined : 'warn'
 
-  const macroSplit = view?.macro_split ?? { protein_pct: 0, fat_pct: 0, carbs_pct: 0 }
-  const meals = view?.meals ?? []
-  const recentDays = view?.recent_days ?? []
+  const macroSplit = view.macro_split
+  const meals = view.meals
+  const recentDays = view.recent_days
+  /** A figure the meal has no value for is a dash, not a zero. */
+  const gramsOf = (v: number | null | undefined): string => (v == null ? '—' : formatNumber(v, lang, 1))
 
   // Active days for history (only days with data, newest first)
   const activeDays = recentDays.filter((d) => (d.meal_count && d.meal_count > 0) || (d.calories && d.calories > 0))
@@ -173,6 +174,7 @@ export default function NutritionScreen() {
             onClick={() => {
               setEditingMealId(null)
               setMealDate(selectedDate)
+              setMealTime(clockLabel(new Date()))
               setMealName('')
               setMealCal('')
               setMealP('')
@@ -187,9 +189,9 @@ export default function NutritionScreen() {
         }
       />
       <Headline title={t('nav.nutrition')}>
-        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+        <div className="nutr-hero">
           <div>
-            <div style={{ fontSize: 'var(--t-title)', fontWeight: 600 }}>
+            <div className="nutr-hero-v">
               {formatNumber(cal, lang, 0)} <span className="unit">{t('app.unit.kcal')}</span>
             </div>
             <div className="sub">
@@ -200,7 +202,7 @@ export default function NutritionScreen() {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 'var(--t-title)', fontWeight: 600 }}>{meals.length}</div>
+            <div className="nutr-hero-v">{meals.length}</div>
             <div className="sub">{t('app.nutrition.meals')}</div>
           </div>
         </div>
@@ -209,7 +211,7 @@ export default function NutritionScreen() {
       {/* Meal Form Panel */}
       {formOpen && (
         <Section title={editingMealId ? t('app.nutrition.edit_meal') : t('app.nutrition.new_meal')}>
-          <div className="panel" style={{ padding: '16px' }}>
+          <div className="panel nutr-form-panel">
             <form onSubmit={(e) => { e.preventDefault(); saveMealMutation.mutate() }}>
               <div className="g2">
                 <div className="fld">
@@ -245,7 +247,7 @@ export default function NutritionScreen() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+              <div className="nutr-macro-grid">
                 <div className="fld">
                   <label>{t('app.nutrition.calories')}</label>
                   <input
@@ -330,7 +332,7 @@ export default function NutritionScreen() {
               type="button"
               className="ibtn"
               onClick={() => {
-                if (view?.prev_date) setSelectedDate(view.prev_date)
+                setSelectedDate(view.prev_date)
               }}
               aria-label={t('app.nutrition.prev_day')}
             >
@@ -344,7 +346,7 @@ export default function NutritionScreen() {
               className="ibtn"
               disabled={selectedDate === todayStr}
               onClick={() => {
-                if (view?.next_date) setSelectedDate(view.next_date)
+                setSelectedDate(view.next_date)
               }}
               aria-label={t('app.nutrition.next_day')}
             >
@@ -353,9 +355,8 @@ export default function NutritionScreen() {
             {selectedDate !== todayStr && (
               <button
                 type="button"
-                className="ibtn"
+                className="ibtn nutr-today-btn"
                 onClick={() => setSelectedDate(todayStr)}
-                style={{ fontSize: 'var(--t-micro)', color: 'var(--violet)' }}
               >
                 {t('app.nutrition.today')}
               </button>
@@ -392,25 +393,25 @@ export default function NutritionScreen() {
               <span className="m">{t('app.nutrition.pct_calories')}</span>
             </div>
             <div className="compo">
-              <i style={{ flex: macroSplit.protein_pct || 1, background: 'var(--good)' }} />
-              <i style={{ flex: macroSplit.fat_pct || 1, background: 'var(--violet)' }} />
-              <i style={{ flex: macroSplit.carbs_pct || 1, background: 'var(--cool)' }} />
+              <i className="good" style={{ flex: macroSplit.protein_pct || 1 }} />
+              <i className="violet" style={{ flex: macroSplit.fat_pct || 1 }} />
+              <i className="cool" style={{ flex: macroSplit.carbs_pct || 1 }} />
             </div>
-            <div className="hyp-legend" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className="hyp-legend three">
               <div>
-                <i style={{ background: 'var(--good)' }} />
+                <i className="good" />
                 {t('app.nutrition.protein')}
-                <b>{formatNumber(prot, lang, 1)} {t('app.unit.g')} <em>({Math.round(macroSplit.protein_pct)} %)</em></b>
+                <b>{formatNumber(prot, lang, 1)} {t('app.unit.g')} <em>({formatPercent(macroSplit.protein_pct, lang)})</em></b>
               </div>
               <div>
-                <i style={{ background: 'var(--violet)' }} />
+                <i className="violet" />
                 {t('app.nutrition.fat')}
-                <b>{formatNumber(fat, lang, 1)} {t('app.unit.g')} <em>({Math.round(macroSplit.fat_pct)} %)</em></b>
+                <b>{formatNumber(fat, lang, 1)} {t('app.unit.g')} <em>({formatPercent(macroSplit.fat_pct, lang)})</em></b>
               </div>
               <div>
-                <i style={{ background: 'var(--cool)' }} />
+                <i className="cool" />
                 {t('app.nutrition.carbs')}
-                <b>{formatNumber(carbs, lang, 1)} {t('app.unit.g')} <em>({Math.round(macroSplit.carbs_pct)} %)</em></b>
+                <b>{formatNumber(carbs, lang, 1)} {t('app.unit.g')} <em>({formatPercent(macroSplit.carbs_pct, lang)})</em></b>
               </div>
             </div>
           </div>
@@ -422,11 +423,10 @@ export default function NutritionScreen() {
         <div className="c7">
           <Section
             title={selectedDate === todayStr ? t('app.nutrition.today_meals') : t('app.nutrition.meals')}
-            meta={t('app.nutrition.meals_count', { count: meals.length })}
+            meta={mealsLabel(meals.length, t, plural)}
           >
             <div className="rows">
-              {isLoading && <div className="row"><span className="m">{t('app.nutrition.loading')}</span></div>}
-              {!isLoading && meals.length === 0 && (
+              {meals.length === 0 && (
                 <div className="row"><span className="m">{t('app.nutrition.no_meals_day')}</span></div>
               )}
               {meals.map((m) => (
@@ -435,12 +435,11 @@ export default function NutritionScreen() {
                   <div>
                     <div className="t">{m.name}</div>
                     <div className="m hd num">
-                      {t('app.nutrition.macro_short_p')} {formatNumber(m.protein_g ?? 0, lang, 1)} · {t('app.nutrition.macro_short_f')} {formatNumber(m.fat_g ?? 0, lang, 1)} · {t('app.nutrition.macro_short_c')} {formatNumber(m.carbs_g ?? 0, lang, 1)}
+                      {t('app.nutrition.macro_short_p')} {gramsOf(m.protein_g)} · {t('app.nutrition.macro_short_f')} {gramsOf(m.fat_g)} · {t('app.nutrition.macro_short_c')} {gramsOf(m.carbs_g)}
                     </div>
                   </div>
                   <div className="v">
-                    {formatNumber(m.calories ?? 0, lang, 0)}
-                    <span className="u">{t('app.unit.kcal')}</span>
+                    {m.calories == null ? '—' : t('app.unit.kcal_value', { value: formatInt(m.calories, lang) })}
                   </div>
                   <div className="acts">
                     <button
@@ -500,7 +499,7 @@ export default function NutritionScreen() {
                           ? 'var(--warn)'
                           : 'var(--line)'
                     return (
-                      <g key={d.date} onClick={() => setSelectedDate(d.date)} style={{ cursor: 'pointer' }}>
+                      <g key={d.date} className="nutr-bar" onClick={() => setSelectedDate(d.date)}>
                         <rect
                           x={i * 10 + 1.5}
                           y={barY}
@@ -540,15 +539,14 @@ export default function NutritionScreen() {
                       <div>
                         <div className="t num">{longDate(parseIsoDate(d.date), lang)}</div>
                         <div className="m num">
-                          {t('app.nutrition.day_meals_summary', {
-                            count: d.meal_count,
+                          {t('app.nutrition.day_summary', {
+                            meals: mealsLabel(d.meal_count, t, plural),
                             protein: formatNumber(d.protein_g, lang, 1),
                           })}
                         </div>
                       </div>
                       <div className="v num">
-                        {formatNumber(d.calories, lang, 0)}
-                        <span className="u">{t('app.unit.kcal')}</span>
+                        {t('app.unit.kcal_value', { value: formatInt(d.calories, lang) })}
                       </div>
                     </button>
                   )

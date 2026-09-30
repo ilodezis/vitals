@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, ok, failText } from '@/api/client'
 import { OptionGroup } from '@/components/controls/Choices'
 import { Badge } from '@/components/controls/Marks'
 import { PrimaryButton } from '@/components/controls/PrimaryButton'
@@ -14,7 +14,7 @@ import { useShareView } from './useShareView'
 import './share.css'
 
 export default function ShareScreen() {
-  const { t, lang } = useT()
+  const { t, tOr, lang } = useT()
   const view = useShareView()
   const queryClient = useQueryClient()
 
@@ -51,10 +51,8 @@ export default function ShareScreen() {
       setLabsFlaggedOnly(preset.labsFlaggedOnly)
     }
     if (!titleEdited) {
-      const localizedTitle = t(`share.preset_title.${presetKey}`)
-      if (localizedTitle && localizedTitle !== `share.preset_title.${presetKey}`) {
-        setTitle(localizedTitle)
-      }
+      const localizedTitle = tOr(`share.preset_title.${presetKey}`, '')
+      if (localizedTitle !== '') setTitle(localizedTitle)
     }
   }
 
@@ -66,7 +64,7 @@ export default function ShareScreen() {
 
   const handleCreateShare = async (): Promise<boolean> => {
     if (!title.trim()) {
-      toast(t('common.required_field') || 'Title is required', { icon: 'warn' })
+      toast(t('app.name_required'), { icon: 'warn' })
       return false
     }
     if (selectedDomains.length === 0) {
@@ -75,28 +73,27 @@ export default function ShareScreen() {
     }
     setIsCreating(true)
     try {
-      const res = await api.POST('/api/v1/share', {
-        body: {
-          title: title.trim(),
-          preset: selectedPreset || null,
-          domains: selectedDomains,
-          period,
-          periodStart: period === 'custom' ? customStart : null,
-          periodEnd: period === 'custom' ? customEnd : null,
-          expiresDays,
-          labsFlaggedOnly,
-          note: note.trim() || null,
-        },
-      })
-      if (res.data) {
-        setCreated(res.data)
-        toast(t('share.toast_created'))
-        refresh()
-        return true
-      }
-      return false
-    } catch (err: any) {
-      toast(err.message || 'Error creating report', { icon: 'warn' })
+      const data = await ok(
+        api.POST('/api/v1/share', {
+          body: {
+            title: title.trim(),
+            preset: selectedPreset || null,
+            domains: selectedDomains,
+            period,
+            periodStart: period === 'custom' ? customStart : null,
+            periodEnd: period === 'custom' ? customEnd : null,
+            expiresDays,
+            labsFlaggedOnly,
+            note: note.trim() || null,
+          },
+        }),
+      )
+      setCreated(data)
+      toast(t('share.toast_created'))
+      refresh()
+      return true
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     } finally {
       setIsCreating(false)
@@ -105,25 +102,25 @@ export default function ShareScreen() {
 
   const handleRevoke = async (id: number) => {
     try {
-      await api.POST('/api/v1/share/{report_id}/revoke', {
+      await ok(api.POST('/api/v1/share/{report_id}/revoke', {
         params: { path: { report_id: id } },
-      })
+      }))
       toast(t('share.toast_revoked'))
       refresh()
-    } catch (err: any) {
-      toast(err.message || 'Error revoking report', { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.action_failed')), { icon: 'warn' })
     }
   }
 
   const handleDelete = async (id: number) => {
     try {
-      await api.DELETE('/api/v1/share/{report_id}', {
+      await ok(api.DELETE('/api/v1/share/{report_id}', {
         params: { path: { report_id: id } },
-      })
+      }))
       toast(t('common.deleted'))
       refresh()
-    } catch (err: any) {
-      toast(err.message || 'Error deleting report', { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.delete_failed')), { icon: 'warn' })
     }
   }
 
@@ -140,13 +137,9 @@ export default function ShareScreen() {
     return created.url
   }, [created])
 
-  const domainLabel = (d: string) => {
-    return t(`nav.${d}`) || t(`enum.domain.${d}`) || d
-  }
+  const domainLabel = (d: string) => tOr(`nav.${d}`, tOr(`enum.domain.${d}`, d))
 
-  const presetLabel = (pKey: string) => {
-    return t(`share.preset.${pKey}`) || pKey
-  }
+  const presetLabel = (pKey: string) => tOr(`share.preset.${pKey}`, pKey)
 
   return (
     <>

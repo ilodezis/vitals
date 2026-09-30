@@ -58,6 +58,11 @@ export function translate(dict: Dictionary, key: string, params?: Params): strin
   }
 }
 
+/** `translate()` for a key that may not exist: a missing key gives `fallback`, not the key. */
+export function translateOr(dict: Dictionary, key: string, fallback: string, params?: Params): string {
+  return Object.hasOwn(dict, key) ? translate(dict, key, params) : fallback
+}
+
 /** English has two forms (one / other), Russian three (1, 21… / 2–4 / the rest).
  *  Without a third form even Russian falls back to the English rule. The count is
  *  taken by its whole part, sign ignored. */

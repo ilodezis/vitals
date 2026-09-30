@@ -1,15 +1,15 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
+import { Disclosure } from '@/components/controls/Disclosure'
 import { Badge, TextButton } from '@/components/controls/Marks'
-import { Section } from '@/components/controls/Section'
-import { Icon } from '@/components/icons/Icon'
+import { FigureBody, Section } from '@/components/controls/Section'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { toast } from '@/components/controls/toast'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { longDate, parseIsoDate, shortDate } from '@/lib/dates'
-import { formatNumber } from '@/lib/format'
+import { formatCompact } from '@/lib/format'
 import type { components } from '@/api/schema'
 import './workouts.css'
 
@@ -19,11 +19,11 @@ export default function WorkoutsScreen() {
   const { t, lang } = useT()
   const queryClient = useQueryClient()
 
-  const { data: view, isLoading } = useQuery({
+  const { data: view } = useSuspenseQuery({
     queryKey: ['workouts'],
     queryFn: async (): Promise<WorkoutsView> => {
-      const { data } = await api.GET('/api/v1/workouts')
-      if (!data) throw new Error('Workouts unavailable')
+      const { data, error } = await api.GET('/api/v1/workouts')
+      if (error !== undefined || data === undefined) throw new Error('Workouts could not be read')
       return data
     },
   })
@@ -34,18 +34,18 @@ export default function WorkoutsScreen() {
   const syncMutation = useMutation({
     mutationFn: async () => {
       const res = await api.POST('/api/v1/workouts/sync')
-      if (!res.data?.ok) throw new Error(res.data?.error || 'Sync failed')
+      if (!res.data?.ok) throw new Error('Workout sync failed')
       return res.data
     },
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ['workouts'] })
       toast(t('app.workouts.synced', { count: data.synced }))
     },
-    onError: (err) => toast(err.message),
+    onError: () => toast(t('hevy.sync_error'), { icon: 'warn' }),
   })
 
-  const workouts = view?.workouts ?? []
-  const catalog = view?.catalog ?? []
+  const workouts = view.workouts ?? []
+  const catalog = view.catalog ?? []
   const activeExId = selectedTemplateId || (catalog[0]?.exercise_template_id ?? null)
   const selectedEx = catalog.find((c) => c.exercise_template_id === activeExId)
 
@@ -65,20 +65,18 @@ export default function WorkoutsScreen() {
         }
       />
       <Headline title={t('nav.hevy')}>
-        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontSize: 'var(--t-title)', fontWeight: 600 }}>{view?.workout_count ?? 0}</div>
-            <div className="sub">{t('app.workouts.total')}</div>
+        <div className="figs inline n3">
+          <div className="f">
+            <FigureBody value={view.workout_count} label={t('app.workouts.total')} />
           </div>
-          <div>
-            <div style={{ fontSize: 'var(--t-title)', fontWeight: 600 }}>
-              {view?.last_workout_date ? longDate(parseIsoDate(view.last_workout_date), lang) : '—'}
-            </div>
-            <div className="sub">{t('app.workouts.latest')}</div>
+          <div className="f">
+            <FigureBody
+              value={view.last_workout_date ? shortDate(parseIsoDate(view.last_workout_date), lang) : '—'}
+              label={t('app.workouts.latest')}
+            />
           </div>
-          <div>
-            <div style={{ fontSize: 'var(--t-title)', fontWeight: 600 }}>{view?.exercise_count ?? 0}</div>
-            <div className="sub">{t('app.workouts.in_catalog')}</div>
+          <div className="f">
+            <FigureBody value={view.exercise_count} label={t('app.workouts.in_catalog')} />
           </div>
         </div>
       </Headline>
@@ -88,56 +86,43 @@ export default function WorkoutsScreen() {
         <div className="c7">
           <Section title={t('app.workouts.recent')}>
             <div className="rows">
-              {isLoading && <div className="row"><span className="m">{t('app.loading')}</span></div>}
-              {!isLoading && workouts.length === 0 && (
+              {workouts.length === 0 && (
                 <div className="row"><span className="m">{t('app.empty')}</span></div>
               )}
               {workouts.map((w) => {
                 const isOpen = openWorkoutId === w.id
                 return (
-                  <div key={w.id} className={cx('acc', isOpen && 'open')}>
-                    <div
-                      className="row acc-h r-wk"
-                      onClick={() => setOpenWorkoutId(isOpen ? null : w.id)}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      <Icon name={isOpen ? 'chevD' : 'chevR'} />
-                      <div>
-                        <div className="t">{w.title}</div>
-                        <div className="m">
-                          {w.program && <Badge tone="violet">{t('app.workouts.program', { program: w.program })}</Badge>}
-                          <span className="num"> · {longDate(parseIsoDate(w.date), lang)}</span>
-                        </div>
-                      </div>
-                      <span className="m num">{w.duration_min ? t('app.duration.min', { m: w.duration_min }) : ''}</span>
-                    </div>
-
-                    {isOpen && (
-                      <div className="acc-b">
-                        {w.exercises.map((ex, eIdx) => (
-                          <div key={eIdx} className="ex">
-                            <button
-                              type="button"
-                              className="ex-t"
-                              onClick={() => setSelectedTemplateId(ex.exercise_template_id ?? null)}
-                            >
-                              {ex.title}
-                            </button>
-                            <div className="sets">
-                              {ex.sets.map((s, sIdx) => (
-                                <span key={sIdx} className="set num">
-                                  {s.set_type === 'warmup' && <i>W</i>}
-                                  {s.weight_kg != null ? `${formatNumber(s.weight_kg, lang)} ${t('app.unit.kg')}` : ''}
-                                  {s.reps != null ? ` × ${s.reps}` : ''}
-                                </span>
-                              ))}
-                            </div>
+                  <Disclosure
+                    key={w.id}
+                    open={isOpen}
+                    onToggle={() => setOpenWorkoutId(isOpen ? null : w.id)}
+                    title={w.title}
+                    sub={[w.program ? t('app.workouts.program', { program: w.program }) : null, longDate(parseIsoDate(w.date), lang)].filter(Boolean).join(' · ')}
+                    count={w.duration_min ? t('app.duration.min', { m: w.duration_min }) : undefined}
+                  >
+                    <div className="disc-body">
+                      {w.exercises.map((ex, eIdx) => (
+                        <div key={eIdx} className="ex">
+                          <button
+                            type="button"
+                            className="ex-t"
+                            onClick={() => setSelectedTemplateId(ex.exercise_template_id ?? null)}
+                          >
+                            {ex.title}
+                          </button>
+                          <div className="sets">
+                            {ex.sets.map((s, sIdx) => (
+                              <span key={sIdx} className="set num">
+                                {s.set_type === 'warmup' && <i>W</i>}
+                                {s.weight_kg != null ? t('app.unit.kg_value', { value: formatCompact(s.weight_kg, lang, 2) }) : ''}
+                                {s.reps != null ? ` × ${s.reps}` : ''}
+                              </span>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Disclosure>
                 )
               })}
             </div>
@@ -158,7 +143,7 @@ export default function WorkoutsScreen() {
                     onClick={() => setSelectedTemplateId(c.exercise_template_id)}
                   >
                     <div>
-                      <div className="t" style={{ fontWeight: 500 }}>{c.title}</div>
+                      <div className="t">{c.title}</div>
                       <div className="m num">{t('app.workouts.sessions_count', { count: c.sessions_count })}</div>
                     </div>
                     {c.last_date && (
@@ -186,7 +171,7 @@ export default function WorkoutsScreen() {
             ) : undefined
           }
         >
-          <div className="panel bare" style={{ padding: '16px' }}>
+          <div className="panel bare wk-chart">
             {selectedEx.working_weight_series.length > 0 ? (() => {
               const pts = selectedEx.working_weight_series
               const weights = pts.map((p) => p.weight_kg)
@@ -205,13 +190,13 @@ export default function WorkoutsScreen() {
               const lastPt = pts[pts.length - 1]
               return (
                 <div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch', height: 160 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: 'var(--t-micro)', color: 'var(--muted)', textAlign: 'right', minWidth: '40px' }}>
-                      <span>{formatNumber(maxW, lang)}</span>
-                      <span>{formatNumber(midW, lang)}</span>
-                      <span>{formatNumber(minW, lang)}</span>
+                  <div className="wk-plot">
+                    <div className="wk-y num">
+                      <span>{formatCompact(maxW, lang)}</span>
+                      <span>{formatCompact(midW, lang)}</span>
+                      <span>{formatCompact(minW, lang)}</span>
                     </div>
-                    <div style={{ flex: 1, position: 'relative' }}>
+                    <div className="wk-svg">
                       <svg width="100%" height="100%" viewBox="0 0 400 160" preserveAspectRatio="none">
                         <line x1="0" y1="80" x2="400" y2="80" stroke="var(--line)" strokeDasharray="3 3" />
                         <path
@@ -225,19 +210,17 @@ export default function WorkoutsScreen() {
                       </svg>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingLeft: '48px' }}>
+                  <div className="wk-x">
                     <span className="m num">{firstPt?.date ? shortDate(parseIsoDate(firstPt.date), lang) : ''}</span>
                     <span className="m num">
                       {lastPt?.date ? shortDate(parseIsoDate(lastPt.date), lang) : ''}
-                      {lastPt?.weight_kg != null ? ` · ${formatNumber(lastPt.weight_kg, lang)} ${t('app.unit.kg')}` : ''}
+                      {lastPt?.weight_kg != null ? ` · ${t('app.unit.kg_value', { value: formatCompact(lastPt.weight_kg, lang, 2) })}` : ''}
                     </span>
                   </div>
                 </div>
               )
             })() : (
-              <div className="m" style={{ textAlign: 'center', padding: '24px 0' }}>
-                {t('app.workouts.no_data')}
-              </div>
+              <p className="sub wk-none">{t('app.workouts.no_data')}</p>
             )}
 
             {selectedEx.latest_notes && (

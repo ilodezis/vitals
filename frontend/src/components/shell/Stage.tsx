@@ -6,6 +6,7 @@ import { SCROLL_TOP_EVENT } from './navigation'
 import { screenForPath, type ScreenId } from './nav'
 import { takeNavigationIntent } from './navIntent'
 import { screenComponent } from './screens'
+import { ScreenBoundary } from './ScreenBoundary'
 import { ScreenFrame, ScreenProvider } from './ScreenFrame'
 import { initialStack, planGo, planPop, topOf, type NavPlan, type StackEntry, type StackState } from './stack'
 import { fade, sharedMorph, slide, swipeCommits, swipeFrame, whenPresent } from './stageMotion'
@@ -250,9 +251,11 @@ export function Stage({ onStack }: { onStack: (info: StackInfo) => void }) {
           }}
         >
           <ScreenProvider info={{ id: entry.id, back: desktop ? null : entry.back, firstVisit: entry.key === 0 }}>
-            <Suspense fallback={null}>
-              <ScreenBody id={entry.id} />
-            </Suspense>
+            <ScreenBoundary id={entry.id}>
+              <Suspense fallback={null}>
+                <ScreenBody id={entry.id} />
+              </Suspense>
+            </ScreenBoundary>
           </ScreenProvider>
         </ScreenFrame>
       ))}

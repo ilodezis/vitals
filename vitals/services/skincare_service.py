@@ -300,7 +300,7 @@ async def collect(session: AsyncSession) -> dict[str, Any]:
             "code": r.code,
             "severity": r.severity,
             "sev": r.severity,
-            "kind": r.category or "Правило",
+            "kind": r.category or "other",
             "msg": r.message,
             "hard": r.severity == "block",
         }

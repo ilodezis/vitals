@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, failText, InvalidError, ok } from '@/api/client'
 import { ConflictAlert } from '@/components/controls/ConflictAlert'
 import { Badge, Delta, TextButton } from '@/components/controls/Marks'
 import { PrimaryButton, type PrimaryButtonHandle } from '@/components/controls/PrimaryButton'
@@ -10,13 +10,14 @@ import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { parseIsoDate, shortDate, toIsoDate } from '@/lib/dates'
-import { formatNumber } from '@/lib/format'
+import { formatCompact } from '@/lib/format'
 import { useConflictMutation } from '@/lib/useConflictMutation'
+import { buildDoseBody, buildItemBody } from './hrtBody'
 import { useHrtView } from './useHrtView'
 import './hrt.css'
 
 export default function HrtScreen() {
-  const { t, lang } = useT()
+  const { t, tOr, lang } = useT()
   const view = useHrtView()
   const queryClient = useQueryClient()
 
@@ -31,7 +32,7 @@ export default function HrtScreen() {
   const todayStr = useMemo(() => toIsoDate(new Date()), [])
   const [doseDate, setDoseDate] = useState(todayStr)
   const [doseCompound, setDoseCompound] = useState(() => view.compounds[0]?.key ?? 'testosterone_cypionate')
-  const [doseVal, setDoseVal] = useState('100')
+  const [doseVal, setDoseVal] = useState('')
   const [doseUnit, setDoseUnit] = useState('mg')
   const [doseSite, setDoseSite] = useState('glute_left')
   const [doseBrand, setDoseBrand] = useState('')
@@ -45,9 +46,9 @@ export default function HrtScreen() {
 
   // Item form states
   const [itemCompound, setItemCompound] = useState(() => view.compounds[0]?.key ?? 'testosterone_cypionate')
-  const [itemDose, setItemDose] = useState('125')
-  const [itemInterval, setItemInterval] = useState('3.5')
-  const [itemStartWeek, setItemStartWeek] = useState('1')
+  const [itemDose, setItemDose] = useState('')
+  const [itemInterval, setItemInterval] = useState('')
+  const [itemStartWeek, setItemStartWeek] = useState('')
 
   // Side effect form states
   const [seDate, setSeDate] = useState(todayStr)
@@ -56,6 +57,8 @@ export default function HrtScreen() {
   const [seNote, setSeNote] = useState('')
 
   const activeC = view.cycle
+  const doseBody = buildDoseBody({ dose: doseVal })
+  const itemBody = buildItemBody({ dose: itemDose, interval: itemInterval, startWeek: itemStartWeek })
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['hrt'] })
@@ -65,60 +68,62 @@ export default function HrtScreen() {
   // Dose submission
   const doseConflict = useConflictMutation({
     mutationFn: async ({ override }) => {
-      const res = await api.POST('/api/v1/hrt/doses', {
-        body: {
-          date: doseDate,
-          compoundKey: doseCompound,
-          dose: parseFloat(doseVal) || 0,
-          unit: doseUnit,
-          site: doseSite || null,
-          brand: doseBrand || null,
-          note: doseNote || null,
-          override,
-        },
-      })
-      if (!res.data) throw new Error(t('app.error'))
+      if (doseBody === null) throw new InvalidError('')
+      const data = await ok(
+        api.POST('/api/v1/hrt/doses', {
+          body: {
+            date: doseDate,
+            compoundKey: doseCompound,
+            ...doseBody,
+            unit: doseUnit,
+            site: doseSite || null,
+            brand: doseBrand || null,
+            note: doseNote || null,
+            override,
+          },
+        }),
+      )
       toast(t('common.saved'))
       setDoseModalOpen(false)
       refresh()
-      return res.data
+      return data
     },
+    fallbackErrorMessage: t('app.save_failed'),
     onError: (err) => {
-      toast(err.message, { icon: 'warn' })
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     },
   })
 
   // Delete dose
   const handleDeleteDose = async (id: number) => {
     try {
-      await api.DELETE('/api/v1/hrt/doses/{dose_id}', { params: { path: { dose_id: id } } })
+      await ok(api.DELETE('/api/v1/hrt/doses/{dose_id}', { params: { path: { dose_id: id } } }))
       toast(t('common.deleted'))
       refresh()
-    } catch (err: any) {
-      toast(err.message, { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.delete_failed')), { icon: 'warn' })
     }
   }
 
   // Cycle creation
   const handleCreateCycle = async (): Promise<boolean> => {
     try {
-      const res = await api.POST('/api/v1/hrt/cycles', {
-        body: {
-          kind: cycleKind,
-          name: cycleName || null,
-          startDate: cycleStart,
-          endDate: cycleEnd || null,
-        },
-      })
-      if (res.data) {
-        toast(t('common.saved'))
-        setCycleModalOpen(false)
-        refresh()
-        return true
-      }
-      return false
-    } catch (err: any) {
-      toast(err.message, { icon: 'warn' })
+      await ok(
+        api.POST('/api/v1/hrt/cycles', {
+          body: {
+            kind: cycleKind,
+            name: cycleName || null,
+            startDate: cycleStart,
+            endDate: cycleEnd || null,
+          },
+        }),
+      )
+      toast(t('common.saved'))
+      setCycleModalOpen(false)
+      refresh()
+      return true
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     }
   }
@@ -127,39 +132,36 @@ export default function HrtScreen() {
   const handleCloseCycle = async () => {
     if (!activeC) return
     try {
-      await api.POST('/api/v1/hrt/cycles/{cycle_id}/close', {
+      await ok(api.POST('/api/v1/hrt/cycles/{cycle_id}/close', {
         params: { path: { cycle_id: activeC.id } },
         body: { endDate: todayStr },
-      })
+      }))
       toast(t('hrt.cycle_closed'))
       refresh()
-    } catch (err: any) {
-      toast(err.message, { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.action_failed')), { icon: 'warn' })
     }
   }
 
   // Add compound item to cycle
   const handleAddItem = async (): Promise<boolean> => {
-    if (!activeC) return false
+    if (!activeC || itemBody === null) return false
     try {
-      const res = await api.POST('/api/v1/hrt/cycles/{cycle_id}/items', {
-        params: { path: { cycle_id: activeC.id } },
-        body: {
-          compoundKey: itemCompound,
-          dose: parseFloat(itemDose) || 0,
-          intervalDays: parseFloat(itemInterval) || 3.5,
-          startWeek: parseInt(itemStartWeek, 10) || 1,
-        },
-      })
-      if (res.data) {
-        toast(t('common.saved'))
-        setItemModalOpen(false)
-        refresh()
-        return true
-      }
-      return false
-    } catch (err: any) {
-      toast(err.message, { icon: 'warn' })
+      await ok(
+        api.POST('/api/v1/hrt/cycles/{cycle_id}/items', {
+          params: { path: { cycle_id: activeC.id } },
+          body: {
+            compoundKey: itemCompound,
+            ...itemBody,
+          },
+        }),
+      )
+      toast(t('common.saved'))
+      setItemModalOpen(false)
+      refresh()
+      return true
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     }
   }
@@ -167,11 +169,11 @@ export default function HrtScreen() {
   // Delete compound item
   const handleDeleteItem = async (itemId: number) => {
     try {
-      await api.DELETE('/api/v1/hrt/cycle-items/{item_id}', { params: { path: { item_id: itemId } } })
+      await ok(api.DELETE('/api/v1/hrt/cycle-items/{item_id}', { params: { path: { item_id: itemId } } }))
       toast(t('common.deleted'))
       refresh()
-    } catch (err: any) {
-      toast(err.message, { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.delete_failed')), { icon: 'warn' })
     }
   }
 
@@ -179,49 +181,49 @@ export default function HrtScreen() {
   const handleSaveTemplate = async () => {
     if (!activeC || !templateName.trim()) return
     try {
-      await api.POST('/api/v1/hrt/cycles/{cycle_id}/save-template', {
+      await ok(api.POST('/api/v1/hrt/cycles/{cycle_id}/save-template', {
         params: { path: { cycle_id: activeC.id } },
         body: { name: templateName.trim() },
-      })
+      }))
       toast(t('hrt.template_saved'))
       setTemplateName('')
       refresh()
-    } catch (err: any) {
-      toast(err.message, { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     }
   }
 
   // Apply template to start cycle
   const handleApplyTemplate = async (templateId: number) => {
     try {
-      await api.POST('/api/v1/hrt/templates/{template_id}/create-cycle', {
+      await ok(api.POST('/api/v1/hrt/templates/{template_id}/create-cycle', {
         params: { path: { template_id: templateId } },
         body: { startDate: todayStr },
-      })
+      }))
       toast(t('hrt.cycle_started'))
       refresh()
-    } catch (err: any) {
-      toast(err.message, { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.action_failed')), { icon: 'warn' })
     }
   }
 
   // Side effect log
   const handleCreateSideEffect = async (): Promise<boolean> => {
     try {
-      await api.POST('/api/v1/hrt/side-effects', {
+      await ok(api.POST('/api/v1/hrt/side-effects', {
         body: {
           date: seDate,
           effectType: seType,
           severity: seSev,
           note: seNote || null,
         },
-      })
+      }))
       toast(t('common.saved'))
       setSideEffectModalOpen(false)
       refresh()
       return true
-    } catch (err: any) {
-      toast(err.message, { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
       return false
     }
   }
@@ -229,11 +231,11 @@ export default function HrtScreen() {
   // Delete side effect
   const handleDeleteSideEffect = async (id: number) => {
     try {
-      await api.DELETE('/api/v1/hrt/side-effects/{effect_id}', { params: { path: { effect_id: id } } })
+      await ok(api.DELETE('/api/v1/hrt/side-effects/{effect_id}', { params: { path: { effect_id: id } } }))
       toast(t('common.deleted'))
       refresh()
-    } catch (err: any) {
-      toast(err.message, { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.delete_failed')), { icon: 'warn' })
     }
   }
 
@@ -249,11 +251,11 @@ export default function HrtScreen() {
       const y = h - (p.total_mg / maxMg) * (h - 8) - 4
       return `${x.toFixed(1)},${y.toFixed(1)}`
     })
-    return { points: coords.join(' '), maxMg: formatNumber(maxMg, lang, 1) }
+    return { points: coords.join(' '), maxMg: formatCompact(maxMg, lang, 1) }
   }, [view.release, lang])
 
   const lastDoseVal = view.last ? parseFloat(view.last.dose) : NaN
-  const lastDoseNum = !Number.isNaN(lastDoseVal) ? formatNumber(lastDoseVal, lang, 1) : (view.last?.dose ?? '—')
+  const lastDoseNum = !Number.isNaN(lastDoseVal) ? formatCompact(lastDoseVal, lang, 2) : (view.last?.dose ?? '—')
 
   return (
     <>
@@ -296,8 +298,8 @@ export default function HrtScreen() {
               <div className="hrt-cycle-sec">
                 <div className="hrt-cycle-head">
                   <div>
-                    <Badge tone="violet">{t(`hrt.kind.${activeC.kind}`) || activeC.kind.toUpperCase()}</Badge>
-                    <h3>{activeC.name || t(`hrt.kind.${activeC.kind}`) || activeC.kind}</h3>
+                    <Badge tone="violet">{tOr(`hrt.kind.${activeC.kind}`, activeC.kind.toUpperCase())}</Badge>
+                    <h3>{activeC.name || tOr(`hrt.kind.${activeC.kind}`, activeC.kind)}</h3>
                     <p className="sub">
                       {shortDate(parseIsoDate(activeC.start), lang)}
                       {activeC.end ? ` — ${shortDate(parseIsoDate(activeC.end), lang)}` : ''}
@@ -355,8 +357,8 @@ export default function HrtScreen() {
                         <div className="hrt-plan-info">
                           <span className="hrt-plan-name">{it.name}</span>
                           <span className="hrt-plan-sub">
-                            {formatNumber(it.dose, lang, 1)} {t('app.unit.mg')}
-                            {it.every != null ? ` · ${t('app.hrt.every_d', { days: it.every })}` : ''} · {t('app.hrt.week_plus', { week: it.from })}
+                            {formatCompact(it.dose, lang, 2)} {t('app.unit.mg')}
+                            {it.every != null ? ` · ${t('app.hrt.every_d', { days: formatCompact(it.every, lang, 2) })}` : ''} · {t('app.hrt.week_plus', { week: it.from })}
                           </span>
                         </div>
                         <div className="hrt-plan-actions">
@@ -422,7 +424,7 @@ export default function HrtScreen() {
                       </div>
                     </div>
                     <div className="v">
-                      {formatNumber(d.doseVal, lang, 1)}
+                      {formatCompact(d.doseVal, lang, 2)}
                       <span className="u">{t('app.unit.mg')}</span>
                     </div>
                     <div className="acts">
@@ -462,7 +464,7 @@ export default function HrtScreen() {
                 </div>
               ) : (
                 view.sideEffects.map((se) => {
-                  const seName = t(`app.hrt.side.${se.name}`) || se.name
+                  const seName = tOr(`app.hrt.side.${se.name}`, se.name)
                   return (
                     <div key={se.id} className="row hrt-side-effect-item">
                       <div className="hrt-side-effect-info">
@@ -570,7 +572,7 @@ export default function HrtScreen() {
                 onFix={() => doseConflict.clearConflict()}
                 onSaveAnyway={() => doseButtonRef.current?.press({ override: true })}
               />
-              <PrimaryButton ref={doseButtonRef} className="btn grow" onPress={doseConflict.submit}>
+              <PrimaryButton ref={doseButtonRef} className="btn grow" disabled={doseBody === null} onPress={doseConflict.submit}>
                 {t('common.save')}
               </PrimaryButton>
             </div>
@@ -600,7 +602,7 @@ export default function HrtScreen() {
               </label>
               <label className="field">
                 <span className="flabel">{t('hrt.cycle_name')}</span>
-                <input className="input" placeholder="e.g. Spring 2026" value={cycleName} onChange={(e) => setCycleName(e.target.value)} />
+                <input className="input" placeholder={t('hrt.cycle_name_ph')} value={cycleName} onChange={(e) => setCycleName(e.target.value)} />
               </label>
               <label className="field">
                 <span className="flabel">{t('common.start_date')}</span>
@@ -651,7 +653,7 @@ export default function HrtScreen() {
                 <span className="flabel">{t('hrt.start_week')}</span>
                 <input type="number" min="1" className="input" value={itemStartWeek} onChange={(e) => setItemStartWeek(e.target.value)} />
               </label>
-              <PrimaryButton className="btn grow" onPress={handleAddItem}>
+              <PrimaryButton className="btn grow" disabled={itemBody === null} onPress={handleAddItem}>
                 {t('common.save')}
               </PrimaryButton>
             </div>
@@ -676,7 +678,7 @@ export default function HrtScreen() {
               </label>
               <label className="field">
                 <span className="flabel">{t('hrt.symptom')}</span>
-                <input className="input" placeholder="e.g. acne, insomnia" value={seType} onChange={(e) => setSeType(e.target.value)} />
+                <input className="input" placeholder={t('hrt.symptom_ph')} value={seType} onChange={(e) => setSeType(e.target.value)} />
               </label>
               <label className="field">
                 <span className="flabel">{t('hrt.severity_label')}</span>

@@ -5,6 +5,7 @@ export type Lang = 'ru' | 'en'
 
 const MINUS = '−'
 const GROUP = ' ' // narrow no-break space: "12 345" never wraps
+const NBSP = '\u00a0'
 const DECIMAL: Record<Lang, string> = { ru: ',', en: '.' }
 
 const formatters = new Map<string, Intl.NumberFormat>()
@@ -29,10 +30,22 @@ function formatter(lang: Lang, digits: number): Intl.NumberFormat {
 /** A whole number, grouped: 2150 → "2 150". */
 export const formatInt = (value: number, lang: Lang): string => formatNumber(value, lang, 0)
 
-/** A number that reads as it was written: "94", not "94,0"; "93,9" when there is a tenth to keep. */
-export function formatCompact(value: number, lang: Lang): string {
-  return formatNumber(value, lang, Number.isInteger(Number(value.toFixed(1))) ? 0 : 1)
+/** A number that reads as it was written: "94", not "94,0"; "93,9" when there is a tenth to keep.
+ *  `maxDigits` is how fine it may get: a dose (0,25) or a ratio (0,381) keeps its own digits. */
+export function formatCompact(value: number, lang: Lang, maxDigits = 1): string {
+  const rounded = Number(value.toFixed(maxDigits))
+  let digits = 0
+  while (digits < maxDigits && Number(rounded.toFixed(digits)) !== rounded) digits += 1
+  return formatNumber(rounded, lang, digits)
 }
+
+/** A share: "92 %" in Russian (the sign stands apart, on a no-break space), "92%" in English. */
+export function formatPercent(value: number, lang: Lang, maxDigits = 0): string {
+  return `${formatCompact(value, lang, maxDigits)}${lang === 'ru' ? NBSP : ''}%`
+}
+
+/** "09:00:00" → "09:00": a time of day is read to the minute. */
+export const clockTime = (time: string): string => (/^\d{1,2}:\d{2}/.test(time) ? time.slice(0, time.indexOf(':') + 3) : time)
 
 /** Compact number notation (e.g. 9500 → "9,5 тыс." in ru, "9.5K" in en). */
 export function formatCompactNumber(value: number, lang: Lang): string {

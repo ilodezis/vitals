@@ -1,13 +1,14 @@
 import { useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api } from '@/api/client'
+import { api, ok, failText } from '@/api/client'
 import { Badge } from '@/components/controls/Marks'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { parseIsoDate, shortDate } from '@/lib/dates'
-import { formatNumber } from '@/lib/format'
+import { formatInt } from '@/lib/format'
+import { signalTime, signalValue } from './signalText'
 import type { SignalItem } from './types'
 import { useSignalsView } from './useSignalsView'
 import './signals.css'
@@ -19,7 +20,7 @@ const KIND_META: Record<string, [string, 'plain' | 'bad' | 'cool' | 'violet']> =
 }
 
 export default function SignalsScreen() {
-  const { t, lang } = useT()
+  const { t, tOr, lang } = useT()
   const view = useSignalsView()
   const queryClient = useQueryClient()
 
@@ -27,12 +28,7 @@ export default function SignalsScreen() {
     void queryClient.invalidateQueries({ queryKey: ['signals'] })
   }
 
-  const formatSignalKey = (key: string) => {
-    const i18nKey = `app.signal_key.${key}`
-    const translated = t(i18nKey as any)
-    if (translated && translated !== i18nKey) return translated
-    return key.replaceAll('_', ' ')
-  }
+  const formatSignalKey = (key: string) => tOr(`app.signal_key.${key}`, key.replaceAll('_', ' '))
 
   const maxFreq = useMemo(() => {
     if (!view.frequency.length) return 1
@@ -51,25 +47,25 @@ export default function SignalsScreen() {
 
   const handleDelete = async (signalId: number) => {
     try {
-      await api.DELETE('/api/v1/signals/{signal_id}', {
+      await ok(api.DELETE('/api/v1/signals/{signal_id}', {
         params: { path: { signal_id: signalId } },
-      })
+      }))
       toast(t('common.deleted'))
       refresh()
-    } catch (err: any) {
-      toast(err.message || 'Error deleting signal', { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.delete_failed')), { icon: 'warn' })
     }
   }
 
   const handleMarkMisparse = async (batchId: string) => {
     try {
-      await api.POST('/api/v1/signals/{batch_id}/misparse', {
+      await ok(api.POST('/api/v1/signals/{batch_id}/misparse', {
         params: { path: { batch_id: batchId } },
-      })
+      }))
       toast(t('app.signals.misparsed'))
       refresh()
-    } catch (err: any) {
-      toast(err.message || 'Error marking misparse', { icon: 'warn' })
+    } catch (err) {
+      toast(failText(err, t('app.save_failed')), { icon: 'warn' })
     }
   }
 
@@ -102,7 +98,7 @@ export default function SignalsScreen() {
           <div className="sec-h">
             <h2>{t('app.signals.key_frequency')}</h2>
           </div>
-          <p className="sub" style={{ margin: '-4px 0 12px', maxWidth: '64ch' }}>
+          <p className="sub sig-desc">
             {t('app.signals.key_frequency_desc')}
           </p>
           <div className="rows">
@@ -124,7 +120,7 @@ export default function SignalsScreen() {
                   <div className="fbar">
                     <i style={{ width: `${pct}%` }} />
                   </div>
-                  <span className="v num">{formatNumber(count, lang)}</span>
+                  <span className="v num">{formatInt(count, lang)}</span>
                   <div className="fex m">
                     {examples.length > 0 ? (
                       examples.map((e, idx) => <div key={idx}>{e}</div>)
@@ -157,18 +153,15 @@ export default function SignalsScreen() {
                         <i className="tk violet" />
                         <div>
                           <div className="ev-h">
-                            <Badge tone={km[1]}>{t(km[0] as any)}</Badge>
+                            <Badge tone={km[1]}>{t(km[0])}</Badge>
                             <span className="t sig-key">{formatSignalKey(s.key)}</span>
                             {s.rawKey && s.rawKey !== s.key && (
                               <span className="m sig-key">← {s.rawKey.replaceAll('_', ' ')}</span>
                             )}
                             {s.value != null && (
-                              <span className="m num">
-                                {formatNumber(s.value, lang)}
-                                {s.unit ? ` ${s.unit}` : ''}
-                              </span>
+                              <span className="m num">{signalValue(s.value, s.unit, lang)}</span>
                             )}
-                            {s.time && <span className="m num">{s.time}</span>}
+                            {s.time && <span className="m num">{signalTime(s.time)}</span>}
                             {s.misparse && <Badge tone="bad">{t('app.signals.misparse_badge')}</Badge>}
                           </div>
                           {s.note && <div className="m">{s.note}</div>}

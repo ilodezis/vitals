@@ -14,7 +14,7 @@ async def test_cross_endpoint_parity(auth_client, db_session):
     """The same figure must match on every endpoint that reports it:
     1. /api/v1/today (figures[weight].trend) == /api/v1/weight (pace.per_week_kg)
        == /api/v1/session (rail[weight].delta_kg)
-    2. /api/v1/weight (pace.dose.delta_kg) == /api/v1/glp1 (deltaOnDoseKg & summary)
+    2. /api/v1/weight (pace.dose.delta_kg) == /api/v1/glp1 (deltaOnDoseKg)
     3. /api/v1/today (goal.pct) == /api/v1/reports (goals[0].pct)
        == milestones_service.dashboard_cards()[0]["pct"]
     """
@@ -101,7 +101,9 @@ async def test_cross_endpoint_parity(auth_client, db_session):
     weight_dose_delta = weight_body["pace"]["dose"]["delta_kg"]
     assert weight_dose_delta == pytest.approx(-1.4)
     assert glp1_body["deltaOnDoseKg"] == pytest.approx(weight_dose_delta)
-    assert "−1.4" in glp1_body["summary"]
+    assert glp1_body["deltaOnDoseKg"] == pytest.approx(-1.4)
+    # The number is all the API sends: the sentence around it is the app's to word.
+    assert "summary" not in glp1_body
 
     # 3. Goal pct parity across /today, /reports, and milestones_service
     cards = await milestones_service.dashboard_cards(db_session)
