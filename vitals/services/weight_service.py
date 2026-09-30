@@ -43,6 +43,7 @@ from vitals.services.analytics import exclude_ranges
 from vitals.services.analytics.navy import lean_body_mass_kg, navy_body_fat_pct
 from vitals.services.analytics.regression import fit_trend, project_date_for_value
 from vitals.services.analytics.rolling import rolling_mean_by_date
+from vitals.utils import read_memo
 from vitals.utils.timeutils import today_local
 
 NOISE_ALERT_KEY = "weight.noisy_period_active"
@@ -222,6 +223,32 @@ async def log_weight(
 
 
 async def list_active_weights(
+    session: AsyncSession,
+    *,
+    start: Optional[date_type] = None,
+    end: Optional[date_type] = None,
+) -> Sequence[WeightLog]:
+    """Active weigh-ins, oldest first. The whole history is read once per unit of
+    work (several services on one screen ask for it, most of them for "everything up
+    to a date"); a window with a start is cut from it when it is already here and
+    read on its own otherwise."""
+    held = read_memo.peek(session, _ACTIVE_WEIGHTS_MEMO)
+    if held is None and start is None:
+        held = await read_memo.remember(session, _ACTIVE_WEIGHTS_MEMO, lambda: _read_active_weights(session))
+    if held is not None:
+        # One active row per date (partial unique index), so the date order is total.
+        return [
+            w
+            for w in held
+            if (start is None or w.date >= start) and (end is None or w.date <= end)
+        ]
+    return await _read_active_weights(session, start=start, end=end)
+
+
+_ACTIVE_WEIGHTS_MEMO = "weight_service.active_weights"
+
+
+async def _read_active_weights(
     session: AsyncSession,
     *,
     start: Optional[date_type] = None,

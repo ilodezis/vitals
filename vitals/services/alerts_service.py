@@ -162,6 +162,102 @@ async def raise_alert(
     return alert
 
 
+class AlertBook:
+    """The alerts of a few keys read once, for a refresh pass that walks many entities.
+
+    A pass that asks :func:`resolve_superseded` / :func:`_was_ever_dismissed` /
+    :func:`raise_alert` / :func:`resolve_by_key` once per entity pays several
+    queries per entity. The book answers the same questions from two reads —
+    the active rows and the dismissed identities of its keys — and keeps itself
+    current as the pass changes them, so the outcome is the same row for row.
+    Only valid for the keys it was loaded with, within one session."""
+
+    def __init__(self, session: AsyncSession, keys: Sequence[str]) -> None:
+        self._session = session
+        self._keys = frozenset(keys)
+        self._active: dict[tuple[str, str], SystemAlert] = {}
+        self._dismissed: set[tuple[str, str]] = set()
+
+    @classmethod
+    async def load(cls, session: AsyncSession, keys: Sequence[str]) -> AlertBook:
+        book = cls(session, keys)
+        active = await session.execute(
+            select(SystemAlert).where(
+                SystemAlert.alert_key.in_(book._keys), SystemAlert.resolved_at.is_(None)
+            )
+        )
+        for row in active.scalars().all():
+            book._active[(row.alert_key, row.entity_ref)] = row
+        dismissed = await session.execute(
+            select(SystemAlert.alert_key, SystemAlert.entity_ref)
+            .where(SystemAlert.alert_key.in_(book._keys), SystemAlert.resolved_at.is_not(None))
+            .distinct()
+        )
+        book._dismissed = {(k, e) for k, e in dismissed.all()}
+        return book
+
+    def _check(self, alert_key: str) -> None:
+        if alert_key not in self._keys:
+            raise KeyError(f"alert key {alert_key!r} was not loaded into this book")
+
+    def _resolve(self, row: SystemAlert, now) -> None:
+        row.resolved_at = now
+        del self._active[(row.alert_key, row.entity_ref)]
+        self._dismissed.add((row.alert_key, row.entity_ref))
+
+    async def resolve_superseded(
+        self, *, alert_key: str, keep_entity: Optional[str], marker: Optional[str] = None
+    ) -> None:
+        """:func:`resolve_superseded` against the book."""
+        self._check(alert_key)
+        now = now_local()
+        changed = False
+        for (key, entity), row in list(self._active.items()):
+            if key != alert_key or entity == keep_entity:
+                continue
+            if marker is not None and not (entity == marker or entity.startswith(f"{marker}:")):
+                continue
+            self._resolve(row, now)
+            changed = True
+        if changed:
+            await self._session.flush()
+
+    def was_ever_dismissed(self, alert_key: str, entity_ref: str) -> bool:
+        """:func:`_was_ever_dismissed` against the book."""
+        self._check(alert_key)
+        return (alert_key, entity_ref) in self._dismissed
+
+    async def raise_alert(
+        self, *, domain: str, severity: str, message: str, alert_key: str, entity_ref: str = ""
+    ) -> SystemAlert:
+        """:func:`raise_alert` against the book."""
+        self._check(alert_key)
+        existing = self._active.get((alert_key, entity_ref))
+        if existing is not None:
+            if existing.severity != severity or existing.message != message:
+                existing.severity = severity
+                existing.message = message
+                await self._session.flush()
+            return existing
+        alert = SystemAlert(
+            domain=domain, severity=severity, message=message, alert_key=alert_key, entity_ref=entity_ref
+        )
+        self._session.add(alert)
+        await self._session.flush()
+        self._active[(alert_key, entity_ref)] = alert
+        return alert
+
+    async def resolve_by_key(self, *, alert_key: str, entity_ref: str = "") -> Optional[SystemAlert]:
+        """:func:`resolve_by_key` against the book."""
+        self._check(alert_key)
+        existing = self._active.get((alert_key, entity_ref))
+        if existing is None:
+            return None
+        self._resolve(existing, now_local())
+        await self._session.flush()
+        return existing
+
+
 async def resolve_alert(session: AsyncSession, alert_id: int) -> Optional[SystemAlert]:
     """Mark exactly the one alert identified by ``alert_id`` resolved. Returns the
     target row, or None if it doesn't exist.

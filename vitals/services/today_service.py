@@ -291,12 +291,14 @@ async def collect(
     today = today_local()
     cfg = load_config()
 
-    ctx = await brief.build_context(session)
+    # The same daily rows feed the norm and the corridors: read once. Only the brief's
+    # view of today's numbers is needed here, not what only the model is handed.
+    daily = await garmin_service.list_daily(session, limit=brief._BASELINE_DAYS + 1)
+    ctx = await brief.headline_context(session, garmin_daily=daily)
     weight = ctx.get("weight") or {}
     garmin = ctx.get("garmin") or {}
     baseline = garmin.get("baseline") or {}
     series = await weight_service.chart_series(session)
-    daily = await garmin_service.list_daily(session, limit=brief._BASELINE_DAYS + 1)
 
     def corridor_of(key: str) -> Optional[dict]:
         spread = _spread(

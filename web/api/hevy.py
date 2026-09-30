@@ -94,12 +94,15 @@ async def read_workouts(
             )
         )
 
+    # Every exercise's history in one read, not three reads per exercise.
+    histories = await hevy_service.exercise_sessions_by_template(db)
     catalog_items: list[ExerciseCatalogItem] = []
     for c in catalog:
         tid = c["exercise_template_id"]
-        series = await hevy_service.working_weight_series(db, tid)
-        verdict = await hevy_service.progression_for_exercise(db, tid)
-        notes = await hevy_service.latest_notes(db, tid)
+        sessions = histories.get(tid, [])
+        series = hevy_service.series_from_sessions(sessions)
+        verdict = hevy_service.progression_from_sessions(sessions)
+        notes = hevy_service.notes_from_sessions(sessions)
         catalog_items.append(
             ExerciseCatalogItem(
                 exercise_template_id=tid,

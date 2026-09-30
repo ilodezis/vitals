@@ -440,29 +440,37 @@ async def delete_result(session: AsyncSession, result_id: int) -> bool:
 
 # ── Alerts ────────────────────────────────────────────────────────────────────
 async def refresh_alerts(
-    session: AsyncSession, *, on_date: Optional[date_type] = None
+    session: AsyncSession,
+    *,
+    on_date: Optional[date_type] = None,
+    latest: Optional[list[LabResult]] = None,
+    markers: Optional[dict[str, LabMarker]] = None,
 ) -> None:
     """Raise/clear out-of-range + overdue-retest alerts from the latest values.
     Idempotent — safe on every dashboard load / scheduler tick. Each alert is
     bound to the specific LabResult row that triggered it (``entity_ref =
     f"{marker}:{result_id}"``), so a dismissal sticks forever for that row —
-    only a new result for the marker can raise it again."""
+    only a new result for the marker can raise it again. ``latest``/``markers``
+    are what the caller already read (see :func:`collect`)."""
     today = on_date or today_local()
-    latest = await latest_per_marker(session)
-    markers = {m.name: m for m in await list_markers(session)}
+    if latest is None:
+        latest = await latest_per_marker(session)
+    if markers is None:
+        markers = {m.name: m for m in await list_markers(session)}
+    # Two reads for the whole pass instead of a handful per marker.
+    book = await alerts_service.AlertBook.load(session, [OUT_OF_RANGE_KEY, RETEST_DUE_KEY])
 
     for r in latest:
         key = OUT_OF_RANGE_KEY
         entity = f"{r.marker}:{r.id}"
-        await alerts_service.resolve_superseded(session, alert_key=key, marker=r.marker, keep_entity=entity)
+        await book.resolve_superseded(alert_key=key, marker=r.marker, keep_entity=entity)
         if is_out_of_range(r.flag):
-            if await alerts_service._was_ever_dismissed(session, key, entity):
+            if book.was_ever_dismissed(key, entity):
                 continue
             tier = markers.get(r.marker).tier if markers.get(r.marker) else 2
             critical = _is_critical(r.flag) or tier == 1
             severity = Severity.WARN.value if critical else Severity.INFO.value
-            await alerts_service.raise_alert(
-                session,
+            await book.raise_alert(
                 domain=Domain.LABS.value,
                 severity=severity,
                 message=t(
@@ -477,21 +485,20 @@ async def refresh_alerts(
                 entity_ref=entity,
             )
         else:
-            await alerts_service.resolve_by_key(session, alert_key=key, entity_ref=entity)
+            await book.resolve_by_key(alert_key=key, entity_ref=entity)
 
         # Overdue retest (respecting a deferral) — bound to the same result row.
         marker_row = markers.get(r.marker)
         if marker_row and marker_row.retest_interval_days:
             due = r.date + timedelta(days=marker_row.retest_interval_days)
             deferred = marker_row.defer_until is not None and marker_row.defer_until >= today
-            await alerts_service.resolve_superseded(
-                session, alert_key=RETEST_DUE_KEY, marker=r.marker, keep_entity=entity
+            await book.resolve_superseded(
+                alert_key=RETEST_DUE_KEY, marker=r.marker, keep_entity=entity
             )
             if today > due and not deferred:
-                if await alerts_service._was_ever_dismissed(session, RETEST_DUE_KEY, entity):
+                if book.was_ever_dismissed(RETEST_DUE_KEY, entity):
                     continue
-                await alerts_service.raise_alert(
-                    session,
+                await book.raise_alert(
                     domain=Domain.LABS.value,
                     severity=Severity.INFO.value,
                     message=t("alert.lab_retest", marker=r.marker, date=r.date),
@@ -499,8 +506,8 @@ async def refresh_alerts(
                     entity_ref=entity,
                 )
             else:
-                await alerts_service.resolve_by_key(
-                    session, alert_key=RETEST_DUE_KEY, entity_ref=entity
+                await book.resolve_by_key(
+                    alert_key=RETEST_DUE_KEY, entity_ref=entity
                 )
 
 
@@ -754,9 +761,21 @@ def _parse_date(v: Any) -> Optional[date_type]:
 async def collect(session: AsyncSession) -> dict[str, Any]:
     """Collect everything needed by the Labs dashboard in one round-trip."""
     today = today_local()
-    await refresh_alerts(session)
-    latest_results = await latest_per_marker(session)
+    # Every result once, oldest first: the latest per marker and every marker's history come
+    # from the same read (the last row per marker is the one ``latest_per_marker`` picks).
+    all_results = (
+        await session.execute(select(LabResult).order_by(LabResult.date, LabResult.id))
+    ).scalars().all()
+    history_by_marker: dict[str, list[LabResult]] = {}
+    for row in all_results:
+        history_by_marker.setdefault(row.marker, []).append(row)
+    latest_results = sorted(
+        (rows[-1] for rows in history_by_marker.values()),
+        key=lambda r: (r.date, r.id),
+        reverse=True,
+    )
     markers_catalog = {m.name: m for m in await list_markers(session)}
+    await refresh_alerts(session, latest=latest_results, markers=markers_catalog)
 
     latest_sorted = sorted(
         latest_results,
@@ -771,7 +790,7 @@ async def collect(session: AsyncSession) -> dict[str, Any]:
     markers_out = []
     for r in latest_sorted:
         m_cat = markers_catalog.get(r.marker)
-        history_rows = await marker_history(session, r.marker)
+        history_rows = [{"date": h.date.isoformat(), "value": h.value} for h in history_by_marker.get(r.marker, [])]
 
         cat_key = (m_cat.category if m_cat and m_cat.category else "").lower()
         if not cat_key:

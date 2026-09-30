@@ -18,6 +18,7 @@ from sqlalchemy import text
 
 from web.api import api_router, errors as api_errors
 from web.auth import router as auth_router
+from web.compression import AppGZipMiddleware
 from web.csrf import add_csrf_origin_check, add_security_headers
 from web.deps import (
     ModuleDisabled,
@@ -117,6 +118,8 @@ app = FastAPI(
 # Install security barriers
 add_csrf_origin_check(app)
 add_security_headers(app)
+# Outermost, so it compresses the response the headers middleware has finished.
+app.add_middleware(AppGZipMiddleware)
 
 # ── Uploaded files ───────────────────────────────────────────────────────────
 # Lab sheets, InBody printouts and progress photos are written under

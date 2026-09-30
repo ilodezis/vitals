@@ -152,8 +152,11 @@ async def load_nav_status(
         return
     # A fetch sends ``Accept: */*``, which counts as a document above — but the
     # API serves the card's numbers itself (``/api/v1/session``), so paying for
-    # them on every call would run the four reads twice.
-    if request.url.path.startswith(API_PATH_PREFIX):
+    # them on every call would run the four reads twice. The React app's shell
+    # (``/app/...``, web/spa.py) is a document that draws no rail either: the app
+    # reads the same numbers from ``/api/v1/session`` as soon as it boots.
+    path = request.url.path
+    if path == "/app" or path.startswith((API_PATH_PREFIX, "/app/")):
         return
     from vitals.services import nav_status_service
 

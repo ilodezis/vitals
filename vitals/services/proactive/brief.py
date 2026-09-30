@@ -25,7 +25,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import date as date_type, timedelta
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -114,6 +114,41 @@ state (состояние, 1-5), symptom (симптом, 1-5), exposure (сде
 
 
 # ── Assembly ──────────────────────────────────────────────────────────────────
+async def headline_context(
+    session: AsyncSession,
+    *,
+    on_date: Optional[date_type] = None,
+    garmin_daily: Optional[Sequence[Any]] = None,
+) -> dict:
+    """The part of :func:`build_context` that is about today's numbers: the
+    snapshot without the protocol, and the Garmin figures beside his own norm.
+
+    The Today screen reads only this, so it does not pay for yesterday's signals,
+    meals and day plan that only the model is handed. ``garmin_daily`` is the
+    newest ``_BASELINE_DAYS + 1`` daily rows when the caller has them already.
+
+    """
+    ctx = await digest_service.assemble_context(
+        session,
+        on_date=on_date,
+        period_days=1,
+        mode=digest_service.REPORT_MODE_BRIEF,
+    )
+    ctx = compose.strip_protocol(ctx)
+    # The one thing the brief could never do: compare. Handed a single day of
+    # absolute numbers and asked what they mean, the model supplied the missing
+    # half itself — "просадка SpO2 и повышенный пульс покоя" on a resting HR that
+    # had not moved a beat. His own fortnight is what those words have to be true
+    # against, so it goes in beside the numbers rather than being left implied.
+    if ctx.get("garmin"):
+        today = on_date or today_local()
+        if garmin_daily is None:
+            ctx["garmin"]["baseline"] = await _baseline(session, today)
+        else:
+            ctx["garmin"]["baseline"] = baseline_from_rows(garmin_daily, today)
+    return ctx
+
+
 async def build_context(
     session: AsyncSession, *, on_date: Optional[date_type] = None
 ) -> dict:
@@ -123,13 +158,7 @@ async def build_context(
     that knows there is a gym session and a heavy workday ahead, so it goes into
     the model's JSON as well as onto the header line.
     """
-    ctx = await digest_service.assemble_context(
-        session,
-        on_date=on_date,
-        period_days=1,
-        mode=digest_service.REPORT_MODE_BRIEF,
-    )
-    ctx = compose.strip_protocol(ctx)
+    ctx = await headline_context(session, on_date=on_date)
     today = on_date or today_local()
     # One-day window would cut the signals in half: "кофе в 22" is *yesterday's*
     # row and this morning's HRV is the thing it explains. Widened here rather
@@ -145,13 +174,6 @@ async def build_context(
         if _nutrition_enabled(ctx)
         else None
     )
-    # The one thing the brief could never do: compare. Handed a single day of
-    # absolute numbers and asked what they mean, the model supplied the missing
-    # half itself — "просадка SpO2 и повышенный пульс покоя" on a resting HR that
-    # had not moved a beat. His own fortnight is what those words have to be true
-    # against, so it goes in beside the numbers rather than being left implied.
-    if ctx.get("garmin"):
-        ctx["garmin"]["baseline"] = await _baseline(session, today)
     answers, answered = await day_plan.resolve(session, today)
     # Yesterday's answers, and only the ones he actually gave. How heavy a day was
     # is answered in the evening about the day just spent, so at 11:00 the newest
@@ -185,11 +207,14 @@ async def _baseline(session: AsyncSession, on_date: date_type) -> Optional[dict]
     """
     from vitals.services import garmin_service
 
-    rows = [
-        row
-        for row in await garmin_service.list_daily(session, limit=_BASELINE_DAYS + 1)
-        if 0 < (on_date - row.date).days <= _BASELINE_DAYS
-    ]
+    return baseline_from_rows(
+        await garmin_service.list_daily(session, limit=_BASELINE_DAYS + 1), on_date
+    )
+
+
+def baseline_from_rows(daily: Sequence[Any], on_date: date_type) -> Optional[dict]:
+    """:func:`_baseline` over daily rows already read (newest ``_BASELINE_DAYS + 1``)."""
+    rows = [row for row in daily if 0 < (on_date - row.date).days <= _BASELINE_DAYS]
     baseline = {}
     for key in compose.BASELINE_KEYS:
         values = [v for v in (getattr(row, key, None) for row in rows) if v is not None]

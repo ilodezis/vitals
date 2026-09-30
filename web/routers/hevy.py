@@ -46,9 +46,10 @@ async def hevy_dashboard(
     notes = None
     selected_title = None
     if selected:
-        series = await hevy_service.working_weight_series(db, selected)
-        verdict = await hevy_service.progression_for_exercise(db, selected)
-        notes = await hevy_service.latest_notes(db, selected)
+        sessions = (await hevy_service.exercise_sessions_by_template(db, [selected])).get(selected, [])
+        series = hevy_service.series_from_sessions(sessions)
+        verdict = hevy_service.progression_from_sessions(sessions)
+        notes = hevy_service.notes_from_sessions(sessions)
         selected_title = next(
             (c["title"] for c in catalog if c["exercise_template_id"] == selected), selected
         )
