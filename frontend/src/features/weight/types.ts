@@ -30,5 +30,6 @@ export interface WeightHistoryRow {
   source: WeightSource
   /** A Garmin row a manual or scan reading of the same day has taken over. */
   superseded?: boolean
+  supersededBy?: string | null
   note?: string
 }

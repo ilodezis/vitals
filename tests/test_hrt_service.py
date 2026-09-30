@@ -357,3 +357,41 @@ async def test_hrt_log_dose_via_form(auth_client):
     assert r.status_code == 303
     page = await auth_client.get("/hrt")
     assert "TestBrand" in page.text
+
+
+async def test_collect_open_ended_cycle_progress_and_optional_interval(db_session):
+    """An open-ended cycle (end_date=None) started 30 days ago
+    reports week=5, weeks=None, pct=None, and an item without interval_days
+    reports every=None instead of fabricating 1/12/0% and 3.5."""
+    from datetime import timedelta
+    from vitals.models.hrt import HrtCycle, HrtCycleItem
+
+    today = date(2026, 6, 30)
+    await hrt_catalog.sync_catalog(db_session)
+    cycle = HrtCycle(
+        kind="trt",
+        name="TRT Cruise",
+        start_date=today - timedelta(days=30),
+        end_date=None,
+    )
+    db_session.add(cycle)
+    await db_session.flush()
+
+    item = HrtCycleItem(
+        cycle_id=cycle.id,
+        compound_key="testosterone_enanthate",
+        unit="mg",
+        start_offset_days=0,
+        schedule=[{"dose": 125.0}],
+    )
+    db_session.add(item)
+    await db_session.commit()
+
+    data = await hrt_service.collect(db_session, on_date=today)
+    ac = data["cycle"]
+    assert ac is not None
+    assert ac["week"] == 5
+    assert ac["weeks"] is None
+    assert ac["pct"] is None
+    assert ac["items"][0]["every"] is None
+

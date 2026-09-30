@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
-import { ConflictError, InvalidError, type Violation } from '@/api/client'
 import { Alert } from '@/components/controls/Alert'
-import { Badge, TextButton } from '@/components/controls/Marks'
+import { ConflictAlert } from '@/components/controls/ConflictAlert'
+import { Badge } from '@/components/controls/Marks'
 import { PrimaryButton, type PrimaryButtonHandle } from '@/components/controls/PrimaryButton'
 import { Stepper } from '@/components/controls/Stepper'
 import { toast } from '@/components/controls/toast'
@@ -9,6 +9,7 @@ import { Icon } from '@/components/icons/Icon'
 import { useT } from '@/i18n/useT'
 import { formatNumber } from '@/lib/format'
 import { useClock } from '@/lib/useClock'
+import { useConflictMutation } from '@/lib/useConflictMutation'
 import { useLastWeighed } from './useLastWeighed'
 import { useLatestWeight, useSaveWeight } from './weightLog'
 
@@ -35,35 +36,22 @@ export function WeightForm({ detailed = false, onDone, resetMs }: WeightFormProp
   // What was typed; until then the stepper stands on the latest reading, whenever it arrives.
   const [typed, setTyped] = useState<number | null>(null)
   const kg = typed ?? latest.kg ?? FIRST_WEIGHT_KG
-  const [violations, setViolations] = useState<Violation[]>([])
-  const [problem, setProblem] = useState<string | null>(null)
   const button = useRef<PrimaryButtonHandle>(null)
 
-  const change = (v: number | null) => {
-    setTyped(v)
-    setViolations([])
-    setProblem(null)
-  }
-
-  const save = async ({ override }: { override: boolean }): Promise<boolean> => {
-    try {
+  const conflict = useConflictMutation({
+    mutationFn: async ({ override }) => {
       const { undo } = await saveWeight(kg, { override })
-      change(kg)
+      setTyped(kg)
       toast(t(override ? 'app.log.weight.saved_override' : 'app.log.weight.saved', { value: formatNumber(kg, lang) }), {
         undo: undo === undefined ? undefined : () => void undo().catch(() => toast(t('app.log.weight.failed'), { icon: 'warn' })),
       })
-      return true
-    } catch (error) {
-      if (error instanceof ConflictError) {
-        setViolations(error.violations)
-        setProblem(null)
-      } else {
-        // The service's own words when it refused the number; ours when the network did.
-        setViolations([])
-        setProblem(error instanceof InvalidError ? error.message : t('app.log.weight.failed'))
-      }
-      return false
-    }
+    },
+    fallbackErrorMessage: t('app.log.weight.failed'),
+  })
+
+  const change = (v: number | null) => {
+    setTyped(v)
+    conflict.clearConflict()
   }
 
   return (
@@ -84,31 +72,18 @@ export function WeightForm({ detailed = false, onDone, resetMs }: WeightFormProp
           </div>
         </>
       )}
-      <div className={violations.length > 0 ? 'collapse open' : 'collapse'}>
+      <ConflictAlert
+        violations={conflict.violations}
+        onFix={() => change(null)}
+        onSaveAnyway={() => button.current?.press({ override: true })}
+        evidence={t('app.log.weight.conflict_rule')}
+      />
+      <div className={conflict.problem === null ? 'collapse' : 'collapse open'}>
         <div>
-          <Alert
-            tone="block"
-            className="alert-conflict"
-            evidence={t('app.log.weight.conflict_rule')}
-            actions={
-              <>
-                <TextButton onClick={() => change(null)}>{t('app.fix')}</TextButton>
-                <TextButton danger onClick={() => button.current?.press({ override: true })}>
-                  {t('app.save_anyway')}
-                </TextButton>
-              </>
-            }
-          >
-            {violations[0]?.message}
-          </Alert>
+          <Alert tone="warn">{conflict.problem}</Alert>
         </div>
       </div>
-      <div className={problem === null ? 'collapse' : 'collapse open'}>
-        <div>
-          <Alert tone="warn">{problem}</Alert>
-        </div>
-      </div>
-      <PrimaryButton ref={button} className="w" onPress={save} onDone={onDone} resetMs={resetMs}>
+      <PrimaryButton ref={button} className="w" onPress={conflict.submit} onDone={onDone} resetMs={resetMs}>
         {t('app.log.weight.save')}
       </PrimaryButton>
     </>

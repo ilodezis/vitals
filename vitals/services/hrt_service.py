@@ -432,8 +432,15 @@ SITE_LABELS_RU = {
 
 
 def _cycle_progress_data(cycle: Optional[HrtCycle], today: date_type) -> Optional[dict]:
-    if cycle is None or not cycle.end_date:
+    if cycle is None:
         return None
+    if not cycle.end_date:
+        elapsed = max((today - cycle.start_date).days, 0)
+        return {
+            "week": elapsed // 7 + 1,
+            "weeks": None,
+            "pct": None,
+        }
     total = (cycle.end_date - cycle.start_date).days + 1
     if total <= 0:
         return None
@@ -465,7 +472,7 @@ async def collect(
     doses = await list_doses(session, limit=100)
     last = await last_dose(session)
     side_effects = await list_side_effects(session)
-    active_c = await hrt_cycle_service.active_cycle(session)
+    active_c = await hrt_cycle_service.active_cycle(session, on_date=today)
     all_cycles = await hrt_cycle_service.list_cycles(session)
     all_templates = await hrt_template_service.list_templates(session)
 
@@ -489,7 +496,7 @@ async def collect(
                 "name": compound_names.get(it.compound_key, it.compound_key),
                 "dose": it.schedule[0].get("dose", 0.0) if it.schedule else 0.0,
                 "unit": it.unit or "mg",
-                "every": it.schedule[0].get("interval_days", 3.5) if it.schedule else 3.5,
+                "every": it.schedule[0].get("interval_days") if it.schedule else None,
                 "from": (it.start_offset_days // 7) + 1 if it.start_offset_days else 1,
                 "durationDays": it.schedule[0].get("duration_days") if it.schedule else None,
                 "note": it.note,
@@ -502,9 +509,9 @@ async def collect(
             "end": active_c.end_date.isoformat() if active_c.end_date else None,
             "note": active_c.note,
             "cadence": cadence,
-            "week": prog["week"] if prog else 1,
-            "weeks": prog["weeks"] if prog else 12,
-            "pct": prog["pct"] if prog else 0,
+            "week": prog["week"] if prog else None,
+            "weeks": prog["weeks"] if prog else None,
+            "pct": prog["pct"] if prog else None,
             "items": items_list,
         }
 

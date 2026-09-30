@@ -52,8 +52,8 @@ async def read_workouts(
                 local_dt = to_local_naive(dt_sync)
                 if local_dt:
                     last_sync = local_dt.strftime("%d-%m-%Y %H:%M")
-            except Exception:
-                pass
+            except (ValueError, TypeError, OverflowError):
+                logger.debug("Invalid sync:last_success:hevy timestamp: %r", last_sync_raw)
 
     workout_items: list[HevyWorkoutItem] = []
     for w in workouts:

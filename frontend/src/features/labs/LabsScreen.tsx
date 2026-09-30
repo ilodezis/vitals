@@ -3,9 +3,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import { MarkerChart } from '@/components/charts/MarkerChart'
 import { FilterRow } from '@/components/controls/Choices'
+import { ConflictAlert } from '@/components/controls/ConflictAlert'
 import { RangeBar } from '@/components/controls/Meters'
 import { Delta, TextButton } from '@/components/controls/Marks'
-import { PrimaryButton } from '@/components/controls/PrimaryButton'
+import { PrimaryButton, type PrimaryButtonHandle } from '@/components/controls/PrimaryButton'
 import { FigureBody } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
@@ -15,6 +16,7 @@ import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { longDate, monthLong, parseIsoDate, shortDate, toIsoDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/format'
+import { useConflictMutation } from '@/lib/useConflictMutation'
 import { markerTrend, rangeText } from './notes'
 import { statusOf, type LabMarker } from './types'
 import { useLabsView } from './useLabsView'
@@ -51,6 +53,8 @@ export default function LabsScreen() {
   const { desktop } = useLayout()
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const confirmButtonRef = useRef<PrimaryButtonHandle>(null)
+  const manualButtonRef = useRef<PrimaryButtonHandle>(null)
 
   const [filter, setFilter] = useState('all')
   const [filtered, setFiltered] = useState(false)
@@ -107,9 +111,9 @@ export default function LabsScreen() {
   }
 
   // Confirm extracted markers
-  const handleConfirmPreview = async (): Promise<boolean> => {
-    if (!preview) return false
-    try {
+  const confirmConflict = useConflictMutation({
+    mutationFn: async ({ override }) => {
+      if (!preview) throw new Error('No preview')
       await api.POST('/api/v1/labs/confirm', {
         body: {
           date: preview.date,
@@ -123,26 +127,24 @@ export default function LabsScreen() {
             refLow: m.refLow ?? undefined,
             refHigh: m.refHigh ?? undefined,
           })),
-          override: false,
+          override,
         },
       })
       toast('Biomarkers saved successfully')
       setPreview(null)
       refresh()
-      return true
-    } catch (err: any) {
+    },
+    onError: (err) => {
       toast(err.message || 'Error confirming markers', { icon: 'warn' })
-      return false
-    }
-  }
+    },
+  })
 
   // Create manual result
-  const handleCreateManual = async (): Promise<boolean> => {
-    if (!manMarker.trim() || !manVal) {
-      toast('Marker name and value are required', { icon: 'warn' })
-      return false
-    }
-    try {
+  const manualConflict = useConflictMutation({
+    mutationFn: async ({ override }) => {
+      if (!manMarker.trim() || !manVal) {
+        throw new Error('Marker name and value are required')
+      }
       await api.POST('/api/v1/labs/results', {
         body: {
           date: manDate,
@@ -153,7 +155,7 @@ export default function LabsScreen() {
           refHigh: manRefHigh ? parseFloat(manRefHigh) : null,
           labName: manLab.trim() || null,
           note: manNote.trim() || null,
-          override: false,
+          override,
         },
       })
       toast(t('common.saved'))
@@ -166,12 +168,11 @@ export default function LabsScreen() {
       setManLab('')
       setManNote('')
       refresh()
-      return true
-    } catch (err: any) {
+    },
+    onError: (err) => {
       toast(err.message || 'Error saving marker', { icon: 'warn' })
-      return false
-    }
-  }
+    },
+  })
 
   // Delete result
   const handleDeleteResult = async (resultId: string) => {
@@ -538,6 +539,11 @@ export default function LabsScreen() {
                 </table>
               </div>
 
+              <ConflictAlert
+                violations={confirmConflict.violations}
+                onFix={() => confirmConflict.clearConflict()}
+                onSaveAnyway={() => confirmButtonRef.current?.press({ override: true })}
+              />
               <div className="flex justify-between items-center pt-2">
                 <TextButton
                   icon="plus"
@@ -552,7 +558,7 @@ export default function LabsScreen() {
                 </TextButton>
                 <div className="flex gap-2">
                   <TextButton onClick={() => setPreview(null)}>Cancel</TextButton>
-                  <PrimaryButton onPress={handleConfirmPreview}>
+                  <PrimaryButton ref={confirmButtonRef} onPress={confirmConflict.submit}>
                     Save {preview.markers.length} Markers
                   </PrimaryButton>
                 </div>
@@ -609,7 +615,12 @@ export default function LabsScreen() {
                 <span className="flabel">Note</span>
                 <input className="input" placeholder="e.g. Fasting, morning draw" value={manNote} onChange={(e) => setManNote(e.target.value)} />
               </label>
-              <PrimaryButton className="w mt-4" onPress={handleCreateManual}>
+              <ConflictAlert
+                violations={manualConflict.violations}
+                onFix={() => manualConflict.clearConflict()}
+                onSaveAnyway={() => manualButtonRef.current?.press({ override: true })}
+              />
+              <PrimaryButton ref={manualButtonRef} className="w mt-4" onPress={manualConflict.submit}>
                 {t('common.save')}
               </PrimaryButton>
             </div>

@@ -1,14 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
+import { ConflictAlert } from '@/components/controls/ConflictAlert'
 import { Badge, Delta, TextButton } from '@/components/controls/Marks'
-import { PrimaryButton } from '@/components/controls/PrimaryButton'
+import { PrimaryButton, type PrimaryButtonHandle } from '@/components/controls/PrimaryButton'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { parseIsoDate, shortDate, toIsoDate } from '@/lib/dates'
+import { useConflictMutation } from '@/lib/useConflictMutation'
 import { useHrtView } from './useHrtView'
 import './hrt.css'
 
@@ -22,6 +24,7 @@ export default function HrtScreen() {
   const [itemModalOpen, setItemModalOpen] = useState(false)
   const [sideEffectModalOpen, setSideEffectModalOpen] = useState(false)
   const [templateName, setTemplateName] = useState('')
+  const doseButtonRef = useRef<PrimaryButtonHandle>(null)
 
   // Form states
   const todayStr = useMemo(() => toIsoDate(new Date()), [])
@@ -59,8 +62,8 @@ export default function HrtScreen() {
   }
 
   // Dose submission
-  const handleCreateDose = async (): Promise<boolean> => {
-    try {
+  const doseConflict = useConflictMutation({
+    mutationFn: async ({ override }) => {
       const res = await api.POST('/api/v1/hrt/doses', {
         body: {
           date: doseDate,
@@ -70,21 +73,19 @@ export default function HrtScreen() {
           site: doseSite || null,
           brand: doseBrand || null,
           note: doseNote || null,
-          override: false,
+          override,
         },
       })
-      if (res.data) {
-        toast(t('common.saved'))
-        setDoseModalOpen(false)
-        refresh()
-        return true
-      }
-      return false
-    } catch (err: any) {
+      if (!res.data) throw new Error('Error saving dose')
+      toast(t('common.saved'))
+      setDoseModalOpen(false)
+      refresh()
+      return res.data
+    },
+    onError: (err) => {
       toast(err.message || 'Error saving dose', { icon: 'warn' })
-      return false
-    }
-  }
+    },
+  })
 
   // Delete dose
   const handleDeleteDose = async (id: number) => {
@@ -306,11 +307,17 @@ export default function HrtScreen() {
                 <div className="hrt-progress">
                   <div className="hrt-progress-head">
                     <span>{t('hrt.cycle_progress')}</span>
-                    <b>{t('hrt.week_of', { week: activeC.week, weeks: activeC.weeks })}</b>
+                    <b>
+                      {activeC.weeks != null
+                        ? t('hrt.week_of', { week: activeC.week, weeks: activeC.weeks })
+                        : t('app.more.week', { week: activeC.week })}
+                    </b>
                   </div>
-                  <div className="hrt-meter">
-                    <div className="hrt-meter-fill" style={{ width: `${activeC.pct}%` }} />
-                  </div>
+                  {activeC.pct != null && activeC.weeks != null && (
+                    <div className="hrt-meter">
+                      <div className="hrt-meter-fill" style={{ width: `${activeC.pct}%` }} />
+                    </div>
+                  )}
                 </div>
 
                 {/* Release curve */}
@@ -340,7 +347,8 @@ export default function HrtScreen() {
                         <div className="hrt-plan-info">
                           <span className="hrt-plan-name">{it.name}</span>
                           <span className="hrt-plan-sub">
-                            {it.dose} {it.unit} / {it.every}d · Week {it.from}+
+                            {it.dose} {it.unit}
+                            {it.every != null ? ` / ${it.every}d` : ''} · Week {it.from}+
                           </span>
                         </div>
                         <div className="hrt-plan-actions">
@@ -549,7 +557,12 @@ export default function HrtScreen() {
                 <span className="flabel">{t('common.note')}</span>
                 <input className="input" value={doseNote} onChange={(e) => setDoseNote(e.target.value)} />
               </label>
-              <PrimaryButton className="w mt-4" onPress={handleCreateDose}>
+              <ConflictAlert
+                violations={doseConflict.violations}
+                onFix={() => doseConflict.clearConflict()}
+                onSaveAnyway={() => doseButtonRef.current?.press({ override: true })}
+              />
+              <PrimaryButton ref={doseButtonRef} className="w mt-4" onPress={doseConflict.submit}>
                 {t('common.save')}
               </PrimaryButton>
             </div>

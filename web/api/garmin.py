@@ -105,8 +105,8 @@ async def read_recovery_overview(
                 local_dt = to_local_naive(dt_sync)
                 if local_dt:
                     last_sync = local_dt.strftime("%d-%m-%Y %H:%M")
-            except Exception:
-                pass
+            except (ValueError, TypeError, OverflowError):
+                logger.debug("Invalid sync:last_success:garmin timestamp: %r", last_sync_raw)
 
     date_shown = latest.date if latest else today
     is_today = date_shown == today
@@ -243,8 +243,8 @@ async def read_sleep_night_detail(
                             duration_min=e_min - s_min,
                         )
                     )
-                except Exception:
-                    pass
+                except (ValueError, TypeError):
+                    logger.debug("Skipping malformed sleep stage segment: %r", s)
 
     def _to_points(pts: list[dict]) -> list[IntradaySeriesPoint]:
         out = []

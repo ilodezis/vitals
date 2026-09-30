@@ -17,7 +17,7 @@ export interface Glp1View {
   sinceIso: string
   /** Days on the current dose, counting the first. */
   dayOnDose: number
-  cycle: { lastIso: string; nextIso: string; daysToNext: number; unscheduled: boolean }
+  cycle: { lastIso: string | null; nextIso: string; daysToNext: number; overdue?: boolean; unscheduled: boolean }
   /** Steps of the dose over time, oldest first, and the weight trend under them. */
   dosePhases: { fromIso: string; toIso: string; doseMg: number }[]
   trend: { date: string; kg: number }[]

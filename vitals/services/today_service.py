@@ -232,14 +232,21 @@ def _phrase_feed(row: dict) -> dict:
 def _phrase_goal(goal: Optional[dict]) -> Optional[dict]:
     if goal is None:
         return None
+    from vitals.services import milestones_service
+
     done = goal["start_kg"] - goal["current_kg"]
     total = goal["start_kg"] - goal["target_kg"]
+    pct = goal.get("pct")
+    if pct is None:
+        pct = milestones_service.weight_goal_pct(
+            goal["start_kg"], goal["current_kg"], goal["target_kg"]
+        )
     return {
         "name": goal["name"],
         "target": _num(goal["target_kg"]),
         "done": _num(done),
         "total": _num(total),
-        "pct": max(0, min(100, round(done / total * 100))),
+        "pct": pct if pct is not None else 0,
         "deadline": goal["deadline"].isoformat() if goal["deadline"] else None,
     }
 
@@ -553,7 +560,8 @@ async def _goal(
             continue
         if card["target_value"] is None or start is None:
             continue
-        if start - card["target_value"] <= 0:
+        pct = milestones_service.weight_goal_pct(start, card["current"], card["target_value"])
+        if pct is None:
             continue
         deadline = _as_date(card["deadline"]) if card["deadline"] else None
         return {
@@ -561,6 +569,7 @@ async def _goal(
             "start_kg": start,
             "current_kg": card["current"],
             "target_kg": card["target_value"],
+            "pct": pct,
             "deadline": deadline,
             "forecast": _forecast(card["current"], card["target_value"], trend, today, deadline),
         }

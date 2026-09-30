@@ -28,6 +28,7 @@ class Glp1CycleInfo(CamelModel):
     last_iso: Optional[str] = None
     next_iso: str
     days_to_next: int
+    overdue: bool = False
     unscheduled: bool = False
 
 
@@ -58,6 +59,7 @@ class Glp1View(CamelModel):
     dose_mg: float
     since_iso: str
     day_on_dose: int
+    delta_on_dose_kg: Optional[float] = None
     cycle: Glp1CycleInfo
     dose_phases: list[Glp1DosePhase]
     trend: list[Glp1TrendPoint]

@@ -256,3 +256,21 @@ async def test_update_injection_runs_conflict_engine(db_session):
             db_session, inj.id, on_date=date(2026, 6, 2),
             drug=Drug.TIRZEPATIDE.value, dose_mg=2.5,
         )
+
+
+async def test_collect_cycle_overdue_when_last_injection_over_7_days_ago(db_session):
+    """When the last injection was 10 days ago, daysToNext is -3 (not
+    clamped to 0) and overdue is True."""
+    today = date(2026, 6, 15)
+    await glp1_service.log_injection(
+        db_session,
+        on_date=today - timedelta(days=10),
+        drug=Drug.SEMAGLUTIDE.value,
+        dose_mg=0.5,
+    )
+    await db_session.commit()
+
+    data = await glp1_service.collect(db_session, on_date=today)
+    assert data["cycle"]["daysToNext"] == -3
+    assert data["cycle"]["overdue"] is True
+

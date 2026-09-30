@@ -8,11 +8,11 @@ import { Icon } from '@/components/icons/Icon'
 import { openLogSheet } from '@/components/sheet/logSheetStore'
 import { ScreenLink } from '@/components/shell/navigation'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
-import { FIXTURE_TODAY, latestWeight } from '@/fixtures/series'
+import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { longDate, parseIsoDate, relativeDay } from '@/lib/dates'
-import { formatNumber } from '@/lib/format'
+import { formatNumber, formatSigned } from '@/lib/format'
 import { useLatestWeight } from './weightLog'
 import type { WeightSource } from './types'
 import { useWeightView } from './useWeightView'
@@ -22,9 +22,11 @@ const SOURCE_TONE: Record<WeightSource, 'good' | 'violet' | 'cool'> = { manual: 
 
 export default function WeightScreen() {
   const { t, lang, plural } = useT()
+  const today = useToday()
   const view = useWeightView()
   const doseSince = { date: longDate(parseIsoDate(view.pace.dose.sinceIso), lang), n: view.pace.dose.days }
   const latest = useLatestWeight()
+  const heroKg = view.kg || latest.kg || 0
   const [range, setRange] = useState<TrendRange>('3m')
 
   const series = useMemo(
@@ -52,7 +54,7 @@ export default function WeightScreen() {
       <Headline title={t('nav.weight')}>
         <div className="fig-hero">
           <div className="big" data-fig="weight" data-shared-target>
-            <Odometer value={formatNumber(latest.kg ?? latestWeight, lang)} />
+            <Odometer value={formatNumber(heroKg, lang)} />
             <span className="unit">{t('app.unit.kg')}</span>
           </div>
           <div className="side">
@@ -81,7 +83,7 @@ export default function WeightScreen() {
               ]}
             />
           </div>
-          <TrendChart weighings={series.weighings} trend={series.trend} phases={series.phases} range={range} end={FIXTURE_TODAY} />
+          <TrendChart weighings={series.weighings} trend={series.trend} phases={series.phases} range={range} end={today} />
           <div className="legend">
             <span>
               <i />
@@ -111,9 +113,19 @@ export default function WeightScreen() {
                 <div key={i} className={cx('row', 'r-hist', h.superseded && 'dim')}>
                   <div>
                     <div className="t">
-                      {relativeDay(parseIsoDate(h.date), FIXTURE_TODAY, lang, labels)} <span className="m num time-gap">{h.time}</span>
+                      {relativeDay(parseIsoDate(h.date), today, lang, labels)} <span className="m num time-gap">{h.time}</span>
                     </div>
-                    {h.superseded ? <div className="m">{t('app.weight.superseded')}</div> : h.note !== undefined ? <div className="m">{h.note}</div> : null}
+                    {h.superseded ? (
+                      <div className="m">
+                        {h.supersededBy === 'body_scan'
+                          ? t('app.weight.superseded_by_scan')
+                          : h.supersededBy === 'manual'
+                            ? t('app.weight.superseded_by_manual')
+                            : t('app.weight.superseded')}
+                      </div>
+                    ) : h.note !== undefined ? (
+                      <div className="m">{h.note}</div>
+                    ) : null}
                   </div>
                   <Badge tone={SOURCE_TONE[h.source]}>{t(`app.source.${h.source}`)}</Badge>
                   <div className="v">
@@ -152,7 +164,7 @@ export default function WeightScreen() {
                   </div>
                 </div>
                 <div className="v">
-                  {formatNumber(view.pace.dose.deltaKg, lang)}
+                  {formatSigned(view.pace.dose.deltaKg, lang)}
                   <span className="u">{t('app.unit.kg')}</span>
                 </div>
               </div>

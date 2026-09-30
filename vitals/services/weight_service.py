@@ -18,9 +18,12 @@ with later modules.
 """
 from __future__ import annotations
 
+import logging
 import math
 from datetime import date as date_type, timedelta
 from typing import Optional, Sequence
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -785,3 +788,403 @@ async def update_body_measurement(
         override=override,
         partial=partial,
     )
+
+
+# ── Shared Trend & Dose Delta Helpers ─────────────────────────────────────────
+async def weekly_trend_delta(
+    session: AsyncSession,
+    *,
+    logs: Optional[Sequence[WeightLog]] = None,
+    end: Optional[date_type] = None,
+) -> Optional[float]:
+    """Noise-excluded linear regression slope (kg/week) across active weights."""
+    weights = logs if logs is not None else await list_active_weights(session, end=end)
+    raw_points = [(w.date, w.weight_kg) for w in weights]
+    ranges = [
+        (start, range_end)
+        for start, range_end in await _noise_ranges(session)
+        if end is None or start <= end
+    ]
+    trend = fit_trend(raw_points, exclude=ranges)
+    return round(trend.slope_per_week, 3) if trend else None
+
+
+async def dose_phase_delta(
+    session: AsyncSession,
+    phase: object,
+    *,
+    weights: Optional[Sequence[WeightLog]] = None,
+    end: Optional[date_type] = None,
+) -> float:
+    """Weight change (last - first, negative = weight loss) across a GLP-1 dose phase."""
+    if isinstance(phase, date_type):
+        start_d: Optional[date_type] = phase
+        end_d: Optional[date_type] = end
+    elif isinstance(phase, dict):
+        raw_s = phase.get("start_date") or phase.get("from_date") or phase.get("start")
+        start_d = date_type.fromisoformat(raw_s) if isinstance(raw_s, str) else raw_s
+        raw_e = phase.get("end_date") or phase.get("to_date") or phase.get("end")
+        end_d = (
+            (date_type.fromisoformat(raw_e) if isinstance(raw_e, str) else raw_e)
+            if raw_e
+            else end
+        )
+    else:
+        start_d = getattr(phase, "start_date", None) or getattr(phase, "from_date", None)
+        end_d = getattr(phase, "end_date", None) or getattr(phase, "to_date", None) or end
+    if start_d is None:
+        return 0.0
+    if weights is None:
+        weights_on_dose = await list_active_weights(session, start=start_d, end=end_d)
+    else:
+        weights_on_dose = [
+            w
+            for w in weights
+            if w.date >= start_d and (end_d is None or w.date <= end_d)
+        ]
+    if len(weights_on_dose) >= 2:
+        return round(weights_on_dose[-1].weight_kg - weights_on_dose[0].weight_kg, 1)
+    return 0.0
+
+
+def _norm_source(src: str) -> str:
+    if src in ("garmin_api", "garmin"):
+        return "garmin"
+    if src in ("body_scan", "bia"):
+        return "bia"
+    return "manual"
+
+
+def _superseded_by_source(src: Optional[str]) -> Optional[str]:
+    if not src:
+        return None
+    if src in (Source.BODY_SCAN.value, "bia"):
+        return Source.BODY_SCAN.value
+    return Source.MANUAL.value
+
+
+async def collect(
+    session: AsyncSession,
+    *,
+    include_bia: bool = False,
+    include_timeline: bool = False,
+    include_glp1: bool = False,
+    lang: str = "ru",
+) -> dict:
+    """Assemble the full Weight dashboard payload in one service call."""
+    from vitals.services import body_scan_service
+    from vitals.services.analytics import body_metrics
+
+    await refresh_noise_alert(session)
+    if include_bia:
+        await body_scan_service.refresh_alerts(session)
+    await session.commit()
+
+    weights = await list_active_weights(session)
+    measurements = await list_body_measurements(session)
+    series = await chart_series(
+        session,
+        include_bia=include_bia,
+        include_timeline=include_timeline,
+        include_glp1=include_glp1,
+    )
+
+    all_weights_result = await session.execute(
+        select(WeightLog).order_by(
+            WeightLog.date.desc(),
+            WeightLog.superseded.asc(),
+            WeightLog.id.desc(),
+        )
+    )
+    all_weights = all_weights_result.scalars().all()
+    active_source_by_date: dict[date_type, str] = {
+        w.date: w.source for w in all_weights if not w.superseded
+    }
+
+    bc_scans = await body_scan_service.list_scans(session) if include_bia else []
+    bc_latest = bc_scans[0] if bc_scans else None
+
+    body_fat_pct = None
+    body_fat_source = None
+    if bc_latest:
+        bf_val = body_metrics.body_fat_pct_from_scan(bc_latest.metrics)
+        if bf_val is not None:
+            body_fat_pct = bf_val
+            body_fat_source = bc_latest.device or "InBody"
+
+    if body_fat_pct is None:
+        for m in measurements:
+            if m.body_fat_pct is not None:
+                body_fat_pct = m.body_fat_pct
+                body_fat_source = "Navy"
+                break
+
+    latest_kg = weights[-1].weight_kg if weights else None
+    latest_date = weights[-1].date if weights else None
+    average7 = series["trend_ma"][-1]["weight_kg"] if series.get("trend_ma") else None
+    week_delta = series.get("weekly_delta")
+
+    drug_name = "GLP-1"
+    if include_glp1:
+        phases_raw = series.get("phases") or []
+        if phases_raw and phases_raw[-1].get("drug"):
+            drug_name = phases_raw[-1]["drug"]
+        else:
+            from vitals.services import glp1_service
+
+            last_inj = await glp1_service.last_injection(session)
+            if last_inj and last_inj.drug:
+                drug_name = last_inj.drug
+
+    weighings = [
+        {"date": date_type.fromisoformat(p["date"]), "kg": p["weight_kg"]}
+        for p in series.get("raw", [])
+    ]
+    trend = [
+        {"date": date_type.fromisoformat(p["date"]), "kg": p["weight_kg"]}
+        for p in series.get("trend_ma", [])
+    ]
+    dose_phases = [
+        {
+            "from_date": date_type.fromisoformat(p["start"]),
+            "to_date": date_type.fromisoformat(p["end"]) if p.get("end") else None,
+            "label": p.get("label") or "",
+        }
+        for p in series.get("phases", [])
+    ]
+
+    history = [
+        {
+            "id": w.id,
+            "date": w.date,
+            "time": "",
+            "weight_kg": w.weight_kg,
+            "source": _norm_source(w.source),
+            "superseded": bool(w.superseded),
+            "superseded_by": (
+                _superseded_by_source(active_source_by_date.get(w.date))
+                if w.superseded
+                else None
+            ),
+            "note": w.note,
+        }
+        for w in all_weights
+    ]
+
+    trend_info = series.get("trend")
+    per_week_kg = trend_info.get("slope_per_week") if trend_info else None
+
+    dose_pace = None
+    if include_glp1 and dose_phases:
+        active_phase = dose_phases[-1]
+        today = today_local()
+        days_on_dose = max(0, (today - active_phase["from_date"]).days)
+        delta_kg = await dose_phase_delta(session, active_phase, weights=weights)
+        dose_pace = {
+            "label": active_phase["label"] or "0,5 мг",
+            "since_date": active_phase["from_date"],
+            "days": days_on_dose,
+            "delta_kg": delta_kg,
+        }
+
+    goal_pace = None
+    projection = series.get("projection")
+    if projection and projection.get("target_kg"):
+        target_kg = projection["target_kg"]
+        weeks = None
+        if projection.get("date"):
+            try:
+                proj_date = date_type.fromisoformat(projection["date"])
+                weeks = max(0, (proj_date - today_local()).days // 7)
+            except (ValueError, TypeError):
+                logger.debug("Invalid projection date: %r", projection.get("date"))
+        goal_pace = {"target_kg": target_kg, "weeks": weeks}
+
+    pace = {"per_week_kg": per_week_kg, "dose": dose_pace, "goal": goal_pace}
+
+    last_scan = None
+    if bc_latest:
+        by_key = {m.metric_key: m for m in bc_latest.metrics if m.metric_key}
+        scan_rows = []
+        for key in body_metrics.HEADLINE_KEYS:
+            m = by_key.get(key)
+            if m is not None:
+                scan_rows.append(
+                    {
+                        "label": body_metrics.display_name(key, lang) or m.label,
+                        "value": m.value,
+                        "unit": body_metrics.METRIC_REGISTRY[key].unit or "",
+                    }
+                )
+        last_scan = {
+            "device": bc_latest.device,
+            "date": bc_latest.date,
+            "rows": scan_rows,
+        }
+
+    return {
+        "latest_kg": latest_kg,
+        "latest_date": latest_date,
+        "average7": average7,
+        "week_delta_kg": week_delta,
+        "body_fat_pct": body_fat_pct,
+        "body_fat_source": body_fat_source,
+        "drug": drug_name,
+        "weighings": weighings,
+        "trend": trend,
+        "dose_phases": dose_phases,
+        "history": history,
+        "pace": pace,
+        "last_scan": last_scan,
+    }
+
+
+async def collect_measures(
+    session: AsyncSession,
+    *,
+    include_bia: bool = False,
+    include_timeline: bool = False,
+    lang: str = "ru",
+) -> dict:
+    """Assemble the Weight Measurements screen payload in one service call."""
+    from vitals.services import body_scan_service
+    from vitals.services.analytics import body_metrics
+
+    cfg = load_config()
+    weights = await list_active_weights(session)
+    measurements = await list_body_measurements(session)
+    noise_markers = await list_noise_markers(session)
+    photos = await list_progress_photos(session)
+    series = await chart_series(
+        session, include_bia=include_bia, include_timeline=include_timeline
+    )
+
+    bc_scans = await body_scan_service.list_scans(session) if include_bia else []
+    bc_latest = bc_scans[0] if bc_scans else None
+
+    unified: list[dict] = []
+    for m in measurements:
+        unified.append(
+            {
+                "id": m.id,
+                "date": m.date,
+                "neck_cm": m.neck_cm,
+                "waist_cm": m.waist_cm,
+                "hips_cm": m.hips_cm,
+                "body_fat_pct": m.body_fat_pct,
+                "lbm_kg": m.lbm_kg,
+                "source": "navy",
+                "source_label": "Navy",
+                "note": m.note,
+            }
+        )
+    if include_bia:
+        for s in bc_scans:
+            bf_val = body_metrics.body_fat_pct_from_scan(s.metrics)
+            lbm_val = body_metrics.lbm_from_scan(s.metrics)
+            if bf_val is not None or lbm_val is not None:
+                unified.append(
+                    {
+                        "id": s.id,
+                        "date": s.date,
+                        "neck_cm": None,
+                        "waist_cm": None,
+                        "hips_cm": None,
+                        "body_fat_pct": bf_val,
+                        "lbm_kg": lbm_val,
+                        "source": "scan",
+                        "source_label": s.device or "InBody",
+                        "note": s.note,
+                    }
+                )
+    sorted_unified = sorted(unified, key=lambda x: x["date"], reverse=True)
+
+    with_bf = [m for m in sorted_unified if m["body_fat_pct"] is not None]
+    latest_bf_row = next(
+        (m for m in with_bf if m["source"] == "scan"), next(iter(with_bf), None)
+    )
+    latest_bf = latest_bf_row["body_fat_pct"] if latest_bf_row else None
+    latest_bf_source = latest_bf_row["source_label"] if latest_bf_row else None
+
+    headline_metrics: list[dict] = []
+    if bc_latest:
+        by_key = {m.metric_key: m for m in bc_latest.metrics if m.metric_key}
+        for key in body_metrics.HEADLINE_KEYS:
+            m = by_key.get(key)
+            if m is not None:
+                headline_metrics.append(
+                    {
+                        "label": body_metrics.display_name(key, lang) or m.label,
+                        "value": m.value,
+                        "unit": body_metrics.METRIC_REGISTRY[key].unit or "",
+                    }
+                )
+
+    scans_out = [
+        {
+            "id": s.id,
+            "date": s.date,
+            "device": s.device,
+            "file_key": s.file_key,
+            "note": s.note,
+            "metrics_count": len(s.metrics),
+            "metrics": [
+                {
+                    "id": m.id,
+                    "metric_key": m.metric_key,
+                    "label": m.label,
+                    "value": m.value,
+                    "unit": m.unit,
+                    "ref_low": m.ref_low,
+                    "ref_high": m.ref_high,
+                    "segment": m.segment,
+                    "category": m.category,
+                }
+                for m in s.metrics
+            ],
+        }
+        for s in bc_scans
+    ]
+
+    photos_out = [
+        {
+            "id": p.id,
+            "date": p.date,
+            "file_key": p.file_key,
+            "url": f"/static/{p.file_key}",
+            "note": p.note,
+        }
+        for p in photos
+    ]
+
+    noise_out = [
+        {
+            "id": n.id,
+            "start_date": n.start_date,
+            "end_date": n.end_date,
+            "reason": n.reason,
+            "direction": n.direction,
+        }
+        for n in noise_markers
+    ]
+
+    latest_kg = weights[-1].weight_kg if weights else None
+    average7 = series["trend_ma"][-1]["weight_kg"] if series.get("trend_ma") else None
+
+    return {
+        "latest_kg": latest_kg,
+        "average7": average7,
+        "body_fat_pct": latest_bf,
+        "body_fat_source": latest_bf_source,
+        "week_delta_kg": series.get("weekly_delta"),
+        "height_cm": cfg.height_cm,
+        "sex": cfg.sex,
+        "body_comp_enabled": include_bia,
+        "llm_configured": bool(cfg.openrouter_api_key),
+        "headline_metrics": headline_metrics,
+        "measurements": sorted_unified,
+        "scans": scans_out,
+        "photos": photos_out,
+        "noise_markers": noise_out,
+    }
+

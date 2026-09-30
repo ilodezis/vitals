@@ -1,7 +1,7 @@
 """``GET /api/v1/session`` — what the shell needs before it can draw anything."""
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -66,7 +66,13 @@ class RailStat(BaseModel):
 class SessionView(BaseModel):
     username: str
     lang: Literal["en", "ru"]
+    today: str
     # Every module key in the registry, on or off.
     enabled_modules: dict[str, bool]
     nav: Nav
     rail: list[RailStat]
+
+
+class MoreView(BaseModel):
+    stats: dict[str, dict[str, Any]]
+

@@ -28,8 +28,9 @@ async def test_the_session_has_the_agreed_shape(auth_client):
     assert r.status_code == 200
     body = r.json()
 
-    assert set(body) == {"username", "lang", "enabled_modules", "nav", "rail"}
+    assert set(body) == {"username", "lang", "today", "enabled_modules", "nav", "rail"}
     assert body["username"] == "tester"
+    assert body["today"] == today_local().isoformat()
     # The ``client`` fixture stores Russian as the UI language.
     assert body["lang"] == "ru"
     assert body["enabled_modules"] == {k: True for k in modules_service.MODULE_REGISTRY}
@@ -48,7 +49,7 @@ async def test_the_nav_is_the_registry_in_rail_order(auth_client):
     ]  # fmt: skip
     weight = nav["items"][0]
     assert weight == {"key": "weight", "route": "/weight", "rubric": "health", "eyebrow": ""}
-    # A section may override its rubric's masthead eyebrow.
+    # A section may override its masthead eyebrow.
     reports = next(i for i in nav["items"] if i["key"] == "reports")
     assert reports["eyebrow"] == "digest"
     # Body composition is a tab inside Weight, never a nav item of its own.
@@ -110,7 +111,7 @@ async def test_the_rail_carries_raw_values(auth_client, db_session):
     weight = rail[0]
     # Numbers, not "86,1 кг" — the client formats them.
     assert weight["weight_kg"] == pytest.approx(86.1)
-    assert weight["delta_kg"] == pytest.approx(-0.9)
+    assert weight["delta_kg"] == pytest.approx(-0.7)
     assert weight["tone"] == "good"
     assert weight["sleep_seconds"] is None
 
@@ -156,3 +157,48 @@ async def test_a_json_read_does_not_pay_for_the_page_chrome(db_session):
     await load_nav_status(req, db=Spy())
     assert Spy.calls == 0
     assert req.state.nav_status == []
+
+
+async def test_more_endpoint_returns_raw_module_stats(auth_client, db_session, redis):
+    from vitals.models.garmin import DOMAIN as GARMIN_DOMAIN, GarminDaily
+    from vitals.services import glp1_service, supplements_service
+
+    today = today_local()
+    db_session.add(
+        WeightLog(
+            date=today,
+            domain=WEIGHT_DOMAIN,
+            source=Source.MANUAL.value,
+            weight_kg=82.4,
+        )
+    )
+    db_session.add(
+        GarminDaily(
+            date=today,
+            domain=GARMIN_DOMAIN,
+            source=Source.GARMIN_API.value,
+            sleep_seconds=7 * 3600 + 30 * 60,
+            hrv_avg=58.0,
+        )
+    )
+    await glp1_service.add_dose_phase(
+        db_session, start_date=today - timedelta(days=10), drug="semaglutide", dose_mg=0.5
+    )
+    await supplements_service.add_supplement(
+        db_session, name="Creatine", dose="5 g"
+    )
+    state = await modules_service.set_module_enabled(db_session, key="skincare", enabled=False)
+    await db_session.commit()
+    await modules_service.prime_cache(redis, state)
+
+    r = await auth_client.get("/api/v1/more")
+    assert r.status_code == 200
+    stats = r.json()["stats"]
+
+    assert stats["weight"]["weight_kg"] == pytest.approx(82.4)
+    assert stats["garmin"]["sleep_seconds"] == 27000
+    assert stats["garmin"]["hrv"] == 58
+    assert stats["glp1"]["drug"] == "semaglutide"
+    assert stats["glp1"]["dose_mg"] == pytest.approx(0.5)
+    assert stats["supplements"]["active_count"] == 1
+    assert "skincare" not in stats

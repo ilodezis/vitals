@@ -7,6 +7,7 @@ import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
+import { Markdown } from '@/lib/markdown'
 import type { MilestoneItem } from './types'
 import { useReportsView } from './useReportsView'
 import './reports.css'
@@ -285,7 +286,7 @@ export default function ReportsScreen() {
             {view.activeGoals.length > 0 ? (
               <div className="goals">
                 {view.activeGoals.map((g: MilestoneItem) => {
-                  const pct = Math.min(Math.max(g.pct ?? 0, 0), 100)
+                  const pct = g.pct != null ? Math.min(Math.max(g.pct, 0), 100) : null
                   const tone = DOM_TONE[g.domain] || 'good'
                   return (
                     <div key={g.id} className="goal" data-item>
@@ -327,19 +328,23 @@ export default function ReportsScreen() {
                           </button>
                         </span>
                       </div>
-                      <div className="meter">
-                        <i style={{ width: `${pct}%` }} />
-                        <span className="tick" style={{ left: '25%' }} />
-                        <span className="tick" style={{ left: '50%' }} />
-                        <span className="tick" style={{ left: '75%' }} />
-                      </div>
-                      <div className="goal-scale">
-                        <span>{pct.toFixed(0)}%</span>
-                        <span>
-                          {g.remaining != null ? `осталось ${g.remaining} ${g.targetUnit || ''}` : ''}
-                        </span>
-                        <span>{g.targetValue}</span>
-                      </div>
+                      {pct != null && (
+                        <>
+                          <div className="meter">
+                            <i style={{ width: `${pct}%` }} />
+                            <span className="tick" style={{ left: '25%' }} />
+                            <span className="tick" style={{ left: '50%' }} />
+                            <span className="tick" style={{ left: '75%' }} />
+                          </div>
+                          <div className="goal-scale">
+                            <span>{pct.toFixed(0)}%</span>
+                            <span>
+                              {g.remaining != null ? `осталось ${g.remaining} ${g.targetUnit || ''}` : ''}
+                            </span>
+                            <span>{g.targetValue}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )
                 })}
@@ -433,9 +438,7 @@ export default function ReportsScreen() {
 
             {view.latestDigest ? (
               <article className="digest">
-                <div
-                  dangerouslySetInnerHTML={{ __html: view.latestDigest.content }}
-                />
+                <Markdown source={view.latestDigest.content} />
               </article>
             ) : (
               <div className="empty">
@@ -468,9 +471,9 @@ export default function ReportsScreen() {
                         style={{ gridTemplateColumns: '84px minmax(0,1fr)' }}
                       >
                         <span className="m num">{d.date}</span>
-                        <span className="dg-old text-sm line-clamp-1">
-                          {d.content.slice(0, 100).replace(/<[^>]*>?/gm, '')}
-                        </span>
+                        <article className="digest dg-old">
+                          <Markdown source={d.content} />
+                        </article>
                       </div>
                     ))}
                   </div>

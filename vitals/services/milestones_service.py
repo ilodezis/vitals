@@ -118,6 +118,28 @@ async def _current_weight(session: AsyncSession) -> Optional[float]:
     return weights[-1].weight_kg if weights else None
 
 
+async def _weight_bounds(session: AsyncSession) -> tuple[Optional[float], Optional[float]]:
+    """Earliest and latest active weights, for computing distance covered toward a goal."""
+    from vitals.services import weight_service
+
+    weights = await weight_service.list_active_weights(session)
+    if not weights:
+        return None, None
+    return weights[0].weight_kg, weights[-1].weight_kg
+
+
+def weight_goal_pct(
+    start: Optional[float], current: Optional[float], target: Optional[float]
+) -> Optional[int]:
+    """Distance covered from ``start`` toward ``target`` as 0–100%, or ``None`` when
+    ``start <= target`` or any bound is missing."""
+    if start is None or current is None or target is None or start <= target:
+        return None
+    total = start - target
+    done = max(0.0, start - current)
+    return max(0, min(100, round(done / total * 100)))
+
+
 async def _current_body_fat(session: AsyncSession) -> Optional[float]:
     """Latest active body fat percentage, either Navy or InBody (BIA) based on
     preference. A BIA scan is a direct measurement, so by default it outranks the
@@ -208,10 +230,11 @@ async def progress(session: AsyncSession, milestone: Milestone) -> dict:
 
     unit_ok = _unit_matches_domain(milestone.domain, milestone.target_unit)
     if milestone.domain == Domain.WEIGHT.value and milestone.target_value is not None and unit_ok:
-        current = await _current_weight(session)
+        start, current = await _weight_bounds(session)
         if current is not None:
             out["current"] = round(current, 2)
             out["remaining"] = round(current - milestone.target_value, 2)
+            out["pct"] = weight_goal_pct(start, current, milestone.target_value)
     elif milestone.domain == Domain.BODY_COMPOSITION.value and milestone.target_value is not None and unit_ok:
         current = await _current_body_fat(session)
         if current is not None:

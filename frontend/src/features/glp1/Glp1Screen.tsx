@@ -4,7 +4,7 @@ import { Badge, TextButton } from '@/components/controls/Marks'
 import { Section } from '@/components/controls/Section'
 import { openLogSheet } from '@/components/sheet/logSheetStore'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
-import { FIXTURE_TODAY } from '@/fixtures/series'
+import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { addDays, daysBetween, longDate, parseIsoDate, relativeDay, shortDate, weekdayLongDate, weekdayShort } from '@/lib/dates'
@@ -18,22 +18,41 @@ const CYCLE_DAYS = 8
 
 export default function Glp1Screen() {
   const { t, lang, plural } = useT()
+  const today = useToday()
   const view = useGlp1View()
 
-  const usage = useMemo(() => siteUsage(view.injections, FIXTURE_TODAY, parseIsoDate), [view.injections])
+  const usage = useMemo(() => siteUsage(view.injections, today, parseIsoDate), [view.injections, today])
   const phases = useMemo(() => view.dosePhases.map((p) => ({ from: parseIsoDate(p.fromIso), doseMg: p.doseMg })), [view.dosePhases])
   const trend = useMemo(() => view.trend.map((p) => ({ date: parseIsoDate(p.date), kg: p.kg })), [view.trend])
-  const first = parseIsoDate(view.cycle.lastIso)
+  const first = view.cycle.lastIso ? parseIsoDate(view.cycle.lastIso) : today
   const next = parseIsoDate(view.cycle.nextIso)
   const labels = { today: t('app.today_word'), yesterday: t('app.yesterday_word') }
 
   // The days of one cycle as a line: the last injection, the days since, the next one.
   const days = Array.from({ length: CYCLE_DAYS }, (_, i) => {
     const date = addDays(first, i)
-    const k = daysBetween(FIXTURE_TODAY, date)
+    const k = daysBetween(today, date)
     const kind = i === 0 ? 'inj past' : i === CYCLE_DAYS - 1 ? 'next' : k === 0 ? 'now' : k < 0 ? 'past' : ''
     return { date, k, kind }
   })
+
+  const overdueDays = Math.abs(view.cycle.daysToNext)
+  const isOverdue = Boolean(view.cycle.overdue) || view.cycle.daysToNext < 0
+  const cycleStatusText = isOverdue
+    ? plural(
+        overdueDays,
+        t('app.glp1.overdue.one', { n: overdueDays }),
+        t('app.glp1.overdue.few', { n: overdueDays }),
+        t('app.glp1.overdue.many', { n: overdueDays }),
+      )
+    : view.cycle.daysToNext === 0
+      ? t('app.glp1.due_today')
+      : plural(
+          view.cycle.daysToNext,
+          t('app.glp1.in_days.one', { n: view.cycle.daysToNext }),
+          t('app.glp1.in_days.few', { n: view.cycle.daysToNext }),
+          t('app.glp1.in_days.many', { n: view.cycle.daysToNext }),
+        )
 
   return (
     <>
@@ -67,8 +86,8 @@ export default function Glp1Screen() {
                 <div className="big">
                   {t('app.glp1.next_is')} <span className="nw">{weekdayLongDate(next, lang)}</span>
                 </div>
-                <span className="sub">
-                  {plural(view.cycle.daysToNext, t('app.glp1.in_days.one', { n: view.cycle.daysToNext }), t('app.glp1.in_days.few', { n: view.cycle.daysToNext }), t('app.glp1.in_days.many', { n: view.cycle.daysToNext }))}
+                <span className={cx('sub', isOverdue && 'warn')}>
+                  {cycleStatusText}
                 </span>
               </div>
               <div className="cycle">
@@ -86,7 +105,7 @@ export default function Glp1Screen() {
 
           <Section title={t('app.glp1.dose_weight_title')} meta={t('app.glp1.dose_weight_meta')}>
             <div className="panel bare">
-              <DoseChart phases={phases} trend={trend} start={trend[0]?.date ?? phases[0]?.from ?? FIXTURE_TODAY} end={FIXTURE_TODAY} />
+              <DoseChart phases={phases} trend={trend} start={trend[0]?.date ?? phases[0]?.from ?? today} end={today} />
               <div className="legend">
                 <span>
                   <i style={{ background: 'var(--violet)' }} />
@@ -144,7 +163,7 @@ export default function Glp1Screen() {
             <div className="rows">
               {view.injections.slice(0, 5).map((j) => (
                 <div key={j.dateIso} className="row r-3">
-                  <div className="t">{relativeDay(parseIsoDate(j.dateIso), FIXTURE_TODAY, lang, labels)}</div>
+                  <div className="t">{relativeDay(parseIsoDate(j.dateIso), today, lang, labels)}</div>
                   <span className="m">{view.siteLabels[j.site]}</span>
                   <div className="v">
                     {formatNumber(j.doseMg, lang, j.doseMg < 0.5 ? 2 : 1)}

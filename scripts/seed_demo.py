@@ -37,12 +37,19 @@ from vitals.enums import (
 )
 from vitals.models.app_settings import AppSetting
 from vitals.models.conflict_rule import ConflictRule
+from vitals.models.body_scan import BodyScan, BodyScanMetric
+from vitals.models.hrt import HrtCycle, HrtCycleItem, HrtDose, HrtSideEffect
+from vitals.models.share import SharedReport
+from vitals.models.signals import Signal
+from vitals.models.system_alert import SystemAlert
+from vitals.models.timeline import Annotation
 from vitals.models.garmin import (
     SERIES_BODY_BATTERY,
     SERIES_HEART_RATE,
     SERIES_SLEEP_HR,
     SERIES_SLEEP_HRV,
     SERIES_STRESS,
+    GarminActivity,
     GarminDaily,
     GarminIntraday,
 )
@@ -54,7 +61,7 @@ from vitals.models.milestones import Milestone, WeeklyDigest
 from vitals.models.nutrition import MealLog
 from vitals.models.skincare import SkincareLog, SkincareProduct
 from vitals.models.supplements import Supplement
-from vitals.models.weight import BodyMeasurement, WeightLog
+from vitals.models.weight import BodyMeasurement, NoiseMarker, ProgressPhoto, WeightLog
 from vitals.utils.timeutils import today_local
 
 random.seed(42)
@@ -206,7 +213,7 @@ async def seed_dose_phases(session):
     await session.execute(delete(DosePhase))
     phases = [
         DosePhase(
-            start_date=_d(84), end_date=_d(57),
+            start_date=_d(90), end_date=_d(57),
             drug=Drug.SEMAGLUTIDE, dose_mg=0.25,
             note="Titration — starting dose",
             domain=Domain.GLP1, source=Source.MANUAL,
@@ -223,12 +230,22 @@ async def seed_dose_phases(session):
 
 async def seed_weight(session):
     await session.execute(delete(WeightLog))
-    days = sorted(random.sample(range(1, 91), 20), reverse=True)
-    for d in days:
+    # Six months, most mornings logged by hand. Every few days the Garmin scale
+    # also reports the same date: that row is kept but superseded, which is what
+    # the history list shows as a dimmed Garmin entry.
+    for d in range(180, 0, -1):
+        if random.random() < 0.18:
+            continue
+        w = _weight_curve(d)
         session.add(WeightLog(
-            date=_d(d), weight_kg=_weight_curve(d), superseded=False,
+            date=_d(d), weight_kg=w, superseded=False,
             domain=Domain.WEIGHT, source=Source.MANUAL,
         ))
+        if d % 4 == 0:
+            session.add(WeightLog(
+                date=_d(d), weight_kg=round(w + random.uniform(-0.6, 0.6), 1),
+                superseded=True, domain=Domain.WEIGHT, source=Source.GARMIN_API,
+            ))
 
 
 async def seed_measurements(session):
@@ -451,8 +468,8 @@ async def seed_skincare(session):
 async def seed_injections(session):
     await session.execute(delete(Injection))
     sites = list(InjectionSite)
-    for i in range(4):
-        days_ago = 7 * (4 - i)
+    for i in range(12):
+        days_ago = 7 * (12 - i) + 3
         dose = 0.25 if days_ago > 56 else 0.5
         session.add(Injection(
             date=_d(days_ago),
@@ -465,8 +482,27 @@ async def seed_injections(session):
 
 async def seed_labs(session):
     await session.execute(delete(LabResult))
+    # An older panel first, so every marker has a "was" value to compare with.
+    older = [
+        ("Glucose (fasting)", 5.6, "mmol/L", 3.9, 5.6, LabFlag.NORMAL),
+        ("Insulin (fasting)", 14.1, "μIU/mL", 2.6, 24.9, LabFlag.NORMAL),
+        ("TSH", 2.4, "mIU/L", 0.4, 4.0, LabFlag.NORMAL),
+        ("Vitamin D (25-OH)", 19.0, "ng/mL", 30.0, 100.0, LabFlag.LOW),
+        ("HbA1c", 5.8, "%", 4.0, 5.7, LabFlag.HIGH),
+        ("Triglycerides", 176.0, "mg/dL", 0.0, 150.0, LabFlag.HIGH),
+        ("ALT", 31.0, "U/L", 0.0, 41.0, LabFlag.NORMAL),
+        ("Hematocrit", 46.0, "%", 40.0, 50.0, LabFlag.NORMAL),
+    ]
+    for marker, val, unit, lo, hi, flag in older:
+        session.add(LabResult(
+            date=_d(120), marker=marker, value=val, unit=unit,
+            ref_low=lo, ref_high=hi, flag=flag, lab_name="Invitro",
+            domain=Domain.LABS, source=Source.LAB_PARSER,
+        ))
     panel_date = _d(21)
     results = [
+        ("ALT", 44.0, "U/L", 0.0, 41.0, LabFlag.HIGH),
+        ("Hematocrit", 51.5, "%", 40.0, 50.0, LabFlag.HIGH),
         ("Glucose (fasting)", 5.1, "mmol/L", 3.9, 5.6, LabFlag.NORMAL),
         ("Insulin (fasting)", 8.3, "μIU/mL", 2.6, 24.9, LabFlag.NORMAL),
         ("TSH", 2.1, "mIU/L", 0.4, 4.0, LabFlag.NORMAL),
@@ -736,6 +772,179 @@ async def seed_digests(session):
     ))
 
 
+async def seed_activities(session):
+    await session.execute(delete(GarminActivity))
+    kinds = [
+        ("running", "Утренняя пробежка", 2400, 5200.0, 148),
+        ("strength_training", "Силовая", 3600, None, 118),
+        ("walking", "Прогулка", 3000, 3800.0, 96),
+        ("cycling", "Велосипед", 4200, 18500.0, 132),
+    ]
+    for i in range(20, 0, -1):
+        if i % 3 == 1:
+            continue
+        kind, name, dur, dist, hr = kinds[i % len(kinds)]
+        d = _d(i)
+        session.add(GarminActivity(
+            date=d, external_id=f"demo-{i}", activity_type=kind, name=name,
+            start_time=datetime.combine(d, time(7, 30)),
+            duration_seconds=dur + random.randint(-300, 300),
+            distance_m=dist, calories=random.randint(250, 650),
+            avg_hr=hr + random.randint(-6, 6), max_hr=hr + random.randint(20, 35),
+            domain=Domain.GARMIN, source=Source.GARMIN_API,
+        ))
+
+
+async def seed_body_scans(session):
+    from vitals.services import body_scan_service
+
+    # Bulk deletes skip ORM cascades (and SQLite has FKs off): clear children first.
+    await session.execute(delete(BodyScanMetric))
+    await session.execute(delete(BodyScan))
+    for days_ago, fat_pct, smm, vfa, score in ((100, 24.8, 36.1, 112.0, 71),
+                                               (45, 21.9, 36.6, 98.0, 75),
+                                               (10, 19.6, 37.0, 86.0, 79)):
+        w = _weight_curve(days_ago)
+        metrics = [
+            {"metric_key": "weight", "label": "Вес", "value": w, "unit": "кг", "category": "composition"},
+            {"metric_key": "body_fat_pct", "label": "Процент жира", "value": fat_pct, "unit": "%",
+             "ref_low": 10.0, "ref_high": 20.0, "category": "composition"},
+            {"metric_key": "skeletal_muscle_mass", "label": "Скелетно-мышечная масса", "value": smm,
+             "unit": "кг", "ref_low": 33.0, "ref_high": 40.0, "category": "composition"},
+            {"metric_key": "body_fat_mass", "label": "Жировая масса", "value": round(w * fat_pct / 100, 1),
+             "unit": "кг", "category": "composition"},
+            {"metric_key": "visceral_fat_area", "label": "Площадь висцерального жира", "value": vfa,
+             "unit": "см²", "ref_high": 100.0, "category": "composition"},
+            {"metric_key": "total_body_water", "label": "Общая жидкость организма", "value": 48.2,
+             "unit": "л", "category": "water"},
+            {"metric_key": "ecw_tbw_ratio", "label": "Отношение ВнеКЖ/ОВО", "value": 0.381,
+             "ref_low": 0.36, "ref_high": 0.39, "category": "water"},
+            {"metric_key": "phase_angle", "label": "Фазовый угол", "value": 6.4, "unit": "°", "category": "score"},
+            {"metric_key": "inbody_score", "label": "Балл InBody", "value": score, "category": "score"},
+            {"metric_key": "bmr", "label": "Основной обмен", "value": 1890, "unit": "ккал", "category": "derived"},
+        ]
+        await body_scan_service.save_scan(
+            session, on_date=_d(days_ago), device="InBody 570", metrics=metrics, override=True,
+        )
+
+
+async def seed_noise_and_photos(session):
+    await session.execute(delete(NoiseMarker))
+    await session.execute(delete(ProgressPhoto))
+    session.add(NoiseMarker(
+        start_date=_d(64), end_date=_d(58), reason="Загрузка креатина",
+        direction="up", domain=Domain.WEIGHT, source=Source.MANUAL,
+    ))
+    session.add(NoiseMarker(
+        start_date=_d(19), end_date=_d(17), reason="Солёный ужин, отёки",
+        direction="up", domain=Domain.WEIGHT, source=Source.MANUAL,
+    ))
+
+
+async def seed_hrt(session):
+    from vitals.services import hrt_catalog, hrt_cycle_service, hrt_service
+
+    for model in (HrtSideEffect, HrtDose, HrtCycleItem, HrtCycle):
+        await session.execute(delete(model))
+    await hrt_catalog.sync_catalog(session)
+    cycle = await hrt_cycle_service.add_cycle(
+        session, kind="course", start_date=_d(70), name="TRT 125/нед",
+        note="Поддерживающая заместительная терапия",
+    )
+    await hrt_cycle_service.add_cycle_item(
+        session, cycle.id, compound_key="testosterone_enanthate",
+        schedule=[{"dose": 62.5, "interval_days": 3.5, "duration_days": 168}],
+    )
+    sites = ["glute_left", "glute_right", "delt_left", "delt_right", "ventroglute_left", "quad_right"]
+    n = 0
+    days_ago = 70.0
+    while days_ago >= 1:
+        await hrt_service.log_dose(
+            session, compound_key="testosterone_enanthate", on_date=_d(int(days_ago)),
+            dose=62.5, unit="mg", site=sites[n % len(sites)], brand="Pharmacom",
+            batch="TE-2604", override=True,
+        )
+        n += 1
+        days_ago -= 3.5
+    for days_ago, effect, sev in ((60, "acne", 2), (41, "water_retention", 3), (12, "acne", 1)):
+        await hrt_service.log_side_effect(session, on_date=_d(days_ago), effect_type=effect, severity=sev)
+
+
+async def seed_timeline(session):
+    await session.execute(delete(Annotation))
+    for days_ago, end_ago, kind, title, note in (
+        (150, None, "protocol_change", "Начал дефицит 500 ккал", None),
+        (90, None, "protocol_change", "Старт семаглутида 0,25 мг", "Титрация по схеме"),
+        (70, None, "protocol_change", "Старт ТРТ", None),
+        (48, 44, "travel", "Поездка в Стамбул", "Питание вне дома, без весов"),
+        (33, 30, "illness", "ОРВИ", "Тренировки на паузе"),
+        (5, None, "life_event", "Новая работа", None),
+    ):
+        session.add(Annotation(
+            date=_d(days_ago), end_date=_d(end_ago) if end_ago else None, kind=kind,
+            title=title, note=note, domain=Domain.TIMELINE, source=Source.MANUAL,
+        ))
+
+
+async def seed_signals(session):
+    from vitals.services import signals_service
+
+    await session.execute(delete(Signal))
+    phrases = [
+        (13, [{"kind": "state", "key": "energy", "value_num": 3}, {"kind": "exposure", "key": "coffee", "at_time": "16:30"}]),
+        (11, [{"kind": "symptom", "key": "headache", "value_num": 2}]),
+        (9, [{"kind": "state", "key": "sleepy", "value_num": 4, "note": "очень хочется спать"}]),
+        (8, [{"kind": "exposure", "key": "alcohol", "value_num": 2, "unit": "glass"}]),
+        (6, [{"kind": "exposure", "key": "coffee", "at_time": "22:00", "note": "кофе в 22"}]),
+        (5, [{"kind": "state", "key": "energy", "value_num": 7}]),
+        (3, [{"kind": "symptom", "key": "nausea", "value_num": 1}, {"kind": "exposure", "key": "coffee", "at_time": "09:00"}]),
+        (2, [{"kind": "state", "key": "stress", "value_num": 6}]),
+        (1, [{"kind": "symptom", "key": "headache", "value_num": 3, "note": "голова раскалывается"}]),
+        (0, [{"kind": "state", "key": "energy", "value_num": 6}]),
+    ]
+    for days_ago, items in phrases:
+        await signals_service.create_signals(session, items=items, on_date=_d(days_ago))
+
+
+async def seed_alerts(session):
+    from vitals.services import alerts_service
+
+    await session.execute(delete(SystemAlert))
+    await alerts_service.raise_alert(
+        session, domain="hrt", severity="warn", alert_key="demo_hct_high",
+        message="Гематокрит 51,5 % при активном курсе тестостерона — стоит пересдать и обсудить с врачом.",
+    )
+    await alerts_service.raise_alert(
+        session, domain="labs", severity="info", alert_key="demo_vitd_low",
+        message="Витамин D ниже нормы — добавка D3 уже в списке, пересдать через 8 недель.",
+    )
+    await alerts_service.raise_alert(
+        session, domain="garmin", severity="info", alert_key="demo_sync_stale",
+        message="Garmin не синхронизировался 2 дня.",
+    )
+
+
+async def seed_charts_and_share(session):
+    from vitals.services import share_service
+
+    await session.execute(delete(SharedReport))
+    session.add(AppSetting(key="custom_charts", value=[
+        {"id": "demo0000001", "name": "Вес и стресс", "normalize": True, "series": [
+            {"domain": "weight", "metric_key": "weight.weight_kg", "param": None, "label": None, "color_slot": 0},
+            {"domain": "garmin", "metric_key": "garmin.avg_stress", "param": None, "label": None, "color_slot": 1},
+        ]},
+        {"id": "demo0000002", "name": "Сон и HRV", "normalize": False, "series": [
+            {"domain": "garmin", "metric_key": "garmin.sleep_hours", "param": None, "label": None, "color_slot": 2},
+            {"domain": "garmin", "metric_key": "garmin.hrv_avg", "param": None, "label": None, "color_slot": 3},
+        ]},
+    ]))
+    start, end = share_service.default_period(90)
+    await share_service.create_report(
+        session, title="Для эндокринолога", domains=["weight", "labs", "glp1", "hrt"],
+        period_start=start, period_end=end, expires_days=14, note="Приём 3 октября",
+    )
+
+
 async def seed_app_settings(session):
     await session.execute(delete(AppSetting))
     session.add_all([
@@ -749,9 +958,13 @@ async def seed_app_settings(session):
                 "skincare": True,
                 "nutrition": True,
                 "hrt": True,
+                "interactions": True,
+                "signals": True,
+                "body_comp": True,
+                "timeline": True,
             },
         ),
-        AppSetting(key="language", value="ru"),
+        AppSetting(key="ui_language", value="ru"),
     ])
 
 
@@ -813,6 +1026,30 @@ async def main():
 
         await seed_app_settings(session)
         print("  + App settings (all modules enabled)")
+
+        await seed_activities(session)
+        print("  + Garmin activities")
+
+        await seed_body_scans(session)
+        print("  + Body scans (3)")
+
+        await seed_noise_and_photos(session)
+        print("  + Noise markers (2)")
+
+        await seed_hrt(session)
+        print("  + HRT catalog, cycle, doses, side effects")
+
+        await seed_timeline(session)
+        print("  + Timeline events (6)")
+
+        await seed_signals(session)
+        print("  + Signals (10 days)")
+
+        await seed_alerts(session)
+        print("  + Alerts (3)")
+
+        await seed_charts_and_share(session)
+        print("  + Custom charts (2) + doctor share link (1)")
 
         await session.commit()
         print("\nDone! Start the server: python run_local.py")

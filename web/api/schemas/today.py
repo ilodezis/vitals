@@ -102,6 +102,7 @@ class Goal(BaseModel):
     start_kg: float
     current_kg: float
     target_kg: float
+    pct: Optional[int] = None
     deadline: Optional[dt.date]
     forecast: Optional[GoalForecast]
 

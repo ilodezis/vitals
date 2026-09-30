@@ -13,16 +13,19 @@
 .arch-g.ok > svg { color: var(--good); stroke-width: 2; }
 .dg-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
 .dg-bar .opts { flex: 1 1 auto; }
-.digest { max-width: 52rem; font-size: 15px; line-height: 1.62; color: var(--fg-2); }
+.digest { max-width: 52rem; font-size: var(--t-body); line-height: 1.62; color: var(--fg-2); }
 .digest h3 { font-family: var(--f-display); font-size: var(--t-lead); font-weight: 600; letter-spacing: -.02em; line-height: 1.2; color: var(--fg); margin: 0 0 10px; }
 .digest h4 { font-family: var(--f-display); font-size: var(--t-ui); font-weight: 600; letter-spacing: -.01em; color: var(--fg); margin: 24px 0 6px; }
+.digest h5 { font-family: var(--f-display); font-size: var(--t-body); font-weight: 600; color: var(--fg); margin: 18px 0 4px; }
 .digest p { margin: 0 0 12px; max-width: 66ch; }
-.digest b { color: var(--fg); font-weight: 600; }
-.digest ul { margin: 0 0 12px; padding-left: 18px; max-width: 64ch; }
+.digest b, .digest strong { color: var(--fg); font-weight: 600; }
+.digest em { font-style: italic; }
+.digest ul, .digest ol { margin: 0 0 12px; padding-left: 18px; max-width: 64ch; }
 .digest li { margin: 4px 0; }
 .digest li::marker { color: var(--faint); }
 .digest blockquote { margin: 18px 0; padding: 2px 0 2px 16px; border-left: 1px solid var(--fg-2); color: var(--fg); font-size: var(--t-ui); }
-.digest code { font-family: inherit; font-size: inherit; color: var(--fg); background: var(--surface-2); padding: 1px 6px; border-radius: 6px; }
+.digest code, .digest .md-code { font-family: var(--f-text); font-size: inherit; color: var(--fg); background: var(--surface-2); padding: 1px 6px; border-radius: 6px; }
+.digest a { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
 .digest table { width: 100%; max-width: 440px; border-collapse: collapse; margin: 8px 0 16px; font-size: var(--t-body); font-variant-numeric: tabular-nums; }
 .digest th { text-align: left; font-size: var(--t-micro); font-weight: 500; color: var(--muted); padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); }
 .digest td { padding: 7px 12px 7px 0; border-bottom: 1px solid var(--line); }

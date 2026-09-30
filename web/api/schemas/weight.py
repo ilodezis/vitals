@@ -61,6 +61,7 @@ class WeightHistoryItem(BaseModel):
     weight_kg: float
     source: str
     superseded: bool = False
+    superseded_by: Optional[str] = None
     note: Optional[str] = None
 
 

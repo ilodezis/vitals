@@ -1,7 +1,36 @@
 import { queryOptions, useQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
-import { glp1Fixture } from '@/fixtures/glp1'
+import { toIsoDate } from '@/lib/dates'
 import type { Glp1View } from './types'
+
+const todayIso = () => toIsoDate(new Date())
+
+const EMPTY_GLP1: Glp1View = {
+  drug: 'Семаглутид',
+  doseMg: 0,
+  sinceIso: todayIso(),
+  dayOnDose: 0,
+  cycle: {
+    lastIso: null,
+    nextIso: todayIso(),
+    daysToNext: 0,
+    overdue: false,
+    unscheduled: true,
+  },
+  dosePhases: [],
+  trend: [],
+  summary: '',
+  siteLabels: {
+    shoulder_left: 'Плечо Л',
+    shoulder_right: 'Плечо П',
+    abdomen_left: 'Живот Л',
+    abdomen_right: 'Живот П',
+    thigh_left: 'Бедро Л',
+    thigh_right: 'Бедро П',
+  },
+  injections: [],
+  sideEffects: [],
+}
 
 export const glp1Query = queryOptions({
   queryKey: ['glp1'],
@@ -15,5 +44,5 @@ export const glp1Query = queryOptions({
 
 export function useGlp1View(): Glp1View {
   const { data } = useQuery(glp1Query)
-  return data ?? glp1Fixture
+  return data ?? EMPTY_GLP1
 }

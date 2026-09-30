@@ -4,7 +4,7 @@ export interface HrtCyclePlanItem {
   name: string
   dose: number
   unit: string
-  every: number
+  every?: number | null
   from: number
   durationDays?: number | null
   note?: string | null
@@ -19,8 +19,8 @@ export interface HrtActiveCycle {
   note?: string | null
   cadence: number
   week: number
-  weeks: number
-  pct: number
+  weeks?: number | null
+  pct?: number | null
   items: HrtCyclePlanItem[]
 }
 

@@ -83,15 +83,11 @@ async def _weight_stat(session: AsyncSession) -> Optional[RailStat]:
     reason to look, not the number."""
     from vitals.services import weight_service
 
-    today = today_local()
-    logs = await weight_service.list_active_weights(session, start=today - timedelta(days=21))
+    logs = await weight_service.list_active_weights(session)
     if not logs:
         return None
     latest = logs[-1]
-    # Nearest reading at least a week older than the latest one — "a week ago"
-    # has to survive gaps, and the day before yesterday is not a week.
-    earlier = [w for w in logs if (latest.date - w.date).days >= 7]
-    delta = latest.weight_kg - earlier[-1].weight_kg if earlier else None
+    delta = await weight_service.weekly_trend_delta(session, logs=logs)
     tone = ""
     if delta is not None:
         tone = "good" if delta < 0 else ("bad" if delta > 0 else "")
@@ -221,3 +217,124 @@ async def rail_stats(
 ) -> list[StatRow]:
     """Today's readout for every enabled domain, in display order. Never raises."""
     return [phrase(stat) for stat in await rail_stats_raw(session, enabled)]
+
+
+def _enabled_keys(enabled: Optional[set[str] | dict[str, bool]]) -> set[str]:
+    from vitals.services.modules_service import MODULE_REGISTRY
+
+    if enabled is None:
+        return set(MODULE_REGISTRY.keys())
+    if isinstance(enabled, dict):
+        on = {k for k, v in enabled.items() if v}
+        for k in CORE_KEYS:
+            if enabled.get(k, True):
+                on.add(k)
+        return on
+    return set(enabled) | set(CORE_KEYS)
+
+
+async def more_stats_raw(
+    session: AsyncSession,
+    enabled: Optional[set[str] | dict[str, bool]] = None,
+) -> dict[str, dict]:
+    """Raw per-module stats for the More screen (only enabled modules included)."""
+    from vitals.config import load_config
+    from vitals.services import (
+        conflict_service,
+        custom_charts_service,
+        garmin_service,
+        glp1_service,
+        hevy_service,
+        hrt_cycle_service,
+        hrt_service,
+        labs_service,
+        modules_service,
+        nutrition_service,
+        supplements_service,
+        weight_service,
+    )
+
+    on = _enabled_keys(enabled)
+    today = today_local()
+    out: dict[str, dict] = {}
+
+    if "weight" in on:
+        logs = await weight_service.list_active_weights(session)
+        out["weight"] = {"weight_kg": round(logs[-1].weight_kg, 1) if logs else None}
+
+    if "garmin" in on:
+        daily = await garmin_service.latest_daily(session)
+        out["garmin"] = {
+            "sleep_score": daily.sleep_score if (daily and daily.sleep_score is not None) else None,
+            "sleep_seconds": daily.sleep_seconds if (daily and daily.sleep_seconds is not None) else None,
+            "hrv": round(daily.hrv_avg) if (daily and daily.hrv_avg is not None) else None,
+        }
+
+    if "hevy" in on:
+        last = await hevy_service.latest_workout_date(session)
+        out["hevy"] = {"days_since": max(0, (today - last).days) if last is not None else None}
+
+    if "nutrition" in on:
+        summary = await nutrition_service.daily_summary(session, today, load_config())
+        cal = round(summary["totals"]["calories"]) if summary.get("meal_count") else None
+        out["nutrition"] = {"calories": cal}
+
+    if "glp1" in on:
+        phase = await glp1_service.active_dose_phase(session, on_date=today)
+        last_inj = await glp1_service.last_injection(session)
+        days_to_next: Optional[int] = (
+            ((last_inj.date + timedelta(days=7)) - today).days if last_inj is not None else None
+        )
+        out["glp1"] = {
+            "drug": phase.drug if phase else (last_inj.drug if last_inj else None),
+            "dose_mg": phase.dose_mg if phase else (last_inj.dose_mg if last_inj else None),
+            "days_to_next": days_to_next,
+        }
+
+    if "hrt" in on:
+        hrt_cyc = await hrt_cycle_service.active_cycle(session, on_date=today)
+        prog = hrt_service._cycle_progress_data(hrt_cyc, today)
+        out["hrt"] = {
+            "week": prog["week"] if prog is not None else None,
+            "weeks": prog["weeks"] if prog is not None else None,
+        }
+
+    if "labs" in on:
+        latest_labs = await labs_service.latest_per_marker(session)
+        if not latest_labs:
+            out_of_range = 0
+        else:
+            latest_lab_date = max(r.date for r in latest_labs)
+            out_of_range = sum(
+                1
+                for r in latest_labs
+                if r.date == latest_lab_date and labs_service.is_out_of_range(r.flag)
+            )
+        out["labs"] = {"out_of_range": out_of_range}
+
+    if "supplements" in on:
+        active_supps = await supplements_service.list_supplements(session, active_only=True)
+        out["supplements"] = {
+            "active": len(active_supps),
+            "active_count": len(active_supps),
+        }
+
+    if "interactions" in on:
+        firing_ids = await conflict_service.get_firing_rule_ids(session)
+        out["interactions"] = {"firing": len(firing_ids)}
+
+    if "charts" in on:
+        charts = await custom_charts_service.list_charts(session)
+        out["charts"] = {"count": len(charts)}
+
+    for mod in ("genetics", "skincare", "signals", "timeline", "reports"):
+        if mod in on:
+            out[mod] = {}
+
+    out["share"] = {}
+    out["settings"] = {
+        "enabled": sum(1 for k in modules_service.MODULE_REGISTRY if k in on),
+        "total": len(modules_service.MODULE_REGISTRY),
+    }
+    return out
+

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
+import { ConflictAlert } from '@/components/controls/ConflictAlert'
 import { TextButton } from '@/components/controls/Marks'
 import { Meter } from '@/components/controls/Meters'
 import { Section } from '@/components/controls/Section'
@@ -11,6 +12,7 @@ import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { longDate, parseIsoDate, toIsoDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/format'
+import { useConflictMutation } from '@/lib/useConflictMutation'
 import type { components } from '@/api/schema'
 import './nutrition.css'
 
@@ -52,8 +54,8 @@ export default function NutritionScreen() {
   }
 
   // Create or Update Meal Mutation
-  const saveMealMutation = useMutation({
-    mutationFn: async () => {
+  const saveMealMutation = useConflictMutation({
+    mutationFn: async ({ override }) => {
       const cal = mealCal ? parseFloat(mealCal) : undefined
       const prot = mealP ? parseFloat(mealP) : undefined
       const fat = mealF ? parseFloat(mealF) : undefined
@@ -71,7 +73,7 @@ export default function NutritionScreen() {
             fat_g: fat,
             carbs_g: carbs,
             note: mealNote.trim() || undefined,
-            override: false,
+            override,
           },
         })
       } else {
@@ -85,7 +87,7 @@ export default function NutritionScreen() {
             fat_g: fat,
             carbs_g: carbs,
             note: mealNote.trim() || undefined,
-            override: false,
+            override,
           },
         })
       }
@@ -286,6 +288,11 @@ export default function NutritionScreen() {
                 />
               </div>
 
+              <ConflictAlert
+                violations={saveMealMutation.violations}
+                onFix={() => saveMealMutation.clearConflict()}
+                onSaveAnyway={() => void saveMealMutation.retryWithOverride()}
+              />
               <div className="form-acts">
                 <button type="submit" className="btn grow" disabled={saveMealMutation.isPending}>
                   {editingMealId ? 'Сохранить изменения' : 'Записать приём'}

@@ -1,7 +1,14 @@
 import { queryOptions, useQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
-import { labsFixture } from '@/fixtures/labs'
+import { toIsoDate } from '@/lib/dates'
 import type { LabsView } from './types'
+
+const EMPTY_LABS: LabsView = {
+  collectedIso: toIsoDate(new Date()),
+  lab: '',
+  source: '',
+  markers: [],
+}
 
 export const labsQuery = queryOptions({
   queryKey: ['labs'],
@@ -15,5 +22,5 @@ export const labsQuery = queryOptions({
 
 export function useLabsView(): LabsView {
   const { data } = useQuery(labsQuery)
-  return data ?? labsFixture
+  return data ?? EMPTY_LABS
 }

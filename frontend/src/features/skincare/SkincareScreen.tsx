@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
+import { ConflictAlert } from '@/components/controls/ConflictAlert'
 import { Badge } from '@/components/controls/Marks'
-import { PrimaryButton } from '@/components/controls/PrimaryButton'
+import { PrimaryButton, type PrimaryButtonHandle } from '@/components/controls/PrimaryButton'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
+import { useConflictMutation } from '@/lib/useConflictMutation'
 import type { SkincareProductItem } from './types'
 import { useSkincareView } from './useSkincareView'
 import './skincare.css'
@@ -56,6 +58,7 @@ export default function SkincareScreen() {
   const [moisturizer, setMoisturizer] = useState(true)
   const [vitaminC, setVitaminC] = useState(false)
   const [logNote, setLogNote] = useState('')
+  const logButtonRef = useRef<PrimaryButtonHandle>(null)
 
   // Observation dialog states
   const [obsOpen, setObsOpen] = useState(false)
@@ -161,8 +164,8 @@ export default function SkincareScreen() {
     }
   }
 
-  const handleSaveLog = async (): Promise<boolean> => {
-    try {
+  const logConflict = useConflictMutation({
+    mutationFn: async ({ override }) => {
       await api.POST('/api/v1/skincare/logs', {
         body: {
           date: view.today,
@@ -174,18 +177,17 @@ export default function SkincareScreen() {
           vitaminC,
           benzoylPeroxide: false,
           note: logNote.trim() || null,
-          override: false,
+          override,
         },
       })
       toast('Запись сохранена')
       setLogOpen(false)
       refresh()
-      return true
-    } catch (err: any) {
+    },
+    onError: (err) => {
       toast(err.message || 'Error saving log', { icon: 'warn' })
-      return false
-    }
-  }
+    },
+  })
 
   const handleDeleteLog = async (id: number) => {
     try {
@@ -676,8 +678,13 @@ export default function SkincareScreen() {
                     value={logNote}
                     onChange={(e) => setLogNote(e.target.value)}
                   />
+                  <ConflictAlert
+                    violations={logConflict.violations}
+                    onFix={() => logConflict.clearConflict()}
+                    onSaveAnyway={() => logButtonRef.current?.press({ override: true })}
+                  />
                   <div className="flex gap-2 pt-2">
-                    <PrimaryButton className="btn grow" onPress={handleSaveLog}>
+                    <PrimaryButton ref={logButtonRef} className="btn grow" onPress={logConflict.submit}>
                       {t('common.save')}
                     </PrimaryButton>
                     <button

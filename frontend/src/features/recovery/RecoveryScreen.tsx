@@ -9,7 +9,7 @@ import { hrefOf, useGo } from '@/components/shell/navigation'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { preloadScreen } from '@/components/shell/screens'
 import { type ScreenId } from '@/components/shell/nav'
-import { FIXTURE_TODAY } from '@/fixtures/series'
+import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { daysBetween, longDate, parseIsoDate, shortDate, weekdayShort } from '@/lib/dates'
@@ -35,6 +35,7 @@ const minutesOf = (hhmm: string): number => {
 
 export default function RecoveryScreen() {
   const { t, lang, plural } = useT()
+  const today = useToday()
   const view = useRecoveryView()
   const go = useGo()
   const [syncing, setSyncing] = useState(false)
@@ -57,7 +58,7 @@ export default function RecoveryScreen() {
     return `${formatInt(n.lo, lang)}–${formatInt(n.hi, lang)}`
   }
   const relative = (iso: string) => {
-    const k = daysBetween(parseIsoDate(iso), FIXTURE_TODAY)
+    const k = daysBetween(parseIsoDate(iso), today)
     return k === 0 ? t('app.today_word_lower') : k === 1 ? t('app.yesterday_word_lower') : weekdayShort(parseIsoDate(iso), lang)
   }
 

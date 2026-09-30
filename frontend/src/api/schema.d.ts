@@ -861,6 +861,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/more": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read More
+         * @description Raw per-module statuses for the More screen.
+         */
+        get: operations["read_more"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/nutrition": {
         parameters: {
             query?: never;
@@ -3153,6 +3173,11 @@ export interface components {
             /** Nextiso */
             nextIso: string;
             /**
+             * Overdue
+             * @default false
+             */
+            overdue: boolean;
+            /**
              * Unscheduled
              * @default false
              */
@@ -3268,6 +3293,8 @@ export interface components {
             cycle: components["schemas"]["Glp1CycleInfo"];
             /** Dayondose */
             dayOnDose: number;
+            /** Deltaondosekg */
+            deltaOnDoseKg?: number | null;
             /** Dosemg */
             doseMg: number;
             /** Dosephases */
@@ -3301,6 +3328,8 @@ export interface components {
             forecast: components["schemas"]["GoalForecast"] | null;
             /** Name */
             name: string;
+            /** Pct */
+            pct?: number | null;
             /** Start Kg */
             start_kg: number;
             /** Target Kg */
@@ -3425,13 +3454,13 @@ export interface components {
             /** Note */
             note?: string | null;
             /** Pct */
-            pct: number;
+            pct?: number | null;
             /** Start */
             start: string;
             /** Week */
-            week: number;
+            week?: number | null;
             /** Weeks */
-            weeks: number;
+            weeks?: number | null;
         };
         /** HrtCompoundItem */
         HrtCompoundItem: {
@@ -3518,7 +3547,7 @@ export interface components {
             /** Durationdays */
             durationDays?: number | null;
             /** Every */
-            every: number;
+            every?: number | null;
             /** From */
             from: number;
             /** Id */
@@ -4287,6 +4316,15 @@ export interface components {
                 [key: string]: boolean;
             };
         };
+        /** MoreView */
+        MoreView: {
+            /** Stats */
+            stats: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+        };
         /** Nav */
         Nav: {
             /** Bottom Slots */
@@ -4905,6 +4943,8 @@ export interface components {
             nav: components["schemas"]["Nav"];
             /** Rail */
             rail: components["schemas"]["RailStat"][];
+            /** Today */
+            today: string;
             /** Username */
             username: string;
         };
@@ -5895,6 +5935,8 @@ export interface components {
              * @default false
              */
             superseded: boolean;
+            /** Superseded By */
+            superseded_by?: string | null;
             /**
              * Time
              * @default
@@ -8669,6 +8711,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_more: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoreView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
                 };
             };
         };
@@ -12713,4 +12793,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: 240f64e6202e95addecd9061ec37b2c68c92a1f8ec8abfa824a1aae78e35057c
+// openapi.json sha256: 6ec2fb47042ec59b1a9b21aa1dabcd998487699a4f5a6dc1d7b3b84205de7a93

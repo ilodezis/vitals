@@ -21,7 +21,7 @@ class HrtCyclePlanItem(CamelModel):
     name: str
     dose: float
     unit: str
-    every: float
+    every: Optional[float] = None
     from_: int = Field(alias="from")
     duration_days: Optional[int] = None
     note: Optional[str] = None
@@ -35,9 +35,9 @@ class HrtActiveCycle(CamelModel):
     end: Optional[str] = None
     note: Optional[str] = None
     cadence: int
-    week: int
-    weeks: int
-    pct: int
+    week: Optional[int] = None
+    weeks: Optional[int] = None
+    pct: Optional[int] = None
     items: list[HrtCyclePlanItem]
 
 

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
+import { ConflictAlert } from '@/components/controls/ConflictAlert'
 import { Delta } from '@/components/controls/Marks'
 import { Odometer } from '@/components/controls/Odometer'
 import { Segmented } from '@/components/controls/Segmented'
@@ -12,6 +13,7 @@ import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { longDate, parseIsoDate, toIsoDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/format'
+import { useConflictMutation } from '@/lib/useConflictMutation'
 import { computeNavyFatPct } from './navy'
 import type { components } from '@/api/schema'
 import './weight.css'
@@ -79,8 +81,8 @@ export default function WeightMeasuresScreen() {
   }
 
   // Save measurement mutation
-  const measureMutation = useMutation({
-    mutationFn: async () => {
+  const measureMutation = useConflictMutation({
+    mutationFn: async ({ override }) => {
       const neck = parseFloat(neckCm)
       const waist = parseFloat(waistCm)
       const hips = hipsCm ? parseFloat(hipsCm) : undefined
@@ -91,7 +93,7 @@ export default function WeightMeasuresScreen() {
           waist_cm: isNaN(waist) ? undefined : waist,
           hips_cm: hips && !isNaN(hips) ? hips : undefined,
           note: mNote.trim() || undefined,
-          override: false,
+          override,
         },
       })
     },
@@ -212,15 +214,15 @@ export default function WeightMeasuresScreen() {
   }
 
   // Confirm BIA scan
-  const confirmScanMutation = useMutation({
-    mutationFn: async () => {
+  const confirmScanMutation = useConflictMutation({
+    mutationFn: async ({ override }) => {
       await api.POST('/api/v1/weight/body-scans/confirm', {
         body: {
           file_key: previewFileKey,
           date: previewDate,
           device: previewDevice,
           metrics: previewMetrics,
-          override: false,
+          override,
         },
       })
     },
@@ -353,6 +355,11 @@ export default function WeightMeasuresScreen() {
                         {liveNavyFat !== null ? `${formatNumber(liveNavyFat, lang)} %` : '—'}
                       </span>
                     </p>
+                    <ConflictAlert
+                      violations={measureMutation.violations}
+                      onFix={() => measureMutation.clearConflict()}
+                      onSaveAnyway={() => void measureMutation.retryWithOverride()}
+                    />
                     <div className="form-acts">
                       <button type="submit" className="btn grow" disabled={measureMutation.isPending}>
                         {t('app.weight.save_measures')}
@@ -538,6 +545,11 @@ export default function WeightMeasuresScreen() {
                           ))}
                         </div>
 
+                        <ConflictAlert
+                          violations={confirmScanMutation.violations}
+                          onFix={() => confirmScanMutation.clearConflict()}
+                          onSaveAnyway={() => void confirmScanMutation.retryWithOverride()}
+                        />
                         <div className="form-acts" style={{ marginTop: '12px' }}>
                           <button
                             type="button"

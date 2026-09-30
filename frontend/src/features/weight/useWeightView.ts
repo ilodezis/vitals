@@ -1,15 +1,35 @@
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
-import { weightFixture } from '@/fixtures/weight'
+import { toIsoDate } from '@/lib/dates'
 import type { WeightView } from './types'
+
+const todayIso = () => toIsoDate(new Date())
+
+const EMPTY_WEIGHT: WeightView = {
+  kg: 0,
+  average7: 0,
+  weekDeltaKg: 0,
+  bodyFatPct: 0,
+  drug: 'GLP-1',
+  weighings: [],
+  trend: [],
+  dosePhases: [],
+  history: [],
+  pace: {
+    perWeekKg: 0,
+    dose: { label: 'Dose', sinceIso: todayIso(), days: 0, deltaKg: 0 },
+    goal: { targetKg: 80, weeks: 0 },
+  },
+  lastScan: { device: 'InBody', dateIso: todayIso(), rows: [] },
+}
 
 export const weightQuery = queryOptions({
   queryKey: ['weight'],
   queryFn: async (): Promise<WeightView> => {
     const { data } = await api.GET('/api/v1/weight')
-    if (!data) return weightFixture
+    if (!data) return EMPTY_WEIGHT
     return {
-      kg: data.latest_kg ?? weightFixture.kg,
+      kg: data.latest_kg ?? 0,
       average7: data.average7 ?? 0,
       weekDeltaKg: data.week_delta_kg ?? 0,
       bodyFatPct: data.body_fat_pct ?? 0,
@@ -27,13 +47,14 @@ export const weightQuery = queryOptions({
         kg: h.weight_kg,
         source: h.source as 'manual' | 'bia' | 'garmin',
         superseded: h.superseded,
+        supersededBy: h.superseded_by ?? null,
         note: h.note ?? undefined,
       })),
       pace: {
         perWeekKg: data.pace?.per_week_kg ?? 0,
         dose: {
           label: data.pace?.dose?.label ?? 'Dose',
-          sinceIso: data.pace?.dose?.since_date ?? data.latest_date ?? new Date().toISOString().slice(0, 10),
+          sinceIso: data.pace?.dose?.since_date ?? data.latest_date ?? todayIso(),
           days: data.pace?.dose?.days ?? 0,
           deltaKg: data.pace?.dose?.delta_kg ?? 0,
         },
@@ -52,7 +73,7 @@ export const weightQuery = queryOptions({
               unit: r.unit ?? '',
             })),
           }
-        : weightFixture.lastScan,
+        : EMPTY_WEIGHT.lastScan,
     }
   },
   staleTime: 60_000,
@@ -62,6 +83,6 @@ export function useWeightView(): WeightView {
   try {
     return useSuspenseQuery(weightQuery).data
   } catch {
-    return weightFixture
+    return EMPTY_WEIGHT
   }
 }

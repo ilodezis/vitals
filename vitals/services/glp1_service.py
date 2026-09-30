@@ -415,18 +415,21 @@ async def collect(
         last_iso = last_inj.date.isoformat()
         next_date = last_inj.date + timedelta(days=7)
         next_iso = next_date.isoformat()
-        days_to_next = max(0, (next_date - today).days)
+        days_to_next = (next_date - today).days
+        overdue = days_to_next < 0
         unscheduled = False
     else:
         last_iso = None
         next_iso = today.isoformat()
         days_to_next = 0
+        overdue = False
         unscheduled = True
 
     cycle = {
         "lastIso": last_iso,
         "nextIso": next_iso,
         "daysToNext": days_to_next,
+        "overdue": overdue,
         "unscheduled": unscheduled,
     }
 
@@ -445,6 +448,19 @@ async def collect(
     weights = await weight_service.list_active_weights(session, start=start_trend, end=today)
     trend = [{"date": w.date.isoformat(), "kg": w.weight_kg} for w in weights]
 
+    delta_on_dose_kg: Optional[float] = None
+    weights_on_active_dose = []
+    if active_phase:
+        weights_on_active_dose = [
+            w
+            for w in weights
+            if w.date >= active_phase.start_date
+            and (active_phase.end_date is None or w.date <= active_phase.end_date)
+        ]
+        delta_on_dose_kg = await weight_service.dose_phase_delta(
+            session, active_phase, weights=weights, end=today
+        )
+
     plateau_info = await evaluate_plateau(session, on_date=today)
     if plateau_info:
         summary = t(
@@ -454,10 +470,9 @@ async def collect(
             days=plateau_info["days_on_dose"],
             slope=plateau_info["slope_per_week"],
         )
-    elif active_phase and len(trend) >= 2:
-        diff_kg = trend[-1]["kg"] - trend[0]["kg"]
-        sign = "−" if diff_kg < 0 else "+"
-        summary = f"На {dose_mg:g} мг: {sign}{abs(diff_kg):.1f} кг с {since_iso}."
+    elif active_phase and delta_on_dose_kg is not None and len(weights_on_active_dose) >= 2:
+        sign = "−" if delta_on_dose_kg < 0 else "+"
+        summary = f"На {dose_mg:g} мг: {sign}{abs(delta_on_dose_kg):.1f} кг с {since_iso}."
     else:
         summary = ""
 
@@ -497,6 +512,7 @@ async def collect(
         "doseMg": dose_mg,
         "sinceIso": since_iso,
         "dayOnDose": day_on_dose,
+        "deltaOnDoseKg": delta_on_dose_kg,
         "cycle": cycle,
         "dosePhases": dose_phases_list,
         "trend": trend,

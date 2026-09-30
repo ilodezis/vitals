@@ -92,7 +92,7 @@ async def test_status_card_reports_todays_weight_and_the_weeks_direction(db_sess
 
     rows = {r.key: r for r in await nav_status_service.rail_stats(db_session)}
     assert rows["weight"].value.startswith("86.1")
-    assert rows["weight"].sub == "−0.9"
+    assert rows["weight"].sub == "−0.7"
     assert rows["weight"].tone == "good"
 
 
@@ -219,7 +219,7 @@ async def test_the_raw_rail_carries_numbers_not_phrases(db_session):
     rows = {r.key: r for r in await nav_status_service.rail_stats_raw(db_session)}
     weight = rows["weight"]
     assert weight.weight_kg == pytest.approx(86.1)
-    assert weight.delta_kg == pytest.approx(-0.9)
+    assert weight.delta_kg == pytest.approx(-0.7)
     assert weight.tone == "good"
 
 

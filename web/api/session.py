@@ -1,12 +1,13 @@
-"""``GET /api/v1/session``."""
+"""``GET /api/v1/session`` and ``GET /api/v1/more``."""
 from __future__ import annotations
 
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.services import modules_service, nav_status_service
+from vitals.utils.timeutils import today_local
 from web.api.errors import ApiRouter
-from web.api.schemas.session import Nav, NavItem, NavSlot, RailStat, SessionView
+from web.api.schemas.session import MoreView, Nav, NavItem, NavSlot, RailStat, SessionView
 from web.deps import get_session, require_auth
 
 router = ApiRouter()
@@ -29,6 +30,7 @@ async def read_session(
     return SessionView(
         username=username,
         lang=getattr(request.state, "lang", "en"),
+        today=today_local().isoformat(),
         enabled_modules=enabled,
         nav=Nav(
             items=[NavItem.model_validate(s) for s in modules_service.nav_modules(enabled)],
@@ -43,3 +45,19 @@ async def read_session(
             for s in await nav_status_service.rail_stats_raw(db, enabled)
         ],
     )
+
+
+@router.get("/more", response_model=MoreView)
+async def read_more(
+    request: Request,
+    _username: str = Depends(require_auth),
+    db: AsyncSession = Depends(get_session),
+) -> MoreView:
+    """Raw per-module statuses for the More screen."""
+    enabled = getattr(request.state, "enabled_modules", None) or dict(
+        modules_service.DEFAULT_STATE
+    )
+    enabled_set = {k for k, v in enabled.items() if v}
+    stats = await nav_status_service.more_stats_raw(db, enabled_set)
+    return MoreView(stats=stats)
+

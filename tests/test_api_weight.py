@@ -225,3 +225,83 @@ async def test_garmin_weight_export_endpoint(auth_client):
     body = r.json()
     assert "ok" in body
     assert "status" in body
+
+
+async def test_latest_weight_returns_newest_not_oldest(auth_client, db_session):
+    """list_active_weights orders ascending, so latest_kg and
+    latest_date must come from weights[-1], never weights[0]."""
+    await weight_service.log_weight(
+        db_session, on_date=dt.date(2026, 5, 1), weight_kg=88.2
+    )
+    await weight_service.log_weight(
+        db_session, on_date=dt.date(2026, 6, 1), weight_kg=81.4
+    )
+    await db_session.commit()
+
+    r_dash = await auth_client.get(WEIGHT)
+    assert r_dash.status_code == 200
+    dash = r_dash.json()
+    assert dash["latest_kg"] == pytest.approx(81.4)
+    assert dash["latest_date"] == "2026-06-01"
+
+    r_meas = await auth_client.get(MEASURES)
+    assert r_meas.status_code == 200
+    assert r_meas.json()["latest_kg"] == pytest.approx(81.4)
+
+
+async def test_weight_history_order_and_superseded_by(auth_client, db_session):
+    """On a single date the active row comes first in history, and
+    superseded rows carry the active row's source in superseded_by."""
+    today = today_local()
+    await weight_service.log_weight(
+        db_session, on_date=today, weight_kg=80.0, source=Source.GARMIN_API.value
+    )
+    await weight_service.log_weight(
+        db_session, on_date=today, weight_kg=79.5, source=Source.BODY_SCAN.value
+    )
+    await weight_service.log_weight(
+        db_session, on_date=today, weight_kg=79.6, source=Source.MANUAL.value
+    )
+    await db_session.commit()
+
+    r = await auth_client.get(WEIGHT)
+    assert r.status_code == 200
+    hist = r.json()["history"]
+    assert len(hist) == 3
+    assert hist[0]["superseded"] is False
+    assert hist[0]["source"] == "manual"
+    assert hist[0]["weight_kg"] == pytest.approx(79.6)
+    assert hist[0]["superseded_by"] is None
+    for row in hist[1:]:
+        assert row["superseded"] is True
+        assert row["superseded_by"] == "manual"
+
+
+def test_web_api_routers_respect_service_boundary():
+    """Routers under web/api/ must not run direct SQLAlchemy
+    select(...) queries, import vitals.services.analytics, or swallow exceptions
+    with bare except Exception: pass."""
+    import ast
+    from pathlib import Path
+
+    api_dir = Path(__file__).resolve().parent.parent / "web" / "api"
+    for py_file in sorted(api_dir.glob("*.py")):
+        tree = ast.parse(py_file.read_text(encoding="utf-8"), filename=str(py_file))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module:
+                assert not node.module.startswith("vitals.services.analytics"), (
+                    f"{py_file.name} imports {node.module} directly"
+                )
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                assert node.func.id != "select", (
+                    f"{py_file.name}:{node.lineno} calls select() directly in router"
+                )
+            if isinstance(node, ast.ExceptHandler):
+                is_broad = node.type is None or (
+                    isinstance(node.type, ast.Name) and node.type.id == "Exception"
+                )
+                is_pass = len(node.body) == 1 and isinstance(node.body[0], ast.Pass)
+                assert not (is_broad and is_pass), (
+                    f"{py_file.name}:{node.lineno} has bare except Exception: pass"
+                )
+

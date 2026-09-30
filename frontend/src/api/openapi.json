@@ -2470,6 +2470,11 @@
             "title": "Nextiso",
             "type": "string"
           },
+          "overdue": {
+            "default": false,
+            "title": "Overdue",
+            "type": "boolean"
+          },
           "unscheduled": {
             "default": false,
             "title": "Unscheduled",
@@ -2813,6 +2818,17 @@
             "title": "Dayondose",
             "type": "integer"
           },
+          "deltaOnDoseKg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deltaondosekg"
+          },
           "doseMg": {
             "title": "Dosemg",
             "type": "number"
@@ -2913,6 +2929,17 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "pct": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pct"
           },
           "start_kg": {
             "title": "Start Kg",
@@ -3259,20 +3286,41 @@
             "title": "Note"
           },
           "pct": {
-            "title": "Pct",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pct"
           },
           "start": {
             "title": "Start",
             "type": "string"
           },
           "week": {
-            "title": "Week",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week"
           },
           "weeks": {
-            "title": "Weeks",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weeks"
           }
         },
         "required": [
@@ -3281,9 +3329,6 @@
           "name",
           "start",
           "cadence",
-          "week",
-          "weeks",
-          "pct",
           "items"
         ],
         "title": "HrtActiveCycle",
@@ -3592,8 +3637,15 @@
             "title": "Durationdays"
           },
           "every": {
-            "title": "Every",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Every"
           },
           "from": {
             "title": "From",
@@ -3629,7 +3681,6 @@
           "name",
           "dose",
           "unit",
-          "every",
           "from"
         ],
         "title": "HrtCyclePlanItem",
@@ -5916,6 +5967,23 @@
         "title": "ModulesSettings",
         "type": "object"
       },
+      "MoreView": {
+        "properties": {
+          "stats": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Stats",
+            "type": "object"
+          }
+        },
+        "required": [
+          "stats"
+        ],
+        "title": "MoreView",
+        "type": "object"
+      },
       "Nav": {
         "properties": {
           "bottom_slots": {
@@ -7531,6 +7599,10 @@
             "title": "Rail",
             "type": "array"
           },
+          "today": {
+            "title": "Today",
+            "type": "string"
+          },
           "username": {
             "title": "Username",
             "type": "string"
@@ -7539,6 +7611,7 @@
         "required": [
           "username",
           "lang",
+          "today",
           "enabled_modules",
           "nav",
           "rail"
@@ -10101,6 +10174,17 @@
             "default": false,
             "title": "Superseded",
             "type": "boolean"
+          },
+          "superseded_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Superseded By"
           },
           "time": {
             "default": "",
@@ -13721,6 +13805,45 @@
           }
         },
         "summary": "Upload Lab Document"
+      }
+    },
+    "/api/v1/more": {
+      "get": {
+        "description": "Raw per-module statuses for the More screen.",
+        "operationId": "read_more",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoreView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Read More"
       }
     },
     "/api/v1/nutrition": {

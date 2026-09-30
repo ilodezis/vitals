@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
+import { ConflictAlert } from '@/components/controls/ConflictAlert'
 import { Badge } from '@/components/controls/Marks'
-import { PrimaryButton } from '@/components/controls/PrimaryButton'
+import { PrimaryButton, type PrimaryButtonHandle } from '@/components/controls/PrimaryButton'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
+import { useConflictMutation } from '@/lib/useConflictMutation'
 import type { SupplementItem } from './types'
 import { useSupplementsView } from './useSupplementsView'
 import './supplements.css'
@@ -19,6 +21,7 @@ export default function SupplementsScreen() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<SupplementItem | null>(null)
   const [archOpen, setArchOpen] = useState(false)
+  const saveButtonRef = useRef<PrimaryButtonHandle>(null)
 
   // Form states
   const [name, setName] = useState('')
@@ -28,12 +31,67 @@ export default function SupplementsScreen() {
   const [active, setActive] = useState(true)
   const [contra, setContra] = useState('')
   const [note, setNote] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['supplements'] })
     void queryClient.invalidateQueries({ queryKey: ['today'] })
   }
+
+  const saveConflict = useConflictMutation({
+    mutationFn: async ({ override }) => {
+      if (!name.trim()) {
+        throw new Error(t('common.required_field') || 'Name is required')
+      }
+      if (editingItem) {
+        await api.PATCH('/api/v1/supplements/{supplement_id}', {
+          params: { path: { supplement_id: editingItem.id } },
+          body: {
+            name: name.trim(),
+            dose: dose.trim() || null,
+            timing,
+            evidence: evidence || null,
+            active,
+            contraindications: contra.trim() || null,
+            note: note.trim() || null,
+            override,
+          },
+        })
+      } else {
+        await api.POST('/api/v1/supplements', {
+          body: {
+            name: name.trim(),
+            dose: dose.trim() || null,
+            timing,
+            evidence: evidence || null,
+            active,
+            contraindications: contra.trim() || null,
+            note: note.trim() || null,
+            override,
+          },
+        })
+      }
+      toast(t('common.saved'))
+      setFormOpen(false)
+      refresh()
+    },
+    onError: (err) => {
+      toast(err.message || 'Error saving supplement', { icon: 'warn' })
+    },
+  })
+
+  const toggleConflict = useConflictMutation<void, { item: SupplementItem }>({
+    mutationFn: async ({ item, override }) => {
+      await api.POST('/api/v1/supplements/{supplement_id}/toggle', {
+        params: { path: { supplement_id: item.id } },
+        body: { active: !item.active, override },
+      })
+      toast(item.active ? 'Перемещено в архив' : 'Восстановлено из архива')
+      refresh()
+    },
+    onError: (err) => {
+      toast(err.message || 'Error toggling supplement', { icon: 'warn' })
+    },
+  })
 
   const openCreate = () => {
     setEditingItem(null)
@@ -44,6 +102,7 @@ export default function SupplementsScreen() {
     setActive(true)
     setContra('')
     setNote('')
+    saveConflict.clearConflict()
     setFormOpen(true)
   }
 
@@ -56,68 +115,12 @@ export default function SupplementsScreen() {
     setActive(item.active)
     setContra(item.contraindications || item.contra || '')
     setNote(item.note || '')
+    saveConflict.clearConflict()
     setFormOpen(true)
   }
 
-  const handleSave = async (): Promise<boolean> => {
-    if (!name.trim()) {
-      toast(t('common.required_field') || 'Name is required', { icon: 'warn' })
-      return false
-    }
-    setIsSubmitting(true)
-    try {
-      if (editingItem) {
-        await api.PATCH('/api/v1/supplements/{supplement_id}', {
-          params: { path: { supplement_id: editingItem.id } },
-          body: {
-            name: name.trim(),
-            dose: dose.trim() || null,
-            timing,
-            evidence: evidence || null,
-            active,
-            contraindications: contra.trim() || null,
-            note: note.trim() || null,
-            override: false,
-          },
-        })
-        toast(t('common.saved'))
-      } else {
-        await api.POST('/api/v1/supplements', {
-          body: {
-            name: name.trim(),
-            dose: dose.trim() || null,
-            timing,
-            evidence: evidence || null,
-            active,
-            contraindications: contra.trim() || null,
-            note: note.trim() || null,
-            override: false,
-          },
-        })
-        toast(t('common.saved'))
-      }
-      setFormOpen(false)
-      refresh()
-      return true
-    } catch (err: any) {
-      toast(err.message || 'Error saving supplement', { icon: 'warn' })
-      return false
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleToggle = async (item: SupplementItem) => {
-    try {
-      await api.POST('/api/v1/supplements/{supplement_id}/toggle', {
-        params: { path: { supplement_id: item.id } },
-        body: { active: !item.active, override: false },
-      })
-      toast(item.active ? 'Перемещено в архив' : 'Восстановлено из архива')
-      refresh()
-    } catch (err: any) {
-      toast(err.message || 'Error toggling supplement', { icon: 'warn' })
-    }
+  const handleToggle = (item: SupplementItem) => {
+    void toggleConflict.submit({ item })
   }
 
   const handleDelete = async (item: SupplementItem) => {
@@ -288,11 +291,17 @@ export default function SupplementsScreen() {
                 onChange={(e) => setNote(e.target.value)}
               />
             </label>
+            <ConflictAlert
+              violations={saveConflict.violations}
+              onFix={() => saveConflict.clearConflict()}
+              onSaveAnyway={() => saveButtonRef.current?.press({ override: true })}
+            />
             <div className="form-acts flex gap-2 pt-2">
               <PrimaryButton
+                ref={saveButtonRef}
                 className="btn grow"
-                onPress={handleSave}
-                disabled={isSubmitting}
+                onPress={saveConflict.submit}
+                disabled={saveConflict.isPending}
               >
                 {t('common.save')}
               </PrimaryButton>
@@ -307,6 +316,11 @@ export default function SupplementsScreen() {
           </div>
         </div>
       )}
+      <ConflictAlert
+        violations={toggleConflict.violations}
+        onFix={() => toggleConflict.clearConflict()}
+        onSaveAnyway={() => void toggleConflict.retryWithOverride()}
+      />
 
       {/* Timing Groups */}
       {view.groups.map((g) => (
