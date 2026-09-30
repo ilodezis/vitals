@@ -3,8 +3,7 @@
 The interface is a React app in [`frontend/`](../frontend): TanStack Router for the screens, TanStack
 Query for data, Vite for the build, installed as a PWA. This document describes the system as the
 code implements it; if you change a token, a control or a rule below, change this file in the same
-PR. The redesign mockup that the tokens were taken from is kept in
-[`docs/design/mockup`](design/mockup).
+PR.
 
 ## At a glance
 
