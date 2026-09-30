@@ -132,7 +132,7 @@ export function DataSection() {
   }
 
   return (
-    <Section title={t('settings.data_title')} className="set-sec narrow">
+    <Section title={t('settings.data_title')} className="set-sec set-data-card">
       <p className="sub set-d">{t('settings.data_description')}</p>
 
       <div className="form">

@@ -1,6 +1,6 @@
 /* Settings Screen Styles */
 .set-sec .sec-h {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .set-d {
@@ -13,13 +13,16 @@
 }
 
 .set-save {
-  margin-top: 16px;
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .mod-g {
   display: grid;
-  gap: 6px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
 .opt.lock {
@@ -27,38 +30,50 @@
 }
 
 .opt.lock.on {
-  background: var(--fg-2, #333);
+  background: var(--surface-2);
+  color: var(--fg-2);
+  border-color: var(--line);
+  opacity: 0.85;
 }
 
 .opt.lock.on:hover {
-  background: var(--fg-2, #333);
-  color: var(--bg, #0c0e12);
+  background: var(--surface-2);
+  color: var(--fg-2);
 }
 
 .wk {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .wk-r {
   display: grid;
-  grid-template-columns: 26px repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: 44px repeat(3, minmax(0, 1fr));
+  gap: 8px;
   align-items: center;
 }
 
 .wk-h span {
   font-size: var(--t-micro, 11px);
   color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wk-day {
+  font-weight: 600;
+  font-size: var(--t-caption, 13px);
+  color: var(--fg);
 }
 
 .wk select.input {
   height: 38px;
-  font-size: var(--t-body, 14px);
-  padding: 0 28px 0 10px;
+  font-size: var(--t-caption, 13px);
+  padding: 0 24px 0 10px;
   border-radius: var(--r-sm, 8px);
   background-position: right 8px center;
-  background-size: 14px;
+  background-size: 12px;
+  text-overflow: ellipsis;
 }
 
 .tfa-l .badge {
@@ -67,9 +82,10 @@
 
 .qr {
   width: max-content;
-  padding: 10px;
-  border-radius: 12px;
+  padding: 12px;
+  border-radius: var(--r, 14px);
   background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .qr svg {
@@ -85,14 +101,16 @@
   word-spacing: 0.2em;
 }
 
+.set-sec.set-pro-card,
+.set-sec.set-data-card,
 .set-sec.narrow {
-  max-width: 760px;
+  max-width: 780px;
 }
 
-/* Desktop Field Grids */
+/* Field Grids */
 .set-fields-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
 }
 .set-fields-grid .field {
@@ -105,20 +123,26 @@
 
 .set-grid-2 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-.set-grid-4 {
+.set-times-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.set-garmin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 .set-sub-sec {
-  padding-top: 16px;
+  padding-top: 20px;
   border-top: 1px solid var(--line);
-  margin-top: 16px;
+  margin-top: 20px;
 }
 
 .set-row-between {
@@ -136,8 +160,7 @@
 .set-row-wrap {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 var(--s2);
-  margin-left: -12px;
+  gap: 8px var(--s2);
 }
 
 .settings-desc {
@@ -149,7 +172,7 @@
 }
 
 .settings-content {
-  margin-top: 16px;
+  margin-top: 20px;
 }
 
 /* 2FA styles */
@@ -168,9 +191,10 @@
 
 .tfa-qr {
   background: #fff;
-  padding: 8px;
-  border-radius: var(--r);
+  padding: 12px;
+  border-radius: var(--r, 14px);
   width: max-content;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .tfa-key-display {
@@ -232,9 +256,37 @@
     flex-direction: row;
     align-items: center;
   }
+  .set-times-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .set-garmin-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
-/* Labels, hints and stacks (replace one-off inline spacing) */
+@media (max-width: 767px) {
+  .wk-r {
+    grid-template-columns: 36px repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .wk-day {
+    font-size: var(--t-micro, 12px);
+  }
+  .wk select.input {
+    height: 36px;
+    font-size: var(--t-micro, 12px);
+    padding: 0 18px 0 6px;
+    background-size: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .set-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Labels, hints and stacks */
 .flabel.block { display: block; margin-bottom: var(--s2); }
 .flabel.strong { font-weight: 600; }
 .flabel.split { display: flex; justify-content: space-between; align-items: center; }
@@ -248,11 +300,8 @@
 .set-narrow-field { max-width: 160px; }
 .set-note { display: block; margin-top: var(--s1); font-size: var(--t-micro); color: var(--muted); }
 .tfa-key { flex: 1; }
-.opts-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+.opts-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
 .opts-col { display: flex; flex-direction: column; gap: var(--s2); }
 .opts-col .opt { text-align: left; }
-.wk-day { font-weight: 500; }
 .data-drop-name { display: block; font-size: var(--t-body); }
 .data-drop-meta { font-size: var(--t-micro); color: var(--muted); }
-.set-save .ghost { margin-left: -12px; }
-.set-sub-sec > .ghost, .set-mt3 > .ghost, .tfa-acts .ghost:first-child { margin-left: -12px; }

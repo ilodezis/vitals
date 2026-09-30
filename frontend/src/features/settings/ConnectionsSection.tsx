@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api, failText, ok } from '@/api/client'
 import { Alert, type AlertTone } from '@/components/controls/Alert'
-import { PrimaryButton } from '@/components/controls/PrimaryButton'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
@@ -410,9 +409,9 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
             </label>
 
             <div className="set-save">
-              <PrimaryButton onPress={handleSaveMcp}>
+              <button type="button" className="ghost" onClick={handleSaveMcp}>
                 {t('settings.save_mcp')}
-              </PrimaryButton>
+              </button>
             </div>
           </div>
         </Section>

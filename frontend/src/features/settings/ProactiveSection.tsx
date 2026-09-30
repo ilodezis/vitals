@@ -133,12 +133,12 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
   const breaker = settings.garmin.breaker as { used?: number; max?: number; paused?: boolean } | null
 
   return (
-    <Section title={t('settings.proactive_title')} className="set-sec narrow">
+    <Section title={t('settings.proactive_title')} className="set-sec set-pro-card">
       <p className="sub set-d">{t('settings.proactive_description')}</p>
 
       <div className="form">
         {/* Times */}
-        <div className="set-grid-4">
+        <div className="set-times-grid">
           <label className="field">
             <span className="flabel">{t('settings.brief_time')}</span>
             <input
@@ -284,7 +284,7 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
             {t('settings.garmin_schedule_hint')}
           </p>
 
-          <div className="set-grid-4">
+          <div className="set-garmin-grid">
             <label className="field">
               <span className="flabel">{t('settings.sync_hours')}</span>
               <input

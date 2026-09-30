@@ -35,7 +35,6 @@ export default function SettingsScreen() {
           items={tabs}
           active={activeTab}
           onSelect={(id) => setActiveTab(id)}
-          sub
         />
       </header>
 
