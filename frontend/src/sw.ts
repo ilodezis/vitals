@@ -25,13 +25,22 @@ registerRoute(/^\/api\/.*/i, new NetworkOnly())
 // NEVER cache /static/uploads/*
 registerRoute(/^\/static\/uploads\/.*/i, new NetworkOnly())
 
-// On activate, delete legacy caches matching vitals-os-*
+// A new build takes over as soon as it is installed. Left to wait, it would sit behind the old
+// one until every tab and the installed app were closed, and a deploy would not show up.
+self.addEventListener('install', () => {
+  void self.skipWaiting()
+})
+
+// On activate, delete legacy caches matching vitals-os-* and take the open pages over
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((key) => key.startsWith('vitals-os-')).map((key) => caches.delete(key))
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys.filter((key) => key.startsWith('vitals-os-')).map((key) => caches.delete(key))
+        )
       )
-    )
+      .then(() => self.clients.claim())
   )
 })

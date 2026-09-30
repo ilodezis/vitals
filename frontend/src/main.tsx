@@ -6,8 +6,10 @@ import '@/styles/tokens.css'
 import '@/styles/base.css'
 import '@/styles/app.css'
 import { App } from '@/app/App'
+import { reloadOnNewWorker } from '@/app/swUpdate'
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  reloadOnNewWorker(navigator.serviceWorker, () => window.location.reload())
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/static/app/sw.js', { scope: '/' })

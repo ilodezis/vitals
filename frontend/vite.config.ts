@@ -65,6 +65,9 @@ export default defineConfig(({ command }) => ({
       registerType: 'autoUpdate',
       injectRegister: null,
       manifest: {
+        // The whole site, not the folder the build is served from: the login and the
+        // doctor's report open inside the installed app too.
+        scope: '/',
         start_url: '/app/today',
         name: 'Vitals',
         short_name: 'Vitals',
