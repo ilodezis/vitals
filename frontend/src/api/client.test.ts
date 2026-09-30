@@ -65,12 +65,12 @@ describe('api client', () => {
 
   it('sends a signed-out visitor to the login form and back again', async () => {
     const assign = vi.fn()
-    vi.stubGlobal('location', { assign, pathname: '/app/weight', search: '?range=3m' })
+    vi.stubGlobal('location', { assign, pathname: '/weight', search: '?range=3m' })
     const { api } = clientAnswering(() => reply(401, { error: 'unauthenticated' }))
 
     await api.GET('/api/v1/session')
 
-    expect(assign).toHaveBeenCalledExactlyOnceWith('/login?next=%2Fapp%2Fweight%3Frange%3D3m')
+    expect(assign).toHaveBeenCalledExactlyOnceWith('/login?next=%2Fweight%3Frange%3D3m')
   })
 
   it('turns a blocked write into a ConflictError carrying the violations', async () => {
@@ -117,7 +117,7 @@ describe('api client', () => {
 
   it('hands every other failure back as data, unredirected', async () => {
     const assign = vi.fn()
-    vi.stubGlobal('location', { assign, pathname: '/app/glp1', search: '' })
+    vi.stubGlobal('location', { assign, pathname: '/glp1', search: '' })
     const { api } = clientAnswering(() => reply(404, { error: 'module_disabled' }))
 
     const { data, error, response } = await api.GET('/api/v1/session')

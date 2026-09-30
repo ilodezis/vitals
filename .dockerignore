@@ -8,7 +8,7 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
-# Node (tailwind.css is committed; node_modules is build-only)
+# Node (node_modules is build-only)
 node_modules/
 web/node_modules/
 frontend/node_modules/

@@ -24,7 +24,7 @@
 .digest li { margin: 4px 0; }
 .digest li::marker { color: var(--faint); }
 .digest blockquote { margin: 18px 0; padding: 2px 0 2px 16px; border-left: 1px solid var(--fg-2); color: var(--fg); font-size: var(--t-ui); }
-.digest code, .digest .md-code { font-family: var(--f-text); font-size: inherit; color: var(--fg); background: var(--surface-2); padding: 1px 6px; border-radius: 6px; }
+.digest code, .digest .md-code { font-family: var(--f-text); font-size: inherit; color: var(--fg); background: var(--surface-2); padding: 1px 6px; border-radius: var(--r-xs); }
 .digest a { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
 .digest table { width: 100%; max-width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: var(--t-body); font-variant-numeric: tabular-nums; }
 .digest th { text-align: left; font-size: var(--t-micro); font-weight: 500; color: var(--muted); padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); }

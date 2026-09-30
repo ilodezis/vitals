@@ -102,14 +102,14 @@ async def test_an_enabled_module_answers_normally(auth_client, gated_probe):
     assert r.json() == {"ok": True}
 
 
-async def test_a_disabled_module_still_redirects_a_browser_on_the_old_pages(
+async def test_a_disabled_module_redirects_a_browser_to_today(
     auth_client, db_session, redis
 ):
     await _switch_module(db_session, redis, "glp1", False)
 
     r = await auth_client.get("/glp1", headers={"Accept": "text/html"})
     assert r.status_code == 303
-    assert r.headers["location"] == "/weight"
+    assert r.headers["location"] == "/today"
 
 
 # ── 409 / 400 / 422: one place, not a try/except in every endpoint ───────────

@@ -6,6 +6,19 @@ import pytest
 URL = "/api/v1/share"
 
 
+async def _weighed(db_session) -> None:
+    """A report with nothing in its window is refused, so the ones created here need a reading."""
+    from datetime import timedelta
+
+    from vitals.models.weight import WeightLog
+    from vitals.utils.timeutils import today_local
+
+    db_session.add(
+        WeightLog(date=today_local() - timedelta(days=5), domain="weight", source="manual", weight_kg=86.4)
+    )
+    await db_session.commit()
+
+
 async def test_share_unauthenticated(client):
     r = await client.get(URL)
     assert r.status_code == 401
@@ -21,7 +34,8 @@ async def test_share_read(auth_client):
     assert "periodChoices" in data
 
 
-async def test_share_create_revoke_delete(auth_client):
+async def test_share_create_revoke_delete(auth_client, db_session):
+    await _weighed(db_session)
     # 1. Create a share report
     payload = {
         "title": "Отчёт для эндокринолога",
@@ -73,6 +87,8 @@ async def test_share_create_revoke_delete(auth_client):
 
 async def test_share_list_says_which_reports_can_be_downloaded(auth_client, db_session):
     from vitals.models.share import SharedReport
+
+    await _weighed(db_session)
 
     r = await auth_client.post(URL, json={"title": "Copy", "domains": ["weight"], "period": "30"})
     assert r.status_code == 201

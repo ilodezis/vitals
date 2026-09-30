@@ -4,14 +4,14 @@
 
 {% block content %}
 {% include "partials/login_styles.html" %}
-<link rel="stylesheet" href="{{ static_version('/static/server.css') }}">
 
 <div class="bare-pg">
     <div class="bare-in">
-        <a href="/app" class="bare-brand">Vitals</a>
+        <a href="/today" class="bare-brand">Vitals</a>
         <h1 class="bare-h">{{ t("login.heading") }}</h1>
 
-        <form class="lg" action="/login" method="POST">
+        <form class="lg" action="/login" method="POST"
+              data-reveal="{{ t("login.reveal") }}" data-hide="{{ t("login.hide") }}" data-sending="{{ t("login.submitting") }}">
             <input type="hidden" name="next" value="{{ next }}">
 
             <div class="lg-f">
@@ -47,37 +47,4 @@
     </div>
 </div>
 
-<script>
-    (function () {
-        var form = document.querySelector('.lg');
-        if (!form) return;
-
-        var pw = form.querySelector('#lg-password');
-        var reveal = form.querySelector('[data-lg-reveal]');
-        var submit = form.querySelector('[data-lg-submit]');
-        var label = form.querySelector('[data-lg-submit-label]');
-        var strings = {
-            reveal: {{ t("login.reveal")|tojson }},
-            hide: {{ t("login.hide")|tojson }},
-            sending: {{ t("login.submitting")|tojson }}
-        };
-
-        if (form.querySelector('.lg-err') && pw) pw.focus();
-
-        if (reveal && pw) {
-            reveal.addEventListener('click', function () {
-                var shown = pw.type === 'text';
-                pw.type = shown ? 'password' : 'text';
-                reveal.textContent = shown ? strings.reveal : strings.hide;
-                reveal.setAttribute('aria-pressed', String(!shown));
-            });
-        }
-
-        form.addEventListener('submit', function () {
-            if (submit.getAttribute('aria-busy') === 'true') return;
-            submit.setAttribute('aria-busy', 'true');
-            label.textContent = strings.sending;
-        });
-    })();
-</script>
 {% endblock %}

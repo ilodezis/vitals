@@ -2,6 +2,7 @@
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
 import { NetworkOnly } from 'workbox-strategies'
+import { APP_NAVIGATIONS } from './app/swRoutes'
 
 declare let self: ServiceWorkerGlobalScope
 
@@ -11,10 +12,10 @@ cleanupOutdatedCaches()
 // Precache app shell assets injected at build time
 precacheAndRoute(self.__WB_MANIFEST)
 
-// Navigation fallback: /app/* -> index.html from cache
+// Navigation fallback: the screens' addresses -> index.html from cache
 const handler = createHandlerBoundToURL('/static/app/index.html')
 const navigationRoute = new NavigationRoute(handler, {
-  allowlist: [/^\/app(\/.*)?$/],
+  allowlist: APP_NAVIGATIONS,
   denylist: [/^\/api/, /^\/static\/uploads/],
 })
 registerRoute(navigationRoute)

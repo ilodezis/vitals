@@ -97,8 +97,8 @@ def test_digest_build_prompt():
 @pytest.mark.asyncio
 async def test_oauth_page_renders_localized(auth_client, db_session, redis):
     # Set language to RU
-    response = await auth_client.post("/settings/language", data={"language": "ru"})
-    assert response.status_code == 303
+    response = await auth_client.post("/api/v1/settings/language", json={"language": "ru"})
+    assert response.status_code == 200
     
     # Query authorization view
     r = await auth_client.get("/oauth/authorize?response_type=code&client_id=test-id&redirect_uri=http://localhost&state=123", headers={"Accept": "text/html"})
@@ -107,8 +107,8 @@ async def test_oauth_page_renders_localized(auth_client, db_session, redis):
     assert "Истории изменения веса" in r.text
 
     # Set language to EN
-    response = await auth_client.post("/settings/language", data={"language": "en"})
-    assert response.status_code == 303
+    response = await auth_client.post("/api/v1/settings/language", json={"language": "en"})
+    assert response.status_code == 200
     
     # Query authorization view again
     r = await auth_client.get("/oauth/authorize?response_type=code&client_id=test-id&redirect_uri=http://localhost&state=123", headers={"Accept": "text/html"})

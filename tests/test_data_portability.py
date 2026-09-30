@@ -507,7 +507,7 @@ async def test_import_resets_postgres_sequences(db_session):
 
 async def test_export_endpoint_downloads_backup(auth_client, db_session):
     await _seed(db_session)
-    r = await auth_client.get("/settings/export")
+    r = await auth_client.get("/api/v1/settings/export")
     assert r.status_code == 200
     assert "attachment" in r.headers["content-disposition"]
     assert "vitals_backup_" in r.headers["content-disposition"]
@@ -518,7 +518,7 @@ async def test_export_endpoint_downloads_backup(auth_client, db_session):
 
 async def test_export_llm_endpoint_downloads_digest(auth_client, db_session):
     await _seed(db_session)
-    r = await auth_client.get("/settings/export-llm")
+    r = await auth_client.get("/api/v1/settings/export-llm")
     assert r.status_code == 200
     assert "vitals_llm_" in r.headers["content-disposition"]
     data = r.json()
@@ -530,21 +530,23 @@ async def test_import_endpoint_restores_and_reports(auth_client, db_session):
     await _seed(db_session)
     snap = await export_full(db_session)
     files = {"backup_file": ("backup.json", json.dumps(snap).encode(), "application/json")}
-    r = await auth_client.post("/settings/import", files=files)
+    r = await auth_client.post("/api/v1/settings/import", files=files)
     assert r.status_code == 200
-    assert "Импортировано" in r.text
+    body = r.json()
+    assert body["restored"] is True
+    assert "Импортировано" in body["summary"]
 
 
 async def test_import_endpoint_rejects_bad_json(auth_client):
     files = {"backup_file": ("bad.json", b"{not valid json", "application/json")}
-    r = await auth_client.post("/settings/import", files=files)
+    r = await auth_client.post("/api/v1/settings/import", files=files)
     assert r.status_code == 400
     assert "JSON" in r.json()["detail"]
 
 
 async def test_import_endpoint_rejects_wrong_extension(auth_client):
     files = {"backup_file": ("data.csv", b"a,b,c", "text/csv")}
-    r = await auth_client.post("/settings/import", files=files)
+    r = await auth_client.post("/api/v1/settings/import", files=files)
     assert r.status_code == 415
 
 

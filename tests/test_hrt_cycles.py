@@ -1,5 +1,5 @@
 """HRT cycle tests — the schedule engine (pure), the active-release model,
-cycle CRUD / auto-close, planned administrations, and the cycle UI flow."""
+cycle CRUD / auto-close, planned administrations, and the cycle API guards."""
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -11,6 +11,7 @@ from vitals.utils.timeutils import today_local
 
 
 ANCHOR = date(2026, 6, 1)
+API = "/api/v1/hrt"
 
 
 # ── Schedule engine (pure, no DB) ─────────────────────────────────────────────
@@ -168,45 +169,6 @@ async def test_resolve_active_includes_cycle_compound(db_session):
     assert keys["trenbolone_acetate"]["compound_class"] == "trenbolone"
 
 
-# ── Cycle UI flow ─────────────────────────────────────────────────────────────
-async def test_cycle_create_and_render(auth_client, db_session):
-    await hrt_catalog.sync_catalog(db_session)
-    await db_session.commit()
-    r = await auth_client.post(
-        "/hrt/cycle",
-        data={"kind": "course", "name": "Summer", "start_date": today_local().isoformat()},
-    )
-    assert r.status_code == 303
-    add = await auth_client.post(
-        f"/hrt/cycle/{(await hrt_cycle_service.active_cycle(db_session)).id}/item",
-        data={"compound_key": "testosterone_enanthate", "dose": "250",
-              "interval_days": "3.5", "duration_days": "70"},
-    )
-    assert add.status_code == 303
-    page = await auth_client.get("/hrt")
-    assert page.status_code == 200
-    assert "Summer" in page.text
-    assert "testosterone_enanthate" in page.text
-
-
-async def test_release_json_endpoint(auth_client):
-    r = await auth_client.get("/hrt/release.json?days_back=5&days_forward=5")
-    assert r.status_code == 200
-    body = r.json()
-    assert "series" in body and len(body["series"]) == 11  # 5 back + today + 5 fwd
-
-
-async def test_hrt_dashboard_renders_masthead_header(auth_client, db_session):
-    """The masthead editorial header (masthead_header macro) renders on the HRT
-    page — the section is registered in partials/masthead.html."""
-    await hrt_catalog.sync_catalog(db_session)
-    await db_session.commit()
-    r = await auth_client.get("/hrt")
-    assert r.status_code == 200
-    assert "mh-title" in r.text   # masthead editorial header rendered
-    assert "mh-metric" in r.text  # the section's key-figures row rendered
-
-
 # ── Cycle lifecycle chains (create-over, delete, switch, close) ───────────────
 async def test_new_open_cycle_supersedes_same_day(db_session):
     """Creating a new open cycle the SAME day as the current one must switch the
@@ -328,15 +290,14 @@ async def test_add_remove_readd_item(db_session):
 # ── Route-level: create-over-active reproduces the UI bug ─────────────────────
 async def test_route_create_cycle_over_active_switches(auth_client, db_session):
     today = today_local().isoformat()
-    r1 = await auth_client.post("/hrt/cycle", data={"kind": "course", "name": "First", "start_date": today})
-    assert r1.status_code == 303
-    r2 = await auth_client.post("/hrt/cycle", data={"kind": "course", "name": "Second", "start_date": today})
-    assert r2.status_code == 303
-    page = await auth_client.get("/hrt")
-    assert "Second" in page.text
-    # The old cycle's badge/name should no longer be the active one shown up top.
-    active = await hrt_cycle_service.active_cycle(db_session)
-    assert active.name == "Second"
+    r1 = await auth_client.post(API + "/cycles", json={"kind": "course", "name": "First", "startDate": today})
+    assert r1.status_code == 201
+    r2 = await auth_client.post(API + "/cycles", json={"kind": "course", "name": "Second", "startDate": today})
+    assert r2.status_code == 201
+    screen = (await auth_client.get(API)).json()
+    # The old cycle must no longer be the active one shown up top.
+    assert screen["cycle"]["name"] == "Second"
+    assert screen["cycle"]["id"] == r2.json()["id"]
 
 
 async def test_cycle_with_past_end_not_active(db_session):
@@ -451,15 +412,15 @@ async def test_route_add_item_with_start_week(auth_client, db_session):
     await hrt_catalog.sync_catalog(db_session)
     await db_session.commit()
     today = today_local().isoformat()
-    r = await auth_client.post("/hrt/cycle", data={"kind": "course", "start_date": today})
-    assert r.status_code == 303
+    r = await auth_client.post(API + "/cycles", json={"kind": "course", "startDate": today})
+    assert r.status_code == 201
     cycle = await hrt_cycle_service.active_cycle(db_session)
     r = await auth_client.post(
-        f"/hrt/cycle/{cycle.id}/item",
-        data={"compound_key": "stanozolol_oral", "dose": "30", "interval_days": "1",
-              "duration_days": "28", "start_week": "5"},
+        f"{API}/cycles/{cycle.id}/items",
+        json={"compoundKey": "stanozolol_oral", "dose": 30, "intervalDays": 1,
+              "durationDays": 28, "startWeek": 5},
     )
-    assert r.status_code == 303
+    assert r.status_code == 201
     await db_session.refresh(cycle)
     assert cycle.items[0].start_offset_days == 28  # (5-1)*7
 
@@ -468,14 +429,14 @@ async def test_route_add_item_blank_start_week_defaults_zero(auth_client, db_ses
     await hrt_catalog.sync_catalog(db_session)
     await db_session.commit()
     today = today_local().isoformat()
-    await auth_client.post("/hrt/cycle", data={"kind": "course", "start_date": today})
+    await auth_client.post(API + "/cycles", json={"kind": "course", "startDate": today})
     cycle = await hrt_cycle_service.active_cycle(db_session)
     r = await auth_client.post(
-        f"/hrt/cycle/{cycle.id}/item",
-        data={"compound_key": "testosterone_enanthate", "dose": "125",
-              "interval_days": "3.5", "start_week": ""},
+        f"{API}/cycles/{cycle.id}/items",
+        json={"compoundKey": "testosterone_enanthate", "dose": 125,
+              "intervalDays": 3.5, "startWeek": None},
     )
-    assert r.status_code == 303
+    assert r.status_code == 201
     await db_session.refresh(cycle)
     assert cycle.items[0].start_offset_days == 0
 
@@ -490,10 +451,9 @@ async def test_add_cycle_rejects_unknown_kind(db_session):
 # ── Fix pack: date/offset validation ──────────────────────────────────────────
 async def test_route_cycle_garbage_date_is_422(auth_client):
     r = await auth_client.post(
-        "/hrt/cycle", data={"kind": "course", "start_date": "not-a-date"},
+        API + "/cycles", json={"kind": "course", "startDate": "not-a-date"},
     )
     assert r.status_code == 422
-    assert "invalid date" in r.json()["error"]
 
 
 async def test_close_cycle_rejects_end_before_start(db_session):
@@ -507,33 +467,36 @@ async def test_close_cycle_rejects_end_before_start(db_session):
         )
 
 
-async def test_route_close_end_before_start_is_422(auth_client, db_session):
+async def test_route_close_end_before_start_is_refused(auth_client, db_session):
     cycle = await hrt_cycle_service.add_cycle(
         db_session, kind="course", start_date=today_local(),
     )
     await db_session.commit()
     r = await auth_client.post(
-        f"/hrt/cycle/{cycle.id}/close",
-        data={"end_date": (today_local() - timedelta(days=5)).isoformat()},
+        f"{API}/cycles/{cycle.id}/close",
+        json={"endDate": (today_local() - timedelta(days=5)).isoformat()},
     )
-    assert r.status_code == 422
+    assert r.status_code == 400
+    assert r.json()["error"] == "invalid"
     await db_session.refresh(cycle)
     assert cycle.end_date is None  # nothing was written
 
 
-async def test_route_add_item_fractional_or_zero_start_week_is_422(auth_client, db_session):
+async def test_route_add_item_fractional_or_zero_start_week_is_refused(auth_client, db_session):
     await hrt_catalog.sync_catalog(db_session)
     await db_session.commit()
     await auth_client.post(
-        "/hrt/cycle", data={"kind": "course", "start_date": today_local().isoformat()},
+        API + "/cycles", json={"kind": "course", "startDate": today_local().isoformat()},
     )
     cycle = await hrt_cycle_service.active_cycle(db_session)
-    for bad_week in ("2.5", "0"):
+    for bad_week in (2.5, 0):
         r = await auth_client.post(
-            f"/hrt/cycle/{cycle.id}/item",
-            data={"compound_key": "testosterone_enanthate", "dose": "125",
-                  "interval_days": "3.5", "start_week": bad_week},
+            f"{API}/cycles/{cycle.id}/items",
+            json={"compoundKey": "testosterone_enanthate", "dose": 125,
+                  "intervalDays": 3.5, "startWeek": bad_week},
         )
-        assert r.status_code == 422, bad_week
+        assert r.status_code == 400, bad_week
     await db_session.refresh(cycle)
     assert cycle.items == []  # nothing slipped through
+
+

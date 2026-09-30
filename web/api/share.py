@@ -7,6 +7,7 @@ from typing import Optional
 from fastapi import Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from vitals.i18n import t
 from vitals.services import share_service
 from web.api.errors import ApiRouter, not_found
 from web.api.schemas.share import CreatedShareResponse, CreateShareRequest, ShareView
@@ -74,6 +75,11 @@ async def create_share_report(
         preset=body.preset or None,
         enabled=enabled,
     )
+    if not (row.snapshot or {}).get("blocks"):
+        # An empty document is worse than no document — it looks like a person
+        # with no history rather than a window with nothing in it.
+        await db.rollback()
+        raise ValueError(t("share.error.empty"))
     await db.commit()
 
     return CreatedShareResponse(

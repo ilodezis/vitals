@@ -62,23 +62,6 @@ async def test_disabled_module_makes_the_bot_silent(db_session):
     assert fake.sent == ["бриф"]
 
 
-async def test_disabled_module_hides_the_page(client):
-    """Enabled by the ``client`` fixture, then switched off through the same
-    endpoint the settings card uses."""
-    r = await client.post("/login", data={"username": "tester", "password": "password"})
-    assert r.status_code == 303
-
-    assert (await client.get("/signals")).status_code == 200
-
-    r = await client.post("/settings/modules", data={"module": "signals", "enabled": "false"})
-    assert r.status_code == 200
-
-    # A disabled module 404s → the app redirects HTML navigation to the dashboard.
-    r = await client.get("/signals", headers={"accept": "text/html"})
-    assert r.status_code in (302, 303, 404)
-    assert r.headers.get("location", "") != "/signals"
-
-
 # ── The page ──────────────────────────────────────────────────────────────────
 async def test_feed_shows_captured_rows_and_deletes_one(auth_client, db_session):
     rows = await signals_service.create_signals(
@@ -90,13 +73,14 @@ async def test_feed_shows_captured_rows_and_deletes_one(auth_client, db_session)
     )
     await db_session.commit()
 
-    page = (await auth_client.get("/signals")).text
-    assert "headache" in page
+    feed = (await auth_client.get("/api/v1/signals")).json()["signals"]
+    by_raw = {s["rawKey"]: s for s in feed}
+    assert by_raw["headache"]["key"] == "headache"
     # Stored as an alias, shown folded.
-    assert "caffeine_late" in page
+    assert by_raw["coffee_late"]["key"] == "caffeine_late"
 
-    r = await auth_client.post(f"/signals/{rows[0].id}/delete")
-    assert r.status_code == 303
+    r = await auth_client.delete(f"/api/v1/signals/{rows[0].id}")
+    assert r.status_code == 204
     assert await signals_service.list_signals(db_session) != []
     assert all(s.id != rows[0].id for s in await signals_service.list_signals(db_session))
 
@@ -175,24 +159,25 @@ async def test_saving_reschedules_without_a_restart(auth_client, db_session):
         assert "hour='11-16'" in str(before.trigger)
 
         r = await auth_client.post(
-            "/settings/proactive",
-            data={
+            "/api/v1/settings/proactive",
+            json={
                 "brief_time": "09:05",
                 "evening_time": "23:00",
                 "quiet_start": "01:00",
                 "quiet_end": "08:00",
-                "daily_budget": "6",
-                "garmin_sync_hours": "3",
-                "garmin_weight_export_minutes": "20",
-                "garmin_weight_max_age_days": "14",
-                "pulse_seconds": "0",
-                "pulse_start_hour": "9",
-                "pulse_end_hour": "22",
+                "daily_budget": 6,
+                "garmin_sync_hours": 3,
+                "garmin_weight_export_minutes": 20,
+                "garmin_weight_max_age_days": 14,
+                "pulse_seconds": 0,
+                "pulse_start_hour": 9,
+                "pulse_end_hour": 22,
                 "nudges": ["activity"],
-                "tpl_mon_gym": "1",
+                "week_template": {"mon": {"gym": True}},
             },
         )
-        assert r.status_code == 303
+        assert r.status_code == 200
+        assert r.json()["saved"] is True
 
         after = scheduler.get_job("daily_brief")
         assert "hour='9-14'" in str(after.trigger)

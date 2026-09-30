@@ -68,7 +68,7 @@ export default defineConfig(({ command }) => ({
         // The whole site, not the folder the build is served from: the login and the
         // doctor's report open inside the installed app too.
         scope: '/',
-        start_url: '/app/today',
+        start_url: '/today',
         name: 'Vitals',
         short_name: 'Vitals',
         display: 'standalone',

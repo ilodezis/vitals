@@ -1,4 +1,4 @@
-"""The React app under ``/app``: the shell behind the login, its assets cached forever.
+"""The React app on the site's own paths: the shell behind the login, its assets cached forever.
 
 The built app lives in ``web/static/app`` (Vite's ``outDir``). Its hashed assets ride
 the existing public ``/static`` mount — no new anonymous surface — while the HTML
@@ -74,8 +74,10 @@ def service_worker():
 
 # ── The shell ────────────────────────────────────────────────────────────────
 
+SCREENS = ["/today", "/weight", "/weight/measures", "/recovery", "/recovery/sleep/2026-09-28", "/workouts", "/share", "/settings"]
 
-@pytest.mark.parametrize("path", ["/app", "/app/", "/app/weight", "/app/recovery/sleep/2026-09-28"])
+
+@pytest.mark.parametrize("path", SCREENS)
 async def test_a_stranger_is_sent_to_the_login_form(client, built_shell, path):
     r = await client.get(path, headers={"Accept": "text/html"})
     assert r.status_code == 302
@@ -83,19 +85,19 @@ async def test_a_stranger_is_sent_to_the_login_form(client, built_shell, path):
     assert SHELL not in r.content
 
 
-async def test_the_login_form_brings_the_owner_back_into_the_app(client, built_shell):
-    r = await client.get("/app/weight", headers={"Accept": "text/html"})
-    assert r.headers["location"] == "/login?next=%2Fapp%2Fweight"
+async def test_the_login_form_brings_the_owner_back_to_the_screen(client, built_shell):
+    r = await client.get("/weight", headers={"Accept": "text/html"})
+    assert r.headers["location"] == "/login?next=%2Fweight"
 
 
 async def test_a_fetch_without_a_session_gets_401_not_the_shell(client, built_shell):
-    r = await client.get("/app/weight")
+    r = await client.get("/weight")
     assert r.status_code == 401
     assert SHELL not in r.content
 
 
-@pytest.mark.parametrize("path", ["/app", "/app/", "/app/today", "/app/weight/measures"])
-async def test_the_owner_gets_the_shell_on_every_app_path(auth_client, built_shell, path):
+@pytest.mark.parametrize("path", SCREENS)
+async def test_the_owner_gets_the_shell_on_every_screen(auth_client, built_shell, path):
     r = await auth_client.get(path, headers={"Accept": "text/html"})
     assert r.status_code == 200
     assert r.content == SHELL
@@ -104,8 +106,50 @@ async def test_the_owner_gets_the_shell_on_every_app_path(auth_client, built_she
     assert "no-store" in r.headers["cache-control"]
 
 
+async def test_a_switched_off_module_sends_its_screen_to_today(auth_client, built_shell):
+    await auth_client.post("/api/v1/settings/modules", json={"module": "genetics", "enabled": False})
+    r = await auth_client.get("/genetics", headers={"Accept": "text/html"})
+    assert r.status_code == 303
+    assert r.headers["location"] == "/today"
+
+
+# ── Addresses the app used to live at ────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "old, new",
+    [
+        ("/app", "/today"),
+        ("/app/", "/today"),
+        ("/app/weight", "/weight"),
+        ("/app/recovery/sleep/2026-09-28", "/recovery/sleep/2026-09-28"),
+        ("/app/labs?marker=ldl", "/labs?marker=ldl"),
+        ("/garmin", "/recovery"),
+        ("/garmin/sleep/2026-09-28", "/recovery/sleep/2026-09-28"),
+        ("/garmin/activities", "/recovery/activities"),
+        ("/hevy", "/workouts"),
+    ],
+)
+async def test_an_old_address_moves_permanently(auth_client, old, new):
+    r = await auth_client.get(old)
+    assert r.status_code == 301
+    assert r.headers["location"] == new
+
+
+async def test_a_stranger_at_an_old_address_is_sent_to_the_login_form(client):
+    r = await client.get("/app/weight", headers={"Accept": "text/html"})
+    assert r.status_code == 302
+    assert r.headers["location"].startswith("/login")
+
+
+async def test_a_moved_address_cannot_become_an_off_site_redirect(auth_client):
+    r = await auth_client.get("/app//evil.example")
+    assert r.status_code == 301
+    assert r.headers["location"] == "/evil.example"
+
+
 async def test_no_build_is_a_clear_503(auth_client, no_build):
-    r = await auth_client.get("/app/today", headers={"Accept": "text/html"})
+    r = await auth_client.get("/today", headers={"Accept": "text/html"})
     assert r.status_code == 503
     assert "frontend not built" in r.text
 
@@ -135,22 +179,15 @@ async def test_the_service_worker_may_control_the_whole_site(client, service_wor
     assert r.headers["cache-control"] == "no-cache"
 
 
-async def test_the_old_scripts_still_revalidate_on_every_load(client):
-    r = await client.get("/static/app.js")
-    assert r.status_code == 200
-    assert r.headers["cache-control"] == "no-cache"
-    assert "service-worker-allowed" not in r.headers
-
-
 # ── Post-login redirect ──────────────────────────────────────────────────────
 
 
-@pytest.mark.parametrize("path", ["/app", "/app/weight", "/app/labs?marker=ldl"])
+@pytest.mark.parametrize("path", ["/today", "/weight", "/labs?marker=ldl"])
 def test_safe_next_keeps_app_paths(path):
     assert safe_next(path) == path
 
 
-async def test_signing_in_lands_on_the_app_page_that_was_asked_for(client, built_shell):
+async def test_signing_in_lands_on_the_screen_that_was_asked_for(client, built_shell):
     # conftest's test credentials (bcrypt of "password"); not imported from
     # tests.conftest, which a site-packages ``tests`` package can shadow.
     r = await client.post(
@@ -158,8 +195,8 @@ async def test_signing_in_lands_on_the_app_page_that_was_asked_for(client, built
         data={
             "username": os.environ["VITALS_AUTH_USERNAME"],
             "password": "password",
-            "next": "/app/weight",
+            "next": "/weight",
         },
     )
     assert r.status_code == 303
-    assert r.headers["location"] == "/app/weight"
+    assert r.headers["location"] == "/weight"

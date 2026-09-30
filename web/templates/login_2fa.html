@@ -4,14 +4,13 @@
 
 {% block content %}
 {% include "partials/login_styles.html" %}
-<link rel="stylesheet" href="{{ static_version('/static/server.css') }}">
 
 <div class="bare-pg">
     <div class="bare-in">
-        <a href="/app" class="bare-brand">Vitals</a>
+        <a href="/today" class="bare-brand">Vitals</a>
         <h1 class="bare-h">{{ t("login.twofa_heading") }}</h1>
 
-        <form class="lg" action="/login/2fa" method="POST">
+        <form class="lg" action="/login/2fa" method="POST" data-sending="{{ t("login.submitting") }}">
             <input type="hidden" name="next" value="{{ next }}">
 
             <div class="lg-f code{% if error %} is-error{% endif %}">
@@ -47,31 +46,4 @@
     </div>
 </div>
 
-<script>
-    (function () {
-        var form = document.querySelector('.lg');
-        if (!form) return;
-
-        var code = form.querySelector('#lg-code');
-        var submit = form.querySelector('[data-lg-submit]');
-        var label = form.querySelector('[data-lg-submit-label]');
-        var sending = {{ t("login.submitting")|tojson }};
-
-        if (form.querySelector('.lg-err') && code) code.focus();
-
-        if (code) {
-            code.addEventListener('input', function () {
-                var digits = code.value.replace(/\D/g, '').slice(0, 6);
-                if (digits !== code.value) code.value = digits;
-                if (digits.length === 6) form.requestSubmit();
-            });
-        }
-
-        form.addEventListener('submit', function () {
-            if (submit.getAttribute('aria-busy') === 'true') return;
-            submit.setAttribute('aria-busy', 'true');
-            label.textContent = sending;
-        });
-    })();
-</script>
 {% endblock %}

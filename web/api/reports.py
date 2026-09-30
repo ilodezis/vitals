@@ -7,6 +7,8 @@ from typing import Optional
 from fastapi import Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from vitals.i18n import t
+from vitals.integrations.llm_client import LLMNotConfigured
 from vitals.services import milestones_service, reports_service
 from web.api.errors import ApiRouter, not_found
 from web.api.schemas.reports import (
@@ -88,7 +90,11 @@ async def generate_digest(
 ) -> Optional[DigestItem]:
     """Generate a weekly digest on demand."""
     period_days = body.period_days if body else 7
-    result = await reports_service.generate_digest(db, period_days=period_days)
+    try:
+        result = await reports_service.generate_digest(db, period_days=period_days)
+    except LLMNotConfigured:
+        # Says what to do about it, instead of a bare server error.
+        raise ValueError(t("reports.digest_not_configured")) from None
     return DigestItem.model_validate(result) if result else None
 
 

@@ -24,9 +24,10 @@ Open an issue using the **Feature Request** template. Describe the use case, not
 5. Open the PR against `master` with a clear description of *what* changed and *why*.
 
 > [!NOTE]
-> **Touching a template or `tailwind.config.js`?** `web/static/tailwind.css` is a
-> committed build artifact, not generated at runtime — rebuild it (`npm run build:css`
-> from `web/`) and include it in the PR. See [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
+> **Touching the interface?** It is a React app in `frontend/`. Run
+> `npm --prefix frontend run check` (type check, tests, build, size budget) before
+> submitting; the build output in `web/static/app` is not committed. See
+> [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
 >
 > **Bumping a dependency?** `docs/known-good-deps.txt` is a snapshot of what the
 > author's production container actually runs — a reference point to diff against

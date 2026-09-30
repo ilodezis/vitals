@@ -7,7 +7,7 @@
 
 <p align="center">
   <strong>Self-hosted personal health data lake & dashboard with 75 MCP tools for Claude.ai</strong><br>
-  <sub>Masthead UI · EN/RU interface · 15 Domains · Weight & BIA · HRT/TRT · GLP-1 · Garmin · Hevy · Nutrition · Labs · Genetics · Skincare · Timeline · Signals & Telegram · AI Digests · Doctor Report</sub>
+  <sub>React PWA · EN/RU interface · 15 Domains · Weight & BIA · HRT/TRT · GLP-1 · Garmin · Hevy · Nutrition · Labs · Genetics · Skincare · Timeline · Signals & Telegram · AI Digests · Doctor Report</sub>
 </p>
 
 <p align="center">
@@ -18,9 +18,8 @@
   <img src="https://img.shields.io/badge/PostgreSQL-15-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis">
   <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker">
-  <img src="https://img.shields.io/badge/HTMX-1.9-3D72D7?style=flat-square" alt="HTMX">
-  <img src="https://img.shields.io/badge/Alpine.js-3.x-8BC0D0?style=flat-square&logo=alpinedotjs&logoColor=white" alt="Alpine.js">
-  <img src="https://img.shields.io/badge/Tailwind-3.0-38BDF8?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React">
+  <img src="https://img.shields.io/badge/Vite-PWA-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite">
   <img src="https://img.shields.io/badge/MCP-Claude_AI-D4A574?style=flat-square" alt="MCP">
   <img src="https://img.shields.io/badge/PWA-Mobile_First-5A0FC8?style=flat-square&logo=pwa&logoColor=white" alt="PWA">
   <img src="https://img.shields.io/badge/License-PolyForm_NC-green?style=flat-square" alt="License">
@@ -41,7 +40,7 @@
 
 **Vitals** — персональный дашборд здоровья и полноценное «озеро данных» (data lake) для одного пользователя. Система спроектирована для долгосрочного отслеживания биомаркеров, рекомпозиции тела, контроля терапии GLP-1, прохождения курсов гормональной терапии (ГЗТ / TRT), анализа спортивных показателей и построения еженедельных AI-отчётов с помощью языковых моделей через OpenRouter.
 
-Интерфейс полностью стандартизирован на единственной оболочке **Masthead** — издательском (editorial) дизайне с тёплой глубокой темой (`#1D1A21` / `#332F3C`), milk-white текстом, точечными акцентами цвета янтарного мёда (`#F5A623`) и высококлассной типографикой (Outfit/Bricolage Grotesque/Inter, без использования моноширинных шрифтов). Дизайн-система целиком описана в [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
+Интерфейс полностью стандартизирован на единственной оболочке **Masthead** — издательском (editorial) дизайне с тёплой глубокой темой (`#1D1A21` / `#332F3C`), milk-white текстом, точечными акцентами цвета янтарного мёда (`#F5A623`) и высококлассной типографикой (Geologica / Golos Text, без использования моноширинных шрифтов). Дизайн-система целиком описана в [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
 
 Главное отличие от фитнес-трекеров — **принцип максимального сохранения сырых данных**. Vitals — умный навигатор здоровья, который подсвечивает неочевидные взаимосвязи между сном, тренировками, медикаментами и весом, помогая принимать взвешенные решения. Не надзиратель — штурман.
 
@@ -95,9 +94,9 @@ Vitals написан с Claude в качестве основного инст�
 - PWA с установкой на Home Screen (iOS/Android)
 - Двуязычный интерфейс (русский / английский) — переключение в настройках
 - Адаптация под все размеры (Mobile / Tablet / Desktop)
-- HTMX — мгновенные переходы без перезагрузок страниц
-- Alpine.js — микро-интерактивность на клиенте
-- Chart.js — адаптивные графики с кастомными оверлеями
+- React + TanStack Router — мгновенные переходы между экранами, жесты назад на телефоне
+- Офлайн-кэш последних данных и установка как приложение (Service Worker)
+- Собственные SVG-графики, отрисованные под ширину экрана
 
 </td>
 <td>
@@ -338,12 +337,12 @@ graph TD
 
     DB & Cache --> FastAPI[FastAPI Router + Auth + CSRF]
 
-    FastAPI --> UI[Jinja2 + HTMX + Alpine.js]
+    FastAPI --> UI[JSON API -> React PWA]
     FastAPI --> MCP[FastMCP · streamable HTTP]
     Scheduler --> PL[Проактивный слой]
     PL -->|ворота: бюджет, тихие часы, дедуп| TGout[Telegram: бриф, вечер, нуджи]
 
-    UI --> Charts[Chart.js]
+    UI --> Charts[SVG charts]
     UI --> AI[AI-Дайджесты · LLM]
     MCP <-->|OAuth 2.0 + PKCE| Claude[Claude.ai]
 ```
@@ -351,9 +350,9 @@ graph TD
 | Слой | Ответственность |
 | :--- | :--- |
 | **`vitals/`** (ядро) | Модели, сервисы, бизнес-логика. Не знает о FastAPI. Импортируется в скрипты и тесты. |
-| **`web/`** (доставка) | FastAPI-роутинг, авторизация, CSRF, шаблоны Jinja2. Вызывает сервисы, не содержит бизнес-логику. |
+| **`web/`** (доставка) | FastAPI: JSON API `/api/v1`, авторизация, CSRF, отдача оболочки React-приложения; немногие серверные страницы (вход, OAuth, отчёт врача). Вызывает сервисы, не содержит бизнес-логику. |
 | **`vitals/services/proactive/`** | Проактивный слой четырьмя швами: `channels` (как сообщение уходит), `delivery` (можно ли его отправить), `compose`/`brief` (что сказано), `inbound` (что пришло обратно), `nudges` (когда повод есть), `day_plan` и `prefs`. Ничего выше `channels` не знает слова «telegram». |
-| **Фронтенд** | HTML-over-the-wire: HTMX + Alpine.js + Chart.js. Единственная оболочка — Masthead (см. [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)). Тексты — через `vitals/i18n.py` (RU/EN). |
+| **Фронтенд** | `frontend/`: React 19 + TanStack Router/Query, Vite, PWA. Типизированный клиент генерируется из схемы API (`npm --prefix frontend run gen`). Дизайн-система — [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md). Тексты — через `vitals/i18n.py` (RU/EN), словарь выгружается в приложение. |
 
 #### Фоновые задачи (APScheduler)
 
@@ -806,7 +805,7 @@ bash scripts/test_postgres.sh
 
 **Vitals** is a personal health dashboard and data lake designed for a single user. Built for long-term tracking of biomarkers, body recomposition, GLP-1 therapy, hormone replacement therapy (HRT / TRT) cycles, athletic performance, and AI-powered weekly analytical digests via OpenRouter LLMs.
 
-The interface standardizes entirely on a single UI shell — **Masthead** — featuring a warm dark plum-charcoal aesthetic (`#1D1A21` / `#332F3C`), milk-white typography, selective honey-amber (`#F5A623`) highlights, and editorial-grade typography (Outfit / Bricolage Grotesque / Inter, without a single monospace font). The full design system is documented in [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
+The interface standardizes entirely on a single UI shell — **Masthead** — featuring a warm dark plum-charcoal aesthetic (`#1D1A21` / `#332F3C`), milk-white typography, selective honey-amber (`#F5A623`) highlights, and editorial-grade typography (Geologica / Golos Text, without a single monospace font). The full design system is documented in [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
 
 Unlike typical fitness trackers, Vitals prioritizes **preserving raw historical data**. It serves as a smart wellness navigator — uncovering correlations between sleep, workouts, supplements, and body composition. Not a watchdog — a co-pilot.
 
@@ -864,9 +863,9 @@ Built with Claude as the primary coding tool — but the data model, architectur
 - PWA with Home Screen install (iOS/Android)
 - Bilingual interface (English / Russian) — switchable in Settings
 - Fully responsive across Mobile / Tablet / Desktop
-- HTMX — instant transitions, no page reloads
-- Alpine.js — client-side micro-interactivity
-- Chart.js — responsive charts with custom overlays
+- React + TanStack Router — instant screen changes, swipe-back on the phone
+- An offline copy of the latest data and install-as-app (Service Worker)
+- Hand-drawn SVG charts laid out at the screen's width
 
 </td>
 <td>
@@ -1107,12 +1106,12 @@ graph TD
 
     DB & Cache --> FastAPI[FastAPI Router + Auth + CSRF]
 
-    FastAPI --> UI[Jinja2 + HTMX + Alpine.js]
+    FastAPI --> UI[JSON API -> React PWA]
     FastAPI --> MCP[FastMCP · streamable HTTP]
     Scheduler --> PL[Proactive layer]
     PL -->|gate: budget, quiet hours, dedupe| TGout[Telegram: brief, evening, nudges]
 
-    UI --> Charts[Chart.js]
+    UI --> Charts[SVG charts]
     UI --> AI[AI Digests · LLM]
     MCP <-->|OAuth 2.0 + PKCE| Claude[Claude.ai]
 ```
@@ -1120,9 +1119,9 @@ graph TD
 | Layer | Responsibility |
 | :--- | :--- |
 | **`vitals/`** (core) | Models, services, business logic. Zero web dependencies. Importable in scripts and tests. |
-| **`web/`** (delivery) | FastAPI routing, auth, CSRF, Jinja2 templates. Calls services — contains no business logic. |
+| **`web/`** (delivery) | FastAPI: the JSON API `/api/v1`, auth, CSRF, the React app shell, and the few server-rendered pages (sign-in, OAuth, the doctor report). Calls services — contains no business logic. |
 | **`vitals/services/proactive/`** | The proactive layer along four seams: `channels` (how a message leaves), `delivery` (whether it may), `compose`/`brief` (what is said), `inbound` (what comes back), `nudges` (when there's a reason at all), plus `day_plan` and `prefs`. Nothing above `channels` knows the word "telegram". |
-| **Frontend** | HTML-over-the-wire: HTMX + Alpine.js + Chart.js. One shell — Masthead (see [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)). All copy flows through `vitals/i18n.py` (EN/RU). |
+| **Frontend** | `frontend/`: React 19 + TanStack Router/Query, Vite, PWA. A typed client is generated from the API schema (`npm --prefix frontend run gen`). Design system: [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md). All copy flows through `vitals/i18n.py` (EN/RU) and its dictionary is exported to the app. |
 
 #### Background jobs (APScheduler)
 

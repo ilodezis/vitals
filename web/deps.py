@@ -123,51 +123,6 @@ async def load_enabled_modules(
         request.state.enabled_modules = dict(modules_service.DEFAULT_STATE)
 
 
-async def load_nav_status(
-    request: Request,
-    db: AsyncSession = Depends(get_session),
-) -> None:
-    """Global dependency: today's readout for the nav rail's status card (and the
-    phone's "More" screen), stashed on ``request.state``.
-
-    Only for document requests: the rail is chrome, so an MCP call or a JSON API
-    read would pay four pointless queries for markup it never renders.
-
-    "Is this a document request" is decided by ruling API clients OUT, not by
-    requiring ``text/html`` in. **A boosted navigation sends no Accept header at
-    all** — htmx leaves XHR's default alone — so requiring ``text/html`` skipped
-    the reads on exactly the requests that re-render the whole rail, and the card
-    blinked out of existence on every click and back on every reload. A missing
-    or wildcard Accept now counts as a document; only a client that explicitly
-    asks for something else (``application/json``, ``text/event-stream``) is
-    skipped.
-
-    Fail-safe: any error yields an empty list — the card just doesn't draw.
-    """
-    request.state.nav_status = []
-    accept = request.headers.get("accept", "")
-    if request.method != "GET":
-        return
-    if accept and "text/html" not in accept and "*/*" not in accept:
-        return
-    # A fetch sends ``Accept: */*``, which counts as a document above — but the
-    # API serves the card's numbers itself (``/api/v1/session``), so paying for
-    # them on every call would run the four reads twice. The React app's shell
-    # (``/app/...``, web/spa.py) is a document that draws no rail either: the app
-    # reads the same numbers from ``/api/v1/session`` as soon as it boots.
-    path = request.url.path
-    if path == "/app" or path.startswith((API_PATH_PREFIX, "/app/")):
-        return
-    from vitals.services import nav_status_service
-
-    try:
-        request.state.nav_status = await nav_status_service.rail_stats(
-            db, getattr(request.state, "enabled_modules", None)
-        )
-    except Exception:
-        logger.exception("nav status load failed; hiding the status card")
-
-
 async def load_language(
     request: Request,
     db: AsyncSession = Depends(get_session),

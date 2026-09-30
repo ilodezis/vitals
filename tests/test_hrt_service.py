@@ -1,5 +1,5 @@
 """HRT domain tests — compound catalog sync, dose log (ml→mg computation and
-grey-market fields), side effects, conflict resolver, and the dashboard route."""
+grey-market fields), side effects, conflict resolver, and the dose endpoint."""
 from __future__ import annotations
 
 from datetime import date
@@ -340,23 +340,15 @@ async def test_resolve_active_dedupes_multiple_doses(db_session):
 
 
 # ── Dashboard route ───────────────────────────────────────────────────────────
-async def test_hrt_dashboard_renders(auth_client, db_session):
-    await hrt_catalog.sync_catalog(db_session)
-    await db_session.commit()
-    r = await auth_client.get("/hrt")
-    assert r.status_code == 200
-    assert "ГЗТ" in r.text
-
-
-async def test_hrt_log_dose_via_form(auth_client):
+async def test_hrt_log_dose_via_api(auth_client):
     r = await auth_client.post(
-        "/hrt/dose",
-        data={"date": "2026-06-01", "compound_key": "testosterone_enanthate",
-              "dose": "250", "unit": "mg", "brand": "TestBrand"},
+        "/api/v1/hrt/doses",
+        json={"date": "2026-06-01", "compoundKey": "testosterone_enanthate",
+              "dose": 250, "unit": "mg", "brand": "TestBrand"},
     )
-    assert r.status_code == 303
-    page = await auth_client.get("/hrt")
-    assert "TestBrand" in page.text
+    assert r.status_code == 201
+    screen = (await auth_client.get("/api/v1/hrt")).json()
+    assert [d["brand"] for d in screen["doses"]] == ["TestBrand"]
 
 
 async def test_collect_open_ended_cycle_progress_and_optional_interval(db_session):

@@ -5,10 +5,8 @@ import { SCREEN_PATH, type ScreenId } from './nav'
 import type { NavMode } from './stack'
 import { preloadScreen } from './screens'
 
-const BASE = (import.meta.env.VITE_ROUTER_BASE ?? '/app').replace(/\/$/, '')
-
-/** The address a screen lives at, base included — for a link's `href`. */
-export const hrefOf = (screen: ScreenId): string => `${BASE}${SCREEN_PATH[screen]}`
+/** The address a screen lives at — for a link's `href`. */
+export const hrefOf = (screen: ScreenId): string => SCREEN_PATH[screen]
 
 const SCROLL_TOP = 'vitals:scroll-top'
 

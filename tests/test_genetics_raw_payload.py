@@ -18,11 +18,11 @@ VCF = (
 
 async def _import(auth_client, vcf: str, filename: str = "genome.vcf"):
     r = await auth_client.post(
-        "/genetics/import",
+        "/api/v1/genetics/upload",
         files={"file": (filename, vcf, "text/plain")},
-        data={"only_interpreted": "false"},
+        params={"only_interpreted": "false"},
     )
-    assert r.status_code == 303
+    assert r.status_code == 200, r.text
     return r
 
 

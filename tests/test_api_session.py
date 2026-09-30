@@ -134,31 +134,6 @@ async def test_the_rail_carries_last_nights_sleep_in_seconds(auth_client, db_ses
     assert rail[0]["sleep_seconds"] == 7 * 3600
 
 
-async def test_a_json_read_does_not_pay_for_the_page_chrome(db_session):
-    """``load_nav_status`` exists for the server-rendered rail. A fetch sends
-    ``Accept: */*``, which counts as a document — the API's own paths must be
-    ruled out, or every call would run the four queries twice."""
-    from web.deps import load_nav_status
-
-    class Spy:
-        calls = 0
-
-        async def execute(self, *a, **kw):
-            Spy.calls += 1
-            raise AssertionError("the rail must not be read for an API call")
-
-    class Req:
-        method = "GET"
-        headers = {"accept": "*/*"}
-        state = type("S", (), {})()
-        url = type("U", (), {"path": SESSION})()
-
-    req = Req()
-    await load_nav_status(req, db=Spy())
-    assert Spy.calls == 0
-    assert req.state.nav_status == []
-
-
 async def test_more_endpoint_returns_raw_module_stats(auth_client, db_session, redis):
     from vitals.models.garmin import DOMAIN as GARMIN_DOMAIN, GarminDaily
     from vitals.services import glp1_service, supplements_service

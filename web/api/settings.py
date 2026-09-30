@@ -69,19 +69,56 @@ from web.auth import authenticate, create_session, set_session_cookie
 from web.config import get_web_config
 from web.deps import get_redis, get_session, require_auth
 from web.ratelimit import rate_limit
-from web.routers.settings import (
-    _SENTINEL,
-    _activate_garmin_credentials,
-    _garmin_credentials,
-    _is_sentinel,
-    apply_schedule,
-)
 from web.services.env_writer import read_key, write_keys
 from web.uploads import JSON_EXTS, VCF_MAX_BYTES, read_capped, validate_extension
 
 logger = logging.getLogger(__name__)
 
 router = ApiRouter(prefix="/settings", tags=["settings"], dependencies=[Depends(require_auth)])
+
+
+_SENTINEL = "••••••••"  # what we show in place of a real secret
+
+
+def _is_sentinel(value: str) -> bool:
+    return value.strip() == _SENTINEL
+
+
+def _garmin_credentials() -> tuple[str, str]:
+    """Return the persisted Garmin credentials without ever logging them."""
+    return (
+        read_key("VITALS_GARMIN_EMAIL").strip(),
+        read_key("VITALS_GARMIN_PASSWORD").strip(),
+    )
+
+
+def _activate_garmin_credentials(email: str, password: str) -> None:
+    """Make persisted credentials visible to clients created in this process."""
+    os.environ["VITALS_GARMIN_EMAIL"] = email
+    os.environ["VITALS_GARMIN_PASSWORD"] = password
+
+
+def apply_schedule(app, settings: dict) -> None:
+    """Re-register the jobs and push them onto the running scheduler.
+
+    Best-effort on purpose: the settings *are* saved by the time this runs, so a
+    scheduler that isn't up (tests, a worker that never started one) must not turn
+    a successful save into a 500 — the new schedule is picked up at next boot
+    either way.
+    """
+    from vitals.scheduler.jobs import register_all_jobs
+    from vitals.scheduler.scheduler import apply_registry
+    from web.deps import get_redis_client, get_session_factory
+
+    scheduler = getattr(app.state, "scheduler", None)
+    if scheduler is None:
+        return
+    try:
+        register_all_jobs(settings)
+        apply_registry(scheduler, get_session_factory(), get_redis_client())
+    except Exception:
+        logger.exception("could not apply the new schedule; it takes effect on restart")
+
 
 
 @router.get("", response_model=SettingsView)

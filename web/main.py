@@ -29,7 +29,6 @@ from web.deps import (
     get_redis,
     load_enabled_modules,
     load_language,
-    load_nav_status,
     require_auth,
     require_module,
 )
@@ -105,13 +104,11 @@ app = FastAPI(
     # stranger exactly which health modules this install runs. Nothing here is a
     # public API — the schema has no audience.
     openapi_url=None,
-    # Resolve the enabled-module map once per request → request.state (read by
-    # base.html nav and the require_module guards below).
+    # Resolve the language and the enabled-module map once per request → request.state
+    # (read by the server-rendered pages and the require_module guards).
     dependencies=[
         Depends(load_language),
         Depends(load_enabled_modules),
-        # After load_enabled_modules — it reads the resolved module map.
-        Depends(load_nav_status),
     ],
 )
 
@@ -190,22 +187,17 @@ async def auth_exception_handler(request: Request, exc: NotAuthenticated):
 
 
 async def _populate_state_for_error_page(request: Request) -> None:
-    """Fill ``request.state`` with lang / enabled_modules for an error
-    page rendered through ``base.html``.
+    """Fill ``request.state.lang`` for the 404 page.
 
-    An unmatched route (404) never runs the global ``load_language`` /
-    ``load_enabled_modules`` dependencies, because those are
-    attached to the API router and only fire once a route matches. base.html reads
-    both off ``request.state`` (e.g. ``get_js_strings(request.state.lang)``),
-    so without this the 404 template itself raises → 500. Resolve them here with a
-    fresh session/redis, mirroring each dependency's fail-safe default so the page
+    An unmatched route never runs the global ``load_language`` dependency, because it
+    fires only once a route matches; the page reads the language off ``request.state``.
+    Resolve it here with a fresh session/redis, falling back to English so the page
     renders no matter what.
     """
     from vitals.i18n import current_lang
-    from vitals.services import language_service, modules_service
+    from vitals.services import language_service
 
     lang = "en"
-    enabled = dict(modules_service.DEFAULT_STATE)
     try:
         redis = get_redis_client()
         async with get_session_factory()() as db:
@@ -213,24 +205,16 @@ async def _populate_state_for_error_page(request: Request) -> None:
                 lang = await language_service.get_language(db, redis)
             except Exception:
                 logger.exception("404 page: language load failed; defaulting to 'en'")
-            try:
-                enabled = await modules_service.get_enabled_modules(db, redis)
-            except Exception:
-                logger.exception("404 page: module-state load failed; using defaults")
     except Exception:
-        logger.exception("404 page: could not open db/redis; using all defaults")
+        logger.exception("404 page: could not open db/redis; defaulting to 'en'")
 
     current_lang.set(lang)
     request.state.lang = lang
-    request.state.enabled_modules = enabled
-    # The rail's sync card is chrome, not information the error page owes anyone —
-    # an empty list just hides it.
-    request.state.nav_status = []
 
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    """Render a branded 404 page for browser navigations and keep JSON 404s for API/HTMX."""
+    """Render a branded 404 page for browser navigations and keep JSON 404s for API calls."""
     if exc.status_code != status.HTTP_404_NOT_FOUND:
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
@@ -238,29 +222,14 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         return api_errors.not_found()
 
     accept = request.headers.get("accept", "")
-    is_html = "text/html" in accept
-    is_htmx = request.headers.get("hx-request", "").lower() == "true"
-    if request.method == "GET" and is_html and not is_htmx:
-        username = None
-        try:
-            from web.auth import read_session
-            from web.config import SESSION_COOKIE
-
-            username = read_session(request.cookies.get(SESSION_COOKIE))
-        except Exception:
-            logger.exception("Could not resolve user for 404 page")
-        # Unmatched routes skip the global load_* dependencies, so base.html's
-        # request.state.{lang,enabled_modules} are unset — populate them or the
-        # template render 500s instead of showing the branded 404.
+    if request.method == "GET" and "text/html" in accept:
+        # Unmatched routes skip the global load_* dependencies, so the language is
+        # unset — populate it or the page renders in the wrong language.
         await _populate_state_for_error_page(request)
         return templates.TemplateResponse(
             request,
             "404.html",
-            {
-                "username": username,
-                "alerts": [],
-                "requested_path": request.url.path,
-            },
+            {"requested_path": request.url.path},
             status_code=status.HTTP_404_NOT_FOUND,
         )
 
@@ -270,13 +239,13 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 @app.exception_handler(ModuleDisabled)
 async def module_disabled_handler(request: Request, exc: ModuleDisabled):
     """A disabled Optional module behaves as if absent: redirect browser GETs to
-    the dashboard, return JSON 404 for API/HTMX calls."""
+    Today, return JSON 404 for API calls."""
     if api_errors.is_api_request(request):
         return api_errors.module_disabled()
 
     accept = request.headers.get("accept", "")
     if request.method == "GET" and "text/html" in accept:
-        return RedirectResponse(url="/weight", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/today", status_code=status.HTTP_303_SEE_OTHER)
     return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"detail": exc.detail})
 
 
@@ -360,53 +329,19 @@ app.include_router(auth_router)
 # The JSON API for the React app — session-guarded as a whole, one error contract.
 app.include_router(api_router)
 
-# The React app's shell for every /app path (its assets ride the /static mount).
+# The React app: its shell on every screen's address (its assets ride the /static mount), and
+# the permanent redirects from the addresses it used to live at.
 from web.spa import router as spa_router  # noqa: E402
 
 app.include_router(spa_router)
 
-# Routers under web/routers/ will be included dynamically to avoid import cycles.
-# These routers will be imported and registered below.
-from web.routers.alerts import router as alerts_router  # noqa: E402
-from web.routers.today import router as today_router  # noqa: E402
-from web.routers.more import router as more_router  # noqa: E402
-from web.routers.weight import router as weight_router  # noqa: E402
-from web.routers.glp1 import router as glp1_router  # noqa: E402
-from web.routers.supplements import router as supplements_router  # noqa: E402
-from web.routers.hrt import router as hrt_router  # noqa: E402
-from web.routers.genetics import router as genetics_router  # noqa: E402
-from web.routers.skincare import router as skincare_router  # noqa: E402
-from web.routers.hevy import router as hevy_router  # noqa: E402
-from web.routers.garmin import router as garmin_router  # noqa: E402
-from web.routers.labs import router as labs_router  # noqa: E402
-from web.routers.reports import router as reports_router  # noqa: E402
-from web.routers.nutrition import router as nutrition_router  # noqa: E402
-from web.routers.interactions import router as interactions_router  # noqa: E402
-from web.routers.settings import router as settings_router  # noqa: E402
-from web.routers.charts import router as charts_router  # noqa: E402
-from web.routers.timeline import router as timeline_router  # noqa: E402
-from web.routers.signals import router as signals_router  # noqa: E402
 from web.routers.external_api import router as external_api_router  # noqa: E402
 from web.routers.telegram import router as telegram_router  # noqa: E402
 from web.routers.public_report import router as public_report_router  # noqa: E402
 from web.routers.share import router as share_router  # noqa: E402
 
-# Core modules — always reachable. /today is the landing page and composes every
-# enabled domain, so it can never be gated behind one of them.
-app.include_router(today_router)
-# The phone's "More" screen — a plain page, never gated: it is how a phone
-# reaches Settings and the sections the bottom bar has no column for.
-app.include_router(more_router)
-app.include_router(alerts_router)
-app.include_router(weight_router)
-app.include_router(garmin_router)
-app.include_router(labs_router)
-app.include_router(reports_router)
-# Doctor reports — the owner's side. Not gated on a module: it publishes whatever
-# modules happen to be on, and gating it would hide the revoke button with them.
+# The owner's report download — the one file the Share screen links to outside the JSON API.
 app.include_router(share_router)
-app.include_router(settings_router)
-app.include_router(charts_router)
 # Read-only JSON API for an external personal dashboard (Bearer-token guarded, not session auth).
 app.include_router(external_api_router)
 # Telegram webhook — its own secret path + header, no session auth.
@@ -416,18 +351,6 @@ app.include_router(telegram_router)
 # module set is already baked into the frozen snapshot). Its own, stricter CSP
 # is set per response — see web/routers/public_report.py.
 app.include_router(public_report_router)
-
-# Optional modules — guarded: a disabled module's routes 404 → redirect to /weight.
-app.include_router(glp1_router, dependencies=[Depends(require_module("glp1"))])
-app.include_router(hevy_router, dependencies=[Depends(require_module("hevy"))])
-app.include_router(supplements_router, dependencies=[Depends(require_module("supplements"))])
-app.include_router(hrt_router, dependencies=[Depends(require_module("hrt"))])
-app.include_router(genetics_router, dependencies=[Depends(require_module("genetics"))])
-app.include_router(skincare_router, dependencies=[Depends(require_module("skincare"))])
-app.include_router(nutrition_router, dependencies=[Depends(require_module("nutrition"))])
-app.include_router(interactions_router, dependencies=[Depends(require_module("interactions"))])
-app.include_router(timeline_router, dependencies=[Depends(require_module("timeline"))])
-app.include_router(signals_router, dependencies=[Depends(require_module("signals"))])
 
 # ── OAuth & MCP Integration ──────────────────────────────────────────────────
 try:

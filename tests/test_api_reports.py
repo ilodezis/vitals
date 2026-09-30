@@ -64,3 +64,12 @@ async def test_reports_milestone_crud(auth_client):
     r = await auth_client.get(URL)
     data = r.json()
     assert not any(g["id"] == m_id for g in data["closedGoals"])
+
+
+async def test_a_digest_without_an_llm_key_says_so_instead_of_failing(auth_client, monkeypatch):
+    monkeypatch.delenv("VITALS_OPENROUTER_API_KEY", raising=False)
+    monkeypatch.setenv("VITALS_ENV_FILE", "/nonexistent/.env")
+    r = await auth_client.post("/api/v1/reports/digests", json={"periodDays": 7})
+    assert r.status_code == 400
+    assert r.json()["error"] == "invalid"
+    assert "VITALS_OPENROUTER_API_KEY" in r.json()["message"]

@@ -2,12 +2,11 @@
 {% block title %}404 · Vitals{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ static_version('/static/server.css') }}">
 {% set is_ru = request.state.lang == 'ru' %}
 
 <div class="bare-pg">
     <div class="bare-in">
-        <a href="/app" class="bare-brand">Vitals</a>
+        <a href="/today" class="bare-brand">Vitals</a>
 
         <p class="bare-k">
             {{ '404 · Маршрут не найден' if is_ru else '404 · Route not found' }}
@@ -22,11 +21,10 @@
         </p>
 
         <div class="bare-acts">
-            <a href="/app/today" class="btn">
+            <a href="/today" class="btn">
                 {{ 'На главную' if is_ru else 'Go to dashboard' }}
             </a>
-            <button type="button" onclick="history.length > 1 ? history.back() : location.assign('/app/today')"
-                class="ghost">
+            <button type="button" data-history-back="/today" class="ghost">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>

@@ -1,8 +1,8 @@
-"""Tests for the settings router and env_writer utility."""
+"""Tests for the env_writer utility and the settings rules behind /api/v1/settings
+(secret placeholders, Garmin weight export, password change, restart, proactive clamping)."""
 from __future__ import annotations
 
 import os
-import re
 import tempfile
 from pathlib import Path
 
@@ -91,7 +91,9 @@ def test_env_writer_write_multiple_keys(tmp_path, monkeypatch):
     assert "VITALS_C=new_c" in content
 
 
-# ── settings page integration tests ──────────────────────────────────────────
+# ── settings API rules ───────────────────────────────────────────────────────
+
+URL = "/api/v1/settings"
 
 
 async def test_settings_page_requires_auth(client):
@@ -101,117 +103,31 @@ async def test_settings_page_requires_auth(client):
     assert "/login" in r.headers["location"]
 
 
-async def test_settings_page_renders(auth_client):
-    """GET /settings renders all four config sections."""
-    r = await auth_client.get("/settings", headers={"Accept": "text/html"})
-    assert r.status_code == 200
-    assert "Профиль пользователя" in r.text
-    assert "OpenRouter" in r.text
-    assert "Hevy" in r.text
-    assert "Garmin Connect" in r.text
-    # Password and two-factor share one card — "signing in", not two neighbours
-    # that both talk about the same door.
-    assert "Вход в Vitals" in r.text
-    assert "Двухфакторная защита" in r.text
-    assert 'name="garmin_weight_export_minutes"' in r.text
-    assert 'name="garmin_weight_max_age_days"' in r.text
-    # Verify download links have hx-boost="false" to bypass HTMX boosting
-    assert 'href="/settings/export" class="v-btn text-xs text-center" download hx-boost="false"' in r.text
-    assert 'href="/settings/export-llm" class="v-btn-ghost text-xs text-center" download hx-boost="false"' in r.text
-
-
-async def test_settings_page_has_gear_icon(auth_client):
-    """The gear icon (⚙️ link to /settings) appears in the base layout."""
-    r = await auth_client.get("/weight", headers={"Accept": "text/html"})
-    assert r.status_code == 200
-    assert 'href="/settings"' in r.text
-
-
-async def test_settings_save_profile(auth_client, tmp_path, monkeypatch):
-    """POST /settings/profile writes height and sex to the .env file."""
-    env_file = tmp_path / "test.env"
-    env_file.write_text("VITALS_HEIGHT_CM=190\nVITALS_SEX=male\n", encoding="utf-8")
-    monkeypatch.setenv("VITALS_ENV_FILE", str(env_file))
-
-    r = await auth_client.post(
-        "/settings/profile",
-        data={
-            "height_cm": "185",
-            "sex": "male",
-            "user_age": "30",
-            "timezone": "Europe/Chisinau",
-            "user_program": "тест",
-            "user_goals": "цель1, цель2",
-        },
-    )
-    assert r.status_code == 303
-    assert r.headers["location"] == "/settings?saved=profile"
-
-    content = env_file.read_text(encoding="utf-8")
-    assert "VITALS_HEIGHT_CM=185" in content
-    assert "VITALS_USER_AGE=30" in content
-    assert "VITALS_USER_PROGRAM=тест" in content
-
-
-async def test_settings_save_ai_key(auth_client, tmp_path, monkeypatch):
-    """POST /settings/ai writes the OpenRouter API key."""
-    env_file = tmp_path / "test.env"
-    env_file.write_text("VITALS_OPENROUTER_API_KEY=\n", encoding="utf-8")
-    monkeypatch.setenv("VITALS_ENV_FILE", str(env_file))
-
-    r = await auth_client.post(
-        "/settings/ai",
-        data={
-            "openrouter_api_key": "sk-or-test-123",
-            "llm_model_digest": "anthropic/claude-sonnet-4.6",
-            "llm_model_parser": "google/gemini-2.5-flash",
-            "openrouter_base_url": "https://openrouter.ai/api/v1",
-        },
-    )
-    assert r.status_code == 303
-    assert "saved=ai" in r.headers["location"]
-
-    content = env_file.read_text(encoding="utf-8")
-    assert "VITALS_OPENROUTER_API_KEY=sk-or-test-123" in content
-
-
-async def test_settings_save_ai_sentinel_not_overwritten(auth_client, tmp_path, monkeypatch):
-    """When user submits sentinel value for secret field, existing key is NOT overwritten."""
+async def test_settings_save_ai_empty_key_not_overwritten(auth_client, tmp_path, monkeypatch):
+    """An empty key field means "no change": the stored key survives while the
+    other AI fields are saved."""
     env_file = tmp_path / "test.env"
     env_file.write_text("VITALS_OPENROUTER_API_KEY=sk-or-real-key\n", encoding="utf-8")
     monkeypatch.setenv("VITALS_ENV_FILE", str(env_file))
 
-    # Submitting an empty api_key (like when user leaves placeholder)
     r = await auth_client.post(
-        "/settings/ai",
-        data={
+        f"{URL}/ai",
+        json={
             "openrouter_api_key": "",  # empty = no change
             "llm_model_digest": "anthropic/claude-sonnet-4.6",
             "llm_model_parser": "google/gemini-2.5-flash",
             "openrouter_base_url": "https://openrouter.ai/api/v1",
         },
     )
-    assert r.status_code == 303
+    assert r.status_code == 200
     content = env_file.read_text(encoding="utf-8")
-    # Original key must survive
     assert "VITALS_OPENROUTER_API_KEY=sk-or-real-key" in content
+    assert "VITALS_LLM_MODEL_DIGEST=anthropic/claude-sonnet-4.6" in content
 
 
-async def test_settings_save_hevy(auth_client, tmp_path, monkeypatch):
-    """POST /settings/hevy writes the Hevy API key."""
-    env_file = tmp_path / "test.env"
-    env_file.write_text("VITALS_HEVY_API_KEY=\n", encoding="utf-8")
-    monkeypatch.setenv("VITALS_ENV_FILE", str(env_file))
-
-    r = await auth_client.post("/settings/hevy", data={"hevy_api_key": "hevy_abc123"})
-    assert r.status_code == 303
-    assert "saved=hevy" in r.headers["location"]
-
-    content = env_file.read_text(encoding="utf-8")
-    assert "VITALS_HEVY_API_KEY=hevy_abc123" in content
-
-
-async def test_settings_save_garmin(auth_client, db_session, tmp_path, monkeypatch):
+async def test_settings_save_garmin_is_live_and_leaves_export_off(
+    auth_client, db_session, tmp_path, monkeypatch
+):
     """Credential saves are live, while export remains a separate explicit opt-in."""
     env_file = tmp_path / "test.env"
     env_file.write_text("VITALS_GARMIN_EMAIL=\nVITALS_GARMIN_PASSWORD=\n", encoding="utf-8")
@@ -220,14 +136,10 @@ async def test_settings_save_garmin(auth_client, db_session, tmp_path, monkeypat
     monkeypatch.setenv("VITALS_GARMIN_PASSWORD", "")
 
     r = await auth_client.post(
-        "/settings/garmin",
-        data={
-            "garmin_email": "user@example.com",
-            "garmin_password": "hunter2",
-        },
+        f"{URL}/garmin",
+        json={"garmin_email": "user@example.com", "garmin_password": "hunter2"},
     )
-    assert r.status_code == 303
-    assert "saved=garmin" in r.headers["location"]
+    assert r.status_code == 200
 
     content = env_file.read_text(encoding="utf-8")
     assert "VITALS_GARMIN_EMAIL=user@example.com" in content
@@ -239,10 +151,6 @@ async def test_settings_save_garmin(auth_client, db_session, tmp_path, monkeypat
     assert os.environ["VITALS_GARMIN_PASSWORD"] == "hunter2"
     assert await garmin_weight_service.is_enabled(db_session) is False
 
-    page = await auth_client.get("/settings", headers={"Accept": "text/html"})
-    assert 'hx-post="/settings/garmin/weight-toggle"' in page.text
-    assert 'hx-post="/settings/garmin/weight/send-now"' not in page.text
-
 
 async def test_garmin_weight_toggle_refuses_missing_credentials(
     auth_client, db_session, tmp_path, monkeypatch
@@ -250,21 +158,16 @@ async def test_garmin_weight_toggle_refuses_missing_credentials(
     env_file = tmp_path / "test.env"
     env_file.write_text("VITALS_GARMIN_EMAIL=\nVITALS_GARMIN_PASSWORD=\n", encoding="utf-8")
     monkeypatch.setenv("VITALS_ENV_FILE", str(env_file))
+    monkeypatch.setenv("VITALS_GARMIN_EMAIL", "")
+    monkeypatch.setenv("VITALS_GARMIN_PASSWORD", "")
 
-    r = await auth_client.post(
-        "/settings/garmin/weight-toggle",
-        data={"enabled": "true"},
-        headers={"HX-Request": "true"},
-    )
+    r = await auth_client.post(f"{URL}/garmin/weight-toggle", json={"enabled": True})
 
-    assert r.status_code == 200
-    assert "Экспорт остался выключен" in r.text
+    assert r.status_code == 400
+    assert "credentials_required" in r.text
     from vitals.services import garmin_weight_service
 
     assert await garmin_weight_service.is_enabled(db_session) is False
-    assert not re.search(
-        r'id="s-garmin-weight-export"[^>]*\schecked(?:\s|>)', r.text
-    )
 
 
 async def test_garmin_weight_toggle_applies_live_and_can_turn_off(
@@ -279,17 +182,9 @@ async def test_garmin_weight_toggle_applies_live_and_can_turn_off(
     monkeypatch.setenv("VITALS_GARMIN_EMAIL", "")
     monkeypatch.setenv("VITALS_GARMIN_PASSWORD", "")
 
-    enabled = await auth_client.post(
-        "/settings/garmin/weight-toggle",
-        data={"enabled": "true"},
-        headers={"HX-Request": "true"},
-    )
+    enabled = await auth_client.post(f"{URL}/garmin/weight-toggle", json={"enabled": True})
 
     assert enabled.status_code == 200
-    assert "Экспорт веса включён" in enabled.text
-    assert re.search(
-        r'id="s-garmin-weight-export"[^>]*\schecked(?:\s|>)', enabled.text
-    )
     assert os.environ["VITALS_GARMIN_EMAIL"] == "user@example.com"
     assert os.environ["VITALS_GARMIN_PASSWORD"] == "hunter2"
 
@@ -297,22 +192,12 @@ async def test_garmin_weight_toggle_applies_live_and_can_turn_off(
 
     assert await garmin_weight_service.is_enabled(db_session) is True
 
-    disabled = await auth_client.post(
-        "/settings/garmin/weight-toggle",
-        data={"enabled": "false"},
-        headers={"HX-Request": "true"},
-    )
+    disabled = await auth_client.post(f"{URL}/garmin/weight-toggle", json={"enabled": False})
     assert disabled.status_code == 200
-    assert "Экспорт веса выключен" in disabled.text
     assert await garmin_weight_service.is_enabled(db_session) is False
-    assert not re.search(
-        r'id="s-garmin-weight-export"[^>]*\schecked(?:\s|>)', disabled.text
-    )
 
 
-async def test_garmin_weight_send_now_calls_safe_service(
-    auth_client, monkeypatch
-):
+async def test_garmin_weight_send_now_calls_safe_service(auth_client, monkeypatch):
     from vitals.services import garmin_weight_service
 
     called = {}
@@ -323,169 +208,48 @@ async def test_garmin_weight_send_now_calls_safe_service(
         return {"status": "sent", "sent": True}
 
     monkeypatch.setattr(garmin_weight_service, "send_now", _send_now)
-    r = await auth_client.post(
-        "/settings/garmin/weight/send-now",
-        headers={"HX-Request": "true"},
-    )
+    r = await auth_client.post(f"{URL}/garmin/weight/send-now")
 
     assert r.status_code == 200
-    assert "Последний подходящий вес безопасно сверен с Garmin" in r.text
+    assert r.json() == {"status": "sent"}
     assert called["session"] is not None
     assert called["redis"] is not None
 
 
 @pytest.mark.parametrize(
-    "export_status",
+    "old, new, confirm, reason",
     [
-        "pending",
-        "checking",
-        "sent",
-        "matched",
-        "failed",
-        "skipped",
-        "conflict",
-        "unverified",
-        "delete_pending",
-        "delete_checking",
-        "delete_failed",
-        "deleted",
+        ("wrongpassword", "newpassword123", "newpassword123", "wrong_password"),
+        ("password", "newpass123", "different456", "password_mismatch"),
+        ("password", "short", "short", "password_too_short"),
     ],
 )
-@pytest.mark.parametrize("lang", ["en", "ru"])
-def test_garmin_weight_partial_renders_every_status_and_escapes_error(
-    export_status, lang
+async def test_settings_change_password_rejections_name_their_reason(
+    auth_client, tmp_path, monkeypatch, old, new, confirm, reason
 ):
-    from datetime import date, datetime
+    from vitals.utils.passwords import hash_password
 
-    from vitals.i18n import current_lang, t
-    from web.templating import format_number, templates
-
-    token = current_lang.set(lang)
-    try:
-        expected = t(
-            f"settings.garmin_weight_status.{export_status}",
-            date="17-08-2026",
-            weight=format_number(84.5),
-        )
-        expected_next = t(
-            "settings.garmin_weight_next_attempt", at="17-08-2026 10:30"
-        )
-        html = templates.get_template("partials/garmin_weight_export.html").render(
-            {
-                "garmin_credentials_configured": True,
-                "garmin_weight_action": None,
-                "garmin_weight_export": {
-                    "enabled": True,
-                    "status": export_status,
-                    "date": date(2026, 8, 17),
-                    "weight_kg": 84.5,
-                    "last_error": "<script>alert('secret')</script>",
-                    "next_attempt_at": datetime(2026, 8, 17, 10, 30),
-                },
-            }
-        )
-    finally:
-        current_lang.reset(token)
-
-    assert expected in html
-    assert expected_next in html
-    assert "<script>alert('secret')</script>" not in html
-    assert "&lt;script&gt;" in html
-
-
-async def test_settings_save_mcp(auth_client, tmp_path, monkeypatch):
-    """POST /settings/mcp writes client id and secret."""
-    env_file = tmp_path / "test.env"
-    env_file.write_text("VITALS_MCP_CLIENT_ID=\nVITALS_MCP_CLIENT_SECRET=\n", encoding="utf-8")
-    monkeypatch.setenv("VITALS_ENV_FILE", str(env_file))
-
-    r = await auth_client.post(
-        "/settings/mcp",
-        data={"mcp_client_id": "test-id", "mcp_client_secret": "test-secret"},
-    )
-    assert r.status_code == 303
-    assert "saved=mcp" in r.headers["location"]
-
-    content = env_file.read_text(encoding="utf-8")
-    assert "VITALS_MCP_CLIENT_ID=test-id" in content
-    assert "VITALS_MCP_CLIENT_SECRET=test-secret" in content
-
-
-
-async def test_settings_change_password_wrong_old(auth_client):
-    """POST /settings/password with wrong current password shows error."""
-    r = await auth_client.post(
-        "/settings/password",
-        data={
-            "old_password": "wrongpassword",
-            "new_password": "newpassword123",
-            "new_password_confirm": "newpassword123",
-        },
-        headers={"Accept": "text/html"},
-    )
-    assert r.status_code == 200
-    assert "Неверный текущий пароль" in r.text
-
-
-async def test_settings_change_password_mismatch(auth_client):
-    """POST /settings/password with mismatched new passwords shows error."""
-    r = await auth_client.post(
-        "/settings/password",
-        data={
-            "old_password": "password",
-            "new_password": "newpass123",
-            "new_password_confirm": "different456",
-        },
-        headers={"Accept": "text/html"},
-    )
-    assert r.status_code == 200
-    assert "не совпадают" in r.text
-
-
-async def test_settings_change_password_too_short(auth_client):
-    """POST /settings/password with short new password shows error."""
-    r = await auth_client.post(
-        "/settings/password",
-        data={
-            "old_password": "password",
-            "new_password": "short",
-            "new_password_confirm": "short",
-        },
-        headers={"Accept": "text/html"},
-    )
-    assert r.status_code == 200
-    assert "8 символов" in r.text
-
-
-async def test_settings_change_password_success(auth_client, tmp_path, monkeypatch):
-    """POST /settings/password with valid data updates the hash in .env."""
     env_file = tmp_path / "test.env"
     env_file.write_text("VITALS_AUTH_PASSWORD_HASH=old_hash\n", encoding="utf-8")
     monkeypatch.setenv("VITALS_ENV_FILE", str(env_file))
-    # The handler now updates os.environ live; pin it so monkeypatch restores the
-    # original hash on teardown (otherwise the new password leaks to later tests).
-    monkeypatch.setenv("VITALS_AUTH_PASSWORD_HASH", os.environ["VITALS_AUTH_PASSWORD_HASH"])
+    monkeypatch.setenv("VITALS_AUTH_PASSWORD_HASH", hash_password("password"))
 
     r = await auth_client.post(
-        "/settings/password",
-        data={
-            "old_password": "password",  # matches TEST_PASSWORD in conftest
-            "new_password": "mynewpassword",
-            "new_password_confirm": "mynewpassword",
-        },
+        f"{URL}/password",
+        json={"old_password": old, "new_password": new, "new_password_confirm": confirm},
     )
-    assert r.status_code == 303
-    assert "saved=password" in r.headers["location"]
-
-    content = env_file.read_text(encoding="utf-8")
-    # The hash was updated (bcrypt hashes start with $2b$)
-    assert "$2b$" in content
-    assert "old_hash" not in content
+    assert r.status_code == 400
+    assert reason in r.text
+    # A rejected change leaves the stored hash alone.
+    assert env_file.read_text(encoding="utf-8") == "VITALS_AUTH_PASSWORD_HASH=old_hash\n"
 
 
-async def test_settings_change_password_takes_effect_live(auth_client, tmp_path, monkeypatch):
-    """After a password change the new password authenticates and the old one no
-    longer does — in the same process, without a container restart."""
+async def test_settings_change_password_writes_hash_and_takes_effect_live(
+    auth_client, tmp_path, monkeypatch
+):
+    """After a password change the new hash is stored, the new password
+    authenticates and the old one no longer does — in the same process, without
+    a container restart."""
     from web.auth import authenticate
     from vitals.utils.passwords import hash_password
 
@@ -497,20 +261,24 @@ async def test_settings_change_password_takes_effect_live(auth_client, tmp_path,
     monkeypatch.setenv("VITALS_AUTH_PASSWORD_HASH", hash_password("password"))
 
     r = await auth_client.post(
-        "/settings/password",
-        data={
-            "old_password": "password",
+        f"{URL}/password",
+        json={
+            "old_password": "password",  # matches TEST_PASSWORD in conftest
             "new_password": "brandnewpass",
             "new_password_confirm": "brandnewpass",
         },
     )
-    assert r.status_code == 303
+    assert r.status_code == 200
+
+    content = env_file.read_text(encoding="utf-8")
+    assert "$2b$" in content  # bcrypt hash
+    assert "old_hash" not in content
 
     assert authenticate("tester", "password") is False
     assert authenticate("tester", "brandnewpass") is True
 
 
-async def test_settings_restart_endpoint(auth_client, monkeypatch):
+async def test_settings_restart_schedules_a_sigterm(auth_client, monkeypatch):
     """POST /settings/restart triggers a delayed restart without killing the process in tests."""
     killed = []
 
@@ -519,7 +287,7 @@ async def test_settings_restart_endpoint(auth_client, monkeypatch):
 
     monkeypatch.setattr("os.kill", mock_kill)
 
-    r = await auth_client.post("/settings/restart")
+    r = await auth_client.post(f"{URL}/restart")
     assert r.status_code == 200
     assert r.json() == {"status": "restarting"}
 
@@ -527,66 +295,40 @@ async def test_settings_restart_endpoint(auth_client, monkeypatch):
     import asyncio
     await asyncio.sleep(0.6)
 
-    import os
     assert len(killed) == 1
     assert killed[0] == (os.getpid(), 15)  # 15 is signal.SIGTERM
 
 
 # ── proactive settings regressions ────────────────────────────────────────────
 
+PROACTIVE_FORM = {
+    "brief_time": "11:00",
+    "evening_time": "23:45",
+    "quiet_start": "02:00",
+    "quiet_end": "10:00",
+    "garmin_sync_hours": 6,
+    "pulse_seconds": 900,
+    "pulse_start_hour": 8,
+    "pulse_end_hour": 24,
+}
+
 
 async def test_settings_save_proactive_flags_adjusted_values(auth_client):
     """prefs.sanitize() (called inside prefs.set_prefs) silently clamps
-    out-of-range input. The redirect must say so instead of a bare "saved",
+    out-of-range input. The response must say so instead of a bare "saved",
     or the user has no way to know their number was changed underneath them."""
     r = await auth_client.post(
-        "/settings/proactive",
-        data={
-            "brief_time": "11:00",
-            "evening_time": "23:45",
-            "quiet_start": "02:00",
-            "quiet_end": "10:00",
-            "daily_budget": "9000",  # BUDGET_RANGE is (1, 12) — gets clamped
-            "garmin_sync_hours": "6",
-            "pulse_seconds": "900",
-            "pulse_start_hour": "8",
-            "pulse_end_hour": "24",
-        },
+        f"{URL}/proactive",
+        json={**PROACTIVE_FORM, "daily_budget": 9000},  # BUDGET_RANGE is (1, 12) — gets clamped
     )
-    assert r.status_code == 303
-    assert r.headers["location"] == "/settings?saved=proactive&adjusted=1"
+    assert r.status_code == 200
+    assert r.json()["saved"] is True
+    assert r.json()["adjusted"] is True
 
 
 async def test_settings_save_proactive_no_adjusted_flag_in_range(auth_client):
     """The flip side: an in-range save must not claim anything was adjusted."""
-    r = await auth_client.post(
-        "/settings/proactive",
-        data={
-            "brief_time": "11:00",
-            "evening_time": "23:45",
-            "quiet_start": "02:00",
-            "quiet_end": "10:00",
-            "daily_budget": "4",
-            "garmin_sync_hours": "6",
-            "pulse_seconds": "900",
-            "pulse_start_hour": "8",
-            "pulse_end_hour": "24",
-        },
-    )
-    assert r.status_code == 303
-    assert r.headers["location"] == "/settings?saved=proactive"
-
-
-async def test_settings_modules_toggle_updates_proactive_chip_oob(auth_client):
-    """The proactive card's "module off" chip is populated once at the
-    initial page load; toggling `signals` via /settings/modules (hx-swap="none"
-    + OOB) must carry a fresh copy of the chip, or it goes stale until reload."""
-    r = await auth_client.post("/settings/modules", data={"module": "signals", "enabled": "false"})
+    r = await auth_client.post(f"{URL}/proactive", json={**PROACTIVE_FORM, "daily_budget": 4})
     assert r.status_code == 200
-    assert 'id="proactive-off-chip"' in r.text
-    assert 'hx-swap-oob="true"' in r.text
-    assert "модуль выключен" in r.text  # settings.proactive_off_chip (ru)
-
-    r = await auth_client.post("/settings/modules", data={"module": "signals", "enabled": "true"})
-    assert r.status_code == 200
-    assert '<span id="proactive-off-chip" hx-swap-oob="true"></span>' in r.text
+    assert r.json()["saved"] is True
+    assert not r.json()["adjusted"]

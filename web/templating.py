@@ -1,4 +1,5 @@
-"""Jinja2 environment configuration and custom filters for the web interface."""
+"""Jinja2 environment for the pages the server still renders: sign-in, OAuth, the 404 page and
+the published doctor report."""
 from __future__ import annotations
 
 import os
@@ -7,16 +8,7 @@ from typing import Any
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup, escape
 
-from vitals.i18n import t, decimal, get_js_strings, plural
-from vitals.services.modules_service import (
-    MODULE_REGISTRY,
-    NAV_RUBRICS,
-    bottom_slots,
-    more_rubrics,
-    more_routes,
-    nav_modules,
-)
-from vitals.services.supplements_service import timing_bucket
+from vitals.i18n import t, decimal, plural
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
@@ -104,19 +96,8 @@ def format_date(value: Any) -> str:
     return str(value)
 
 
-def format_hm(seconds: Any) -> str:
-    """Format a duration in seconds as "7 ч 18 мин"; falsy input renders as an
-    em dash. The abbreviations come from the catalogue: "8h 40m" sitting next to
-    "Оценка сна" was the app speaking two languages on one line."""
-    if not seconds:
-        return "—"
-    seconds = int(seconds)
-    return f"{seconds // 3600} {t('common.hour_abbr')} {(seconds % 3600) // 60} {t('common.min_abbr')}"
 
 
-def meal_word(n: Any) -> str:
-    """Russian plural for meal count: 1 приём, 2 приёма, 5 приёмов."""
-    return plural_ru(n, "приём", "приёма", "приёмов")
 
 
 def days_word(n: Any) -> str:
@@ -125,6 +106,8 @@ def days_word(n: Any) -> str:
     doesn't read "за 42 дней" — a counted noun in Russian has three forms and a
     hardcoded one is wrong for two thirds of the numbers."""
     return plural(n, t("common.day_one"), t("common.day_few"), t("common.day_many"))
+
+
 
 
 def format_domain(value: Any) -> str:
@@ -148,25 +131,9 @@ def format_unit(value: Any) -> Markup:
 # Register filters and globals
 templates.env.filters["format_number"] = format_number
 templates.env.filters["format_date"] = format_date
-templates.env.filters["format_hm"] = format_hm
 templates.env.filters["plural_ru"] = plural_ru
-templates.env.filters["plural"] = lambda n, *args: plural(n, *args)
-templates.env.filters["meal_word"] = meal_word
 templates.env.filters["days_word"] = days_word
 templates.env.filters["format_unit"] = format_unit
 templates.env.filters["format_domain"] = format_domain
-templates.env.filters["timing_bucket"] = timing_bucket
 templates.env.globals["static_version"] = static_version
 templates.env.globals["t"] = t
-templates.env.globals["get_js_strings"] = get_js_strings
-templates.env.globals["plural"] = plural
-# Navigation registry — the rail, the masthead tabs and the mobile nav all read
-# these instead of keeping their own copy of the section list.
-templates.env.globals["module_registry"] = MODULE_REGISTRY
-templates.env.globals["module_rubrics"] = NAV_RUBRICS
-templates.env.globals["nav_modules"] = nav_modules
-# Phone bottom bar (five fixed columns) and the "More" screen read the same
-# registry through these two derived views — see modules_service.
-templates.env.globals["bottom_slots"] = bottom_slots
-templates.env.globals["more_rubrics"] = more_rubrics
-templates.env.globals["more_routes"] = more_routes

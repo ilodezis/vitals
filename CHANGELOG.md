@@ -8,6 +8,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed — the React app is the interface
+
+- **The app now lives on the site's own addresses** (`/today`, `/weight`, `/recovery`, …). The old server-rendered interface (Jinja, HTMX, Alpine, Chart.js, Tailwind) and every route behind it are gone; `/app/...`, `/garmin` and `/hevy` answer with a permanent redirect, so bookmarks and an installed app keep working.
+- **The content security policy no longer allows inline or `eval`'d scripts.** The pages the server still renders (sign-in, two-step code, OAuth, 404) keep their behaviour in one external file.
+- **Settings can switch a section back on.** The list came from the navigation, which holds only what is on, so a section you switched off disappeared from the list; it now comes from the full registry.
+- **A language change takes effect on the first reload.** The copy of the session kept on the device was read before the new language arrived.
+- **A doctor report with nothing in its window is refused** by the JSON API as it was by the old form, and **a digest without an AI key says so** instead of failing.
+- **Every request skips the rail's numbers query.** It only fed the old interface's rail.
+
 ### Performance — the app's read paths
 
 - **Workouts no longer asks once per set** — the exercise catalog read every exercise's sessions three times over, and each session's sets with a query of its own: 159 queries for the demo's 50 workouts, growing with every one logged. Every exercise's history now comes from two reads (8 queries, ~125 → ~15 ms).

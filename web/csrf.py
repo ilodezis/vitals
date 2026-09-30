@@ -2,8 +2,8 @@
 
 Session cookies are ``SameSite=lax`` (primary CSRF defence). This adds a second,
 independent barrier: unsafe-method requests carrying a cross-origin ``Origin``
-header are rejected. The CSP keeps ``'unsafe-eval'`` because Alpine compiles every
-``x-*`` expression with ``Function()`` — without it the UI silently breaks.
+header are rejected. The CSP allows scripts only from our own origin: no inline
+script and no ``eval`` (the React app compiles nothing at runtime).
 """
 from __future__ import annotations
 
@@ -37,16 +37,16 @@ def add_csrf_origin_check(app: FastAPI) -> None:
     app.middleware("http")(_origin_check)
 
 
-# 'unsafe-eval' is REQUIRED by Alpine.js (Function() compilation of x-* directives).
-# 'unsafe-inline' covers inline <script> + Alpine/HTMX inline attributes. img-src
-# data:/blob: cover Chart.js canvases and inline SVG icons.
-# Scripts and fonts are vendored under /static (no CDN) — the one exception is
-# Cloudflare's Web Analytics beacon, which Cloudflare injects at the edge (into
-# the proxied HTML response) rather than anything our own templates load, so
-# there's no template reference to point at; it needs its own
-# script-src/connect-src entries or the browser blocks it outright. Fonts
-# (Inter / Bricolage Grotesque — no monospace, per the design system)
-# are self-hosted woff2 under web/static/fonts/, so font-src/style-src stay 'self'.
+# Scripts come only from our own origin — no 'unsafe-inline', no 'unsafe-eval'. The app is a
+# React build (hashed files under /static/app) and the few server-rendered pages keep their
+# behaviour in /static/server-pages.js, so nothing needs an inline script. The one outside
+# host is Cloudflare's Web Analytics beacon, which Cloudflare injects at the edge (into the
+# proxied HTML response) rather than anything we load, so it needs its own
+# script-src/connect-src entries or the browser blocks it outright.
+# style-src keeps 'unsafe-inline': the app's motion writes inline styles (Web Animations,
+# transforms set from gestures) and the server pages carry their own <style>. img-src
+# data:/blob: cover inline SVG and the photo previews. Fonts (Geologica / Golos Text) are
+# self-hosted woff2, so font-src stays 'self'.
 #
 # form-action allows any https target, not just 'self': the consent form posts to
 # /oauth/authorize/approve, that response 302s to the connector's callback, and the
@@ -55,11 +55,10 @@ def add_csrf_origin_check(app: FastAPI) -> None:
 # enumerated here. Failure mode when it is too narrow: the "Approve" click does
 # nothing, and the console names the *form action* instead of the blocked hop, which
 # reads like a same-origin violation and sends you looking in the wrong place. The
-# real gate on where an approval may land is redirect_allowed() in the OAuth router;
-# with 'unsafe-inline' scripts permitted above, a stricter form-action buys nothing.
+# real gate on where an approval may land is redirect_allowed() in the OAuth router.
 _CSP = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; "
+    "script-src 'self' https://static.cloudflareinsights.com; "
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: blob: https:; "
     "font-src 'self'; "

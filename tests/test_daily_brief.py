@@ -636,36 +636,36 @@ def _patch_job(monkeypatch, notifier, llm):
 async def test_build_button_shows_the_brief_and_sends_nothing(
     auth_client, db_session, monkeypatch
 ):
-    from web.routers import reports as reports_router
+    from vitals.services import reports_service
 
-    monkeypatch.setattr(reports_router, "LLMClient", lambda *a, **kw: FakeLLM())
+    monkeypatch.setattr(reports_service, "LLMClient", lambda *a, **kw: FakeLLM())
     monkeypatch.setattr(brief, "today_local", lambda: DAY)
     await _seed_day(db_session)
 
-    r = await auth_client.post("/reports/brief")
-    assert r.status_code == 303
-    assert r.headers["location"] == "/reports?brief=ok"
+    r = await auth_client.post("/api/v1/reports/briefs/build")
+    assert r.status_code == 200
+    assert "Восстановление в норме" in r.json()["content"]
 
     rows = (await db_session.execute(select(WeeklyDigest))).scalars().all()
     assert [row.kind for row in rows] == [DigestKind.DAILY_BRIEF.value]
     assert rows[0].source == Source.MANUAL.value
     assert (await db_session.execute(select(Notification))).scalars().all() == []
 
-    page = await auth_client.get("/reports")
-    assert "Восстановление в норме" in page.text
+    page = (await auth_client.get("/api/v1/reports")).json()
+    assert "Восстановление в норме" in page["latestBrief"]["content"]
 
 
 async def test_test_send_goes_out_off_budget(auth_client, db_session, monkeypatch):
     """The point of this button is catching broken formatting, so it must send even
     after the day's budget is spent — and it isn't the bot talking first."""
+    from vitals.services import reports_service
     from vitals.utils.timeutils import now_local
     from web.main import app
-    from web.routers import reports as reports_router
     from web.routers.telegram import get_notifier
 
     notifier = FakeNotifier()
     app.dependency_overrides[get_notifier] = lambda: notifier
-    monkeypatch.setattr(reports_router, "LLMClient", lambda *a, **kw: FakeLLM())
+    monkeypatch.setattr(reports_service, "LLMClient", lambda *a, **kw: FakeLLM())
     monkeypatch.setattr(brief, "today_local", lambda: DAY)
     await _seed_day(db_session)
 
@@ -680,8 +680,9 @@ async def test_test_send_goes_out_off_budget(auth_client, db_session, monkeypatc
     await db_session.commit()
     assert await delivery.sent_today(db_session) >= delivery.DAILY_BUDGET
 
-    r = await auth_client.post("/reports/brief/test")
-    assert r.headers["location"] == "/reports?brief=sent"
+    r = await auth_client.post("/api/v1/reports/briefs/test")
+    assert r.status_code == 200
+    assert r.json()["result"]["sent"] is True
     assert len(notifier.sent) == 1
     assert notifier.sent[0]["text"].startswith("Сон 80")
 
@@ -691,21 +692,23 @@ async def test_test_send_is_not_duplicated_by_a_second_tap(auth_client, db_sessi
     category with no dupe protection. A repeat call within the same day (a
     double-tap, or a retried request) must not fire a second Telegram message
     or pay for a second LLM call."""
+    from vitals.services import reports_service
     from web.main import app
-    from web.routers import reports as reports_router
     from web.routers.telegram import get_notifier
 
     notifier = FakeNotifier()
     app.dependency_overrides[get_notifier] = lambda: notifier
-    monkeypatch.setattr(reports_router, "LLMClient", lambda *a, **kw: FakeLLM())
+    monkeypatch.setattr(reports_service, "LLMClient", lambda *a, **kw: FakeLLM())
     monkeypatch.setattr(brief, "today_local", lambda: DAY)
     await _seed_day(db_session)
 
-    r1 = await auth_client.post("/reports/brief/test")
-    r2 = await auth_client.post("/reports/brief/test")
+    r1 = await auth_client.post("/api/v1/reports/briefs/test")
+    r2 = await auth_client.post("/api/v1/reports/briefs/test")
 
-    assert r1.headers["location"] == "/reports?brief=sent"
-    assert r2.headers["location"] == "/reports?brief=error"  # deduped, not a real error
+    assert r1.json()["result"]["sent"] is True
+    # deduped, not a real error
+    assert r2.status_code == 200
+    assert r2.json()["result"]["sent"] is False
     assert len(notifier.sent) == 1
     journal = (await db_session.execute(select(Notification))).scalars().all()
     assert [n.category for n in journal] == [delivery.CATEGORY_TEST]
@@ -716,5 +719,6 @@ async def test_test_send_without_a_channel_says_so(auth_client, db_session, monk
     from web.routers.telegram import get_notifier
 
     app.dependency_overrides[get_notifier] = lambda: None
-    r = await auth_client.post("/reports/brief/test")
-    assert r.headers["location"] == "/reports?brief=no_channel"
+    r = await auth_client.post("/api/v1/reports/briefs/test")
+    assert r.status_code == 400
+    assert "telegram_bot_not_configured" in r.text

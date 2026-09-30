@@ -14,6 +14,7 @@ from vitals.services import (
 )
 from vitals.utils.timeutils import today_local
 
+API = "/api/v1/hrt"
 
 
 async def _build_staggered_cycle(db_session):
@@ -235,19 +236,20 @@ async def test_import_normalizes_schedule_via_validator(db_session):
 async def test_route_save_and_apply_template(auth_client, db_session):
     cycle = await _build_staggered_cycle(db_session)
     r = await auth_client.post(
-        f"/hrt/cycle/{cycle.id}/save-template", data={"name": "UI template"},
+        f"{API}/cycles/{cycle.id}/save-template", json={"name": "UI template"},
     )
-    assert r.status_code == 303
+    assert r.status_code == 201
     templates = await hrt_template_service.list_templates(db_session)
     assert [tp.name for tp in templates] == ["UI template"]
 
     start = (today_local() + timedelta(days=14)).isoformat()
     r = await auth_client.post(
-        f"/hrt/template/{templates[0].id}/create-cycle", data={"start_date": start},
+        f"{API}/templates/{templates[0].id}/create-cycle", json={"startDate": start},
     )
-    assert r.status_code == 303
-    page = await auth_client.get("/hrt")
-    assert "UI template" in page.text
+    assert r.status_code == 201
+    screen = (await auth_client.get(API)).json()
+    assert [t["name"] for t in screen["templates"]] == ["UI template"]
+    assert r.json()["id"] != cycle.id
 
 
 async def test_route_export_download_and_import(auth_client, db_session):
@@ -257,51 +259,36 @@ async def test_route_export_download_and_import(auth_client, db_session):
     )
     await db_session.commit()
 
-    r = await auth_client.get(f"/hrt/template/{template.id}/export")
+    r = await auth_client.get(f"{API}/templates/{template.id}/export")
     assert r.status_code == 200
-    assert "attachment" in r.headers["content-disposition"]
     payload = r.json()
     assert payload["format"] == hrt_template_service.EXPORT_FORMAT
 
     # Re-importing the very payload we exported is flagged as a duplicate...
     r = await auth_client.post(
-        "/hrt/template/import", data={"payload": json.dumps(payload)},
+        f"{API}/templates/import", json={"payload": json.dumps(payload)},
     )
-    assert r.status_code == 422
-    assert "already imported" in r.json()["error"]
+    assert r.status_code == 400
+    assert "already imported" in r.json()["message"]
     # ...but the same content under another name imports fine.
     payload["name"] = "Shared by a friend"
     r = await auth_client.post(
-        "/hrt/template/import", data={"payload": json.dumps(payload)},
+        f"{API}/templates/import", json={"payload": json.dumps(payload)},
     )
-    assert r.status_code == 303
+    assert r.status_code == 201
     names = [tp.name for tp in await hrt_template_service.list_templates(db_session)]
     assert sorted(names) == ["Shared", "Shared by a friend"]
 
 
-async def test_route_import_invalid_payload_is_422(auth_client):
-    r = await auth_client.post("/hrt/template/import", data={"payload": "{{nope"})
-    assert r.status_code == 422
-    assert "error" in r.json()
-
-
-async def test_route_template_rendered_on_dashboard(auth_client, db_session):
-    cycle = await _build_staggered_cycle(db_session)
-    await hrt_template_service.save_cycle_as_template(
-        db_session, cycle.id, name="Visible name",
-    )
-    await db_session.commit()
-    page = await auth_client.get("/hrt")
-    assert "Visible name" in page.text
-    assert hrt_template_service.EXPORT_FORMAT in page.text  # share code textarea
-    # The export button copies the /export payload to the clipboard.
-    assert "navigator.clipboard.writeText" in page.text
-    assert "/export" in page.text
+async def test_route_import_invalid_payload_is_refused(auth_client):
+    r = await auth_client.post(f"{API}/templates/import", json={"payload": "{{nope"})
+    assert r.status_code == 400
+    assert r.json()["error"] == "invalid"
 
 
 # ── Fix pack: 404 export, same-day supersede, garbage date ────────────────────
 async def test_route_export_missing_template_is_404(auth_client):
-    r = await auth_client.get("/hrt/template/99999/export")
+    r = await auth_client.get(f"{API}/templates/99999/export")
     assert r.status_code == 404
 
 
@@ -330,10 +317,9 @@ async def test_route_create_from_template_garbage_date_is_422(auth_client, db_se
     )
     await db_session.commit()
     r = await auth_client.post(
-        f"/hrt/template/{template.id}/create-cycle", data={"start_date": "31-12-2026"},
+        f"{API}/templates/{template.id}/create-cycle", json={"startDate": "31-12-2026"},
     )
     assert r.status_code == 422
-    assert "invalid date" in r.json()["error"]
 
 
 # ── Backlog pack: import boundaries, dedup, EN locale, item editing ───────────
@@ -409,20 +395,6 @@ async def test_import_name_clash_gets_numbered_name(db_session):
     assert imported.name == "Clash (2)"
 
 
-async def test_hrt_page_renders_in_english(auth_client, db_session, redis):
-    """The ru-only fixture hid EN regressions — render the page in English."""
-    from vitals.services import language_service
-
-    cycle = await _build_staggered_cycle(db_session)
-    await hrt_template_service.save_cycle_as_template(db_session, cycle.id, name="EN tpl")
-    await language_service.set_language(db_session, "en", redis)
-    await db_session.commit()
-    page = await auth_client.get("/hrt")
-    assert page.status_code == 200
-    for needle in ("Cycle templates", "Start week", "Bloodwork cadence", "Import"):
-        assert needle in page.text, needle
-
-
 # ── Item editing (no delete + re-add) ─────────────────────────────────────────
 async def test_update_cycle_item_dose_and_offset(db_session):
     cycle = await _build_staggered_cycle(db_session)
@@ -457,38 +429,38 @@ async def test_route_edit_item_flat(auth_client, db_session):
     cycle = await _build_staggered_cycle(db_session)
     await db_session.refresh(cycle)
     flat = next(i for i in cycle.items if i.compound_key == "testosterone_enanthate")
-    r = await auth_client.post(
-        f"/hrt/cycle/item/{flat.id}/edit",
-        data={"dose": "175", "interval_days": "3.5", "duration_days": "91",
-              "start_week": "2"},
+    r = await auth_client.patch(
+        f"{API}/cycle-items/{flat.id}",
+        json={"dose": 175, "intervalDays": 3.5, "durationDays": 91, "startWeek": 2},
     )
-    assert r.status_code == 303
+    assert r.status_code == 200
     await db_session.refresh(flat)
     assert flat.schedule == [{"dose": 175.0, "interval_days": 3.5, "duration_days": 91}]
     assert flat.start_offset_days == 7
 
 
 async def test_route_edit_item_week_only_keeps_schedule(auth_client, db_session):
-    """The complex-schedule form posts only start_week — schedule must survive."""
+    """The complex-schedule form sends only startWeek — schedule must survive."""
     cycle = await _build_staggered_cycle(db_session)
     await db_session.refresh(cycle)
     winny = next(i for i in cycle.items if i.compound_key == "stanozolol_oral")
     before = winny.schedule
-    r = await auth_client.post(
-        f"/hrt/cycle/item/{winny.id}/edit", data={"start_week": "6"},
-    )
-    assert r.status_code == 303
+    r = await auth_client.patch(f"{API}/cycle-items/{winny.id}", json={"startWeek": 6})
+    assert r.status_code == 200
     await db_session.refresh(winny)
     assert winny.schedule == before
     assert winny.start_offset_days == 35  # (6-1)*7
 
 
-async def test_route_edit_item_missing_404_and_bad_week_422(auth_client, db_session):
-    r = await auth_client.post("/hrt/cycle/item/99999/edit", data={"start_week": "2"})
+async def test_route_edit_item_missing_404_and_bad_week_refused(auth_client, db_session):
+    r = await auth_client.patch(f"{API}/cycle-items/99999", json={"startWeek": 2})
     assert r.status_code == 404
     cycle = await _build_staggered_cycle(db_session)
     await db_session.refresh(cycle)
-    r = await auth_client.post(
-        f"/hrt/cycle/item/{cycle.items[0].id}/edit", data={"start_week": "1.5"},
+    r = await auth_client.patch(
+        f"{API}/cycle-items/{cycle.items[0].id}", json={"startWeek": 1.5},
     )
-    assert r.status_code == 422
+    assert r.status_code == 400
+    assert r.json()["error"] == "invalid"
+
+
