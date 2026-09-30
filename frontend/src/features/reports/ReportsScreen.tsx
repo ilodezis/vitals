@@ -7,18 +7,12 @@ import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
+import { parseIsoDate, shortDate } from '@/lib/dates'
+import { formatNumber } from '@/lib/format'
 import { Markdown } from '@/lib/markdown'
 import type { MilestoneItem } from './types'
 import { useReportsView } from './useReportsView'
 import './reports.css'
-
-const DOM_RU: Record<string, string> = {
-  weight: 'Вес',
-  labs: 'Анализы',
-  garmin: 'Garmin',
-  nutrition: 'Питание',
-  workouts: 'Тренировки',
-}
 
 const DOM_TONE: Record<string, 'good' | 'cool' | 'violet'> = {
   weight: 'good',
@@ -27,7 +21,7 @@ const DOM_TONE: Record<string, 'good' | 'cool' | 'violet'> = {
 }
 
 export default function ReportsScreen() {
-  const { t } = useT()
+  const { t, lang } = useT()
   const view = useReportsView()
   const queryClient = useQueryClient()
 
@@ -36,7 +30,7 @@ export default function ReportsScreen() {
   const [goalName, setGoalName] = useState('')
   const [goalDom, setGoalDom] = useState('weight')
   const [goalTarget, setGoalTarget] = useState('82')
-  const [goalUnit, setGoalUnit] = useState('кг')
+  const [goalUnit, setGoalUnit] = useState(() => t('app.unit.kg') || 'kg')
   const [goalDeadline, setGoalDeadline] = useState('')
   const [isSubmittingGoal, setIsSubmittingGoal] = useState(false)
 
@@ -52,6 +46,16 @@ export default function ReportsScreen() {
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['reports'] })
+  }
+
+  const getDomainLabel = (d: string): string => {
+    const key = `nav.${d}`
+    const trans = t(key)
+    if (trans && trans !== key) return trans
+    const domKey = `app.domain.${d}`
+    const domTrans = t(domKey)
+    if (domTrans && domTrans !== domKey) return domTrans
+    return d
   }
 
   const handleCreateGoal = async (): Promise<boolean> => {
@@ -70,7 +74,7 @@ export default function ReportsScreen() {
           deadline: goalDeadline || null,
         },
       })
-      toast('Цель создана')
+      toast(t('app.reports.toast_goal_created'))
       setGoalFormOpen(false)
       setGoalName('')
       refresh()
@@ -89,7 +93,7 @@ export default function ReportsScreen() {
         params: { path: { milestone_id: id } },
         body: { status },
       })
-      toast('Статус обновлён')
+      toast(t('app.reports.toast_status_updated'))
       refresh()
     } catch (err: any) {
       toast(err.message || 'Error updating status', { icon: 'warn' })
@@ -114,10 +118,10 @@ export default function ReportsScreen() {
       await api.POST('/api/v1/reports/digests', {
         body: { periodDays: digestDays },
       })
-      toast('Разбор сгенерирован')
+      toast(t('app.reports.toast_digest_ready'))
       refresh()
     } catch (err: any) {
-      toast(err.message || 'Не удалось собрать дайджест', { icon: 'warn' })
+      toast(err.message || t('app.reports.toast_digest_failed'), { icon: 'warn' })
     } finally {
       setIsGeneratingDigest(false)
     }
@@ -128,11 +132,11 @@ export default function ReportsScreen() {
     setBriefStatus(null)
     try {
       await api.POST('/api/v1/reports/briefs/build', {})
-      setBriefStatus('Бриф собран — ниже. Не отправлен.')
+      setBriefStatus(t('app.reports.brief_built'))
       setBriefStatusTone('info')
       refresh()
     } catch (err: any) {
-      setBriefStatus(err.message || 'Не удалось собрать бриф. Проверьте баланс/ключ OpenRouter.')
+      setBriefStatus(err.message || 'Error building brief')
       setBriefStatusTone('warn')
     } finally {
       setIsLoadingBrief(false)
@@ -144,15 +148,27 @@ export default function ReportsScreen() {
     setBriefStatus(null)
     try {
       await api.POST('/api/v1/reports/briefs/test', {})
-      setBriefStatus('Тестовое сообщение отправлено в Telegram.')
+      setBriefStatus(t('app.reports.brief_test_sent'))
       setBriefStatusTone('info')
       refresh()
     } catch (err: any) {
-      setBriefStatus(err.message || 'Не удалось отправить тестовое. Проверьте настройки Telegram.')
+      setBriefStatus(err.message || 'Error sending test message')
       setBriefStatusTone('warn')
     } finally {
       setIsLoadingBrief(false)
     }
+  }
+
+  const formatDaysOpt = (d: number): string => {
+    const key =
+      d === 1
+        ? 'app.reports.opt_1_d'
+        : d === 3
+          ? 'app.reports.opt_3_d'
+          : d === 7
+            ? 'app.reports.opt_7_d'
+            : 'app.reports.opt_30_d'
+    return t(key)
   }
 
   return (
@@ -163,63 +179,63 @@ export default function ReportsScreen() {
         <div className="figs inline">
           <div className="f">
             <div className="f-v">{view.activeGoalsCount}</div>
-            <div className="f-l">Активные цели</div>
+            <div className="f-l">{t('app.reports.active_goals')}</div>
           </div>
           <div className="f">
             <div className="f-v">{view.digestsCount}</div>
-            <div className="f-l">Дайджесты</div>
+            <div className="f-l">{t('app.reports.digests_count')}</div>
           </div>
           <div className="f">
             <div className="f-v">
-              {view.latestDigest?.date || '—'}
+              {view.latestDigest?.date ? shortDate(parseIsoDate(view.latestDigest.date), lang) : '—'}
             </div>
-            <div className="f-l">Последний дайджест</div>
+            <div className="f-l">{t('app.reports.latest_digest')}</div>
           </div>
         </div>
       </Headline>
 
       <p className="sub lede">
-        ИИ-дайджесты по неделям и отслеживание долгосрочных целей по всем доменам.
+        {t('app.reports.lede')}
       </p>
 
-      <div className="grid mt-6">
+      <div className="rep-grid">
         {/* Left Column: Goals */}
         <div className="c5">
           <section className="sec o1">
             <div className="sec-h">
-              <h2>Цели</h2>
+              <h2>{t('app.reports.goals_title')}</h2>
               <button
                 type="button"
                 className="ghost"
                 onClick={() => setGoalFormOpen(true)}
               >
                 <Icon name="plus" />
-                <span>Цель</span>
+                <span>{t('app.reports.add_goal')}</span>
               </button>
             </div>
 
             {/* Goal form modal */}
             {goalFormOpen && (
-              <div className="panel fpanel mb-4">
+              <div className="panel fpanel rep-fpanel">
                 <div className="panel-h">
-                  <h3>Новая цель</h3>
+                  <h3>{t('app.reports.new_goal')}</h3>
                   <button type="button" className="ibtn" onClick={() => setGoalFormOpen(false)}>
                     <Icon name="x" />
                   </button>
                 </div>
-                <div className="space-y-3">
+                <div className="rep-form">
                   <label className="field">
-                    <span className="flabel">Название</span>
+                    <span className="flabel">{t('app.timeline.title_label')}</span>
                     <input
                       className="input"
-                      placeholder="Дойти до 82 кг"
+                      placeholder={t('app.reports.goal_name_ph')}
                       value={goalName}
                       onChange={(e) => setGoalName(e.target.value)}
                     />
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="rep-grid-2">
                     <label className="field">
-                      <span className="flabel">Домен</span>
+                      <span className="flabel">{t('app.reports.domain_label')}</span>
                       <select
                         className="input"
                         value={goalDom}
@@ -227,13 +243,13 @@ export default function ReportsScreen() {
                       >
                         {view.goalDomains.map((d) => (
                           <option key={d} value={d}>
-                            {DOM_RU[d] || d}
+                            {getDomainLabel(d)}
                           </option>
                         ))}
                       </select>
                     </label>
                     <label className="field">
-                      <span className="flabel">Дедлайн</span>
+                      <span className="flabel">{t('app.reports.deadline_label')}</span>
                       <input
                         type="date"
                         className="input"
@@ -242,33 +258,33 @@ export default function ReportsScreen() {
                       />
                     </label>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="rep-grid-2">
                     <label className="field">
-                      <span className="flabel">Цель</span>
+                      <span className="flabel">{t('app.reports.target_label')}</span>
                       <input
                         className="input"
-                        placeholder="82"
+                        placeholder={t('app.reports.target_val_ph')}
                         value={goalTarget}
                         onChange={(e) => setGoalTarget(e.target.value)}
                       />
                     </label>
                     <label className="field">
-                      <span className="flabel">Ед.</span>
+                      <span className="flabel">{t('app.reports.unit_label')}</span>
                       <input
                         className="input"
-                        placeholder="кг"
+                        placeholder={t('app.reports.unit_val_ph')}
                         value={goalUnit}
                         onChange={(e) => setGoalUnit(e.target.value)}
                       />
                     </label>
                   </div>
-                  <div className="form-acts flex gap-2 pt-2">
+                  <div className="rep-acts">
                     <PrimaryButton
                       className="btn grow"
                       onPress={handleCreateGoal}
                       disabled={isSubmittingGoal}
                     >
-                      Создать цель
+                      {t('app.reports.create_goal_btn')}
                     </PrimaryButton>
                     <button
                       type="button"
@@ -294,26 +310,26 @@ export default function ReportsScreen() {
                         <div>
                           <div className="t">{g.name}</div>
                           <div className="m">
-                            <Badge tone={tone}>{DOM_RU[g.domain] || g.domain}</Badge>
+                            <Badge tone={tone}>{getDomainLabel(g.domain)}</Badge>
                             {g.deadline && (
-                              <span className="num"> · дедлайн {g.deadline}</span>
+                              <span className="num"> · {t('app.reports.deadline_at', { date: shortDate(parseIsoDate(g.deadline), lang) })}</span>
                             )}
                             {g.daysLeft != null && (
-                              <span className="num"> · {g.daysLeft} дн.</span>
+                              <span className="num"> · {t('app.reports.days_left_n', { days: formatNumber(g.daysLeft, lang, 0) })}</span>
                             )}
                           </div>
                         </div>
                         <div className="v">
-                          {g.current != null ? g.current : '—'}
+                          {g.current != null ? formatNumber(g.current, lang) : '—'}
                           <span className="u">
-                            / {g.targetValue} {g.targetUnit || ''}
+                            / {g.targetValue != null ? formatNumber(g.targetValue, lang) : '—'} {g.targetUnit || ''}
                           </span>
                         </div>
                         <span className="acts">
                           <button
                             type="button"
                             className="ibtn"
-                            title="Отметить достигнутой"
+                            title={t('app.reports.mark_achieved')}
                             onClick={() => handleGoalStatus(g.id, 'achieved')}
                           >
                             <Icon name="check" />
@@ -337,11 +353,11 @@ export default function ReportsScreen() {
                             <span className="tick" style={{ left: '75%' }} />
                           </div>
                           <div className="goal-scale">
-                            <span>{pct.toFixed(0)}%</span>
+                            <span>{formatNumber(pct, lang, 0)}%</span>
                             <span>
-                              {g.remaining != null ? `осталось ${g.remaining} ${g.targetUnit || ''}` : ''}
+                              {g.remaining != null ? t('app.reports.remaining_val', { rem: formatNumber(g.remaining, lang), unit: g.targetUnit || '' }) : ''}
                             </span>
-                            <span>{g.targetValue}</span>
+                            <span>{g.targetValue != null ? formatNumber(g.targetValue, lang) : ''}</span>
                           </div>
                         </>
                       )}
@@ -352,7 +368,7 @@ export default function ReportsScreen() {
             ) : (
               <div className="empty">
                 <Icon name="chart" />
-                <p>Активных целей пока нет.</p>
+                <p>{t('app.reports.no_active_goals')}</p>
               </div>
             )}
           </section>
@@ -361,7 +377,7 @@ export default function ReportsScreen() {
           {view.closedGoals.length > 0 && (
             <section className="sec o2">
               <div className="sec-h">
-                <h2>Архив целей</h2>
+                <h2>{t('app.reports.archive_goals')}</h2>
                 <span className="meta">{view.closedGoals.length}</span>
               </div>
               <div className="rows">
@@ -378,8 +394,8 @@ export default function ReportsScreen() {
                         <div className="t">{g.name}</div>
                         <div className="m num">
                           {ok
-                            ? `взята ${g.closedOn || ''}`
-                            : 'не взята'}
+                            ? t('app.reports.achieved_on', { date: g.closedOn ? shortDate(parseIsoDate(g.closedOn), lang) : '' })
+                            : t('app.reports.not_achieved')}
                         </div>
                       </div>
                       <span className="acts">
@@ -404,16 +420,16 @@ export default function ReportsScreen() {
         <div className="c7">
           <section className="sec o3">
             <div className="sec-h">
-              <h2>Еженедельный разбор</h2>
+              <h2>{t('app.reports.weekly_digest')}</h2>
               {view.latestDigest && (
                 <span className="meta num">
-                  {view.latestDigest.date}
+                  {view.latestDigest.date ? shortDate(parseIsoDate(view.latestDigest.date), lang) : ''}
                   {view.latestDigest.model ? ` · ${view.latestDigest.model}` : ''}
                 </span>
               )}
             </div>
             <div className="dg-bar">
-              <div className="opts flex gap-1 flex-wrap">
+              <div className="opts rep-opts">
                 {[1, 3, 7, 30].map((d) => (
                   <button
                     key={d}
@@ -421,7 +437,7 @@ export default function ReportsScreen() {
                     className={`opt ${digestDays === d ? 'on' : ''}`}
                     onClick={() => setDigestDays(d)}
                   >
-                    За {d} {d === 1 ? 'день' : d < 5 ? 'дня' : 'дней'}
+                    {formatDaysOpt(d)}
                   </button>
                 ))}
               </div>
@@ -432,7 +448,7 @@ export default function ReportsScreen() {
                 disabled={isGeneratingDigest}
               >
                 <Icon name="sync" />
-                <span>{isGeneratingDigest ? 'Генерация...' : 'Собрать сейчас'}</span>
+                <span>{isGeneratingDigest ? t('app.reports.generating') : t('app.reports.generate_now')}</span>
               </button>
             </div>
 
@@ -444,7 +460,7 @@ export default function ReportsScreen() {
               <div className="empty">
                 <Icon name="doc" />
                 <p>
-                  Разборов ещё нет. Они собираются раз в неделю или по кнопке «Собрать сейчас».
+                  {t('app.reports.no_digests')}
                 </p>
               </div>
             )}
@@ -452,13 +468,13 @@ export default function ReportsScreen() {
             {view.digestHistory.length > 0 && (
               <div className="acc dg-prev">
                 <div
-                  className="acc-h flex items-center justify-between cursor-pointer py-3"
+                  className="acc-h rep-acc-h"
                   role="button"
                   tabIndex={0}
                   onClick={() => setOlderDigestsOpen(!olderDigestsOpen)}
                 >
                   <span>
-                    Предыдущие разборы <span className="m num">({view.digestHistory.length})</span>
+                    {t('app.reports.previous_digests')} <span className="m num">({view.digestHistory.length})</span>
                   </span>
                   <Icon name="chevD" />
                 </div>
@@ -470,7 +486,7 @@ export default function ReportsScreen() {
                         className="row"
                         style={{ gridTemplateColumns: '84px minmax(0,1fr)' }}
                       >
-                        <span className="m num">{d.date}</span>
+                        <span className="m num">{d.date ? shortDate(parseIsoDate(d.date), lang) : ''}</span>
                         <article className="digest dg-old">
                           <Markdown source={d.content} />
                         </article>
@@ -485,18 +501,18 @@ export default function ReportsScreen() {
           {/* Morning Brief Section */}
           <section className="sec o4">
             <div className="sec-h">
-              <h2>Утренний бриф</h2>
+              <h2>{t('app.reports.morning_brief')}</h2>
               {view.latestBrief && (
                 <span className="meta num">
-                  {view.latestBrief.date}
+                  {view.latestBrief.date ? shortDate(parseIsoDate(view.latestBrief.date), lang) : ''}
                   {view.latestBrief.model ? ` · ${view.latestBrief.model}` : ''}
                 </span>
               )}
             </div>
             <p className="sub" style={{ margin: '-4px 0 12px' }}>
-              Бот присылает его в 11:00. «Собрать» — только показать здесь, ничего не отправляя.
+              {t('app.reports.brief_sub')}
             </p>
-            <div className="row-acts flex gap-2">
+            <div className="row-acts rep-acts">
               <button
                 type="button"
                 className="ghost"
@@ -504,7 +520,7 @@ export default function ReportsScreen() {
                 disabled={isLoadingBrief}
               >
                 <Icon name="sync" />
-                <span>Собрать бриф</span>
+                <span>{t('app.reports.build_brief')}</span>
               </button>
               <button
                 type="button"
@@ -513,19 +529,19 @@ export default function ReportsScreen() {
                 disabled={isLoadingBrief}
               >
                 <Icon name="signals" />
-                <span>Отправить тестовое</span>
+                <span>{t('app.reports.test_brief')}</span>
               </button>
             </div>
 
             {briefStatus && (
-              <div className={`alert ${briefStatusTone} mt-3`}>
+              <div className={`alert ${briefStatusTone} rep-alert`}>
                 <Icon name={briefStatusTone === 'info' ? 'check' : 'warn'} />
                 <div>{briefStatus}</div>
               </div>
             )}
 
             {view.latestBrief ? (
-              <div className="brief mt-3">
+              <div className="brief rep-alert">
                 {view.latestBrief.content.split('\n').map((line, idx) => (
                   <p key={idx}>{line}</p>
                 ))}
@@ -534,7 +550,7 @@ export default function ReportsScreen() {
               <div className="empty">
                 <Icon name="signals" />
                 <p>
-                  Брифов ещё нет. Они приходят в 11:00 или по кнопке «Собрать бриф».
+                  {t('app.reports.no_briefs')}
                 </p>
               </div>
             )}

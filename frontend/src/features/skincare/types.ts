@@ -14,6 +14,9 @@ export interface SkincareProductItem {
   days: number[]
   active: boolean
   on: boolean
+  default_time?: string
+  schedule_days?: number[]
+  usage_instructions?: string | null
 }
 
 export interface SkincareLogItem {

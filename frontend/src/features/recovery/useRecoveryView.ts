@@ -5,8 +5,8 @@ import type { Norm, NormKey, RecoveryView } from './types'
 
 const DEFAULT_NORMS: Record<NormKey, Norm> = {
   sleep: { lo: 75, hi: 85, better: 1, unit: '' },
-  hrv: { lo: 48, hi: 62, better: 1, unit: 'мс' },
-  rhr: { lo: 49, hi: 55, better: -1, unit: 'уд' },
+  hrv: { lo: 48, hi: 62, better: 1, unit: 'ms' },
+  rhr: { lo: 49, hi: 55, better: -1, unit: 'bpm' },
   stress: { lo: 18, hi: 28, better: -1, unit: '' },
   steps: { lo: 8000, hi: 12000, better: 1, unit: '' },
   bb: { lo: 70, hi: 90, better: 1, unit: '' },
@@ -26,7 +26,7 @@ const EMPTY_RECOVERY: RecoveryView = {
     hrv: 0,
     hrvNightsBelow: 0,
     rhr: 0,
-    rhrNote: 'норма',
+    rhrNote: 'normal',
     bodyBatteryFrom: 0,
     bodyBatteryTo: 0,
   },
@@ -56,7 +56,7 @@ export const recoveryQuery = queryOptions({
         hrv: hl.hrv ?? 0,
         hrvNightsBelow: hl.hrv_nights_below ?? 0,
         rhr: hl.rhr ?? 0,
-        rhrNote: hl.rhr_note || 'норма',
+        rhrNote: hl.rhr_note || 'normal',
         bodyBatteryFrom: hl.body_battery_from ?? 0,
         bodyBatteryTo: hl.body_battery_to ?? 0,
       },

@@ -89,8 +89,146 @@
   max-width: 760px;
 }
 
+/* Desktop Field Grids */
+.set-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.set-fields-grid .field {
+  width: 100%;
+}
+.set-fields-grid .input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.set-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.set-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.set-sub-sec {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  margin-top: 16px;
+}
+
+.set-row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.set-row-gap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.set-row-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-desc {
+  font-size: var(--t-caption);
+  color: var(--muted);
+  max-width: 70ch;
+  margin: 8px 0 16px;
+  line-height: 1.5;
+}
+
+.settings-content {
+  margin-top: 16px;
+}
+
+/* 2FA styles */
+.tfa-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tfa-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.tfa-qr {
+  background: #fff;
+  padding: 8px;
+  border-radius: var(--r);
+  width: max-content;
+}
+
+.tfa-key-display {
+  font-family: var(--f-text);
+  font-size: var(--t-caption);
+  letter-spacing: 0.08em;
+  padding: 8px 12px;
+  background: var(--bg-deep);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  user-select: all;
+  margin: 8px 0;
+}
+
+.tfa-acts {
+  display: flex;
+  gap: 8px;
+}
+
+.tfa-code-input {
+  text-align: center;
+  letter-spacing: 0.25em;
+  font-size: var(--t-h3);
+  width: 160px;
+}
+
+/* Data import drop */
+.data-drop-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 16px;
+  border-radius: var(--r);
+  border: 1.5px dashed var(--line-2);
+  background: var(--bg-deep);
+  transition: border-color var(--d2);
+  cursor: pointer;
+  color: inherit;
+}
+.data-drop-btn:hover {
+  border-color: var(--violet);
+}
+.data-drop-icon {
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--fg);
+}
+
 @media (min-width: 768px) {
   .wk {
     max-width: 560px;
+  }
+  .tfa-setup {
+    flex-direction: row;
+    align-items: center;
   }
 }

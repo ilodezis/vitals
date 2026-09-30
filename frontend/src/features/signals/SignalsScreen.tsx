@@ -6,23 +6,32 @@ import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
+import { parseIsoDate, shortDate } from '@/lib/dates'
+import { formatNumber } from '@/lib/format'
 import type { SignalItem } from './types'
 import { useSignalsView } from './useSignalsView'
 import './signals.css'
 
 const KIND_META: Record<string, [string, 'plain' | 'bad' | 'cool' | 'violet']> = {
-  state: ['Состояние', 'plain'],
-  symptom: ['Симптом', 'bad'],
-  exposure: ['Воздействие', 'cool'],
+  state: ['app.signal_kind.state', 'plain'],
+  symptom: ['app.signal_kind.symptom', 'bad'],
+  exposure: ['app.signal_kind.exposure', 'cool'],
 }
 
 export default function SignalsScreen() {
-  const { t } = useT()
+  const { t, lang } = useT()
   const view = useSignalsView()
   const queryClient = useQueryClient()
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['signals'] })
+  }
+
+  const formatSignalKey = (key: string) => {
+    const i18nKey = `app.signal_key.${key}`
+    const translated = t(i18nKey as any)
+    if (translated && translated !== i18nKey) return translated
+    return key.replaceAll('_', ' ')
   }
 
   const maxFreq = useMemo(() => {
@@ -57,7 +66,7 @@ export default function SignalsScreen() {
       await api.POST('/api/v1/signals/{batch_id}/misparse', {
         params: { path: { batch_id: batchId } },
       })
-      toast('Отмечено как не то')
+      toast(t('app.signals.misparsed'))
       refresh()
     } catch (err: any) {
       toast(err.message || 'Error marking misparse', { icon: 'warn' })
@@ -72,33 +81,29 @@ export default function SignalsScreen() {
         <div className="figs inline">
           <div className="f">
             <div className="f-v">{view.totalCount || view.signals.length}</div>
-            <div className="f-l">Записей</div>
+            <div className="f-l">{t('app.signals.records')}</div>
           </div>
           <div className="f">
             <div className="f-v">{view.keysCount || view.frequency.length}</div>
-            <div className="f-l">Ключей</div>
+            <div className="f-l">{t('app.signals.keys')}</div>
           </div>
           <div className="f">
             <div className="f-v">{view.misparseCount}</div>
-            <div className="f-l">Промахи</div>
+            <div className="f-l">{t('app.signals.misparses')}</div>
           </div>
         </div>
       </Headline>
 
-      <p className="sub lede">
-        Всё, что сказано боту мимоходом — сонливость, голова, кофе в 22 — разобрано в строки.
-        Это тот слой, который объясняет цифры Garmin.
-      </p>
+      <p className="sub lede">{t('app.signals.lede')}</p>
 
       {/* Key frequency section */}
       {view.frequency.length > 0 && (
         <section className="sec">
           <div className="sec-h">
-            <h2>Частота ключей</h2>
+            <h2>{t('app.signals.key_frequency')}</h2>
           </div>
           <p className="sub" style={{ margin: '-4px 0 12px', maxWidth: '64ch' }}>
-            Что модель пишет на самом деле, вместе с ошибками — материал, по которому потом
-            собирается реестр ключей.
+            {t('app.signals.key_frequency_desc')}
           </p>
           <div className="rows">
             {view.frequency.map((f) => {
@@ -109,17 +114,17 @@ export default function SignalsScreen() {
               return (
                 <div key={f.key} className="row freq">
                   <div>
-                    <div className="t key font-mono font-semibold">{f.key}</div>
+                    <div className="t sig-key">{formatSignalKey(f.key)}</div>
                     {aliases.length > 0 && (
-                      <div className="m key" title="Сохранено под этим ключом">
-                        ← {aliases.join(', ')}
+                      <div className="m sig-key" title={t('app.signals.saved_under_key')}>
+                        ← {aliases.map((a) => formatSignalKey(a)).join(', ')}
                       </div>
                     )}
                   </div>
                   <div className="fbar">
                     <i style={{ width: `${pct}%` }} />
                   </div>
-                  <span className="v num">{count}</span>
+                  <span className="v num">{formatNumber(count, lang)}</span>
                   <div className="fex m">
                     {examples.length > 0 ? (
                       examples.map((e, idx) => <div key={idx}>{e}</div>)
@@ -137,34 +142,34 @@ export default function SignalsScreen() {
       {/* Feed Section */}
       <section className="sec">
         <div className="sec-h">
-          <h2>Лента</h2>
+          <h2>{t('app.signals.feed')}</h2>
         </div>
         {view.signals.length > 0 ? (
           <div className="tl">
             {Array.from(groupedByDate.entries()).map(([date, signals]) => (
               <div key={date} className="tl-day">
-                <div className="d num">{date}</div>
+                <div className="d num">{shortDate(parseIsoDate(date), lang)}</div>
                 <div className="tl-list">
                   {signals.map((s) => {
-                    const km = KIND_META[s.kind] || ['Сигнал', 'plain']
+                    const km = KIND_META[s.kind] || ['app.signal_kind.signal', 'plain']
                     return (
                       <div key={s.id} className="tl-ev" data-item>
                         <i className="tk violet" />
                         <div>
                           <div className="ev-h">
-                            <Badge tone={km[1]}>{km[0]}</Badge>
-                            <span className="t key font-mono">{s.key}</span>
+                            <Badge tone={km[1]}>{t(km[0] as any)}</Badge>
+                            <span className="t sig-key">{formatSignalKey(s.key)}</span>
                             {s.rawKey && s.rawKey !== s.key && (
-                              <span className="m key">← {s.rawKey}</span>
+                              <span className="m sig-key">← {s.rawKey.replaceAll('_', ' ')}</span>
                             )}
                             {s.value != null && (
                               <span className="m num">
-                                {s.value}
+                                {formatNumber(s.value, lang)}
                                 {s.unit ? ` ${s.unit}` : ''}
                               </span>
                             )}
                             {s.time && <span className="m num">{s.time}</span>}
-                            {s.misparse && <Badge tone="bad">не то</Badge>}
+                            {s.misparse && <Badge tone="bad">{t('app.signals.misparse_badge')}</Badge>}
                           </div>
                           {s.note && <div className="m">{s.note}</div>}
                         </div>
@@ -173,7 +178,7 @@ export default function SignalsScreen() {
                             <button
                               type="button"
                               className="ibtn"
-                              title="Отметить не то"
+                              title={t('app.signals.mark_misparse')}
                               onClick={() => handleMarkMisparse(s.batchId!)}
                             >
                               <Icon name="warn" />
@@ -198,7 +203,7 @@ export default function SignalsScreen() {
         ) : (
           <div className="empty">
             <Icon name="signals" />
-            <p>Сигналов пока нет. Отправляйте боту сообщения о самочувствии и симптомах.</p>
+            <p>{t('app.signals.empty')}</p>
           </div>
         )}
       </section>

@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
-import { PrimaryButton } from '@/components/controls/PrimaryButton'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
-import { Icon } from '@/components/icons/Icon'
 import { useT } from '@/i18n/useT'
 import type { SettingsView } from './useSettingsView'
 
@@ -13,13 +11,13 @@ interface ProactiveSectionProps {
 }
 
 const WEEKDAYS = [
-  { id: 'mon', label: 'Пн' },
-  { id: 'tue', label: 'Вт' },
-  { id: 'wed', label: 'Ср' },
-  { id: 'thu', label: 'Чт' },
-  { id: 'fri', label: 'Пт' },
-  { id: 'sat', label: 'Сб' },
-  { id: 'sun', label: 'Вс' },
+  { id: 'mon' },
+  { id: 'tue' },
+  { id: 'wed' },
+  { id: 'thu' },
+  { id: 'fri' },
+  { id: 'sat' },
+  { id: 'sun' },
 ]
 
 export function ProactiveSection({ settings }: ProactiveSectionProps) {
@@ -111,7 +109,7 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
       }
       return false
     } catch (err: any) {
-      toast(err.message || 'Error saving proactive settings', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
       return false
     }
   }
@@ -122,9 +120,9 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
     <Section title={t('settings.proactive_title')} className="set-sec narrow">
       <p className="sub set-d">{t('settings.proactive_description')}</p>
 
-      <div className="form space-y-4">
+      <div className="form">
         {/* Times */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="set-grid-4">
           <label className="field">
             <span className="flabel">{t('settings.brief_time')}</span>
             <input
@@ -166,12 +164,12 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
         </div>
 
         {/* Daily budget */}
-        <label className="field">
+        <label className="field" style={{ maxWidth: '160px' }}>
           <span className="flabel">{t('settings.daily_budget')}</span>
           <input
             type="text"
             inputMode="numeric"
-            className="input w-24"
+            className="input"
             value={dailyBudget}
             onChange={(e) => setDailyBudget(e.target.value)}
           />
@@ -180,36 +178,43 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
 
         {/* Nudges */}
         <div>
-          <span className="flabel block mb-2">{t('settings.nudges_label')}</span>
+          <span className="flabel" style={{ display: 'block', marginBottom: '8px' }}>
+            {t('settings.nudges_label')}
+          </span>
           <div className="opts" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <button
               type="button"
-              className={`opt text-left ${nudgeActivity ? 'on' : ''}`}
+              className={`opt ${nudgeActivity ? 'on' : ''}`}
+              style={{ textAlign: 'left' }}
               onClick={() => setNudgeActivity(!nudgeActivity)}
             >
               {t('settings.nudge.activity')}
             </button>
             <button
               type="button"
-              className={`opt text-left ${nudgeNutrition ? 'on' : ''}`}
+              className={`opt ${nudgeNutrition ? 'on' : ''}`}
+              style={{ textAlign: 'left' }}
               onClick={() => setNudgeNutrition(!nudgeNutrition)}
             >
               {t('settings.nudge.nutrition')}
             </button>
             <button
               type="button"
-              className={`opt text-left ${nudgeData ? 'on' : ''}`}
+              className={`opt ${nudgeData ? 'on' : ''}`}
+              style={{ textAlign: 'left' }}
               onClick={() => setNudgeData(!nudgeData)}
             >
               {t('settings.nudge.data')}
             </button>
           </div>
-          <p className="fhint mt-1">{t('settings.nudges_hint')}</p>
+          <p className="fhint" style={{ marginTop: '4px' }}>{t('settings.nudges_hint')}</p>
         </div>
 
         {/* Week template */}
         <div>
-          <span className="flabel block mb-2">{t('settings.week_template_label')}</span>
+          <span className="flabel" style={{ display: 'block', marginBottom: '8px' }}>
+            {t('settings.week_template_label')}
+          </span>
           <div className="wk">
             <div className="wk-r wk-h">
               <span></span>
@@ -221,44 +226,52 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
               const current = weekTemplate[d.id] || { where: 'office', gym: false, load: 'normal' }
               return (
                 <div key={d.id} className="wk-r">
-                  <span className="m font-medium">{d.label}</span>
+                  <span className="m" style={{ fontWeight: 500 }}>
+                    {t(`proactive.day.${d.id}`)}
+                  </span>
                   <select
                     className="input"
                     value={current.where}
                     onChange={(e) => handleDayChange(d.id, 'where', e.target.value)}
                   >
-                    <option value="office">В офисе</option>
-                    <option value="remote">Дома</option>
-                    <option value="off">Выходной</option>
+                    <option value="office">{t('settings.where.office')}</option>
+                    <option value="remote">{t('settings.where.remote')}</option>
+                    <option value="off">{t('settings.where.off')}</option>
                   </select>
                   <select
                     className="input"
                     value={current.gym ? 'true' : 'false'}
                     onChange={(e) => handleDayChange(d.id, 'gym', e.target.value === 'true')}
                   >
-                    <option value="true">Зал</option>
-                    <option value="false">Отдых</option>
+                    <option value="true">{t('settings.gym.yes')}</option>
+                    <option value="false">{t('settings.gym.no')}</option>
                   </select>
                   <select
                     className="input"
                     value={current.load || 'normal'}
                     onChange={(e) => handleDayChange(d.id, 'load', e.target.value)}
                   >
-                    <option value="normal">Обычная</option>
-                    <option value="light">Лёгкая</option>
-                    <option value="heavy">Тяжёлая</option>
+                    <option value="normal">{t('settings.load.normal')}</option>
+                    <option value="light">{t('settings.load.light')}</option>
+                    <option value="heavy">{t('settings.load.heavy')}</option>
                   </select>
                 </div>
               )
             })}
           </div>
-          <p className="fhint mt-2">{t('settings.week_template_hint')}</p>
+          <p className="fhint" style={{ marginTop: '8px' }}>{t('settings.week_template_hint')}</p>
         </div>
 
         {/* Garmin schedule */}
-        <div className="pt-4 border-t border-[var(--line)]">
-          <span className="flabel font-semibold block mb-2">{t('settings.garmin_schedule_label')}</span>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        <div className="set-sub-sec">
+          <span className="flabel" style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+            {t('settings.garmin_schedule_label')}
+          </span>
+          <p className="fhint" style={{ marginBottom: '12px' }}>
+            {t('settings.garmin_schedule_hint')}
+          </p>
+
+          <div className="set-grid-4">
             <label className="field">
               <span className="flabel">{t('settings.sync_hours')}</span>
               <input
@@ -268,6 +281,7 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
                 value={syncHours}
                 onChange={(e) => setSyncHours(e.target.value)}
               />
+              <p className="fhint">{t('settings.sync_hours_hint')}</p>
             </label>
             <label className="field">
               <span className="flabel">{t('settings.weight_export_minutes')}</span>
@@ -278,6 +292,7 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
                 value={weightExportMinutes}
                 onChange={(e) => setWeightExportMinutes(e.target.value)}
               />
+              <p className="fhint">{t('settings.weight_export_minutes_hint')}</p>
             </label>
             <label className="field">
               <span className="flabel">{t('settings.weight_max_age_days')}</span>
@@ -288,6 +303,7 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
                 value={weightMaxAgeDays}
                 onChange={(e) => setWeightMaxAgeDays(e.target.value)}
               />
+              <p className="fhint">{t('settings.weight_max_age_days_hint')}</p>
             </label>
             <label className="field">
               <span className="flabel">{t('settings.pulse_seconds')}</span>
@@ -298,7 +314,11 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
                 value={pulseSeconds}
                 onChange={(e) => setPulseSeconds(e.target.value)}
               />
+              <p className="fhint">{t('settings.pulse_seconds_hint')}</p>
             </label>
+          </div>
+
+          <div className="set-grid-2" style={{ marginTop: '12px' }}>
             <label className="field">
               <span className="flabel">{t('settings.pulse_start_hour')}</span>
               <input
@@ -308,6 +328,7 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
                 value={pulseStartHour}
                 onChange={(e) => setPulseStartHour(e.target.value)}
               />
+              <p className="fhint">{t('settings.pulse_start_hour_hint')}</p>
             </label>
             <label className="field">
               <span className="flabel">{t('settings.pulse_end_hour')}</span>
@@ -318,27 +339,30 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
                 value={pulseEndHour}
                 onChange={(e) => setPulseEndHour(e.target.value)}
               />
+              <p className="fhint">{t('settings.pulse_end_hour_hint')}</p>
             </label>
           </div>
-          <p className="fhint mt-2">{t('settings.garmin_schedule_hint')}</p>
-        </div>
 
-        {/* Breaker Alert */}
-        <div className="alert flex items-start gap-2">
-          <Icon name="info" />
-          <div>
-            {breaker
-              ? breaker.paused
-                ? t('settings.breaker_paused', { used: breaker.used ?? 0, max: breaker.max ?? 5 })
-                : t('settings.breaker_ok', { used: breaker.used ?? 1, max: breaker.max ?? 5 })
-              : t('settings.breaker_ok', { used: 1, max: 5 })}
-          </div>
+          {breaker && (
+            <div className="alert info" style={{ marginTop: '12px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <div>
+                <b>{t('settings.garmin_breaker')}</b>
+                <p style={{ fontSize: 'var(--t-micro)', color: 'var(--muted)', marginTop: '4px' }}>
+                  {breaker.paused
+                    ? t('settings.breaker_paused')
+                    : breaker.used !== undefined
+                      ? t('settings.breaker_status', { used: breaker.used, max: breaker.max ?? 10 })
+                      : t('settings.breaker_unknown')}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="set-save">
-          <PrimaryButton onPress={handleSave}>
+          <button type="button" className="btn ghost" onClick={handleSave}>
             {t('settings.save_proactive')}
-          </PrimaryButton>
+          </button>
         </div>
       </div>
     </Section>

@@ -31,6 +31,7 @@ describe('feedLine', () => {
 
   it('says where a signal came from', () => {
     expect(feedLine(row({ kind: 'signal', text: 'кофе в 22' }), t, 'ru')).toEqual({ text: 'кофе в 22', detail: 'из бота' })
+    expect(feedLine(row({ kind: 'signal', text: 'energy', value: 4 }), t, 'ru')).toEqual({ text: 'energy · 4', detail: 'из бота' })
   })
 
   it('writes the brief’s line itself', () => {

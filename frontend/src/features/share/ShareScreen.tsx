@@ -1,34 +1,27 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
+import { OptionGroup } from '@/components/controls/Choices'
 import { Badge } from '@/components/controls/Marks'
 import { PrimaryButton } from '@/components/controls/PrimaryButton'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
+import { parseIsoDate, shortDate } from '@/lib/dates'
 import type { CreatedShareResponse, SharedReportItem } from './types'
 import { useShareView } from './useShareView'
 import './share.css'
 
-const DOM_RU: Record<string, string> = {
-  weight: 'Вес',
-  body_comp: 'Состав тела',
-  labs: 'Анализы',
-  glp1: 'GLP-1',
-  hrt: 'ГЗТ',
-  supplements: 'Добавки',
-  signals: 'Сигналы',
-}
-
 export default function ShareScreen() {
-  const { t } = useT()
+  const { t, lang } = useT()
   const view = useShareView()
   const queryClient = useQueryClient()
 
   // Form states
-  const [title, setTitle] = useState('Эндокринолог, осмотр')
   const [selectedPreset, setSelectedPreset] = useState('gp')
+  const [title, setTitle] = useState(() => t('share.preset_title.gp'))
+  const [titleEdited, setTitleEdited] = useState(false)
   const [selectedDomains, setSelectedDomains] = useState<string[]>([
     'weight',
     'labs',
@@ -57,6 +50,12 @@ export default function ShareScreen() {
       setSelectedDomains(preset.domains)
       setLabsFlaggedOnly(preset.labsFlaggedOnly)
     }
+    if (!titleEdited) {
+      const localizedTitle = t(`share.preset_title.${presetKey}`)
+      if (localizedTitle && localizedTitle !== `share.preset_title.${presetKey}`) {
+        setTitle(localizedTitle)
+      }
+    }
   }
 
   const toggleDomain = (dom: string) => {
@@ -71,7 +70,7 @@ export default function ShareScreen() {
       return false
     }
     if (selectedDomains.length === 0) {
-      toast('Выберите хотя бы один раздел', { icon: 'warn' })
+      toast(t('share.toast_select_domain'), { icon: 'warn' })
       return false
     }
     setIsCreating(true)
@@ -91,13 +90,13 @@ export default function ShareScreen() {
       })
       if (res.data) {
         setCreated(res.data)
-        toast('Ссылка создана')
+        toast(t('share.toast_created'))
         refresh()
         return true
       }
       return false
     } catch (err: any) {
-      toast(err.message || 'Ошибка создания отчёта', { icon: 'warn' })
+      toast(err.message || 'Error creating report', { icon: 'warn' })
       return false
     } finally {
       setIsCreating(false)
@@ -109,7 +108,7 @@ export default function ShareScreen() {
       await api.POST('/api/v1/share/{report_id}/revoke', {
         params: { path: { report_id: id } },
       })
-      toast('Отчёт отозван')
+      toast(t('share.toast_revoked'))
       refresh()
     } catch (err: any) {
       toast(err.message || 'Error revoking report', { icon: 'warn' })
@@ -141,65 +140,71 @@ export default function ShareScreen() {
     return created.url
   }, [created])
 
+  const domainLabel = (d: string) => {
+    return t(`nav.${d}`) || t(`enum.domain.${d}`) || d
+  }
+
+  const presetLabel = (pKey: string) => {
+    return t(`share.preset.${pKey}`) || pKey
+  }
+
   return (
     <>
-      <TopBar title={t('app.nav.share') || 'Для врача'} />
+      <TopBar title={t('share.title')} />
       <Mast screen="share" />
-      <Headline title="Для врача">
-        <span className="crumb">Система</span>
-      </Headline>
+      <Headline title={t('share.title')} />
 
       <p className="sub lede">
-        Отчёт — снимок: после создания он не меняется.
+        {t('share.lede')}
       </p>
 
-      <div className="grid mt-6">
+      <div className="grid sec-grid">
         {/* Left Column: Generator & Created Banner */}
         <div className="c7">
           <section className="sec o1">
             {/* Created Banner */}
             {created && (
-              <div className="panel made mb-6">
+              <div className="panel made share-made">
                 <div className="panel-h">
                   <h3>
                     <Icon name="check" />
-                    Ссылка готова
+                    {t('share.link_ready')}
                   </h3>
                 </div>
                 <div className="made-r">
-                  <span className="flabel">Ссылка</span>
+                  <span className="flabel">{t('share.link_label')}</span>
                   <input
-                    className="input mono"
+                    className="input"
                     readOnly
                     value={fullShareUrl}
                   />
                   <button
                     type="button"
                     className="ghost"
-                    onClick={() => copyToClipboard(fullShareUrl, 'Ссылка скопирована')}
+                    onClick={() => copyToClipboard(fullShareUrl, t('share.copied_link'))}
                   >
                     <Icon name="copy" />
-                    <span>Копировать</span>
+                    <span>{t('share.copied_link')}</span>
                   </button>
                 </div>
                 <div className="made-r">
-                  <span className="flabel">Пароль</span>
+                  <span className="flabel">{t('share.password_label')}</span>
                   <input
-                    className="input mono"
+                    className="input"
                     readOnly
                     value={created.password}
                   />
                   <button
                     type="button"
                     className="ghost"
-                    onClick={() => copyToClipboard(created.password, 'Пароль скопирован')}
+                    onClick={() => copyToClipboard(created.password, t('share.copied_password'))}
                   >
                     <Icon name="copy" />
-                    <span>Копировать</span>
+                    <span>{t('share.copied_password')}</span>
                   </button>
                 </div>
                 <p className="fhint">
-                  Пароль показывается один раз и не восстанавливается — скопируй сейчас.
+                  {t('share.password_hint')}
                 </p>
               </div>
             )}
@@ -207,23 +212,26 @@ export default function ShareScreen() {
             {/* Creation Form */}
             <div className="panel fpanel share-form">
               <div className="panel-h">
-                <h3>Новый отчёт</h3>
+                <h3>{t('share.new_report')}</h3>
               </div>
-              <div className="form space-y-4">
+              <div className="form">
                 <label className="field">
-                  <span className="flabel">Название</span>
+                  <span className="flabel">{t('share.report_title')}</span>
                   <input
                     className="input"
-                    placeholder="например, Эндокринолог, август"
+                    placeholder={t('share.title_ph')}
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={(e) => {
+                      setTitleEdited(true)
+                      setTitle(e.target.value)
+                    }}
                   />
                 </label>
 
                 {/* Presets */}
                 <div className="field">
-                  <span className="flabel">Пресет</span>
-                  <div className="opts flex gap-1 flex-wrap">
+                  <span className="flabel">{t('share.preset')}</span>
+                  <div className="opts share-opts">
                     {Object.keys(view.presets).length > 0 ? (
                       Object.keys(view.presets).map((pKey) => (
                         <button
@@ -232,7 +240,7 @@ export default function ShareScreen() {
                           className={`opt ${selectedPreset === pKey ? 'on' : ''}`}
                           onClick={() => handlePresetSelect(pKey)}
                         >
-                          {pKey === 'gp' ? 'Терапевт' : pKey === 'endo' ? 'Эндокринолог' : pKey === 'trainer' ? 'Тренер' : pKey}
+                          {presetLabel(pKey)}
                         </button>
                       ))
                     ) : (
@@ -240,23 +248,23 @@ export default function ShareScreen() {
                         <button
                           type="button"
                           className={`opt ${selectedPreset === 'gp' ? 'on' : ''}`}
-                          onClick={() => setSelectedPreset('gp')}
+                          onClick={() => handlePresetSelect('gp')}
                         >
-                          Терапевт
+                          {presetLabel('gp')}
                         </button>
                         <button
                           type="button"
                           className={`opt ${selectedPreset === 'endo' ? 'on' : ''}`}
-                          onClick={() => setSelectedPreset('endo')}
+                          onClick={() => handlePresetSelect('endo')}
                         >
-                          Эндокринолог
+                          {presetLabel('endo')}
                         </button>
                         <button
                           type="button"
                           className={`opt ${selectedPreset === 'custom' ? 'on' : ''}`}
-                          onClick={() => setSelectedPreset('custom')}
+                          onClick={() => handlePresetSelect('custom')}
                         >
-                          Свой выбор
+                          {presetLabel('custom')}
                         </button>
                       </>
                     )}
@@ -265,8 +273,8 @@ export default function ShareScreen() {
 
                 {/* What's included (domains) */}
                 <div className="field">
-                  <span className="flabel">Что войдёт</span>
-                  <div className="opts flex gap-1 flex-wrap">
+                  <span className="flabel">{t('share.whats_included')}</span>
+                  <div className="opts share-opts">
                     {view.availableDomains.map((d) => (
                       <button
                         key={d}
@@ -274,7 +282,7 @@ export default function ShareScreen() {
                         className={`opt ${selectedDomains.includes(d) ? 'on' : ''}`}
                         onClick={() => toggleDomain(d)}
                       >
-                        {DOM_RU[d] || d}
+                        {domainLabel(d)}
                       </button>
                     ))}
                   </div>
@@ -282,8 +290,8 @@ export default function ShareScreen() {
 
                 {/* Period */}
                 <div className="field">
-                  <span className="flabel">Период отчёта</span>
-                  <div className="opts flex gap-1 flex-wrap">
+                  <span className="flabel">{t('share.report_period')}</span>
+                  <div className="opts share-opts">
                     {['30', '90', '180', '365', 'all', 'custom'].map((pChoice) => (
                       <button
                         key={pChoice}
@@ -292,10 +300,10 @@ export default function ShareScreen() {
                         onClick={() => setPeriod(pChoice)}
                       >
                         {pChoice === 'all'
-                          ? 'Всё время'
+                          ? t('share.period_all')
                           : pChoice === 'custom'
-                            ? 'Точный диапазон'
-                            : `${pChoice} дней`}
+                            ? t('share.period_custom')
+                            : t('share.period_n_days', { n: pChoice })}
                       </button>
                     ))}
                   </div>
@@ -303,9 +311,9 @@ export default function ShareScreen() {
 
                 {/* Custom Range Picker */}
                 {period === 'custom' && (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="share-grid-2">
                     <label className="field">
-                      <span className="flabel">С</span>
+                      <span className="flabel">{t('share.period_from')}</span>
                       <input
                         type="date"
                         className="input"
@@ -314,7 +322,7 @@ export default function ShareScreen() {
                       />
                     </label>
                     <label className="field">
-                      <span className="flabel">По</span>
+                      <span className="flabel">{t('share.period_to')}</span>
                       <input
                         type="date"
                         className="input"
@@ -327,8 +335,8 @@ export default function ShareScreen() {
 
                 {/* Expiration */}
                 <div className="field">
-                  <span className="flabel">Ссылка живёт</span>
-                  <div className="opts flex gap-1 flex-wrap">
+                  <span className="flabel">{t('share.link_expires')}</span>
+                  <div className="opts share-opts">
                     {[7, 14, 30].map((days) => (
                       <button
                         key={days}
@@ -336,41 +344,44 @@ export default function ShareScreen() {
                         className={`opt ${expiresDays === days ? 'on' : ''}`}
                         onClick={() => setExpiresDays(days)}
                       >
-                        {days} дней
+                        {t('share.expires_n_days', { n: days })}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Flagged labs toggle */}
-                <label className="flex items-center gap-2 cursor-pointer pt-1">
-                  <input
-                    type="checkbox"
-                    checked={labsFlaggedOnly}
-                    onChange={(e) => setLabsFlaggedOnly(e.target.checked)}
+                {/* Flagged labs toggle using OptionGroup */}
+                <div className="field share-labs-toggle">
+                  <span className="flabel">{t('share.labs_flagged_only')}</span>
+                  <OptionGroup
+                    value={labsFlaggedOnly ? 'flagged' : 'all'}
+                    onChange={(val) => setLabsFlaggedOnly(val === 'flagged')}
+                    options={[
+                      { id: 'all', label: t('share.labs_all') },
+                      { id: 'flagged', label: t('share.labs_flagged_only') },
+                    ]}
                   />
-                  <span className="text-sm">Только маркеры вне нормы</span>
-                </label>
+                </div>
 
                 {/* Note */}
                 <label className="field">
-                  <span className="flabel">От меня</span>
+                  <span className="flabel">{t('share.note_from_me')}</span>
                   <textarea
                     className="input"
                     rows={3}
-                    placeholder="О чём хочу спросить..."
+                    placeholder={t('share.note_ph')}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                   />
                 </label>
 
                 <PrimaryButton
-                  className="btn w mt-2"
+                  className="btn share-btn-submit"
                   onPress={handleCreateShare}
                   disabled={isCreating}
                 >
                   <Icon name="link" />
-                  <span>Создать ссылку</span>
+                  <span>{t('share.create_link')}</span>
                 </PrimaryButton>
               </div>
             </div>
@@ -381,7 +392,7 @@ export default function ShareScreen() {
         <div className="c5">
           <section className="sec o2">
             <div className="sec-h">
-              <h2>Созданные отчёты</h2>
+              <h2>{t('share.created_reports')}</h2>
               {view.reports.length > 0 && (
                 <span className="meta">{view.reports.length}</span>
               )}
@@ -391,6 +402,9 @@ export default function ShareScreen() {
               <div className="rows">
                 {view.reports.map((s: SharedReportItem) => {
                   const dead = s.state !== 'live'
+                  const pStart = s.periodStart ? shortDate(parseIsoDate(s.periodStart), lang) : ''
+                  const pEnd = s.periodEnd ? shortDate(parseIsoDate(s.periodEnd), lang) : ''
+                  const expiresFormatted = s.expiresAt ? shortDate(parseIsoDate(s.expiresAt.slice(0, 10)), lang) : ''
                   return (
                     <div
                       key={s.id}
@@ -400,24 +414,24 @@ export default function ShareScreen() {
                       <div>
                         <div className="t">{s.title}</div>
                         <div className="m">
-                          {s.domains.map((d) => DOM_RU[d] || d).join(' · ')}
+                          {s.domains.map((d) => domainLabel(d)).join(' · ')}
                         </div>
                       </div>
                       <div className="sh-meta">
                         <span className="m num">
-                          {s.periodStart} — {s.periodEnd}
+                          {pStart && pEnd ? `${pStart} — ${pEnd}` : '—'}
                         </span>
                         {s.state === 'revoked' ? (
-                          <Badge tone="plain">отозван</Badge>
+                          <Badge tone="plain">{t('share.revoked')}</Badge>
                         ) : s.state === 'expired' ? (
-                          <Badge tone="plain">истёк</Badge>
+                          <Badge tone="plain">{t('share.expired')}</Badge>
                         ) : (
-                          <span className="m num">до {s.expiresAt.slice(0, 10)}</span>
+                          <span className="m num">{t('share.expires_until', { date: expiresFormatted })}</span>
                         )}
                         <span className="m num">
                           {s.openedCount
-                            ? `открывали ${s.openedCount}×`
-                            : 'ещё не открывали'}
+                            ? t('share.opened_n_times', { count: s.openedCount })
+                            : t('share.never_opened')}
                         </span>
                       </div>
                       <span className="acts">
@@ -426,7 +440,7 @@ export default function ShareScreen() {
                             type="button"
                             className="ibtn"
                             onClick={() => handleDelete(s.id)}
-                            aria-label="Убрать из списка"
+                            aria-label={t('share.remove_from_list')}
                           >
                             <Icon name="trash" />
                           </button>
@@ -436,7 +450,7 @@ export default function ShareScreen() {
                             className="ghost danger"
                             onClick={() => handleRevoke(s.id)}
                           >
-                            Отозвать
+                            {t('share.revoke_action')}
                           </button>
                         )}
                       </span>
@@ -447,7 +461,7 @@ export default function ShareScreen() {
             ) : (
               <div className="empty">
                 <Icon name="clipboard" />
-                <p>Отчётов пока нет.</p>
+                <p>{t('share.no_reports')}</p>
               </div>
             )}
 
@@ -459,8 +473,8 @@ export default function ShareScreen() {
             >
               <Icon name="doc" />
               <span>
-                <b>Как отчёт видит врач</b>
-                <small>открыть пример документа</small>
+                <b>{t('share.how_doctor_sees')}</b>
+                <small>{t('share.open_example')}</small>
               </span>
               <Icon name="chevR" className="chev" />
             </a>

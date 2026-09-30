@@ -21,6 +21,31 @@ const apiBuster = createHash('sha256')
 // backend answers 403 to any unsafe request whose Origin differs from its Host.
 const toBackend = { target: backend, changeOrigin: false }
 
+function preloadFonts() {
+  return {
+    name: 'preload-fonts',
+    apply: 'build' as const,
+    transformIndexHtml(html: string, { bundle }: { bundle?: Record<string, unknown> }) {
+      if (!bundle) return html
+      const tags: string[] = []
+      for (const fileName of Object.keys(bundle)) {
+        if (!fileName.endsWith('.woff2')) continue
+        const lower = fileName.toLowerCase()
+        const isTargetFamily = lower.includes('geologica') || lower.includes('golos')
+        const isTargetSubset =
+          (lower.includes('cyrillic') && !lower.includes('cyrillic-ext')) ||
+          (lower.includes('latin') && !lower.includes('latin-ext'))
+        const isNormal = lower.includes('normal')
+        if (isTargetFamily && isTargetSubset && isNormal) {
+          tags.push(`<link rel="preload" as="font" type="font/woff2" crossorigin href="/static/app/${fileName}">`)
+        }
+      }
+      if (tags.length === 0) return html
+      return html.replace('</head>', `    ${tags.join('\n    ')}\n  </head>`)
+    },
+  }
+}
+
 export default defineConfig(({ command }) => ({
   // Built assets ride the backend's existing /static mount, so the app adds no
   // anonymous route of its own. In dev the app is served from the root instead,
@@ -32,6 +57,7 @@ export default defineConfig(({ command }) => ({
     react(),
     // React Compiler through Babel, as documented by @vitejs/plugin-react 6.
     babel({ presets: [reactCompilerPreset()] }),
+    preloadFonts(),
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',
@@ -43,8 +69,8 @@ export default defineConfig(({ command }) => ({
         name: 'Vitals',
         short_name: 'Vitals',
         display: 'standalone',
-        background_color: '#0c0e12',
-        theme_color: '#0c0e12',
+        background_color: '#1B1820',
+        theme_color: '#1B1820',
         icons: [
           {
             src: '/static/icons/icon-192.png',

@@ -5,6 +5,16 @@
 .mrows { display: grid; gap: 12px; }
 .mrow-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
 .mrow-h .t { font-weight: 600; font-size: var(--t-label); }
+.compo { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px; margin-top: 14px; }
+.compo i { display: block; height: 100%; border-radius: 2px; }
+.hyp-legend { display: grid; gap: 8px; margin-top: 12px; font-size: var(--t-caption); color: var(--muted); }
+.hyp-legend div { display: flex; flex-direction: column; }
+.hyp-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-bottom: 4px; }
+.hyp-legend b { display: block; font-family: var(--f-display); margin-top: 2px; color: var(--fg); font-weight: 600; font-style: normal; }
+.hyp-legend em { font-style: normal; font-weight: 400; color: var(--muted); margin-left: 4px; }
+.nutr-bars-wrap { margin-bottom: 12px; padding: 12px; border-radius: var(--r); background: var(--surface); }
+.nutr-bars-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; font-size: var(--t-micro); color: var(--muted); }
+.nutr-bars { width: 100%; height: 52px; display: block; }
 .r-meal { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
 @container app (min-width: 768px) {
   .r-meal { grid-template-columns: 52px minmax(0, 1fr) 88px 44px 44px 44px 72px; }

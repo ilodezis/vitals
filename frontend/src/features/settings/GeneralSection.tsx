@@ -1,22 +1,39 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
+import { useSession } from '@/app/session'
+import { OptionGroup } from '@/components/controls/Choices'
 import { PrimaryButton } from '@/components/controls/PrimaryButton'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { useT } from '@/i18n/useT'
+import type { NavItem } from '@/components/shell/nav'
 import type { SettingsView } from './useSettingsView'
 
 interface GeneralSectionProps {
   settings: SettingsView
 }
 
-const CORE_MODULES = new Set([
+export interface SettingsModuleItem {
+  id: string
+  titleKey: string
+  core: boolean
+  enabled: boolean
+}
+
+export interface SettingsModuleGroup {
+  rubric: string
+  rubricKey: string
+  items: SettingsModuleItem[]
+}
+
+export const CORE_MODULES = new Set([
   'today',
   'more',
   'weight',
   'measures',
   'recovery',
+  'garmin',
   'sleep',
   'nights',
   'activities',
@@ -27,55 +44,53 @@ const CORE_MODULES = new Set([
   'settings',
 ])
 
-const MODULE_GROUPS = [
-  {
-    nameKey: 'masthead.rubric.health',
-    defaultName: 'Здоровье',
-    items: [
-      { id: 'weight', label: 'Вес', core: true },
-      { id: 'recovery', label: 'Восстановление', core: true },
-      { id: 'workouts', label: 'Тренировки', core: false },
-      { id: 'nutrition', label: 'Питание', core: false },
-      { id: 'glp1', label: 'GLP-1', core: false },
-      { id: 'hrt', label: 'ГЗТ', core: false },
-    ],
-  },
-  {
-    nameKey: 'masthead.rubric.markers',
-    defaultName: 'Маркеры',
-    items: [
-      { id: 'labs', label: 'Анализы', core: true },
-      { id: 'genetics', label: 'Генетика', core: false },
-    ],
-  },
-  {
-    nameKey: 'masthead.rubric.lifestyle',
-    defaultName: 'Образ жизни',
-    items: [
-      { id: 'supplements', label: 'Добавки', core: false },
-      { id: 'skincare', label: 'Уход за кожей', core: false },
-    ],
-  },
-  {
-    nameKey: 'masthead.rubric.journal',
-    defaultName: 'Журнал',
-    items: [
-      { id: 'interactions', label: 'Взаимодействия', core: false },
-      { id: 'signals', label: 'Симптомы', core: false },
-      { id: 'timeline', label: 'Хроника', core: false },
-      { id: 'reports', label: 'Отчёты', core: true },
-      { id: 'charts', label: 'Графики', core: true },
-    ],
-  },
-  {
-    nameKey: 'nav.weight',
-    defaultName: 'Вес',
-    items: [{ id: 'body_comp', label: 'Состав тела', core: false }],
-  },
-]
+export function groupSettingsModules(
+  navItems: NavItem[] = [],
+  enabledModules: Record<string, boolean> = {},
+): SettingsModuleGroup[] {
+  const groupsByRubric = new Map<string, SettingsModuleItem[]>()
+
+  for (const item of navItems) {
+    const rubric = item.rubric || 'other'
+    if (!groupsByRubric.has(rubric)) {
+      groupsByRubric.set(rubric, [])
+    }
+    const id = item.key
+    const isCore = CORE_MODULES.has(id)
+    const isEnabled = isCore || enabledModules[id] !== false
+    groupsByRubric.get(rubric)!.push({
+      id,
+      titleKey: `nav.${id}`,
+      core: isCore,
+      enabled: isEnabled,
+    })
+  }
+
+  // body_comp is in 'health' group as a separate item
+  const healthGroup = groupsByRubric.get('health')
+  if (healthGroup) {
+    const isCore = false
+    const isEnabled = enabledModules['body_comp'] !== false
+    if (!healthGroup.some((it) => it.id === 'body_comp')) {
+      healthGroup.push({
+        id: 'body_comp',
+        titleKey: 'nav.body_comp',
+        core: isCore,
+        enabled: isEnabled,
+      })
+    }
+  }
+
+  return Array.from(groupsByRubric.entries()).map(([rubric, items]) => ({
+    rubric,
+    rubricKey: `masthead.rubric.${rubric}`,
+    items,
+  }))
+}
 
 export function GeneralSection({ settings }: GeneralSectionProps) {
   const { t } = useT()
+  const session = useSession()
   const queryClient = useQueryClient()
 
   // Profile form state
@@ -93,6 +108,12 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
 
   // Language state
   const [lang, setLang] = useState(settings.language.language)
+
+  // Dynamic modules grouped from session.nav.items
+  const moduleGroups = groupSettingsModules(
+    session?.nav?.items ?? [],
+    settings.modules.enabled_modules ?? {},
+  )
 
   // Profile save
   const handleSaveProfile = async () => {
@@ -114,7 +135,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
       }
       return false
     } catch (err: any) {
-      toast(err.message || 'Error saving profile', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
       return false
     }
   }
@@ -136,7 +157,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
       }
       return false
     } catch (err: any) {
-      toast(err.message || 'Error saving nutrition goals', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
       return false
     }
   }
@@ -156,7 +177,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
       }
       return false
     } catch (err: any) {
-      toast(err.message || 'Error saving language', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
       return false
     }
   }
@@ -174,7 +195,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
         void queryClient.invalidateQueries({ queryKey: ['session'] })
       }
     } catch (err: any) {
-      toast(err.message || 'Error updating module', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
     }
   }
 
@@ -185,26 +206,18 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
         <Section title={t('settings.language_title')} className="set-sec">
           <p className="sub set-d">{t('settings.language_description')}</p>
           <div className="form">
-            <div className="seg mb-3">
-              <button
-                type="button"
-                className={lang === 'ru' ? 'on' : ''}
-                onClick={() => setLang('ru')}
-              >
-                Русский
-              </button>
-              <button
-                type="button"
-                className={lang === 'en' ? 'on' : ''}
-                onClick={() => setLang('en')}
-              >
-                English
-              </button>
-            </div>
+            <OptionGroup
+              options={[
+                { id: 'ru', label: t('settings.lang_ru') },
+                { id: 'en', label: t('settings.lang_en') },
+              ]}
+              value={lang}
+              onChange={(id) => setLang(id as 'ru' | 'en')}
+            />
             <div className="set-save">
-              <PrimaryButton onPress={handleSaveLanguage}>
+              <button type="button" className="btn ghost" onClick={handleSaveLanguage}>
                 {t('settings.language_save')}
-              </PrimaryButton>
+              </button>
             </div>
           </div>
         </Section>
@@ -213,24 +226,28 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
         <Section title={t('modules.title')} className="set-sec">
           <p className="sub set-d">{t('modules.description')}</p>
           <div className="form">
-            {MODULE_GROUPS.map((group, idx) => (
+            {moduleGroups.map((group, idx) => (
               <div key={idx} className="mod-g">
-                <span className="flabel">{t(group.nameKey)}</span>
+                <span className="flabel">{t(group.rubricKey)}</span>
                 <div className="opts" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                   {group.items.map((it) => {
-                    const isCore = it.core || CORE_MODULES.has(it.id)
-                    const isEnabled = isCore || (settings.modules.enabled_modules ?? {})[it.id] !== false
+                    const isCore = it.core
+                    const isEnabled = it.enabled
                     return (
                       <button
                         key={it.id}
                         type="button"
                         className={`opt ${isEnabled ? 'on' : ''} ${isCore ? 'lock' : ''}`}
-                        title={isCore ? 'Базовый модуль — отключение недоступно' : undefined}
+                        title={isCore ? t('settings.module_core_title') : undefined}
                         onClick={() => !isCore && handleToggleModule(it.id, isEnabled)}
                         disabled={isCore}
                       >
-                        {it.label}
-                        {isCore && <span className="hint" style={{ marginLeft: '4px', opacity: 0.6, fontSize: '10px' }}>базовый</span>}
+                        {t(it.titleKey)}
+                        {isCore && (
+                          <span className="hint" style={{ marginLeft: '4px', opacity: 0.6, fontSize: '10px' }}>
+                            {t('settings.module_core_badge')}
+                          </span>
+                        )}
                       </button>
                     )
                   })}
@@ -245,10 +262,10 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
         {/* Profile */}
         <Section title={t('settings.profile_title')} className="set-sec">
           <p className="sub set-d">{t('settings.profile_description')}</p>
-          <div className="form space-y-3">
-            <div className="grid grid-cols-3 gap-2">
+          <div className="form">
+            <div className="set-fields-grid">
               <label className="field">
-                <span className="flabel">{t('settings.height')}</span>
+                <span className="flabel">{t('settings.field.height')}</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -258,7 +275,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
                 />
               </label>
               <label className="field">
-                <span className="flabel">{t('settings.age')}</span>
+                <span className="flabel">{t('settings.field.age')}</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -268,7 +285,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
                 />
               </label>
               <label className="field">
-                <span className="flabel">{t('settings.sex')}</span>
+                <span className="flabel">{t('settings.field.sex')}</span>
                 <select
                   className="input"
                   value={sex}
@@ -280,7 +297,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
               </label>
             </div>
 
-            <label className="field">
+            <label className="field" style={{ marginTop: '12px' }}>
               <span className="flabel">{t('settings.timezone')}</span>
               <select
                 className="input"
@@ -328,10 +345,10 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
         {/* Nutrition Goals */}
         <Section title={t('settings.nutrition_title')} className="set-sec">
           <p className="sub set-d">{t('settings.nutrition_hint')}</p>
-          <div className="form space-y-3">
-            <div className="grid grid-cols-3 gap-2">
+          <div className="form">
+            <div className="set-fields-grid">
               <label className="field">
-                <span className="flabel">{t('settings.protein_target')}</span>
+                <span className="flabel">{t('settings.field.protein_target')}</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -341,7 +358,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
                 />
               </label>
               <label className="field">
-                <span className="flabel">{t('settings.cal_min')}</span>
+                <span className="flabel">{t('settings.field.cal_min')}</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -351,7 +368,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
                 />
               </label>
               <label className="field">
-                <span className="flabel">{t('settings.cal_max')}</span>
+                <span className="flabel">{t('settings.field.cal_max')}</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -363,9 +380,9 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
             </div>
 
             <div className="set-save">
-              <PrimaryButton onPress={handleSaveNutrition}>
+              <button type="button" className="btn ghost" onClick={handleSaveNutrition}>
                 {t('settings.save_nutrition')}
-              </PrimaryButton>
+              </button>
             </div>
           </div>
         </Section>

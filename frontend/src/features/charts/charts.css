@@ -1,5 +1,5 @@
 /* Charts styles ported from mockup */
-.cgal { display: flex; flex-direction: column; gap: 24px; }
+.cgal { display: flex; flex-direction: column; gap: 24px; margin-top: var(--s6); }
 .cg .sec-h .acts .meta { margin-right: 4px; }
 .cg-note { margin: calc(-1 * var(--s2)) 0 var(--s3); font-size: var(--t-label); color: var(--muted); }
 .srows { display: grid; gap: 14px; }
@@ -8,6 +8,15 @@
 .srow-f { display: grid; gap: 8px; }
 .srow .ibtn { width: 40px; height: 48px; color: var(--muted); }
 .srow .ibtn svg { width: 18px; height: 18px; }
+
+.fpanel { margin-bottom: var(--s6); }
+.fpanel .form { display: grid; gap: 16px; }
+.norm-check { display: flex; align-items: center; gap: 8px; cursor: pointer; padding-top: 4px; font-size: var(--t-ui); }
+.fpanel .form-acts { display: flex; gap: 8px; padding-top: 8px; }
+
+.chart-empty { padding: 48px 0; text-align: center; font-size: var(--t-caption); color: var(--muted); }
+.chart-svg { width: 100%; height: auto; overflow: visible; display: block; }
+.charts-empty { margin-top: var(--s6); }
 
 @container app (min-width: 768px) {
   .cgal { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; }

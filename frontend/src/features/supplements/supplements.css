@@ -13,6 +13,11 @@
 .arch-h.open .caret { transform: rotate(180deg); }
 .arch { border-top: 1px solid var(--line); }
 
+.fpanel { margin-bottom: var(--s6); }
+.fpanel .form { display: grid; gap: 12px; }
+.fpanel .form-g2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.fpanel .form-acts { display: flex; gap: 8px; padding-top: 8px; }
+
 @container app (min-width: 768px) {
   .r-supp { grid-template-columns: minmax(0, 1fr) 120px 72px 136px; align-items: center; }
   .r-supp > .badge, .r-supp > span:empty, .r-supp .acts { grid-column: auto; }

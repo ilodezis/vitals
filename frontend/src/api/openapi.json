@@ -1281,22 +1281,10 @@
       },
       "ConflictRuleItem": {
         "properties": {
-          "a": {
-            "title": "A",
-            "type": "string"
-          },
           "active": {
             "default": true,
             "title": "Active",
             "type": "boolean"
-          },
-          "b": {
-            "title": "B",
-            "type": "string"
-          },
-          "cat": {
-            "title": "Cat",
-            "type": "string"
           },
           "category": {
             "title": "Category",
@@ -1321,17 +1309,6 @@
             "title": "Domainb",
             "type": "string"
           },
-          "ev": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ev"
-          },
           "evidence": {
             "anyOf": [
               {
@@ -1347,17 +1324,6 @@
             "default": false,
             "title": "Firing",
             "type": "boolean"
-          },
-          "h": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "H"
           },
           "hours": {
             "anyOf": [
@@ -1378,21 +1344,8 @@
             "title": "Message",
             "type": "string"
           },
-          "msg": {
-            "title": "Msg",
-            "type": "string"
-          },
-          "on": {
-            "default": true,
-            "title": "On",
-            "type": "boolean"
-          },
           "ruleType": {
             "title": "Ruletype",
-            "type": "string"
-          },
-          "sev": {
-            "title": "Sev",
             "type": "string"
           },
           "severity": {
@@ -1409,37 +1362,16 @@
               }
             ],
             "title": "Source"
-          },
-          "src": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Src"
-          },
-          "type": {
-            "title": "Type",
-            "type": "string"
           }
         },
         "required": [
           "id",
           "ruleType",
-          "type",
           "domainA",
           "domainB",
-          "a",
-          "b",
           "severity",
-          "sev",
           "message",
-          "msg",
-          "category",
-          "cat"
+          "category"
         ],
         "title": "ConflictRuleItem",
         "type": "object"
@@ -1706,13 +1638,17 @@
       },
       "DosePhase": {
         "properties": {
+          "dose_mg": {
+            "title": "Dose Mg",
+            "type": "number"
+          },
+          "drug": {
+            "title": "Drug",
+            "type": "string"
+          },
           "from_date": {
             "format": "date",
             "title": "From Date",
-            "type": "string"
-          },
-          "label": {
-            "title": "Label",
             "type": "string"
           },
           "to_date": {
@@ -1730,7 +1666,8 @@
         },
         "required": [
           "from_date",
-          "label"
+          "drug",
+          "dose_mg"
         ],
         "title": "DosePhase",
         "type": "object"
@@ -4429,17 +4366,6 @@
             },
             "title": "Alldomains",
             "type": "array"
-          },
-          "byCategory": {
-            "additionalProperties": {
-              "items": {
-                "$ref": "#/components/schemas/ConflictRuleItem"
-              },
-              "type": "array"
-            },
-            "default": {},
-            "title": "Bycategory",
-            "type": "object"
           },
           "firingCount": {
             "default": 0,
@@ -10488,7 +10414,30 @@
             "title": "Delta Kg",
             "type": "number"
           },
+          "dose_mg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dose Mg"
+          },
+          "drug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drug"
+          },
           "label": {
+            "default": "",
             "title": "Label",
             "type": "string"
           },
@@ -10499,7 +10448,6 @@
           }
         },
         "required": [
-          "label",
           "since_date",
           "days",
           "delta_kg"

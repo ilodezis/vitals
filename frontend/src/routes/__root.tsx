@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { createRootRouteWithContext, Navigate } from '@tanstack/react-router'
 import { sessionQuery } from '@/app/session'
 import { AppShell } from '@/components/shell/AppShell'
+import { todayQuery } from '@/features/today/useTodayView'
 import { loadDictionary } from '@/i18n/load'
 
 export type RouterContext = {
@@ -11,6 +12,7 @@ export type RouterContext = {
 export const Route = createRootRouteWithContext<RouterContext>()({
   // Who is signed in, and in which language, before anything draws: the shell is built from it.
   loader: async ({ context }) => {
+    void context.queryClient.prefetchQuery(todayQuery)
     const session = await context.queryClient.ensureQueryData(sessionQuery)
     return { lang: session.lang, dictionary: await loadDictionary(session.lang) }
   },

@@ -43,7 +43,7 @@ export function AppShell({ lang, dictionary }: { lang: Lang; dictionary: Diction
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as Element | null
       if (target?.closest('input, textarea, select, [contenteditable]')) return
-      if ((e.key === 'n' || e.key === 'т') && !e.metaKey && !e.ctrlKey && !e.altKey) toggleLogSheet('weight')
+      if ((e.key === 'n' || e.code === 'KeyN' || e.key === '\u0442') && !e.metaKey && !e.ctrlKey && !e.altKey) toggleLogSheet('weight')
       if (e.key === 'Escape') closeLogSheet()
     }
     document.addEventListener('keydown', onKey)

@@ -58,7 +58,8 @@ async def test_interactions_read_and_toggle(auth_client, db_session):
     assert r.status_code == 200
     data = r.json()
     assert data["totalCount"] >= 1
-    assert "absorption" in data["byCategory"]
+    assert "byCategory" not in data
+    assert "by_category" not in data
     found = next((x for x in data["rules"] if x["id"] == rule.id), None)
     assert found is not None
     assert found["code"] == "test_iron_zinc"
@@ -80,3 +81,29 @@ async def test_interactions_read_and_toggle(auth_client, db_session):
     data = r.json()
     updated = next(x for x in data["rules"] if x["id"] == rule.id)
     assert updated["active"] is False
+
+
+async def test_interactions_compact_payload_and_no_duplicate_fields(auth_client, db_session):
+    from vitals.services import conflict_catalog
+
+    await conflict_catalog.sync_catalog(db_session)
+    await db_session.commit()
+
+    r = await auth_client.get(URL)
+    assert r.status_code == 200
+    data = r.json()
+
+    # Verify no byCategory / by_category
+    assert "byCategory" not in data
+    assert "by_category" not in data
+
+    # Verify no short duplicate field aliases
+    rules = data["rules"]
+    assert len(rules) >= 100
+    for item in rules:
+        for alias in ("a", "b", "sev", "msg", "cat", "type", "on", "src", "ev", "h"):
+            assert alias not in item, f"Duplicate alias '{alias}' found in rule {item.get('id')}"
+
+    # Response byte length on full seeded catalog must be < 120_000 (was 345 KB)
+    assert len(r.content) < 120_000
+

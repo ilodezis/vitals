@@ -30,27 +30,27 @@ export default function NightsListScreen() {
     const mins = Math.round(seconds / 60)
     const h = Math.floor(mins / 60)
     const m = mins % 60
-    return h > 0 ? `${h} ч ${m} мин` : `${m} мин`
+    return h > 0 ? t('app.duration.hm', { h, m }) : t('app.duration.min', { m })
   }
 
   return (
     <>
       <TopBar title={t('app.title.nights')} />
-      <Headline title="Сон" />
+      <Headline title={t('app.title.nights')} />
 
       {/* Hero row for the latest night */}
       {n0 && (
         <Section>
           <Link to="/recovery/sleep/$date" params={{ date: n0.date }} className="hero-row">
             <div className="hr-l">
-              <div className="sub">Прошлая ночь</div>
+              <div className="sub">{t('app.sleep.last_night')}</div>
               <div className="hr-t">{longDate(parseIsoDate(n0.date), lang)}</div>
               <div className="sub num">{fmtHM(n0.duration_seconds ?? 0)}</div>
             </div>
             <div className="hr-f">
               <div className="f">
                 <div className="f-v">{n0.score ?? '—'}</div>
-                <div className="f-l">Оценка сна</div>
+                <div className="f-l">{t('today.metric_sleep_score')}</div>
               </div>
             </div>
             <Icon name="chevR" />
@@ -65,9 +65,9 @@ export default function NightsListScreen() {
       )}
 
       {/* Nights table */}
-      <Section title={`История ночей (${nights.length})`}>
+      <Section title={t('app.sleep.nights_history', { count: nights.length })}>
         <div className="rows">
-          {isLoading && <div className="row"><span className="m">Загрузка...</span></div>}
+          {isLoading && <div className="row"><span className="m">{t('app.loading')}</span></div>}
           {!isLoading && nights.length === 0 && <div className="row"><span className="m">{t('app.empty')}</span></div>}
           {nights.map((n) => (
             <Link key={n.date} to="/recovery/sleep/$date" params={{ date: n.date }} className="row r-night">

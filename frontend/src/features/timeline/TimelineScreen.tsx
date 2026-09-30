@@ -7,22 +7,10 @@ import { toast } from '@/components/controls/toast'
 import { Icon, type IconName } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
+import { parseIsoDate, shortDate } from '@/lib/dates'
 import type { TimelineEventItem } from './types'
 import { useTimelineView } from './useTimelineView'
 import './timeline.css'
-
-const DOM_RU: Record<string, string> = {
-  weight: 'Вес',
-  glp1: 'GLP-1',
-  workouts: 'Тренировки',
-  garmin: 'Garmin',
-  labs: 'Анализы',
-  skincare: 'Кожа',
-  supplements: 'Добавки',
-  genetics: 'Генетика',
-  nutrition: 'Питание',
-  timeline: 'Хронология',
-}
 
 const DOM_ICON: Record<string, IconName> = {
   weight: 'scale',
@@ -37,20 +25,20 @@ const DOM_ICON: Record<string, IconName> = {
   timeline: 'timeline',
 }
 
-const TL_KIND: Record<string, [string, string]> = {
-  life_event: ['Событие', 'violet'],
-  protocol_change: ['Смена протокола', 'cool'],
-  injury: ['Травма', 'bad'],
-  illness: ['Болезнь', 'bad'],
-  trip: ['Поездка', 'warn'],
-  note: ['Заметка', 'plain'],
-  milestone: ['Цель', 'good'],
-  photo: ['Фото', 'plain'],
-  side_effect: ['Побочный эффект', 'bad'],
+const TL_KIND_TONE: Record<string, string> = {
+  life_event: 'violet',
+  protocol_change: 'cool',
+  injury: 'bad',
+  illness: 'bad',
+  trip: 'warn',
+  note: 'plain',
+  milestone: 'good',
+  photo: 'plain',
+  side_effect: 'bad',
 }
 
 export default function TimelineScreen() {
-  const { t } = useT()
+  const { t, lang } = useT()
   const [selectedDomain, setSelectedDomain] = useState('all')
   const view = useTimelineView(selectedDomain)
   const queryClient = useQueryClient()
@@ -127,12 +115,22 @@ export default function TimelineScreen() {
     return Array.from(new Set(['weight', 'glp1', 'workouts', 'garmin', 'labs', 'skincare', 'supplements', 'timeline', ...view.domains]))
   }, [view.domains])
 
+  const getDomainLabel = (d: string): string => {
+    const key = `nav.${d}`
+    const trans = t(key)
+    if (trans && trans !== key) return trans
+    const domKey = `app.domain.${d}`
+    const domTrans = t(domKey)
+    if (domTrans && domTrans !== domKey) return domTrans
+    return d
+  }
+
   return (
     <>
       <TopBar
         title={t('nav.timeline')}
         right={
-          <button type="button" className="ibtn" onClick={() => setFormOpen(true)} aria-label="Добавить событие">
+          <button type="button" className="ibtn" onClick={() => setFormOpen(true)} aria-label={t('app.timeline.add_event')}>
             <Icon name="plus" />
           </button>
         }
@@ -142,7 +140,7 @@ export default function TimelineScreen() {
         actions={
           <button type="button" className="ghost" onClick={() => setFormOpen(true)}>
             <Icon name="plus" />
-            <span>Добавить событие</span>
+            <span>{t('app.timeline.add_event')}</span>
           </button>
         }
       />
@@ -150,42 +148,41 @@ export default function TimelineScreen() {
         <div className="figs inline">
           <div className="f">
             <div className="f-v">{view.totalCount || view.events.length}</div>
-            <div className="f-l">Событий</div>
+            <div className="f-l">{t('app.timeline.events_count')}</div>
           </div>
           <div className="f">
             <div className="f-v">{view.manualCount}</div>
-            <div className="f-l">Вручную</div>
+            <div className="f-l">{t('app.timeline.manual_count')}</div>
           </div>
         </div>
       </Headline>
 
       <p className="sub lede">
-        Все заметные события — залогированные автоматически или добавленные вручную — в одной
-        ленте, и флажками на графиках.
+        {t('app.timeline.lede')}
       </p>
 
       {/* Add Event Form Modal */}
       {formOpen && (
-        <div className="panel fpanel mb-6" style={{ marginTop: 'var(--s6)' }}>
+        <div className="panel fpanel tl-fpanel" style={{ marginTop: 'var(--s6)' }}>
           <div className="panel-h">
-            <h3>Новое событие</h3>
+            <h3>{t('app.timeline.new_event')}</h3>
             <button type="button" className="ibtn" onClick={() => setFormOpen(false)}>
               <Icon name="x" />
             </button>
           </div>
-          <div className="form space-y-3">
+          <div className="tl-form">
             <label className="field">
-              <span className="flabel">Название</span>
+              <span className="flabel">{t('app.timeline.title_label')}</span>
               <input
                 className="input"
-                placeholder="например, поездка в Грузию"
+                placeholder={t('app.timeline.title_ph')}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="tl-grid-2">
               <label className="field">
-                <span className="flabel">Дата</span>
+                <span className="flabel">{t('app.timeline.date_label')}</span>
                 <input
                   type="date"
                   className="input"
@@ -194,34 +191,34 @@ export default function TimelineScreen() {
                 />
               </label>
               <label className="field">
-                <span className="flabel">Дата окончания</span>
+                <span className="flabel">{t('app.timeline.end_date_label')}</span>
                 <input
                   type="date"
                   className="input"
-                  placeholder="Оставьте пустым для события в один день"
+                  placeholder={t('app.timeline.end_date_ph')}
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                 />
               </label>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="tl-grid-2">
               <label className="field">
-                <span className="flabel">Тип</span>
+                <span className="flabel">{t('app.timeline.type_label')}</span>
                 <select
                   className="input"
                   value={kind}
                   onChange={(e) => setKind(e.target.value)}
                 >
-                  <option value="life_event">Событие</option>
-                  <option value="protocol_change">Смена протокола</option>
-                  <option value="injury">Травма</option>
-                  <option value="illness">Болезнь</option>
-                  <option value="trip">Поездка</option>
-                  <option value="note">Заметка</option>
+                  <option value="life_event">{t('app.timeline.kind.life_event')}</option>
+                  <option value="protocol_change">{t('app.timeline.kind.protocol_change')}</option>
+                  <option value="injury">{t('app.timeline.kind.injury')}</option>
+                  <option value="illness">{t('app.timeline.kind.illness')}</option>
+                  <option value="trip">{t('app.timeline.kind.trip')}</option>
+                  <option value="note">{t('app.timeline.kind.note')}</option>
                 </select>
               </label>
               <label className="field">
-                <span className="flabel">Относится к</span>
+                <span className="flabel">{t('app.timeline.relates_to')}</span>
                 <select
                   className="input"
                   value={domain}
@@ -229,23 +226,23 @@ export default function TimelineScreen() {
                 >
                   {domainList.map((d) => (
                     <option key={d} value={d}>
-                      {DOM_RU[d] || d}
+                      {getDomainLabel(d)}
                     </option>
                   ))}
                 </select>
               </label>
             </div>
             <label className="field">
-              <span className="flabel">Заметка</span>
+              <span className="flabel">{t('app.timeline.note_label')}</span>
               <textarea
                 className="input"
                 rows={2}
-                placeholder="Детали, ощущения..."
+                placeholder={t('app.timeline.note_ph')}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />
             </label>
-            <div className="form-acts flex gap-2 pt-2">
+            <div className="tl-acts">
               <PrimaryButton
                 className="btn grow"
                 onPress={handleCreate}
@@ -272,7 +269,7 @@ export default function TimelineScreen() {
           className={`filter ${selectedDomain === 'all' ? 'on' : ''}`}
           onClick={() => setSelectedDomain('all')}
         >
-          Все
+          {t('app.timeline.filter_all')}
         </button>
         {domainList.map((d) => (
           <button
@@ -281,7 +278,7 @@ export default function TimelineScreen() {
             className={`filter ${selectedDomain === d ? 'on' : ''}`}
             onClick={() => setSelectedDomain(d)}
           >
-            {DOM_RU[d] || d}
+            {getDomainLabel(d)}
           </button>
         ))}
       </div>
@@ -292,25 +289,25 @@ export default function TimelineScreen() {
           <div className="tl">
             {Array.from(groupedByDay.entries()).map(([dStr, events]) => (
               <div key={dStr} className="tl-day">
-                <div className="d num">{dStr}</div>
+                <div className="d num">{shortDate(parseIsoDate(dStr), lang)}</div>
                 <div className="tl-list">
                   {events.map((e, idx) => {
                     const dom = e.domain || e.dom
-                    const kindMeta = TL_KIND[e.kind] || ['Заметка', 'plain']
-                    const tone = e.tone || kindMeta[1] || 'plain'
+                    const kindLabel = t(`app.timeline.kind.${e.kind}`) || e.kind
+                    const tone = e.tone || TL_KIND_TONE[e.kind] || 'plain'
                     const domIcon = DOM_ICON[dom] || 'timeline'
                     return (
                       <div key={e.id ?? idx} className="tl-ev" data-item>
                         <i className={`tk ${tone}`} />
                         <div>
                           <div className="ev-h">
-                            <Badge tone="plain">{kindMeta[0]}</Badge>
+                            <Badge tone="plain">{kindLabel}</Badge>
                             <span className="ev-dom">
                               <Icon name={domIcon} />
-                              {DOM_RU[dom] || dom}
+                              {getDomainLabel(dom)}
                             </span>
                             {e.endDate && (
-                              <span className="m num">→ {e.endDate}</span>
+                              <span className="m num">→ {shortDate(parseIsoDate(e.endDate), lang)}</span>
                             )}
                           </div>
                           <div className="t">{e.title}</div>
@@ -322,7 +319,7 @@ export default function TimelineScreen() {
                               type="button"
                               className="ibtn"
                               onClick={() => handleDelete(e)}
-                              aria-label="Удалить событие"
+                              aria-label={t('app.timeline.delete_event')}
                             >
                               <Icon name="trash" />
                             </button>
@@ -338,7 +335,7 @@ export default function TimelineScreen() {
         ) : (
           <div className="empty">
             <Icon name="timeline" />
-            <p>Пока нет событий в хронологии.</p>
+            <p>{t('app.timeline.empty')}</p>
           </div>
         )}
       </section>

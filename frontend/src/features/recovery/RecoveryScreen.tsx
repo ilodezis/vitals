@@ -13,7 +13,7 @@ import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { daysBetween, longDate, parseIsoDate, shortDate, weekdayShort } from '@/lib/dates'
-import { formatInt, formatNumber } from '@/lib/format'
+import { formatCompactNumber, formatInt, formatNumber } from '@/lib/format'
 import { wait } from '@/lib/motion'
 import { durationShort, durationText } from '@/lib/units'
 import { isWorse, toneCell } from './tones'
@@ -43,7 +43,7 @@ export default function RecoveryScreen() {
   const { headline: h, night, norms } = view
   const [awake, rem, light, deep] = night.stageMinutes
   const last = view.days[view.days.length - 1]
-  const cellText = (key: NormKey, value: number) => (key === 'steps' ? `${formatNumber(value / 1000, lang)}k` : String(value))
+  const cellText = (key: NormKey, value: number) => (key === 'steps' ? formatCompactNumber(value, lang) : formatNumber(value, lang))
 
   const sync = async () => {
     if (syncing) return
@@ -89,7 +89,7 @@ export default function RecoveryScreen() {
           </div>
           <div className="f">
             <FigureBody
-              value={h.hrv}
+              value={formatNumber(h.hrv, lang)}
               unit={t('app.unit.ms')}
               label={t('today.metric_hrv_avg')}
               sub={plural(h.hrvNightsBelow, t('app.recovery.below.one', { n: h.hrvNightsBelow }), t('app.recovery.below.few', { n: h.hrvNightsBelow }), t('app.recovery.below.many', { n: h.hrvNightsBelow }))}
@@ -97,7 +97,7 @@ export default function RecoveryScreen() {
             />
           </div>
           <div className="f">
-            <FigureBody value={h.rhr} unit={t('app.unit.bpm')} label={t('app.metric.rhr')} sub={h.rhrNote} />
+            <FigureBody value={formatNumber(h.rhr, lang)} unit={t('app.unit.bpm')} label={t('app.metric.rhr')} sub={h.rhrNote === 'normal' || h.rhrNote === '\u043d\u043e\u0440\u043c\u0430' ? t('app.recovery.norm_word') : h.rhrNote} />
           </div>
           <div className="f">
             <FigureBody value={`${h.bodyBatteryFrom}→${h.bodyBatteryTo}`} label={t('today.metric_body_battery_high')} sub={t('app.recovery.bb_charge')} />
@@ -152,18 +152,19 @@ export default function RecoveryScreen() {
                 const norm = norms[bar.key]
                 const value = last === undefined ? 0 : last[bar.key]
                 const bad = isWorse(value, norm)
+                const unitLabel = norm.unit === 'ms' || norm.unit === '\u043c\u0441' ? t('app.unit.ms') : norm.unit === 'bpm' || norm.unit === '\u0443\u0434' ? t('app.unit.bpm') : norm.unit
                 return (
                   <div key={bar.key} className="row">
                     <div>
                       <div className="t">{t(`app.metric.${bar.key}`)}</div>
                       <div className="m">
                         {t('app.recovery.norm', { range: rangeText(bar.key) })}
-                        {norm.unit !== '' && ` ${norm.unit}`}
+                        {unitLabel !== '' && ` ${unitLabel}`}
                       </div>
                     </div>
                     <div className={cx('v', bad && 'bad')}>
-                      {value}
-                      {norm.unit !== '' && <span className="u">{norm.unit}</span>}
+                      {formatNumber(value, lang)}
+                      {unitLabel !== '' && <span className="u">{unitLabel}</span>}
                     </div>
                     <RangeBar value={value} lo={norm.lo} hi={norm.hi} min={bar.min} max={bar.max} tone={bad ? 'bad' : ''} />
                   </div>

@@ -5,6 +5,7 @@ import { Section } from '@/components/controls/Section'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
+import { parseIsoDate, shortDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/format'
 import type { components } from '@/api/schema'
 import './recovery.css'
@@ -28,23 +29,23 @@ export default function ActivitiesScreen() {
 
   const fmtDuration = (sec: number) => {
     const mins = Math.round(sec / 60)
-    return `${mins} мин`
+    return t('app.duration.min', { m: mins })
   }
 
   const fmtDistance = (m?: number | null) => {
     if (!m) return '—'
     const km = m / 1000
-    return `${formatNumber(km, lang, 2)} км`
+    return `${formatNumber(km, lang, 2)} ${t('app.unit.km')}`
   }
 
   return (
     <>
       <TopBar title={t('app.title.activities')} />
-      <Headline title="Активности" />
+      <Headline title={t('app.title.activities')} />
 
       <Section>
         <div className="acts-list">
-          {isLoading && <div className="row"><span className="m">Загрузка...</span></div>}
+          {isLoading && <div className="row"><span className="m">{t('app.loading')}</span></div>}
           {!isLoading && activities.length === 0 && (
             <div className="row"><span className="m">{t('app.empty')}</span></div>
           )}
@@ -68,27 +69,27 @@ export default function ActivitiesScreen() {
                       )}
                     </div>
                   </div>
-                  <span className="m num">{a.start_time.slice(0, 16).replace('T', ' ')}</span>
+                  <span className="m num">{shortDate(parseIsoDate(a.start_time), lang)} {a.start_time.slice(11, 16)}</span>
                 </div>
 
                 <div className="act-s">
                   <div>
                     <b className="num">{fmtDuration(a.duration_seconds)}</b>
-                    <small>Длительность</small>
+                    <small>{t('app.activity.duration')}</small>
                   </div>
                   <div>
                     <b className="num">{fmtDistance(a.distance_meters)}</b>
-                    <small>Дистанция</small>
+                    <small>{t('app.activity.distance')}</small>
                   </div>
                   <div>
-                    <b className="num">{a.calories != null ? `${a.calories} ккал` : '—'}</b>
-                    <small>Калории</small>
+                    <b className="num">{a.calories != null ? `${formatNumber(a.calories, lang)} ${t('app.unit.kcal')}` : '—'}</b>
+                    <small>{t('app.activity.calories')}</small>
                   </div>
                   <div>
                     <b className="num">
                       {a.avg_hr ?? '—'}{a.max_hr ? ` / ${a.max_hr}` : ''}
                     </b>
-                    <small>Пульс ср. / макс.</small>
+                    <small>{t('app.activity.hr_avg_max')}</small>
                   </div>
                 </div>
               </div>

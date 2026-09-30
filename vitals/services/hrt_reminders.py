@@ -27,7 +27,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.enums import Domain, Severity
-from vitals.i18n import current_lang, t
+from vitals.i18n import current_lang, format_date_human, t
 from vitals.models.hrt import HrtDose
 from vitals.models.labs import LabMarker, LabResult
 from vitals.services import alerts_service, hrt_cycle_service, hrt_service, labs_service
@@ -199,7 +199,7 @@ async def refresh_injection_due(
                     message=t(
                         "alert.hrt_injection_due",
                         compound=await _compound_display_name(session, entity),
-                        date=last_planned.isoformat(),
+                        date=format_date_human(last_planned),
                     ),
                     alert_key=INJECTION_DUE_KEY,
                     entity_ref=entity,

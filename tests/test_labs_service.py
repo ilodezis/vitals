@@ -441,3 +441,22 @@ async def test_unparsed_llm_reply_is_kept_verbatim():
     assert out == {"_unparsed": "Sorry, I cannot read this image."}
     # Whatever comes back still has to behave like a payload dict downstream.
     assert labs_service.normalize_extracted(out) == []
+
+
+async def test_refresh_alerts_comma_in_ru(db_session):
+    from vitals.i18n import current_lang
+
+    token = current_lang.set("ru")
+    try:
+        await labs_service.add_result(
+            db_session, on_date=DAY, marker="TSH", value=51.5, ref_low=0.4, ref_high=4.0
+        )
+        await db_session.commit()
+        await labs_service.refresh_alerts(db_session, on_date=DAY)
+        await db_session.commit()
+        active = await alerts_service.list_active(db_session, domain="labs")
+        alert = next(a for a in active if a.alert_key == labs_service.OUT_OF_RANGE_KEY)
+        assert "51,5" in alert.message
+    finally:
+        current_lang.reset(token)
+

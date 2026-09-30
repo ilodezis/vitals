@@ -256,3 +256,56 @@ async def test_injection_due_not_raised_before_item_offset(db_session):
         and a.entity_ref == "stanozolol_oral"
         for a in alerts
     )
+
+
+async def test_refresh_injection_due_human_date_ru(db_session):
+    from datetime import date
+    from vitals.i18n import current_lang
+
+    await hrt_catalog.sync_catalog(db_session)
+    cycle = await hrt_cycle_service.add_cycle(
+        db_session, kind="course", start_date=date(2026, 9, 20),
+    )
+    await db_session.commit()
+    await hrt_cycle_service.add_cycle_item(
+        db_session, cycle.id, compound_key="testosterone_enanthate",
+        schedule=[{"dose": 125, "interval_days": 10}],
+    )
+    await db_session.commit()
+
+    token = current_lang.set("ru")
+    try:
+        await hrt_reminders.refresh_injection_due(db_session, on_date=date(2026, 10, 1))
+        await db_session.commit()
+        alerts = await alerts_service.list_active(db_session, domain=Domain.HRT.value)
+        due = next(a for a in alerts if a.alert_key == hrt_reminders.INJECTION_DUE_KEY)
+        assert "30 сентября" in due.message
+    finally:
+        current_lang.reset(token)
+
+
+async def test_refresh_injection_due_human_date_en(db_session):
+    from datetime import date
+    from vitals.i18n import current_lang
+
+    await hrt_catalog.sync_catalog(db_session)
+    cycle = await hrt_cycle_service.add_cycle(
+        db_session, kind="course", start_date=date(2026, 9, 20),
+    )
+    await db_session.commit()
+    await hrt_cycle_service.add_cycle_item(
+        db_session, cycle.id, compound_key="testosterone_cypionate",
+        schedule=[{"dose": 125, "interval_days": 10}],
+    )
+    await db_session.commit()
+
+    token = current_lang.set("en")
+    try:
+        await hrt_reminders.refresh_injection_due(db_session, on_date=date(2026, 10, 1))
+        await db_session.commit()
+        alerts = await alerts_service.list_active(db_session, domain=Domain.HRT.value)
+        due = next(a for a in alerts if a.alert_key == hrt_reminders.INJECTION_DUE_KEY and a.entity_ref == "testosterone_cypionate")
+        assert "September 30" in due.message
+    finally:
+        current_lang.reset(token)
+

@@ -97,6 +97,7 @@ export default function TodayScreen() {
   const stagger = staggering ? 40 : 0
   // Only a weigh-in that was not there when the screen opened plays the entrance.
   const [hadWeighIn] = useState(() => view.feed.some((row) => row.kind === 'weight'))
+  const [expandedAttention, setExpandedAttention] = useState(false)
 
   const today = parseIsoDate(view.date)
   const labels = { today: t('app.today_word'), yesterday: t('app.yesterday_word') }
@@ -307,7 +308,7 @@ export default function TodayScreen() {
               <p className="sub empty-line">{t('today.attention_empty')}</p>
             ) : (
               <div className="alerts">
-                {view.attention.map((item) => {
+                {(expandedAttention ? view.attention : view.attention.slice(0, 3)).map((item) => {
                   const screen = item.domain === null ? undefined : MODULE_SCREEN[item.domain]?.screen
                   const body = (
                     <>
@@ -325,6 +326,15 @@ export default function TodayScreen() {
                     </Alert>
                   )
                 })}
+                {!expandedAttention && view.attention.length > 3 && (
+                  <button
+                    type="button"
+                    className="more-btn"
+                    onClick={() => setExpandedAttention(true)}
+                  >
+                    {t('app.today.attention_more', { n: view.attention.length - 3 })}
+                  </button>
+                )}
               </div>
             )}
           </Section>

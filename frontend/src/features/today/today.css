@@ -81,3 +81,23 @@
 
 /* A card with nothing in it says so in one quiet line. */
 .empty-line { margin: 0; }
+
+.more-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  color: var(--fg-2);
+  font-family: var(--f-text);
+  font-size: var(--t-label);
+  padding: 8px 12px;
+  cursor: pointer;
+  text-align: center;
+  width: 100%;
+  margin-top: 6px;
+  transition: background 150ms var(--ease-out), color 150ms var(--ease-out);
+}
+.more-btn:hover {
+  background: var(--surface);
+  color: var(--fg);
+}
+

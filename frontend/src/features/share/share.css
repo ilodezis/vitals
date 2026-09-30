@@ -14,6 +14,16 @@
 .link-row small { font-size: var(--t-micro); color: var(--muted); }
 .link-row .chev { width: 16px; height: 16px; color: var(--faint); }
 
+/* Semantic classes replacing Tailwind */
+.sec-grid { margin-top: var(--s6); }
+.share-made { margin-bottom: var(--s6); }
+.share-form .field { margin-top: var(--s4); }
+.share-form .field:first-child { margin-top: 0; }
+.share-opts { display: flex; gap: var(--s1); flex-wrap: wrap; }
+.share-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s3); }
+.share-labs-toggle { margin-top: var(--s4); }
+.share-btn-submit { width: 100%; margin-top: var(--s4); }
+
 @container app (min-width: 768px) {
   .made-r { grid-template-columns: 64px minmax(0, 1fr) auto; }
   .made-r .flabel { grid-column: auto; }

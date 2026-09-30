@@ -55,7 +55,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
       }
       return false
     } catch (err: any) {
-      toast(err.message || 'Error saving AI settings', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
       return false
     }
   }
@@ -76,7 +76,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
       }
       return false
     } catch (err: any) {
-      toast(err.message || 'Error saving Hevy settings', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
       return false
     }
   }
@@ -98,7 +98,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
       }
       return false
     } catch (err: any) {
-      toast(err.message || 'Error saving Garmin credentials', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
       return false
     }
   }
@@ -120,24 +120,25 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
         void queryClient.invalidateQueries({ queryKey: ['settings'] })
       }
     } catch (err: any) {
-      toast(err.message || 'Error toggling weight export', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
     }
   }
 
-  // Send weight now
+  // Send weight to Garmin now
   const handleSendWeightNow = async () => {
     try {
-      const res = await api.POST('/api/v1/settings/garmin/weight/send-now')
-      if (res.data) {
-        toast(t('settings.garmin_weight_action.sent'))
+      toast(t('settings.garmin_weight_action.manual_sync_started'))
+      const res = await (api as any).POST('/api/v1/settings/garmin/weight-export', {})
+      if (res?.data) {
+        toast((res.data as any).message || t('settings.garmin_weight_action.manual_sync_success'))
         void queryClient.invalidateQueries({ queryKey: ['settings'] })
       }
     } catch (err: any) {
-      toast(err.message || 'Error sending weight to Garmin', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
     }
   }
 
-  // Save MCP
+  // Save MCP credentials
   const handleSaveMcp = async () => {
     try {
       const res = await api.POST('/api/v1/settings/mcp', {
@@ -154,12 +155,17 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
       }
       return false
     } catch (err: any) {
-      toast(err.message || 'Error saving MCP settings', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
       return false
     }
   }
 
-  const weightStatus = settings.garmin.garmin_weight_status as Record<string, any> | null
+  const weightStatus = (settings.garmin.garmin_weight_status ?? (settings.garmin as any).garmin_weight_export_status) as {
+    status?: string
+    message?: string
+    last_attempt?: string
+    next_attempt?: string
+  } | null
 
   return (
     <div className="grid">
@@ -167,7 +173,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
         {/* OpenRouter AI */}
         <Section title={t('settings.ai_title')} className="set-sec">
           <p className="sub set-d">{t('settings.ai_description')}</p>
-          <div className="form space-y-3">
+          <div className="form">
             <label className="field">
               <span className="flabel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>{t('settings.api_key')}</span>
@@ -208,7 +214,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
               <span className="flabel">{t('settings.brief_model')}</span>
               <input
                 className="input"
-                placeholder="пусто = модель дайджеста"
+                placeholder={t('settings.brief_model_placeholder')}
                 value={briefModel}
                 onChange={(e) => setBriefModel(e.target.value)}
               />
@@ -226,9 +232,9 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
             </label>
 
             <div className="set-save">
-              <PrimaryButton onPress={handleSaveAi}>
+              <button type="button" className="btn ghost" onClick={handleSaveAi}>
                 {t('settings.save_ai')}
-              </PrimaryButton>
+              </button>
             </div>
           </div>
         </Section>
@@ -236,7 +242,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
         {/* Hevy */}
         <Section title={t('settings.hevy_title')} className="set-sec">
           <p className="sub set-d">{t('settings.hevy_description')}</p>
-          <div className="form space-y-3">
+          <div className="form">
             <label className="field">
               <span className="flabel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>{t('settings.hevy_key')}</span>
@@ -254,9 +260,9 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
             </label>
 
             <div className="set-save">
-              <PrimaryButton onPress={handleSaveHevy}>
+              <button type="button" className="btn ghost" onClick={handleSaveHevy}>
                 {t('settings.save_hevy')}
-              </PrimaryButton>
+              </button>
             </div>
           </div>
         </Section>
@@ -266,8 +272,8 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
         {/* Garmin Connect */}
         <Section title={t('settings.garmin_title')} className="set-sec">
           <p className="sub set-d">{t('settings.garmin_description')}</p>
-          <div className="form space-y-3">
-            <div className="grid grid-cols-2 gap-2">
+          <div className="form">
+            <div className="set-grid-2">
               <label className="field">
                 <span className="flabel">{t('settings.garmin_email')}</span>
                 <input
@@ -295,30 +301,32 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
             </div>
 
             <div className="set-save">
-              <PrimaryButton onPress={handleSaveGarmin}>
+              <button type="button" className="btn ghost" onClick={handleSaveGarmin}>
                 {t('settings.save_garmin')}
-              </PrimaryButton>
+              </button>
             </div>
 
             {/* Garmin Weight Export */}
-            <div className="sub-sec pt-4 border-t border-[var(--line)]">
-              <span className="flabel font-semibold block mb-2">{t('settings.garmin_weight_export_label')}</span>
+            <div className="set-sub-sec">
+              <span className="flabel" style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                {t('settings.garmin_weight_export_label')}
+              </span>
               <button
                 type="button"
                 className={`opt ${weightExportEnabled ? 'on' : ''}`}
                 onClick={handleToggleWeightExport}
               >
-                {weightExportEnabled ? 'Включено' : 'Выключено'}
+                {weightExportEnabled ? t('common.enabled') : t('common.disabled')}
               </button>
-              <p className="fhint mt-2">{t('settings.garmin_weight_export_hint')}</p>
+              <p className="fhint" style={{ marginTop: '8px' }}>{t('settings.garmin_weight_export_hint')}</p>
 
               {weightStatus && weightStatus.status && (
-                <div className="alert info mt-3 flex items-start gap-2">
+                <div className="alert info" style={{ marginTop: '12px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                   <Icon name="check" />
                   <div>
                     <div>{String(weightStatus.message || `Garmin: ${weightStatus.status}`)}</div>
                     {Boolean(weightStatus.next_attempt) && (
-                      <span className="text-xs text-[var(--muted)] block mt-1">
+                      <span style={{ fontSize: 'var(--t-micro)', color: 'var(--muted)', display: 'block', marginTop: '4px' }}>
                         {t('settings.garmin_weight_next_attempt', { at: String(weightStatus.next_attempt) })}
                       </span>
                     )}
@@ -326,10 +334,11 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
                 </div>
               )}
 
-              <div className="mt-3">
+              <div style={{ marginTop: '12px' }}>
                 <button
                   type="button"
-                  className="btn ghost flex items-center gap-2"
+                  className="btn ghost"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
                   onClick={handleSendWeightNow}
                 >
                   <Icon name="upload" />
@@ -343,7 +352,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
         {/* Claude.ai MCP Connector */}
         <Section title={t('settings.mcp_title')} className="set-sec">
           <p className="sub set-d">{t('settings.mcp_description')}</p>
-          <div className="form space-y-3">
+          <div className="form">
             <label className="field">
               <span className="flabel">{t('settings.mcp_id')}</span>
               <input

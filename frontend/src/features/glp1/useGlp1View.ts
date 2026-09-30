@@ -6,10 +6,11 @@ import type { Glp1View } from './types'
 const todayIso = () => toIsoDate(new Date())
 
 const EMPTY_GLP1: Glp1View = {
-  drug: 'Семаглутид',
+  drug: 'semaglutide',
   doseMg: 0,
   sinceIso: todayIso(),
   dayOnDose: 0,
+  deltaOnDoseKg: null,
   cycle: {
     lastIso: null,
     nextIso: todayIso(),
@@ -21,12 +22,12 @@ const EMPTY_GLP1: Glp1View = {
   trend: [],
   summary: '',
   siteLabels: {
-    shoulder_left: 'Плечо Л',
-    shoulder_right: 'Плечо П',
-    abdomen_left: 'Живот Л',
-    abdomen_right: 'Живот П',
-    thigh_left: 'Бедро Л',
-    thigh_right: 'Бедро П',
+    shoulder_left: 'Shoulder L',
+    shoulder_right: 'Shoulder R',
+    abdomen_left: 'Abdomen L',
+    abdomen_right: 'Abdomen R',
+    thigh_left: 'Thigh L',
+    thigh_right: 'Thigh R',
   },
   injections: [],
   sideEffects: [],

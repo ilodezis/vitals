@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { api } from '@/api/client'
+import { TextButton } from '@/components/controls/Marks'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
@@ -13,6 +15,7 @@ export function DataSection() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isRestoring, setIsRestoring] = useState(false)
   const [restoreResult, setRestoreResult] = useState<string | null>(null)
+  const [confirmRestart, setConfirmRestart] = useState(false)
 
   // Download full backup
   const handleExportFull = async () => {
@@ -30,7 +33,7 @@ export function DataSection() {
       a.remove()
       URL.revokeObjectURL(url)
     } catch (err: any) {
-      toast(err.message || 'Error exporting full backup', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
     }
   }
 
@@ -50,7 +53,7 @@ export function DataSection() {
       a.remove()
       URL.revokeObjectURL(url)
     } catch (err: any) {
-      toast(err.message || 'Error exporting LLM context', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
     }
   }
 
@@ -96,9 +99,26 @@ export function DataSection() {
       toast(t('settings.import_result_hint'))
       void queryClient.invalidateQueries()
     } catch (err: any) {
-      toast(err.message || 'Error restoring backup', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
     } finally {
       setIsRestoring(false)
+    }
+  }
+
+  // Container restart with 2-step confirmation
+  const handleRestart = async () => {
+    if (!confirmRestart) {
+      setConfirmRestart(true)
+      return
+    }
+    setConfirmRestart(false)
+    try {
+      const res = await api.POST('/api/v1/settings/restart')
+      if (res.data) {
+        toast(t('settings.saved.restart'))
+      }
+    } catch (err: any) {
+      toast(err.message || t('app.error'), { icon: 'warn' })
     }
   }
 
@@ -106,14 +126,17 @@ export function DataSection() {
     <Section title={t('settings.data_title')} className="set-sec narrow">
       <p className="sub set-d">{t('settings.data_description')}</p>
 
-      <div className="form space-y-4">
+      <div className="form">
         {/* Export */}
         <div>
-          <span className="flabel block mb-2">{t('settings.export_label')}</span>
-          <div className="flex flex-wrap gap-2">
+          <span className="flabel" style={{ display: 'block', marginBottom: '8px' }}>
+            {t('settings.export_label')}
+          </span>
+          <div className="set-row-wrap">
             <button
               type="button"
-              className="btn ghost flex items-center gap-2"
+              className="btn ghost"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
               onClick={handleExportFull}
             >
               <Icon name="download" />
@@ -121,21 +144,24 @@ export function DataSection() {
             </button>
             <button
               type="button"
-              className="btn ghost flex items-center gap-2"
+              className="btn ghost"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
               onClick={handleExportLlm}
             >
               <Icon name="download" />
               <span>{t('settings.export_llm')}</span>
             </button>
           </div>
-          <p className="fhint mt-2">{t('settings.export_hint')}</p>
+          <p className="fhint" style={{ marginTop: '8px' }}>{t('settings.export_hint')}</p>
         </div>
 
         {/* Import */}
-        <div className="pt-4 border-t border-[var(--line)]">
-          <span className="flabel block mb-2">{t('settings.import_label')}</span>
+        <div className="set-sub-sec">
+          <span className="flabel" style={{ display: 'block', marginBottom: '8px' }}>
+            {t('settings.import_label')}
+          </span>
 
-          <div className="alert warn flex items-start gap-2 mb-3">
+          <div className="alert warn" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '12px' }}>
             <Icon name="warn" />
             <div>{t('settings.import_warning')}</div>
           </div>
@@ -144,23 +170,23 @@ export function DataSection() {
             ref={fileInputRef}
             type="file"
             accept=".json"
-            className="hidden"
+            style={{ display: 'none' }}
             onChange={handleFileChange}
           />
 
           <button
             type="button"
-            className="drop w-full text-left p-4 rounded-xl border border-dashed border-[var(--line-strong)] hover:border-[var(--amber)] transition flex items-center gap-3"
+            className="data-drop-btn"
             onClick={() => fileInputRef.current?.click()}
           >
-            <span className="ico p-2 rounded-lg bg-[var(--bg-2)] text-[var(--fg)]">
+            <span className="data-drop-icon">
               <Icon name="upload" />
             </span>
             <span>
-              <b className="block text-sm text-[var(--fg)]">
+              <b style={{ display: 'block', fontSize: 'var(--t-body)' }}>
                 {selectedFile ? selectedFile.name : t('settings.import_drop_text')}
               </b>
-              <small className="text-xs text-[var(--muted)]">
+              <small style={{ fontSize: 'var(--t-caption)', color: 'var(--muted)' }}>
                 {selectedFile
                   ? `${(selectedFile.size / 1024).toFixed(1)} KB`
                   : t('settings.import_drop_hint')}
@@ -168,27 +194,47 @@ export function DataSection() {
             </span>
           </button>
 
-          <div className="mt-3">
+          <div style={{ marginTop: '12px' }}>
             <button
               type="button"
-              className="btn ghost danger flex items-center gap-2"
+              className="btn ghost"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--bad)' }}
               onClick={handleRestore}
               disabled={isRestoring || !selectedFile}
             >
               <Icon name="sync" />
-              <span>{isRestoring ? 'Восстановление…' : t('settings.import_submit')}</span>
+              <span>{isRestoring ? t('settings.import_restoring') : t('settings.import_submit')}</span>
             </button>
           </div>
 
           {restoreResult && (
-            <div className="alert info mt-3 flex items-start gap-2">
+            <div className="alert info" style={{ marginTop: '12px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
               <Icon name="check" />
               <div>
                 <b>{restoreResult}</b>
-                <p className="text-xs text-[var(--muted)] mt-1">{t('settings.import_result_hint')}</p>
+                <p style={{ fontSize: 'var(--t-micro)', color: 'var(--muted)', marginTop: '4px' }}>
+                  {t('settings.import_result_hint')}
+                </p>
               </div>
             </div>
           )}
+        </div>
+
+        {/* Container Restart */}
+        <div className="set-sub-sec">
+          <span className="flabel" style={{ display: 'block', marginBottom: '8px' }}>
+            {t('settings.restart_title')}
+          </span>
+          <p className="fhint" style={{ marginBottom: '12px' }}>
+            {t('settings.restart_text')}
+          </p>
+          <TextButton
+            icon="sync"
+            danger
+            onClick={handleRestart}
+          >
+            {confirmRestart ? t('common.confirm_question') : t('settings.restart_btn')}
+          </TextButton>
         </div>
       </div>
     </Section>

@@ -40,7 +40,7 @@ export default function SupplementsScreen() {
   const saveConflict = useConflictMutation({
     mutationFn: async ({ override }) => {
       if (!name.trim()) {
-        throw new Error(t('common.required_field') || 'Name is required')
+        throw new Error(t('common.required_field'))
       }
       if (editingItem) {
         await api.PATCH('/api/v1/supplements/{supplement_id}', {
@@ -75,7 +75,7 @@ export default function SupplementsScreen() {
       refresh()
     },
     onError: (err) => {
-      toast(err.message || 'Error saving supplement', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
     },
   })
 
@@ -85,11 +85,11 @@ export default function SupplementsScreen() {
         params: { path: { supplement_id: item.id } },
         body: { active: !item.active, override },
       })
-      toast(item.active ? 'Перемещено в архив' : 'Восстановлено из архива')
+      toast(item.active ? t('app.supplements.toast_archived') : t('app.supplements.toast_restored'))
       refresh()
     },
     onError: (err) => {
-      toast(err.message || 'Error toggling supplement', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
     },
   })
 
@@ -131,13 +131,14 @@ export default function SupplementsScreen() {
       toast(t('common.deleted'))
       refresh()
     } catch (err: any) {
-      toast(err.message || 'Error deleting supplement', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
     }
   }
 
   const renderRow = (s: SupplementItem, archived = false) => {
     const evTone = s.evidence === 'A' ? 'good' : s.evidence === 'B' ? 'cool' : undefined
     const contraText = s.contraindications || s.contra
+
     return (
       <div key={s.id} className="row r-supp" data-item>
         <div>
@@ -152,7 +153,7 @@ export default function SupplementsScreen() {
         </div>
         <span className="v">{s.dose || '—'}</span>
         {s.evidence ? (
-          <Badge tone={evTone}>{`Tier ${s.evidence}`}</Badge>
+          <Badge tone={evTone}>{t('app.supplements.tier', { tier: s.evidence })}</Badge>
         ) : (
           <span />
         )}
@@ -161,7 +162,7 @@ export default function SupplementsScreen() {
             type="button"
             className="ibtn"
             onClick={() => openEdit(s)}
-            aria-label={t('common.edit') || 'Редактировать'}
+            aria-label={t('common.edit')}
           >
             <Icon name="edit" />
           </button>
@@ -169,7 +170,7 @@ export default function SupplementsScreen() {
             type="button"
             className="ibtn"
             onClick={() => handleToggle(s)}
-            aria-label={archived ? 'Восстановить' : 'В архив'}
+            aria-label={archived ? t('app.supplements.restore_btn') : t('app.supplements.archive_btn')}
           >
             <Icon name={archived ? 'sync' : 'archive'} />
           </button>
@@ -177,7 +178,7 @@ export default function SupplementsScreen() {
             type="button"
             className="ibtn"
             onClick={() => handleDelete(s)}
-            aria-label={t('common.delete') || 'Удалить'}
+            aria-label={t('common.delete')}
           >
             <Icon name="trash" />
           </button>
@@ -191,7 +192,7 @@ export default function SupplementsScreen() {
       <TopBar
         title={t('nav.supplements')}
         right={
-          <button type="button" className="ibtn" onClick={openCreate} aria-label="Новая добавка">
+          <button type="button" className="ibtn" onClick={openCreate} aria-label={t('app.supplements.new')}>
             <Icon name="plus" />
           </button>
         }
@@ -201,7 +202,7 @@ export default function SupplementsScreen() {
         actions={
           <button type="button" className="ghost" onClick={openCreate}>
             <Icon name="plus" />
-            <span>Новая добавка</span>
+            <span>{t('app.supplements.new')}</span>
           </button>
         }
       />
@@ -209,59 +210,59 @@ export default function SupplementsScreen() {
         <div className="figs inline">
           <div className="f">
             <div className="f-v">{view.activeCount}</div>
-            <div className="f-l">Активные</div>
+            <div className="f-l">{t('app.supplements.active')}</div>
           </div>
           <div className="f">
             <div className="f-v">{view.totalCount}</div>
-            <div className="f-l">Всего</div>
+            <div className="f-l">{t('app.supplements.total')}</div>
           </div>
         </div>
       </Headline>
 
       {/* Form modal */}
       {formOpen && (
-        <div className="panel fpanel mb-6" style={{ marginTop: 'var(--s6)' }}>
+        <div className="panel fpanel" style={{ marginTop: 'var(--s6)' }}>
           <div className="panel-h">
-            <h3>{editingItem ? 'Редактировать добавку' : 'Новая добавка'}</h3>
+            <h3>{editingItem ? t('app.supplements.edit') : t('app.supplements.new')}</h3>
             <button type="button" className="ibtn" onClick={() => setFormOpen(false)}>
               <Icon name="x" />
             </button>
           </div>
-          <div className="form space-y-3">
+          <div className="form">
             <label className="field">
-              <span className="flabel">Название</span>
+              <span className="flabel">{t('app.supplements.name')}</span>
               <input
                 className="input"
-                placeholder="например, Креатин моногидрат"
+                placeholder={t('app.supplements.name_ph')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="form-g2">
               <label className="field">
-                <span className="flabel">Доза</span>
+                <span className="flabel">{t('app.supplements.dose')}</span>
                 <input
                   className="input"
-                  placeholder="например, 5 г или 1 капсула"
+                  placeholder={t('app.supplements.dose_ph')}
                   value={dose}
                   onChange={(e) => setDose(e.target.value)}
                 />
               </label>
               <label className="field">
-                <span className="flabel">Тайминг</span>
+                <span className="flabel">{t('app.supplements.timing')}</span>
                 <select
                   className="input"
                   value={timing}
                   onChange={(e) => setTiming(e.target.value)}
                 >
-                  <option value="morning">Утро</option>
-                  <option value="day">День</option>
-                  <option value="evening">Вечер</option>
+                  <option value="morning">{t('app.supplements.timing.morning')}</option>
+                  <option value="day">{t('app.supplements.timing.day')}</option>
+                  <option value="evening">{t('app.supplements.timing.evening')}</option>
                 </select>
               </label>
             </div>
             <label className="field">
-              <span className="flabel">Доказательность</span>
+              <span className="flabel">{t('app.supplements.evidence')}</span>
               <select
                 className="input"
                 value={evidence}
@@ -274,19 +275,19 @@ export default function SupplementsScreen() {
               </select>
             </label>
             <label className="field">
-              <span className="flabel">Противопоказания</span>
+              <span className="flabel">{t('app.supplements.contra')}</span>
               <textarea
                 className="input"
-                placeholder="например, не сочетать с..."
+                placeholder={t('app.supplements.contra_ph')}
                 value={contra}
                 onChange={(e) => setContra(e.target.value)}
               />
             </label>
             <label className="field">
-              <span className="flabel">Заметка</span>
+              <span className="flabel">{t('app.supplements.note')}</span>
               <input
                 className="input"
-                placeholder="..."
+                placeholder={t('app.supplements.note_ph')}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />
@@ -296,7 +297,7 @@ export default function SupplementsScreen() {
               onFix={() => saveConflict.clearConflict()}
               onSaveAnyway={() => saveButtonRef.current?.press({ override: true })}
             />
-            <div className="form-acts flex gap-2 pt-2">
+            <div className="form-acts">
               <PrimaryButton
                 ref={saveButtonRef}
                 className="btn grow"
@@ -323,26 +324,29 @@ export default function SupplementsScreen() {
       />
 
       {/* Timing Groups */}
-      {view.groups.map((g) => (
-        <section key={g.key} className="sec tgrp">
-          <div className="sec-h">
-            <h2>
-              <span className={`dot ${g.tone}`} />
-              {g.label}
-            </h2>
-            {g.sub && <span className="meta">{g.sub}</span>}
-          </div>
-          <div className="rows">
-            {g.items.length ? (
-              g.items.map((s) => renderRow(s))
-            ) : (
-              <div className="row">
-                <span className="m">Нет активных добавок на этот тайминг</span>
-              </div>
-            )}
-          </div>
-        </section>
-      ))}
+      {view.groups.map((g) => {
+        const groupLabel = t(`app.supplements.timing.${g.key}`) || g.label
+        return (
+          <section key={g.key} className="sec tgrp">
+            <div className="sec-h">
+              <h2>
+                <span className={`dot ${g.tone}`} />
+                {groupLabel}
+              </h2>
+              {g.sub && <span className="meta">{g.sub}</span>}
+            </div>
+            <div className="rows">
+              {g.items.length ? (
+                g.items.map((s) => renderRow(s))
+              ) : (
+                <div className="row">
+                  <span className="m">{t('app.supplements.no_active_timing')}</span>
+                </div>
+              )}
+            </div>
+          </section>
+        )
+      })}
 
       {/* Archive Accordion */}
       <section className="sec">
@@ -355,7 +359,8 @@ export default function SupplementsScreen() {
           >
             <Icon name="archive" />
             <h2>
-              Архив <span className="m num">({view.archived.length})</span>
+              {t('app.supplements.archive_title')}{' '}
+              <span className="m num">({view.archived.length})</span>
             </h2>
             <Icon name="chevD" className="caret" />
           </div>
@@ -365,7 +370,7 @@ export default function SupplementsScreen() {
                 view.archived.map((s) => renderRow(s, true))
               ) : (
                 <div className="row">
-                  <span className="m">Архив пуст</span>
+                  <span className="m">{t('app.supplements.archive_empty')}</span>
                 </div>
               )}
             </div>

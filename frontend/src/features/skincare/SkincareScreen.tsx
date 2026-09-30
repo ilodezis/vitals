@@ -8,29 +8,24 @@ import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
+import { parseIsoDate, shortDate } from '@/lib/dates'
 import { useConflictMutation } from '@/lib/useConflictMutation'
-import type { SkincareProductItem } from './types'
+import type { SkincareProductItem, SkincareRuleItem } from './types'
 import { useSkincareView } from './useSkincareView'
 import './skincare.css'
 
-const DAYS7: [number, string][] = [
-  [1, 'Пн'],
-  [2, 'Вт'],
-  [3, 'Ср'],
-  [4, 'Чт'],
-  [5, 'Пт'],
-  [6, 'Сб'],
-  [0, 'Вс'],
+const DOW_KEYS: [number, string][] = [
+  [1, 'mon'],
+  [2, 'tue'],
+  [3, 'wed'],
+  [4, 'thu'],
+  [5, 'fri'],
+  [6, 'sat'],
+  [0, 'sun'],
 ]
 
-const TIME_LBL: Record<string, [string, 'cool' | 'violet' | 'good']> = {
-  morning: ['Утро', 'cool'],
-  evening: ['Вечер', 'violet'],
-  both: ['Утро + вечер', 'good'],
-}
-
 export default function SkincareScreen() {
-  const { t } = useT()
+  const { t, lang } = useT()
   const view = useSkincareView()
   const queryClient = useQueryClient()
 
@@ -40,7 +35,7 @@ export default function SkincareScreen() {
 
   // Product form states
   const [name, setName] = useState('')
-  const [type, setType] = useState('Ретиноид')
+  const [type, setType] = useState('')
   const [activeIngredient, setActiveIngredient] = useState('')
   const [defaultTime, setDefaultTime] = useState('evening')
   const [scheduleDays, setScheduleDays] = useState<number[]>([1, 3, 5])
@@ -64,8 +59,20 @@ export default function SkincareScreen() {
   const [obsOpen, setObsOpen] = useState(false)
   const [obsInf, setObsInf] = useState(1)
   const [obsPih, setObsPih] = useState(1)
-  const [obsZone, setObsZone] = useState('подбородок')
+  const [obsZone, setObsZone] = useState('chin')
   const [obsNote, setObsNote] = useState('')
+
+  // Safety rules catalog collapse state
+  const [openCats, setOpenCats] = useState<Set<string>>(() => new Set())
+
+  const toggleCat = (cat: string) => {
+    setOpenCats((prev) => {
+      const next = new Set(prev)
+      if (next.has(cat)) next.delete(cat)
+      else next.add(cat)
+      return next
+    })
+  }
 
   const todayDow = useMemo(() => new Date().getDay(), [])
   const activeProducts = useMemo(
@@ -81,7 +88,7 @@ export default function SkincareScreen() {
   const openCreateProduct = () => {
     setEditingProduct(null)
     setName('')
-    setType('Ретиноид')
+    setType(t('app.skincare.act.retinoid'))
     setActiveIngredient('')
     setDefaultTime('evening')
     setScheduleDays([1, 3, 5])
@@ -96,12 +103,18 @@ export default function SkincareScreen() {
     setName(p.name)
     setType(p.type)
     setActiveIngredient(p.activeIngredient || p.ing || '')
-    setDefaultTime(p.defaultTime || p.time || 'evening')
-    setScheduleDays(p.scheduleDays || p.days || [])
+    setDefaultTime(p.defaultTime || p.default_time || p.time || 'evening')
+    setScheduleDays(p.scheduleDays || p.schedule_days || p.days || [])
     setDescription(p.description || p.desc || '')
-    setUsageInstructions(p.usageInstructions || p.use || '')
-    setActive(p.active ?? p.on ?? true)
+    setUsageInstructions(p.usageInstructions || p.usage_instructions || p.use || '')
+    setActive(p.active || p.on)
     setFormOpen(true)
+  }
+
+  const toggleDay = (d: number) => {
+    setScheduleDays((prev) =>
+      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort((a, b) => a - b)
+    )
   }
 
   const handleSaveProduct = async (): Promise<boolean> => {
@@ -116,31 +129,30 @@ export default function SkincareScreen() {
           params: { path: { product_id: editingProduct.id } },
           body: {
             name: name.trim(),
-            type: type.trim(),
+            type: type.trim() || 'General',
             activeIngredient: activeIngredient.trim() || null,
-            description: description.trim() || null,
-            usageInstructions: usageInstructions.trim() || null,
             defaultTime,
             scheduleDays,
+            description: description.trim() || null,
+            usageInstructions: usageInstructions.trim() || null,
             active,
           },
         })
-        toast(t('common.saved'))
       } else {
         await api.POST('/api/v1/skincare/products', {
           body: {
             name: name.trim(),
-            type: type.trim(),
+            type: type.trim() || 'General',
             activeIngredient: activeIngredient.trim() || null,
-            description: description.trim() || null,
-            usageInstructions: usageInstructions.trim() || null,
             defaultTime,
             scheduleDays,
+            description: description.trim() || null,
+            usageInstructions: usageInstructions.trim() || null,
             active,
           },
         })
-        toast(t('common.saved'))
       }
+      toast(t('common.saved'))
       setFormOpen(false)
       refresh()
       return true
@@ -166,7 +178,7 @@ export default function SkincareScreen() {
 
   const logConflict = useConflictMutation({
     mutationFn: async ({ override }) => {
-      await api.POST('/api/v1/skincare/logs', {
+      const res = await api.POST('/api/v1/skincare/logs', {
         body: {
           date: view.today,
           retinoid,
@@ -180,14 +192,39 @@ export default function SkincareScreen() {
           override,
         },
       })
-      toast('Запись сохранена')
+      if (!res.data) throw new Error('Error saving log')
+      toast(t('app.skincare.toast_saved'))
       setLogOpen(false)
+      setLogNote('')
       refresh()
+      return res.data
     },
     onError: (err) => {
       toast(err.message || 'Error saving log', { icon: 'warn' })
     },
   })
+
+  const handleSaveObservation = async (): Promise<boolean> => {
+    try {
+      await api.POST('/api/v1/skincare/observations', {
+        body: {
+          date: view.today,
+          inflammation: obsInf,
+          pih: obsPih,
+          zone: obsZone,
+          note: obsNote.trim() || null,
+        },
+      })
+      toast(t('app.skincare.toast_obs_saved'))
+      setObsOpen(false)
+      setObsNote('')
+      refresh()
+      return true
+    } catch (err: any) {
+      toast(err.message || 'Error saving observation', { icon: 'warn' })
+      return false
+    }
+  }
 
   const handleDeleteLog = async (id: number) => {
     try {
@@ -201,31 +238,10 @@ export default function SkincareScreen() {
     }
   }
 
-  const handleSaveObservation = async (): Promise<boolean> => {
-    try {
-      await api.POST('/api/v1/skincare/observations', {
-        body: {
-          date: view.today,
-          inflammation: obsInf,
-          pih: obsPih,
-          zone: obsZone,
-          note: obsNote.trim() || null,
-        },
-      })
-      toast('Наблюдение сохранено')
-      setObsOpen(false)
-      refresh()
-      return true
-    } catch (err: any) {
-      toast(err.message || 'Error saving observation', { icon: 'warn' })
-      return false
-    }
-  }
-
   const handleDeleteObservation = async (id: number) => {
     try {
-      await api.DELETE('/api/v1/skincare/observations/{obs_id}', {
-        params: { path: { obs_id: id } },
+      await (api as any).DELETE('/api/v1/skincare/observations/{observation_id}', {
+        params: { path: { observation_id: id } },
       })
       toast(t('common.deleted'))
       refresh()
@@ -234,26 +250,38 @@ export default function SkincareScreen() {
     }
   }
 
-  const toggleDay = (d: number) => {
-    setScheduleDays((prev) =>
-      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
-    )
-  }
-
-  const getProdsForCell = (d: number, part: string) => {
+  const getProdsForCell = (dow: number, timeSlot: string) => {
     return activeProducts.filter((p) => {
-      const pDays = p.scheduleDays || p.days || []
-      const pTime = p.defaultTime || p.time
-      return pDays.includes(d) && (pTime === part || pTime === 'both')
+      const pDays = p.scheduleDays || p.schedule_days || p.days || []
+      const pTime = p.defaultTime || p.default_time || p.time || 'evening'
+      const matchDay = pDays.includes(dow)
+      const matchTime = pTime === 'both' || pTime === timeSlot
+      return matchDay && matchTime
     })
   }
+
+  // Firing rules & grouped catalog
+  const firingRules = useMemo(() => {
+    const alertKeys = new Set(view.alerts?.map((a) => a.alertKey || (a as any).alert_key) || [])
+    return view.rules.filter((r) => (r as any).firing || (r.code && alertKeys.has(r.code)))
+  }, [view.rules, view.alerts])
+
+  const groupedRules = useMemo(() => {
+    const map = new Map<string, SkincareRuleItem[]>()
+    for (const r of view.rules) {
+      const cat = r.kind || (r as any).category || 'dermatology'
+      if (!map.has(cat)) map.set(cat, [])
+      map.get(cat)!.push(r)
+    }
+    return map
+  }, [view.rules])
 
   return (
     <>
       <TopBar
         title={t('nav.skincare')}
         right={
-          <button type="button" className="ibtn" onClick={openCreateProduct} aria-label="Добавить средство">
+          <button type="button" className="ibtn" onClick={openCreateProduct} aria-label={t('app.skincare.add_product')}>
             <Icon name="plus" />
           </button>
         }
@@ -263,7 +291,7 @@ export default function SkincareScreen() {
         actions={
           <button type="button" className="ghost" onClick={openCreateProduct}>
             <Icon name="plus" />
-            <span>Добавить средство</span>
+            <span>{t('app.skincare.add_product')}</span>
           </button>
         }
       />
@@ -271,83 +299,83 @@ export default function SkincareScreen() {
         <div className="figs inline">
           <div className="f">
             <div className="f-v">{view.activeCount}</div>
-            <div className="f-l">Активные средства</div>
+            <div className="f-l">{t('app.skincare.active_count')}</div>
           </div>
           <div className="f">
             <div className="f-v">{view.totalCount}</div>
-            <div className="f-l">Всего</div>
+            <div className="f-l">{t('app.skincare.total_count')}</div>
           </div>
         </div>
       </Headline>
 
       {/* Product Form Modal */}
       {formOpen && (
-        <div className="panel fpanel mb-6" style={{ marginTop: 'var(--s6)' }}>
+        <div className="panel fpanel" style={{ marginTop: 'var(--s6)' }}>
           <div className="panel-h">
-            <h3>{editingProduct ? 'Редактировать средство' : 'Новое средство'}</h3>
+            <h3>{editingProduct ? t('app.skincare.edit_product') : t('app.skincare.new_product')}</h3>
             <button type="button" className="ibtn" onClick={() => setFormOpen(false)}>
               <Icon name="x" />
             </button>
           </div>
-          <div className="form space-y-3">
+          <div className="form sk-form">
             <label className="field">
-              <span className="flabel">Название</span>
+              <span className="flabel">{t('app.skincare.product_name')}</span>
               <input
                 className="input"
-                placeholder="например, Дифферин (Ретиноид)"
+                placeholder={t('app.skincare.product_name_ph')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="sk-grid-2">
               <label className="field">
-                <span className="flabel">Тип / Категория</span>
+                <span className="flabel">{t('app.skincare.product_type')}</span>
                 <input
                   className="input"
-                  placeholder="Ретиноид, Пилинг..."
+                  placeholder={t('app.skincare.product_type_ph')}
                   value={type}
                   onChange={(e) => setType(e.target.value)}
                 />
               </label>
               <label className="field">
-                <span className="flabel">Действующее вещество</span>
+                <span className="flabel">{t('app.skincare.active_ing')}</span>
                 <input
                   className="input"
-                  placeholder="Адапален 0.1%"
+                  placeholder={t('app.skincare.active_ing_ph')}
                   value={activeIngredient}
                   onChange={(e) => setActiveIngredient(e.target.value)}
                 />
               </label>
             </div>
             <label className="field">
-              <span className="flabel">Время нанесения</span>
+              <span className="flabel">{t('app.skincare.apply_time')}</span>
               <select
                 className="input"
                 value={defaultTime}
                 onChange={(e) => setDefaultTime(e.target.value)}
               >
-                <option value="morning">Утро</option>
-                <option value="evening">Вечер</option>
-                <option value="both">Утро + вечер</option>
+                <option value="morning">{t('app.skincare.morning')}</option>
+                <option value="evening">{t('app.skincare.evening')}</option>
+                <option value="both">{t('app.skincare.both')}</option>
               </select>
             </label>
             <label className="field">
-              <span className="flabel">Дни применения</span>
-              <div className="opts flex gap-1 flex-wrap">
-                {DAYS7.map(([d, lbl]) => (
+              <span className="flabel">{t('app.skincare.schedule_days')}</span>
+              <div className="opts sk-opts">
+                {DOW_KEYS.map(([d, k]) => (
                   <button
                     key={d}
                     type="button"
                     className={`opt ${scheduleDays.includes(d) ? 'on' : ''}`}
                     onClick={() => toggleDay(d)}
                   >
-                    {lbl}
+                    {t(`proactive.day.${k}`)}
                   </button>
                 ))}
               </div>
             </label>
             <label className="field">
-              <span className="flabel">Описание (действие)</span>
+              <span className="flabel">{t('app.skincare.description')}</span>
               <textarea
                 className="input"
                 rows={2}
@@ -357,7 +385,7 @@ export default function SkincareScreen() {
               />
             </label>
             <label className="field">
-              <span className="flabel">Инструкции по применению</span>
+              <span className="flabel">{t('app.skincare.instructions')}</span>
               <textarea
                 className="input"
                 rows={2}
@@ -366,7 +394,7 @@ export default function SkincareScreen() {
                 onChange={(e) => setUsageInstructions(e.target.value)}
               />
             </label>
-            <div className="form-acts flex gap-2 pt-2">
+            <div className="form-acts sk-form-acts">
               <PrimaryButton
                 className="btn grow"
                 onPress={handleSaveProduct}
@@ -389,8 +417,8 @@ export default function SkincareScreen() {
       {/* Schedule Table (desktop) & Day Picker (mobile) */}
       <section className="sec">
         <div className="sec-h">
-          <h2>Схема ухода по дням недели</h2>
-          <span className="meta">текущий день подсвечен</span>
+          <h2>{t('app.skincare.schedule_title')}</h2>
+          <span className="meta">{t('app.skincare.schedule_sub')}</span>
         </div>
 
         {/* Desktop Table */}
@@ -399,9 +427,9 @@ export default function SkincareScreen() {
             <thead>
               <tr>
                 <th />
-                {DAYS7.map(([d, n]) => (
+                {DOW_KEYS.map(([d, k]) => (
                   <th key={d} className={d === todayDow ? 'now' : ''}>
-                    {n}
+                    {t(`proactive.day.${k}`)}
                   </th>
                 ))}
               </tr>
@@ -410,9 +438,9 @@ export default function SkincareScreen() {
               <tr>
                 <td className="lbl">
                   <Icon name="today" />
-                  Утро
+                  {t('app.skincare.morning')}
                 </td>
-                {DAYS7.map(([d]) => {
+                {DOW_KEYS.map(([d]) => {
                   const prods = getProdsForCell(d, 'morning')
                   return (
                     <td key={d} className={d === todayDow ? 'now' : ''}>
@@ -432,9 +460,9 @@ export default function SkincareScreen() {
               <tr>
                 <td className="lbl">
                   <Icon name="pulse" />
-                  Вечер
+                  {t('app.skincare.evening')}
                 </td>
-                {DAYS7.map(([d]) => {
+                {DOW_KEYS.map(([d]) => {
                   const prods = getProdsForCell(d, 'evening')
                   return (
                     <td key={d} className={d === todayDow ? 'now' : ''}>
@@ -457,15 +485,15 @@ export default function SkincareScreen() {
 
         {/* Mobile Day Picker */}
         <div className="sched-m">
-          <div className="opts flex gap-1 flex-wrap">
-            {DAYS7.map(([d, n]) => (
+          <div className="opts sk-opts">
+            {DOW_KEYS.map(([d, k]) => (
               <button
                 key={d}
                 type="button"
                 className={`opt ${d === selectedDay ? 'on' : ''} ${d === todayDow ? 'today' : ''}`}
                 onClick={() => setSelectedDay(d)}
               >
-                {n}
+                {t(`proactive.day.${k}`)}
               </button>
             ))}
           </div>
@@ -475,7 +503,7 @@ export default function SkincareScreen() {
                 <Icon name="today" />
               </span>
               <div>
-                <div className="t">Утро</div>
+                <div className="t">{t('app.skincare.morning')}</div>
                 <div className="m">
                   {getProdsForCell(selectedDay, 'morning')
                     .map((p) => p.name)
@@ -488,7 +516,7 @@ export default function SkincareScreen() {
                 <Icon name="pulse" />
               </span>
               <div>
-                <div className="t">Вечер</div>
+                <div className="t">{t('app.skincare.evening')}</div>
                 <div className="m">
                   {getProdsForCell(selectedDay, 'evening')
                     .map((p) => p.name)
@@ -501,27 +529,28 @@ export default function SkincareScreen() {
       </section>
 
       {/* Grid: Products & Safety Rules */}
-      <div className="grid mt-6">
+      <div className="grid sk-sec-grid">
         <div className="c7">
           <section className="sec o1">
             <div className="sec-h">
-              <h2>Активные компоненты и средства</h2>
-              <span className="meta">детали по применяемым продуктам</span>
+              <h2>{t('app.skincare.active_components')}</h2>
+              <span className="meta">{t('app.skincare.components_sub')}</span>
             </div>
             <div className="prods">
               {view.products.map((p) => {
-                const pDays = p.scheduleDays || p.days || []
-                const pTime = p.defaultTime || p.time || 'evening'
-                const tMeta = TIME_LBL[pTime] || ['Вечер', 'violet']
+                const pDays = p.scheduleDays || p.schedule_days || p.days || []
+                const pTime = p.defaultTime || p.default_time || p.time || 'evening'
+                const timeLabel = pTime === 'morning' ? t('app.skincare.morning') : pTime === 'both' ? t('app.skincare.both') : t('app.skincare.evening')
+                const timeTone = pTime === 'morning' ? 'cool' : pTime === 'both' ? 'good' : 'violet'
                 const ingText = p.activeIngredient || p.ing
                 const descText = p.description || p.desc
-                const useText = p.usageInstructions || p.use
+                const useText = p.usageInstructions || p.usage_instructions || p.use
                 return (
                   <div key={p.id} className="prod" data-item>
                     <div className="row prod-h" style={{ gridTemplateColumns: 'minmax(0,1fr) auto' }}>
                       <div>
                         <div className="t">{p.name}</div>
-                        {ingText && <div className="m">Актив: {ingText}</div>}
+                        {ingText && <div className="m">{t('app.skincare.active_label')} {ingText}</div>}
                       </div>
                       <span className="acts">
                         <button
@@ -545,14 +574,14 @@ export default function SkincareScreen() {
                     <div className="prod-b">
                       <div className="prod-tags">
                         <Badge tone="plain">{p.type}</Badge>
-                        <Badge tone={tMeta[1]}>{tMeta[0]}</Badge>
+                        <Badge tone={timeTone}>{timeLabel}</Badge>
                         <span className="m">
-                          Дни:{' '}
+                          {t('app.skincare.days_label')}{' '}
                           {pDays.length
-                            ? DAYS7.filter(([d]) => pDays.includes(d))
-                                .map(([, n]) => n)
+                            ? DOW_KEYS.filter(([d]) => pDays.includes(d))
+                                .map(([, k]) => t(`proactive.day.${k}`))
                                 .join(', ')
-                            : 'Нет'}
+                            : t('app.skincare.days_none')}
                         </span>
                       </div>
                       {descText && <p className="prod-d">{descText}</p>}
@@ -573,31 +602,66 @@ export default function SkincareScreen() {
         <div className="c5">
           <section className="sec o2">
             <div className="sec-h">
-              <h2>Правила безопасности</h2>
-              <span className="meta">требования при работе с активами</span>
+              <h2>{t('app.skincare.safety_rules')}</h2>
+              <span className="meta">{t('app.skincare.safety_sub')}</span>
             </div>
             <div className="alerts">
-              {view.rules.map((r) => (
-                <div
-                  key={r.id}
-                  className={`alert ${r.severity === 'block' || r.sev === 'block' ? 'block' : 'warn'}`}
-                >
-                  <Icon name={r.hard ? 'block' : 'warn'} />
-                  <div>
-                    <b>{r.kind}</b>
-                    <br />
-                    {r.msg}
+              {firingRules.length > 0 ? (
+                firingRules.map((r) => (
+                  <div
+                    key={r.id}
+                    className={`alert ${r.severity === 'block' || r.sev === 'block' ? 'block' : 'warn'}`}
+                  >
+                    <Icon name={r.hard ? 'block' : 'warn'} />
+                    <div>
+                      <b>{t(`app.rule_cat.${r.kind}`) || r.kind}</b>
+                      <br />
+                      {r.msg}
+                    </div>
                   </div>
-                </div>
-              ))}
-              <div className="alert info">
-                <Icon name="drop" />
-                <div>
-                  <b>Увлажнение и барьер кожи</b>
-                  <br />
-                  Наносите крем через 15–20 минут после ретиноида. Если кожа «горит», шелушится
-                  или стянута — пауза 2–3 дня во всех активах, оставив только увлажнение.
-                </div>
+                ))
+              ) : (
+                <div className="sk-no-alerts">{t('app.skincare.no_firing')}</div>
+              )}
+            </div>
+
+            {/* Catalog as Collapsed Categories */}
+            <div className="sk-cat-list" style={{ marginTop: 'var(--s3)' }}>
+              {Array.from(groupedRules.entries()).map(([cat, rules]) => {
+                const isOpen = openCats.has(cat)
+                const catLabel = t(`app.rule_cat.${cat}`) || cat
+                return (
+                  <div key={cat} className="sk-cat-block">
+                    <button type="button" className="sk-cat-h" onClick={() => toggleCat(cat)}>
+                      <span className="t">{catLabel}</span>
+                      <span className="meta num">{rules.length}</span>
+                      <Icon name="chevD" className={isOpen ? 'rot-180' : ''} />
+                    </button>
+                    {isOpen && (
+                      <div className="rows">
+                        {rules.map((r) => (
+                          <div key={r.id} className="row sk-rule-row">
+                            <div className="sk-rule-main">
+                              <div className="t">{r.msg}</div>
+                              <div className="m">
+                                {r.code || (r.hard ? t('app.severity.block') : t('app.severity.warn'))}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="alert info" style={{ marginTop: 'var(--s4)' }}>
+              <Icon name="drop" />
+              <div>
+                <b>{t('app.skincare.barrier_note_title')}</b>
+                <br />
+                {t('app.skincare.barrier_note_body')}
               </div>
             </div>
           </section>
@@ -605,76 +669,76 @@ export default function SkincareScreen() {
       </div>
 
       {/* Grid: Care Logs & Observations */}
-      <div className="grid mt-6">
+      <div className="grid sk-sec-grid">
         <div className="c7">
           <section className="sec o3">
             <div className="sec-h">
-              <h2>Дневник ухода</h2>
+              <h2>{t('app.skincare.diary_title')}</h2>
               <button
                 type="button"
                 className="ghost"
                 onClick={() => setLogOpen(true)}
               >
                 <Icon name="plus" />
-                <span>Записать уход</span>
+                <span>{t('app.skincare.log_care')}</span>
               </button>
             </div>
             {logOpen && (
-              <div className="panel fpanel mb-4">
+              <div className="panel fpanel mb-s4">
                 <div className="panel-h">
-                  <h3>Что нанесено сегодня ({view.today})</h3>
+                  <h3>{t('app.skincare.applied_today', { date: view.today })}</h3>
                   <button type="button" className="ibtn" onClick={() => setLogOpen(false)}>
                     <Icon name="x" />
                   </button>
                 </div>
-                <div className="space-y-2">
-                  <div className="opts flex gap-2 flex-wrap">
+                <div className="sk-log-box">
+                  <div className="opts sk-opts-gap2">
                     <button
                       type="button"
                       className={`opt ${retinoid ? 'on' : ''}`}
                       onClick={() => setRetinoid(!retinoid)}
                     >
-                      Ретиноид
+                      {t('app.skincare.act.retinoid')}
                     </button>
                     <button
                       type="button"
                       className={`opt ${azelaic ? 'on' : ''}`}
                       onClick={() => setAzelaic(!azelaic)}
                     >
-                      Азелаиновая
+                      {t('app.skincare.act.azelaic')}
                     </button>
                     <button
                       type="button"
                       className={`opt ${peel ? 'on' : ''}`}
                       onClick={() => setPeel(!peel)}
                     >
-                      Пилинг
+                      {t('app.skincare.act.peel')}
                     </button>
                     <button
                       type="button"
                       className={`opt ${niacinamideSpf ? 'on' : ''}`}
                       onClick={() => setNiacinamideSpf(!niacinamideSpf)}
                     >
-                      Ниацинамид / SPF
+                      {t('app.skincare.act.niacinamide_spf')}
                     </button>
                     <button
                       type="button"
                       className={`opt ${moisturizer ? 'on' : ''}`}
                       onClick={() => setMoisturizer(!moisturizer)}
                     >
-                      Увлажнение
+                      {t('app.skincare.act.moisturizer')}
                     </button>
                     <button
                       type="button"
                       className={`opt ${vitaminC ? 'on' : ''}`}
                       onClick={() => setVitaminC(!vitaminC)}
                     >
-                      Витамин C
+                      {t('app.skincare.act.vitamin_c')}
                     </button>
                   </div>
                   <input
                     className="input"
-                    placeholder="Заметка..."
+                    placeholder={t('app.skincare.note_ph')}
                     value={logNote}
                     onChange={(e) => setLogNote(e.target.value)}
                   />
@@ -683,7 +747,7 @@ export default function SkincareScreen() {
                     onFix={() => logConflict.clearConflict()}
                     onSaveAnyway={() => logButtonRef.current?.press({ override: true })}
                   />
-                  <div className="flex gap-2 pt-2">
+                  <div className="form-acts sk-form-acts">
                     <PrimaryButton ref={logButtonRef} className="btn grow" onPress={logConflict.submit}>
                       {t('common.save')}
                     </PrimaryButton>
@@ -701,12 +765,12 @@ export default function SkincareScreen() {
             <div className="rows">
               {view.logs.map((l) => {
                 const actives: string[] = []
-                if (l.retinoid) actives.push('Ретиноид')
-                if (l.azelaic) actives.push('Азелаиновая к-та')
-                if (l.peel) actives.push('Пилинг')
-                if (l.niacinamideSpf) actives.push('Ниацинамид/SPF')
-                if (l.moisturizer) actives.push('Увлажняющий крем')
-                if (l.vitaminC) actives.push('Витамин C')
+                if (l.retinoid) actives.push(t('app.skincare.act.retinoid'))
+                if (l.azelaic) actives.push(t('app.skincare.act.azelaic'))
+                if (l.peel) actives.push(t('app.skincare.act.peel'))
+                if (l.niacinamideSpf || (l as any).niacinamide_spf) actives.push(t('app.skincare.act.niacinamide_spf'))
+                if (l.moisturizer) actives.push(t('app.skincare.act.moisturizer'))
+                if (l.vitaminC || (l as any).vitamin_c) actives.push(t('app.skincare.act.vitamin_c'))
                 return (
                   <div
                     key={l.id}
@@ -715,7 +779,7 @@ export default function SkincareScreen() {
                     style={{ gridTemplateColumns: 'minmax(0,1fr) auto' }}
                   >
                     <div>
-                      <div className="t num">{l.date}</div>
+                      <div className="t num">{shortDate(parseIsoDate(l.date), lang)}</div>
                       <div className="m">
                         {actives.join(' · ') || '—'}
                         {l.note && <><br />{l.note}</>}
@@ -739,42 +803,42 @@ export default function SkincareScreen() {
         <div className="c5">
           <section className="sec o4">
             <div className="sec-h">
-              <h2>Наблюдения по коже</h2>
+              <h2>{t('app.skincare.observations_title')}</h2>
               <button
                 type="button"
                 className="ghost"
                 onClick={() => setObsOpen(true)}
               >
                 <Icon name="plus" />
-                <span>Оценка</span>
+                <span>{t('app.skincare.observation_score')}</span>
               </button>
             </div>
             {obsOpen && (
-              <div className="panel fpanel mb-4">
+              <div className="panel fpanel mb-s4">
                 <div className="panel-h">
-                  <h3>Оценка состояния ({view.today})</h3>
+                  <h3>{t('app.skincare.state_score_today', { date: view.today })}</h3>
                   <button type="button" className="ibtn" onClick={() => setObsOpen(false)}>
                     <Icon name="x" />
                   </button>
                 </div>
-                <div className="space-y-3">
+                <div className="form sk-form">
                   <label className="field">
-                    <span className="flabel">Зона лица / тела</span>
+                    <span className="flabel">{t('app.skincare.face_zone')}</span>
                     <select
                       className="input"
                       value={obsZone}
                       onChange={(e) => setObsZone(e.target.value)}
                     >
-                      <option value="подбородок">Подбородок</option>
-                      <option value="щёки">Щёки</option>
-                      <option value="лоб">Лоб</option>
-                      <option value="нос">Нос</option>
-                      <option value="спина">Спина / плечи</option>
+                      <option value="chin">{t('app.skincare.zone.chin')}</option>
+                      <option value="cheeks">{t('app.skincare.zone.cheeks')}</option>
+                      <option value="forehead">{t('app.skincare.zone.forehead')}</option>
+                      <option value="nose">{t('app.skincare.zone.nose')}</option>
+                      <option value="back_shoulders">{t('app.skincare.zone.back_shoulders')}</option>
                     </select>
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="sk-grid-2">
                     <label className="field">
-                      <span className="flabel">Воспаление (1–5)</span>
+                      <span className="flabel">{t('app.skincare.inflammation_scale')}</span>
                       <input
                         className="input"
                         type="number"
@@ -785,7 +849,7 @@ export default function SkincareScreen() {
                       />
                     </label>
                     <label className="field">
-                      <span className="flabel">Пигментация (1–5)</span>
+                      <span className="flabel">{t('app.skincare.pih_scale')}</span>
                       <input
                         className="input"
                         type="number"
@@ -798,11 +862,11 @@ export default function SkincareScreen() {
                   </div>
                   <input
                     className="input"
-                    placeholder="Заметка..."
+                    placeholder={t('app.skincare.note_ph')}
                     value={obsNote}
                     onChange={(e) => setObsNote(e.target.value)}
                   />
-                  <div className="flex gap-2 pt-2">
+                  <div className="form-acts sk-form-acts">
                     <PrimaryButton className="btn grow" onPress={handleSaveObservation}>
                       {t('common.save')}
                     </PrimaryButton>
@@ -821,6 +885,8 @@ export default function SkincareScreen() {
               {view.observations.map((o) => {
                 const inf = o.inflammation ?? o.inf ?? 0
                 const pih = o.pih ?? 0
+                const zoneKey = o.zone || 'face'
+                const zoneLabel = t(`app.skincare.zone.${zoneKey}`) || o.zone || t('app.skincare.zone.face')
                 return (
                   <div
                     key={o.id}
@@ -829,9 +895,9 @@ export default function SkincareScreen() {
                     style={{ gridTemplateColumns: 'minmax(0,1fr) auto' }}
                   >
                     <div>
-                      <div className="t num">{o.date}</div>
+                      <div className="t num">{shortDate(parseIsoDate(o.date), lang)}</div>
                       <div className="m">
-                        Воспаление {inf}/5 · Пигментация {pih}/5 · Зона: {o.zone || 'лицо'}
+                        {t('app.skincare.obs_format', { inf, pih, zone: zoneLabel })}
                         {o.note && <><br />{o.note}</>}
                       </div>
                     </div>

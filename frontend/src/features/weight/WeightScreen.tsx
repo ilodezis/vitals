@@ -12,7 +12,7 @@ import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { longDate, parseIsoDate, relativeDay } from '@/lib/dates'
-import { formatNumber, formatSigned } from '@/lib/format'
+import { formatCompactNumber, formatNumber, formatSigned } from '@/lib/format'
 import { useLatestWeight } from './weightLog'
 import type { WeightSource } from './types'
 import { useWeightView } from './useWeightView'
@@ -28,17 +28,32 @@ export default function WeightScreen() {
   const latest = useLatestWeight()
   const heroKg = view.kg || latest.kg || 0
   const [range, setRange] = useState<TrendRange>('3m')
+  const [historyLimit, setHistoryLimit] = useState(14)
+
+  const formatDose = (drug?: string, doseMg?: number, fallback = '') => {
+    if (drug && doseMg != null) {
+      const drugName = t(`enum.drug.${drug}`)
+      return `${drugName} ${formatCompactNumber(doseMg, lang)} ${t('app.unit.mg')}`
+    }
+    return fallback
+  }
 
   const series = useMemo(
     () => ({
       weighings: view.weighings.map((p) => ({ date: parseIsoDate(p.date), kg: p.kg })),
       trend: view.trend.map((p) => ({ date: parseIsoDate(p.date), kg: p.kg })),
-      phases: view.dosePhases.map((p) => ({ from: parseIsoDate(p.from), to: parseIsoDate(p.to), label: p.label })),
+      phases: view.dosePhases.map((p) => ({
+        from: parseIsoDate(p.from),
+        to: parseIsoDate(p.to),
+        label: formatDose(p.drug, p.doseMg, p.label),
+      })),
     }),
-    [view],
+    [view, lang, t],
   )
   const labels = { today: t('app.today_word'), yesterday: t('app.yesterday_word') }
   const drop = view.weekDeltaKg <= 0
+  const visibleHistory = view.history.slice(0, historyLimit)
+  const remainingHistory = view.history.length - historyLimit
 
   return (
     <>
@@ -95,7 +110,7 @@ export default function WeightScreen() {
             </span>
             <span>
               <i className="band" />
-              {view.drug}
+              {t(`enum.drug.${view.drug}`) !== `enum.drug.${view.drug}` ? t(`enum.drug.${view.drug}`) : view.drug}
             </span>
             <span>
               <i className="now" />
@@ -109,7 +124,7 @@ export default function WeightScreen() {
         <div className="c7">
           <Section title={t('app.weight.history_title')} meta={t('app.weight.history_meta')}>
             <div className="rows">
-              {view.history.map((h, i) => (
+              {visibleHistory.map((h, i) => (
                 <div key={i} className={cx('row', 'r-hist', h.superseded && 'dim')}>
                   <div>
                     <div className="t">
@@ -134,6 +149,15 @@ export default function WeightScreen() {
                   </div>
                 </div>
               ))}
+              {remainingHistory > 0 && (
+                <button
+                  type="button"
+                  className="more-btn"
+                  onClick={() => setHistoryLimit((n) => n + 50)}
+                >
+                  {t('app.weight.show_more_50', { n: Math.min(50, remainingHistory) })}
+                </button>
+              )}
             </div>
           </Section>
         </div>
@@ -153,7 +177,7 @@ export default function WeightScreen() {
               </div>
               <div className="row r-kv">
                 <div>
-                  <div className="t">{t('app.weight.pace_dose', { label: view.pace.dose.label })}</div>
+                  <div className="t">{t('app.weight.pace_dose', { label: formatDose(view.pace.dose.drug, view.pace.dose.doseMg, view.pace.dose.label) })}</div>
                   <div className="m">
                     {plural(
                       view.pace.dose.days,
@@ -198,7 +222,7 @@ export default function WeightScreen() {
                 <div key={row.label} className="row r-kv tight">
                   <div className="t plain">{row.label}</div>
                   <div className="v">
-                    {row.value}
+                    {typeof row.value === 'number' ? formatNumber(row.value, lang) : row.value}
                     <span className="u">{row.unit}</span>
                   </div>
                 </div>

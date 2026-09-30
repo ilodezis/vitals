@@ -9,6 +9,7 @@ import { Icon } from '@/components/icons/Icon'
 import { Headline, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { longDate, parseIsoDate, toIsoDate } from '@/lib/dates'
+import { formatNumber } from '@/lib/format'
 import type { components } from '@/api/schema'
 import './recovery.css'
 
@@ -70,24 +71,24 @@ export default function SleepNightScreen() {
     if (!night) return []
     if (activeCurveGroup === 'pulse') {
       return [
-        { label: 'Пульс, уд/мин', color: '#F4F0F6', points: night.heart_rate ?? [] },
-        { label: 'HRV, мс', color: '#BCA4DC', points: night.hrv ?? [] },
+        { label: t('app.sleep.curve.heart_rate'), color: '#F4F0F6', points: night.heart_rate ?? [] },
+        { label: t('app.sleep.curve.hrv'), color: '#BCA4DC', points: night.hrv ?? [] },
       ]
     }
     if (activeCurveGroup === 'breathing') {
       return [
-        { label: 'Дыхание, вдохов/мин', color: '#6FB6C9', points: night.respiration ?? [] },
+        { label: t('app.sleep.curve.respiration'), color: '#6FB6C9', points: night.respiration ?? [] },
       ]
     }
     return [
-      { label: 'Движение', color: '#F0B24A', points: night.movement ?? [] },
+      { label: t('app.sleep.curve.movement'), color: '#F0B24A', points: night.movement ?? [] },
     ]
-  }, [night, activeCurveGroup])
+  }, [night, activeCurveGroup, t])
 
   const fmtHM = (mins: number) => {
     const h = Math.floor(mins / 60)
     const m = mins % 60
-    return h > 0 ? `${h} ч ${m} мин` : `${m} мин`
+    return h > 0 ? t('app.duration.hm', { h, m }) : t('app.duration.min', { m })
   }
 
   if (isLoading || !night) {
@@ -95,7 +96,7 @@ export default function SleepNightScreen() {
       <>
         <TopBar title={t('app.title.sleep')} />
         <Headline title={t('app.title.sleep')} />
-        <div style={{ padding: '24px', color: 'var(--muted)' }}>Загрузка...</div>
+        <div style={{ padding: '24px', color: 'var(--muted)' }}>{t('app.loading')}</div>
       </>
     )
   }
@@ -113,11 +114,11 @@ export default function SleepNightScreen() {
             </div>
             <div className="side">
               <span className="sub">
-                {night.rhr ? `Пульс во сне: ${night.rhr} уд/мин` : ''}
+                {night.rhr ? t('app.sleep.sleeping_rhr', { rhr: formatNumber(night.rhr, lang) }) : ''}
               </span>
               <span className="sub">
-                {night.spo2_min ? `Мин. SpO₂: ${night.spo2_min} %` : ''}
-                {night.bb_change ? ` · Body Battery +${night.bb_change}` : ''}
+                {night.spo2_min ? t('app.sleep.min_spo2', { spo2: formatNumber(night.spo2_min, lang) }) : ''}
+                {night.bb_change ? t('app.sleep.bb_change', { change: formatNumber(night.bb_change, lang) }) : ''}
               </span>
             </div>
           </div>
@@ -127,7 +128,7 @@ export default function SleepNightScreen() {
               className="ibtn"
               disabled={!night.prev_date}
               onClick={() => night.prev_date && navigate({ to: '/recovery/sleep/$date', params: { date: night.prev_date } })}
-              aria-label="Предыдущая ночь"
+              aria-label={t('app.sleep.prev_night')}
             >
               <Icon name="chevL" />
             </button>
@@ -136,7 +137,7 @@ export default function SleepNightScreen() {
               className="ibtn"
               disabled={!night.next_date}
               onClick={() => night.next_date && navigate({ to: '/recovery/sleep/$date', params: { date: night.next_date } })}
-              aria-label="Следующая ночь"
+              aria-label={t('app.sleep.next_night')}
             >
               <Icon name="chevR" />
             </button>
@@ -146,13 +147,13 @@ export default function SleepNightScreen() {
 
       {(night.awake_count != null || night.restless_moments != null) && (
         <p className="night-note">
-          Пробуждения: {night.awake_count ?? 0} · ворочания: {night.restless_moments ?? 0}
+          {t('app.sleep.awakenings_and_restless', { awake: night.awake_count ?? 0, restless: night.restless_moments ?? 0 })}
         </p>
       )}
 
       {/* Sleep Stages Section */}
       <Section
-        title="Фазы сна"
+        title={t('app.sleep.stages_title')}
         meta={night.start_time && night.end_time ? `${night.start_time} → ${night.end_time}` : undefined}
       >
         <div className="panel bare">
@@ -170,40 +171,40 @@ export default function SleepNightScreen() {
           <div className="hyp-legend">
             <div>
               <i style={{ background: 'var(--deep)' }} />
-              Глубокий
+              {t('app.stage.deep')}
               <b>{fmtHM(stageMins.deep)}</b>
             </div>
             <div>
               <i style={{ background: 'var(--cool)' }} />
-              Лёгкий
+              {t('app.stage.light')}
               <b>{fmtHM(stageMins.light)}</b>
             </div>
             <div>
               <i style={{ background: 'var(--violet)' }} />
-              REM
+              {t('app.stage.rem')}
               <b>{fmtHM(stageMins.rem)}</b>
             </div>
             <div>
               <i style={{ background: 'var(--bad)' }} />
-              Пробужд.
-              <b>{stageMins.awake} мин</b>
+              {t('app.stage.awake')}
+              <b>{t('app.duration.min', { m: stageMins.awake })}</b>
             </div>
           </div>
         </div>
       </Section>
 
       {/* Overnight Curves Section */}
-      <Section title="Показатели за ночь">
+      <Section title={t('app.sleep.metrics_title')}>
         <div className="panel bare">
           <div className="panel-h" style={{ padding: '16px 16px 0' }}>
             <Segmented
               value={activeCurveGroup}
               onChange={setActiveCurveGroup}
-              label="Показатели"
+              label={t('app.sleep.metrics_label')}
               options={[
-                { id: 'pulse', label: 'Сердце' },
-                { id: 'breathing', label: 'Дыхание' },
-                { id: 'movement', label: 'Движение' },
+                { id: 'pulse', label: t('app.sleep.tab_pulse') },
+                { id: 'breathing', label: t('app.sleep.tab_breathing') },
+                { id: 'movement', label: t('app.sleep.tab_movement') },
               ]}
             />
           </div>

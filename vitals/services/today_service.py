@@ -390,6 +390,7 @@ async def collect(
                     "violet",
                     s.note or s.key,
                     time=s.at_time.strftime("%H:%M") if s.at_time else "",
+                    value=s.value_num,
                 )
             )
     if weigh_ins:
@@ -419,6 +420,12 @@ async def collect(
     feed = feed[:_FEED_LIMIT]
 
     # ── Needs attention ──────────────────────────────────────────────────────
+    _sev_rank = {
+        Severity.BLOCK.value: 0,
+        Severity.WARN.value: 1,
+        Severity.INFO.value: 2,
+        Severity.NOTE.value: 3,
+    }
     attention = [
         {"severity": a.severity, "message": a.message, "domain": a.domain}
         for a in await alerts_service.list_active(session)
@@ -429,6 +436,7 @@ async def collect(
         attention.append(
             {"severity": Severity.NOTE.value, "message": advice, "domain": Domain.GARMIN.value}
         )
+    attention.sort(key=lambda item: _sev_rank.get(item.get("severity", ""), 99))
 
     latest_kg, latest_date = weight.get("latest_kg"), weight.get("latest_date")
     return {

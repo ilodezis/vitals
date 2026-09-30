@@ -39,7 +39,8 @@ export const weightQuery = queryOptions({
       dosePhases: (data.dose_phases ?? []).map((p) => ({
         from: p.from_date,
         to: p.to_date ?? p.from_date,
-        label: p.label,
+        drug: p.drug,
+        doseMg: p.dose_mg,
       })),
       history: (data.history ?? []).map((h) => ({
         date: h.date,
@@ -54,6 +55,8 @@ export const weightQuery = queryOptions({
         perWeekKg: data.pace?.per_week_kg ?? 0,
         dose: {
           label: data.pace?.dose?.label ?? 'Dose',
+          drug: data.pace?.dose?.drug ?? undefined,
+          doseMg: data.pace?.dose?.dose_mg ?? undefined,
           sinceIso: data.pace?.dose?.since_date ?? data.latest_date ?? todayIso(),
           days: data.pace?.dose?.days ?? 0,
           deltaKg: data.pace?.dose?.delta_kg ?? 0,

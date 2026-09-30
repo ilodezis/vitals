@@ -31,8 +31,8 @@
   .mk-detail { display: none; }
   .mk { padding: 14px 12px; margin: 0 -12px; border-radius: var(--r); border-bottom-color: transparent; box-shadow: 0 1px 0 var(--line); transition: background var(--d2); }
   .mk:hover { background: rgba(255, 255, 255, .02); }
-
 }
+
 /* Labs: what the JSX carries instead of inline styles */
 .drop-first { margin-top: 28px; }
 .labs-grid { margin-top: 8px; }
@@ -49,3 +49,25 @@
 .lab-past .m { font-size: var(--t-body); color: var(--fg-2); }
 .mk.enter { animation: mk-in 320ms var(--ease-out) both; }
 @keyframes mk-in { from { opacity: 0; transform: translateY(6px); } }
+
+.labs-acts { display: flex; gap: 8px; }
+.mk-detail-acts { margin-top: 8px; text-align: right; }
+
+.lab-modal-title { font-weight: 700; font-size: var(--t-heading); }
+.lab-modal-sub { font-size: var(--t-micro); color: var(--muted); margin-top: 2px; }
+.lab-modal-form { display: grid; gap: 16px; margin-top: 16px; }
+.lab-modal-grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+.preview-table-wrap { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.preview-table { width: 100%; font-size: var(--t-caption); text-align: left; border-collapse: collapse; }
+.preview-table thead { background: var(--bg-deep); color: var(--muted); }
+.preview-table th, .preview-table td { padding: 8px; }
+.preview-table tbody tr { border-top: 1px solid var(--line); }
+.preview-table .cell-sm { width: 80px; }
+.preview-table .cell-range { width: 120px; }
+.preview-table .cell-action { text-align: center; }
+.preview-table .input-compact { padding-top: 4px; padding-bottom: 4px; font-size: var(--t-caption); }
+.preview-range-box { display: flex; gap: 4px; align-items: center; }
+
+.lab-modal-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; }
+.lab-modal-foot-acts { display: flex; gap: 8px; }

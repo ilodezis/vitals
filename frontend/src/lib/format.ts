@@ -34,6 +34,28 @@ export function formatCompact(value: number, lang: Lang): string {
   return formatNumber(value, lang, Number.isInteger(Number(value.toFixed(1))) ? 0 : 1)
 }
 
+/** Compact number notation (e.g. 9500 → "9,5 тыс." in ru, "9.5K" in en). */
+export function formatCompactNumber(value: number, lang: Lang): string {
+  const nf = new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 })
+  let out = ''
+  for (const part of nf.formatToParts(value)) {
+    switch (part.type) {
+      case 'minusSign':
+        out += MINUS
+        break
+      case 'group':
+        out += GROUP
+        break
+      case 'decimal':
+        out += DECIMAL[lang]
+        break
+      default:
+        out += part.value
+    }
+  }
+  return out
+}
+
 /** A change: the sign is always shown ("+0,4", "−0,6"); a value that rounds to zero has none. */
 export function formatSigned(value: number, lang: Lang, digits = 1): string {
   const rounded = Number(value.toFixed(digits))

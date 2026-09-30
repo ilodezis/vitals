@@ -2,22 +2,26 @@ import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import { PrimaryButton } from '@/components/controls/PrimaryButton'
+import { TextButton } from '@/components/controls/Marks'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
+import { parseIsoDate, shortDate } from '@/lib/dates'
+import { formatNumber } from '@/lib/format'
 import type { CustomChartItem } from './types'
 import { useChartsView } from './useChartsView'
 import './charts.css'
 
+// Palette without amber (--accent)
 const SERIES_COLORS = [
-  'var(--accent)',
   'var(--cool)',
   'var(--violet)',
   'var(--good)',
   'var(--warn)',
-  '#E056FD',
   '#686DE0',
+  '#E056FD',
+  '#22A6B3',
   '#30336B',
 ]
 
@@ -28,7 +32,7 @@ interface SeriesDraft {
 }
 
 export default function ChartsScreen() {
-  const { t } = useT()
+  const { t, lang } = useT()
   const view = useChartsView()
   const queryClient = useQueryClient()
 
@@ -39,6 +43,7 @@ export default function ChartsScreen() {
     { domain: 'weight', metricKey: 'ma' },
   ])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['charts'] })
@@ -46,7 +51,7 @@ export default function ChartsScreen() {
 
   const addSeriesRow = () => {
     if (seriesRows.length >= 8) {
-      toast('Максимум 8 рядов на графике', { icon: 'warn' })
+      toast(t('app.charts.max_8_series'), { icon: 'warn' })
       return
     }
     setSeriesRows([...seriesRows, { domain: 'garmin', metricKey: 'sleep' }])
@@ -65,7 +70,7 @@ export default function ChartsScreen() {
 
   const handleSaveChart = async (): Promise<boolean> => {
     if (!chartName.trim()) {
-      toast('Введите название графика', { icon: 'warn' })
+      toast(t('app.charts.enter_name'), { icon: 'warn' })
       return false
     }
     setIsSubmitting(true)
@@ -81,13 +86,13 @@ export default function ChartsScreen() {
           })),
         },
       })
-      toast('График сохранён')
+      toast(t('app.charts.chart_saved'))
       setFormOpen(false)
       setChartName('')
       refresh()
       return true
     } catch (err: any) {
-      toast(err.message || 'Не удалось сохранить график', { icon: 'warn' })
+      toast(err.message || t('app.charts.save_failed'), { icon: 'warn' })
       return false
     } finally {
       setIsSubmitting(false)
@@ -95,6 +100,11 @@ export default function ChartsScreen() {
   }
 
   const handleDeleteChart = async (id: string) => {
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id)
+      return
+    }
+    setConfirmDeleteId(null)
     try {
       await api.DELETE('/api/v1/charts/{chart_id}', {
         params: { path: { chart_id: id } },
@@ -102,7 +112,7 @@ export default function ChartsScreen() {
       toast(t('common.deleted'))
       refresh()
     } catch (err: any) {
-      toast(err.message || 'Error deleting chart', { icon: 'warn' })
+      toast(err.message || t('app.charts.delete_failed'), { icon: 'warn' })
     }
   }
 
@@ -110,8 +120,8 @@ export default function ChartsScreen() {
     const allPoints = chart.series.flatMap((s) => s.points)
     if (!allPoints.length) {
       return (
-        <div className="py-12 text-center text-sm text-[var(--muted)]">
-          Нет данных за выбранный период
+        <div className="chart-empty">
+          {t('app.charts.no_data_period')}
         </div>
       )
     }
@@ -119,48 +129,119 @@ export default function ChartsScreen() {
     const values = allPoints.map((p) => p.value)
     const minVal = Math.min(...values)
     const maxVal = Math.max(...values)
+    const midVal = (minVal + maxVal) / 2
     const valRange = maxVal - minVal || 1
+
+    // Dates for X-axis
+    const allDates = allPoints.map((p) => p.date).sort()
+    const firstDateStr = allDates[0]
+    const firstDate = firstDateStr ? shortDate(parseIsoDate(firstDateStr), lang) : ''
+    const lastDateStr = allDates[allDates.length - 1]
+    const lastDate = lastDateStr ? shortDate(parseIsoDate(lastDateStr), lang) : ''
 
     const w = 480
     const h = 180
-    const padX = 24
-    const padY = 16
+    const padLeft = 40
+    const padRight = 16
+    const padTop = 18
+    const padBottom = 26
+
+    const plotW = w - padLeft - padRight
+    const plotH = h - padTop - padBottom
 
     return (
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto overflow-visible">
+      <svg viewBox={`0 0 ${w} ${h}`} className="chart-svg">
         {/* Horizontal grid lines */}
         <line
-          x1={padX}
-          y1={padY}
-          x2={w - padX}
-          y2={padY}
+          x1={padLeft}
+          y1={padTop}
+          x2={w - padRight}
+          y2={padTop}
           stroke="var(--line)"
           strokeWidth="1"
         />
         <line
-          x1={padX}
-          y1={h / 2}
-          x2={w - padX}
-          y2={h / 2}
+          x1={padLeft}
+          y1={padTop + plotH / 2}
+          x2={w - padRight}
+          y2={padTop + plotH / 2}
           stroke="var(--line)"
           strokeWidth="1"
+          strokeDasharray="2,2"
         />
         <line
-          x1={padX}
-          y1={h - padY}
-          x2={w - padX}
-          y2={h - padY}
+          x1={padLeft}
+          y1={padTop + plotH}
+          x2={w - padRight}
+          y2={padTop + plotH}
           stroke="var(--line)"
           strokeWidth="1"
         />
+
+        {/* Y-axis Ticks */}
+        <text
+          x={padLeft - 6}
+          y={padTop + 3}
+          textAnchor="end"
+          fill="var(--muted)"
+          fontSize="10"
+          fontFamily="var(--f-text)"
+        >
+          {formatNumber(maxVal, lang, maxVal >= 100 ? 0 : 1)}
+        </text>
+        <text
+          x={padLeft - 6}
+          y={padTop + plotH / 2 + 3}
+          textAnchor="end"
+          fill="var(--muted)"
+          fontSize="10"
+          fontFamily="var(--f-text)"
+        >
+          {formatNumber(midVal, lang, midVal >= 100 ? 0 : 1)}
+        </text>
+        <text
+          x={padLeft - 6}
+          y={padTop + plotH + 3}
+          textAnchor="end"
+          fill="var(--muted)"
+          fontSize="10"
+          fontFamily="var(--f-text)"
+        >
+          {formatNumber(minVal, lang, minVal >= 100 ? 0 : 1)}
+        </text>
+
+        {/* X-axis start/end dates */}
+        {firstDate && (
+          <text
+            x={padLeft}
+            y={h - 6}
+            fill="var(--muted)"
+            fontSize="10"
+            fontFamily="var(--f-text)"
+          >
+            {firstDate}
+          </text>
+        )}
+        {lastDate && (
+          <text
+            x={w - padRight}
+            y={h - 6}
+            textAnchor="end"
+            fill="var(--muted)"
+            fontSize="10"
+            fontFamily="var(--f-text)"
+          >
+            {lastDate}
+          </text>
+        )}
 
         {/* Polylines for each series */}
         {chart.series.map((s, sIdx) => {
           if (!s.points.length) return null
           const color = SERIES_COLORS[s.colorSlot % SERIES_COLORS.length]
           const coords = s.points.map((p, i) => {
-            const x = padX + (i / Math.max(s.points.length - 1, 1)) * (w - 2 * padX)
-            const y = h - padY - ((p.value - minVal) / valRange) * (h - 2 * padY)
+            const x = padLeft + (i / Math.max(s.points.length - 1, 1)) * plotW
+            const y = padTop + plotH - ((p.value - minVal) / valRange) * plotH
             return `${x.toFixed(1)},${y.toFixed(1)}`
           })
 
@@ -182,13 +263,13 @@ export default function ChartsScreen() {
 
   const catalogDomains = useMemo(() => {
     return [
-      { key: 'weight', label: 'Вес' },
-      { key: 'garmin', label: 'Garmin' },
-      { key: 'workouts', label: 'Тренировки' },
-      { key: 'nutrition', label: 'Питание' },
-      { key: 'labs', label: 'Анализы' },
+      { key: 'weight', label: t('nav.weight') },
+      { key: 'garmin', label: t('nav.garmin') },
+      { key: 'workouts', label: t('nav.workouts') },
+      { key: 'nutrition', label: t('nav.nutrition') },
+      { key: 'labs', label: t('nav.labs') },
     ]
-  }, [])
+  }, [t])
 
   return (
     <>
@@ -199,7 +280,7 @@ export default function ChartsScreen() {
             type="button"
             className="ibtn"
             onClick={() => setFormOpen(true)}
-            aria-label="Новый график"
+            aria-label={t('app.charts.new_chart')}
           >
             <Icon name="plus" />
           </button>
@@ -210,7 +291,7 @@ export default function ChartsScreen() {
         actions={
           <button type="button" className="ghost" onClick={() => setFormOpen(true)}>
             <Icon name="plus" />
-            <span>Новый график</span>
+            <span>{t('app.charts.new_chart')}</span>
           </button>
         }
       />
@@ -218,26 +299,26 @@ export default function ChartsScreen() {
         <div className="figs inline">
           <div className="f">
             <div className="f-v">{view.count || view.charts.length}</div>
-            <div className="f-l">Графиков</div>
+            <div className="f-l">{t('app.charts.charts_count')}</div>
           </div>
         </div>
       </Headline>
 
       {/* New Chart Constructor Form Modal */}
       {formOpen && (
-        <div className="panel fpanel mb-6" style={{ marginTop: 'var(--s6)' }}>
+        <div className="panel fpanel" style={{ marginTop: 'var(--s6)' }}>
           <div className="panel-h">
-            <h3>Новый график</h3>
+            <h3>{t('app.charts.new_chart')}</h3>
             <button type="button" className="ibtn" onClick={() => setFormOpen(false)}>
               <Icon name="x" />
             </button>
           </div>
-          <div className="form space-y-4">
+          <div className="form">
             <label className="field">
-              <span className="flabel">Название графика</span>
+              <span className="flabel">{t('app.charts.chart_name')}</span>
               <input
                 className="input"
-                placeholder="например, Вес и сон"
+                placeholder={t('app.charts.name_placeholder')}
                 value={chartName}
                 onChange={(e) => setChartName(e.target.value)}
               />
@@ -247,7 +328,7 @@ export default function ChartsScreen() {
             <div className="srows">
               {seriesRows.map((r, i) => (
                 <div key={i} className="srow">
-                  <span className="flabel">Ряд {i + 1}</span>
+                  <span className="flabel">{t('app.charts.row_n', { n: i + 1 })}</span>
                   <div className="srow-f">
                     <select
                       className="input"
@@ -262,7 +343,7 @@ export default function ChartsScreen() {
                     </select>
                     <input
                       className="input"
-                      placeholder="Ключ метрики (напр. ma, sleep, rhr)"
+                      placeholder={t('app.charts.metric_key_ph')}
                       value={r.metricKey}
                       onChange={(e) => updateSeriesRow(i, { metricKey: e.target.value })}
                     />
@@ -272,7 +353,7 @@ export default function ChartsScreen() {
                       type="button"
                       className="ibtn"
                       onClick={() => removeSeriesRow(i)}
-                      aria-label="Удалить"
+                      aria-label={t('common.delete')}
                     >
                       <Icon name="x" />
                     </button>
@@ -283,25 +364,25 @@ export default function ChartsScreen() {
 
             <button type="button" className="ghost" onClick={addSeriesRow}>
               <Icon name="plus" />
-              <span>Добавить метрику</span>
+              <span>{t('app.charts.add_metric')}</span>
             </button>
 
-            <label className="flex items-center gap-2 cursor-pointer pt-1">
+            <label className="norm-check">
               <input
                 type="checkbox"
                 checked={normalize}
                 onChange={(e) => setNormalize(e.target.checked)}
               />
-              <span className="text-sm">Нормализовать (индекс = 100 в начале)</span>
+              <span>{t('app.charts.normalize_label')}</span>
             </label>
 
-            <div className="form-acts flex gap-2 pt-2">
+            <div className="form-acts">
               <PrimaryButton
                 className="btn grow"
                 onPress={handleSaveChart}
                 disabled={isSubmitting}
               >
-                Сохранить график
+                {t('app.charts.save_chart')}
               </PrimaryButton>
               <button
                 type="button"
@@ -317,24 +398,23 @@ export default function ChartsScreen() {
 
       {/* Charts Gallery */}
       {view.charts.length > 0 ? (
-        <div className="cgal mt-6">
+        <div className="cgal">
           {view.charts.map((c) => (
             <section key={c.id} className="sec cg" data-item>
               <div className="sec-h">
                 <h2>{c.name}</h2>
                 <span className="acts">
-                  <button
-                    type="button"
-                    className="ghost danger"
+                  <TextButton
+                    icon={confirmDeleteId === c.id ? 'warn' : 'trash'}
+                    danger={confirmDeleteId === c.id}
                     onClick={() => handleDeleteChart(c.id)}
                   >
-                    <Icon name="trash" />
-                    <span>Удалить</span>
-                  </button>
+                    {confirmDeleteId === c.id ? t('common.confirm_question') : t('common.delete')}
+                  </TextButton>
                 </span>
               </div>
               {c.normalize && (
-                <p className="meta cg-note">индекс = 100 в начале</p>
+                <p className="meta cg-note">{t('app.charts.normalized_note')}</p>
               )}
               <div className="panel bare">
                 <div className="chart">{renderSvgChart(c)}</div>
@@ -351,12 +431,12 @@ export default function ChartsScreen() {
                   {c.overlays?.length > 0 && (
                     <span>
                       <i className="band" />
-                      события хронологии
+                      {t('app.charts.timeline_events')}
                     </span>
                   )}
                   <span>
                     <i className="now" />
-                    сейчас
+                    {t('app.now')}
                   </span>
                 </div>
               </div>
@@ -364,10 +444,10 @@ export default function ChartsScreen() {
           ))}
         </div>
       ) : (
-        <div className="empty mt-6">
+        <div className="empty charts-empty">
           <Icon name="chart" />
-          <p>Пока нет кастомных графиков.</p>
-          <small>Соберите первый: до восьми рядов на одном графике.</small>
+          <p>{t('app.charts.empty_title')}</p>
+          <small>{t('app.charts.empty_desc')}</small>
         </div>
       )}
     </>

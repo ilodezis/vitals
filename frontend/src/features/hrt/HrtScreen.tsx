@@ -10,6 +10,7 @@ import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { parseIsoDate, shortDate, toIsoDate } from '@/lib/dates'
+import { formatNumber } from '@/lib/format'
 import { useConflictMutation } from '@/lib/useConflictMutation'
 import { useHrtView } from './useHrtView'
 import './hrt.css'
@@ -76,14 +77,14 @@ export default function HrtScreen() {
           override,
         },
       })
-      if (!res.data) throw new Error('Error saving dose')
+      if (!res.data) throw new Error(t('app.error'))
       toast(t('common.saved'))
       setDoseModalOpen(false)
       refresh()
       return res.data
     },
     onError: (err) => {
-      toast(err.message || 'Error saving dose', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
     },
   })
 
@@ -94,7 +95,7 @@ export default function HrtScreen() {
       toast(t('common.deleted'))
       refresh()
     } catch (err: any) {
-      toast(err.message || 'Error deleting dose', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
     }
   }
 
@@ -117,7 +118,7 @@ export default function HrtScreen() {
       }
       return false
     } catch (err: any) {
-      toast(err.message || 'Error creating cycle', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
       return false
     }
   }
@@ -133,7 +134,7 @@ export default function HrtScreen() {
       toast(t('hrt.cycle_closed'))
       refresh()
     } catch (err: any) {
-      toast(err.message || 'Error closing cycle', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
     }
   }
 
@@ -158,7 +159,7 @@ export default function HrtScreen() {
       }
       return false
     } catch (err: any) {
-      toast(err.message || 'Error adding compound', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
       return false
     }
   }
@@ -170,7 +171,7 @@ export default function HrtScreen() {
       toast(t('common.deleted'))
       refresh()
     } catch (err: any) {
-      toast(err.message || 'Error deleting compound', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
     }
   }
 
@@ -186,7 +187,7 @@ export default function HrtScreen() {
       setTemplateName('')
       refresh()
     } catch (err: any) {
-      toast(err.message || 'Error saving template', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
     }
   }
 
@@ -200,7 +201,7 @@ export default function HrtScreen() {
       toast(t('hrt.cycle_started'))
       refresh()
     } catch (err: any) {
-      toast(err.message || 'Error applying template', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
     }
   }
 
@@ -220,7 +221,7 @@ export default function HrtScreen() {
       refresh()
       return true
     } catch (err: any) {
-      toast(err.message || 'Error logging side effect', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
       return false
     }
   }
@@ -232,7 +233,7 @@ export default function HrtScreen() {
       toast(t('common.deleted'))
       refresh()
     } catch (err: any) {
-      toast(err.message || 'Error deleting side effect', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
     }
   }
 
@@ -248,8 +249,11 @@ export default function HrtScreen() {
       const y = h - (p.total_mg / maxMg) * (h - 8) - 4
       return `${x.toFixed(1)},${y.toFixed(1)}`
     })
-    return { points: coords.join(' '), maxMg: maxMg.toFixed(1) }
-  }, [view.release])
+    return { points: coords.join(' '), maxMg: formatNumber(maxMg, lang, 1) }
+  }, [view.release, lang])
+
+  const lastDoseVal = view.last ? parseFloat(view.last.dose) : NaN
+  const lastDoseNum = !Number.isNaN(lastDoseVal) ? formatNumber(lastDoseVal, lang, 1) : (view.last?.dose ?? '—')
 
   return (
     <>
@@ -257,7 +261,7 @@ export default function HrtScreen() {
       <Mast
         screen="hrt"
         actions={
-          <div className="flex gap-2">
+          <div className="hrt-acts">
             <TextButton icon="syringe" onClick={() => setDoseModalOpen(true)}>
               {t('hrt.add_dose')}
             </TextButton>
@@ -272,7 +276,8 @@ export default function HrtScreen() {
       <Headline title={t('nav.hrt')}>
         <div className="hrt-hero">
           <div className="big">
-            {view.last ? view.last.dose : '—'}
+            {lastDoseNum}
+            <span className="unit">{t('app.unit.mg')}</span>
           </div>
           <div className="side">
             <Badge tone="violet">{view.last ? view.last.name : t('hrt.no_active_dose')}</Badge>
@@ -288,12 +293,12 @@ export default function HrtScreen() {
           {/* Active Cycle */}
           <Section title={t('hrt.active_cycle')}>
             {activeC ? (
-              <div className="hrt-card">
-                <div className="hrt-card-head">
+              <div className="hrt-cycle-sec">
+                <div className="hrt-cycle-head">
                   <div>
-                    <Badge tone="violet">{activeC.kind.toUpperCase()}</Badge>
-                    <h3 className="font-semibold text-lg mt-1">{activeC.name || activeC.kind}</h3>
-                    <p className="text-xs text-[var(--muted)]">
+                    <Badge tone="violet">{t(`hrt.kind.${activeC.kind}`) || activeC.kind.toUpperCase()}</Badge>
+                    <h3>{activeC.name || t(`hrt.kind.${activeC.kind}`) || activeC.kind}</h3>
+                    <p className="sub">
                       {shortDate(parseIsoDate(activeC.start), lang)}
                       {activeC.end ? ` — ${shortDate(parseIsoDate(activeC.end), lang)}` : ''}
                     </p>
@@ -313,9 +318,12 @@ export default function HrtScreen() {
                         : t('app.more.week', { week: activeC.week })}
                     </b>
                   </div>
-                  {activeC.pct != null && activeC.weeks != null && (
+                  {activeC.pct != null && (
                     <div className="hrt-meter">
-                      <div className="hrt-meter-fill" style={{ width: `${activeC.pct}%` }} />
+                      <div
+                        className="hrt-meter-fill"
+                        style={{ transform: `scaleX(${Math.min(Math.max((activeC.pct ?? 0) / 100, 0), 1)})` }}
+                      />
                     </div>
                   )}
                 </div>
@@ -325,7 +333,7 @@ export default function HrtScreen() {
                   <div className="hrt-sparkline-wrap">
                     <div className="hrt-sparkline-head">
                       <span>{t('hrt.release_curve')}</span>
-                      <span>Peak: {releaseSvg.maxMg} mg</span>
+                      <span>{t('app.hrt.peak_mg', { val: releaseSvg.maxMg })}</span>
                     </div>
                     <svg viewBox="0 0 500 70" preserveAspectRatio="none" className="hrt-sparkline-svg">
                       <polyline fill="none" stroke="var(--violet)" strokeWidth="2.5" points={releaseSvg.points} />
@@ -333,10 +341,10 @@ export default function HrtScreen() {
                   </div>
                 )}
 
-                {/* Compounds in Cycle */}
-                <div className="mt-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-semibold">{t('hrt.planned_compounds')}</span>
+                {/* Planned compounds */}
+                <div style={{ marginTop: '16px' }}>
+                  <div className="sec-h" style={{ marginBottom: '8px' }}>
+                    <span className="flabel" style={{ fontWeight: 600 }}>{t('hrt.planned_compounds')}</span>
                     <TextButton icon="plus" onClick={() => setItemModalOpen(true)}>
                       {t('hrt.add_item')}
                     </TextButton>
@@ -347,8 +355,8 @@ export default function HrtScreen() {
                         <div className="hrt-plan-info">
                           <span className="hrt-plan-name">{it.name}</span>
                           <span className="hrt-plan-sub">
-                            {it.dose} {it.unit}
-                            {it.every != null ? ` / ${it.every}d` : ''} · Week {it.from}+
+                            {formatNumber(it.dose, lang, 1)} {t('app.unit.mg')}
+                            {it.every != null ? ` · ${t('app.hrt.every_d', { days: it.every })}` : ''} · {t('app.hrt.week_plus', { week: it.from })}
                           </span>
                         </div>
                         <div className="hrt-plan-actions">
@@ -367,7 +375,7 @@ export default function HrtScreen() {
                 </div>
 
                 {/* Save as template */}
-                <div className="mt-4 flex gap-2 items-center">
+                <div className="hrt-template-save-bar">
                   <input
                     className="input grow"
                     placeholder={t('hrt.template_name_placeholder')}
@@ -380,10 +388,10 @@ export default function HrtScreen() {
                 </div>
               </div>
             ) : (
-              <div className="hrt-empty">
+              <div className="hrt-empty-box">
                 <Icon name="pulse" />
                 <p>{t('hrt.no_cycle_running')}</p>
-                <div className="mt-3 flex justify-center gap-2">
+                <div className="hrt-empty-acts">
                   <PrimaryButton onPress={async () => { setCycleModalOpen(true); return true }}>
                     {t('hrt.start_cycle')}
                   </PrimaryButton>
@@ -393,116 +401,116 @@ export default function HrtScreen() {
           </Section>
 
           {/* Dose Journal */}
-          <Section title={t('hrt.dose_journal')}>
-            <div className="hrt-card">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-xs text-[var(--muted)]">{view.doses.length} logged doses</span>
-                <TextButton icon="plus" onClick={() => setDoseModalOpen(true)}>
-                  {t('hrt.add_dose')}
-                </TextButton>
-              </div>
-              <div className="hrt-table-wrap">
-                <table className="hrt-table">
-                  <thead>
-                    <tr>
-                      <th>{t('common.date')}</th>
-                      <th>{t('hrt.compound')}</th>
-                      <th>{t('hrt.dose')}</th>
-                      <th>{t('hrt.site')}</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {view.doses.slice(0, 15).map((d) => (
-                      <tr key={d.id}>
-                        <td>{shortDate(parseIsoDate(d.date), lang)}</td>
-                        <td className="font-medium">{d.name}</td>
-                        <td>{d.dose}</td>
-                        <td>{d.site ? (view.siteLabels[d.site] || d.site) : '—'}</td>
-                        <td className="text-right">
-                          <button
-                            type="button"
-                            className="ibtn danger"
-                            onClick={() => handleDeleteDose(d.id)}
-                            aria-label={t('common.delete')}
-                          >
-                            <Icon name="x" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {view.doses.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="text-center py-4 text-[var(--muted)]">
-                          {t('hrt.no_doses_logged')}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+          <Section
+            title={t('hrt.dose_journal')}
+            meta={t('app.hrt.logged_doses_count', { count: view.doses.length })}
+          >
+            <div className="rows">
+              {view.doses.length === 0 ? (
+                <div className="row">
+                  <span className="m">{t('hrt.no_doses_logged')}</span>
+                </div>
+              ) : (
+                view.doses.slice(0, 15).map((d) => (
+                  <div key={d.id} className="row r-dose">
+                    <div>
+                      <div className="t">{d.name}</div>
+                      <div className="m">
+                        {shortDate(parseIsoDate(d.date), lang)}
+                        {d.site ? ` · ${view.siteLabels[d.site] || d.site}` : ''}
+                        {d.brand ? ` · ${d.brand}` : ''}
+                      </div>
+                    </div>
+                    <div className="v">
+                      {formatNumber(d.doseVal, lang, 1)}
+                      <span className="u">{t('app.unit.mg')}</span>
+                    </div>
+                    <div className="acts">
+                      <button
+                        type="button"
+                        className="ibtn danger"
+                        onClick={() => handleDeleteDose(d.id)}
+                        aria-label={t('common.delete')}
+                      >
+                        <Icon name="trash" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </Section>
         </div>
 
         <div className="c5">
           {/* Side Effects */}
-          <Section title={t('hrt.side_effects')}>
-            <div className="hrt-card">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-xs text-[var(--muted)]">{view.sideEffects.length} logged</span>
+          <Section
+            title={t('hrt.side_effects')}
+            meta={
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="meta">{t('app.hrt.logged_count', { count: view.sideEffects.length })}</span>
                 <TextButton icon="plus" onClick={() => setSideEffectModalOpen(true)}>
                   {t('common.add')}
                 </TextButton>
               </div>
-              <div className="space-y-2">
-                {view.sideEffects.map((se) => (
-                  <div key={se.id} className="hrt-side-effect-item">
-                    <div className="hrt-side-effect-info">
-                      <span className="hrt-side-effect-name">{se.name}</span>
-                      <span className="hrt-side-effect-date">{shortDate(parseIsoDate(se.date), lang)}</span>
+            }
+          >
+            <div className="rows">
+              {view.sideEffects.length === 0 ? (
+                <div className="row">
+                  <span className="m">{t('hrt.no_side_effects')}</span>
+                </div>
+              ) : (
+                view.sideEffects.map((se) => {
+                  const seName = t(`app.hrt.side.${se.name}`) || se.name
+                  return (
+                    <div key={se.id} className="row hrt-side-effect-item">
+                      <div className="hrt-side-effect-info">
+                        <span className="hrt-side-effect-name">{seName}</span>
+                        <span className="hrt-side-effect-date">{shortDate(parseIsoDate(se.date), lang)}</span>
+                      </div>
+                      <div className="hrt-side-effect-acts">
+                        <Delta tone={se.sev > 3 ? 'bad' : undefined}>
+                          {t('app.hrt.grade_n', { grade: se.sev })}
+                        </Delta>
+                        <button
+                          type="button"
+                          className="ibtn danger"
+                          onClick={() => handleDeleteSideEffect(se.id)}
+                          aria-label={t('common.delete')}
+                        >
+                          <Icon name="x" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Delta tone={se.sev > 3 ? 'bad' : undefined}>Grade {se.sev}</Delta>
-                      <button
-                        type="button"
-                        className="ibtn danger"
-                        onClick={() => handleDeleteSideEffect(se.id)}
-                        aria-label={t('common.delete')}
-                      >
-                        <Icon name="x" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {view.sideEffects.length === 0 && (
-                  <p className="text-xs text-[var(--muted)] text-center py-3">{t('hrt.no_side_effects')}</p>
-                )}
-              </div>
+                  )
+                })
+              )}
             </div>
           </Section>
 
           {/* Templates Library */}
           <Section title={t('hrt.templates')}>
-            <div className="hrt-card">
-              <div className="space-y-2">
-                {view.templates.map((tpl) => (
-                  <div key={tpl.id} className="hrt-template-item">
+            <div className="rows">
+              {view.templates.length === 0 ? (
+                <div className="row">
+                  <span className="m">{t('hrt.no_templates')}</span>
+                </div>
+              ) : (
+                view.templates.map((tpl) => (
+                  <div key={tpl.id} className="row hrt-template-item">
                     <div className="hrt-template-info">
-                      <h4 className="hrt-template-name">{tpl.name}</h4>
-                      <p className="hrt-template-sub">
+                      <span className="hrt-template-name">{tpl.name}</span>
+                      <span className="hrt-template-sub">
                         {tpl.items.map(([c]) => c).join(', ')}
-                      </p>
+                      </span>
                     </div>
                     <TextButton onClick={() => handleApplyTemplate(tpl.id)}>
                       {t('hrt.apply_template')}
                     </TextButton>
                   </div>
-                ))}
-                {view.templates.length === 0 && (
-                  <p className="text-xs text-[var(--muted)] text-center py-3">{t('hrt.no_templates')}</p>
-                )}
-              </div>
+                ))
+              )}
             </div>
           </Section>
         </div>
@@ -513,12 +521,12 @@ export default function HrtScreen() {
         <div className="hrt-form-modal">
           <div className="hrt-form-box">
             <div className="hrt-form-head">
-              <h3 className="font-bold text-lg">{t('hrt.add_dose')}</h3>
+              <h3 className="lab-modal-title">{t('hrt.add_dose')}</h3>
               <button type="button" className="ibtn" onClick={() => setDoseModalOpen(false)}>
                 <Icon name="x" />
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="hrt-form-body">
               <label className="field">
                 <span className="flabel">{t('common.date')}</span>
                 <input type="date" className="input" value={doseDate} onChange={(e) => setDoseDate(e.target.value)} />
@@ -531,7 +539,7 @@ export default function HrtScreen() {
                   ))}
                 </select>
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="hrt-form-grid2">
                 <label className="field">
                   <span className="flabel">{t('hrt.dose')}</span>
                   <input type="number" step="0.1" className="input" value={doseVal} onChange={(e) => setDoseVal(e.target.value)} />
@@ -562,7 +570,7 @@ export default function HrtScreen() {
                 onFix={() => doseConflict.clearConflict()}
                 onSaveAnyway={() => doseButtonRef.current?.press({ override: true })}
               />
-              <PrimaryButton ref={doseButtonRef} className="w mt-4" onPress={doseConflict.submit}>
+              <PrimaryButton ref={doseButtonRef} className="btn grow" onPress={doseConflict.submit}>
                 {t('common.save')}
               </PrimaryButton>
             </div>
@@ -575,19 +583,19 @@ export default function HrtScreen() {
         <div className="hrt-form-modal">
           <div className="hrt-form-box">
             <div className="hrt-form-head">
-              <h3 className="font-bold text-lg">{t('hrt.start_cycle')}</h3>
+              <h3 className="lab-modal-title">{t('hrt.start_cycle')}</h3>
               <button type="button" className="ibtn" onClick={() => setCycleModalOpen(false)}>
                 <Icon name="x" />
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="hrt-form-body">
               <label className="field">
                 <span className="flabel">{t('hrt.cycle_kind')}</span>
                 <select className="input" value={cycleKind} onChange={(e) => setCycleKind(e.target.value)}>
-                  <option value="trt">TRT</option>
-                  <option value="blast">Blast / Course</option>
-                  <option value="cruise">Cruise</option>
-                  <option value="pct">PCT</option>
+                  <option value="trt">{t('hrt.kind.trt')}</option>
+                  <option value="blast">{t('hrt.kind.blast')}</option>
+                  <option value="cruise">{t('hrt.kind.cruise')}</option>
+                  <option value="pct">{t('hrt.kind.pct')}</option>
                 </select>
               </label>
               <label className="field">
@@ -599,10 +607,10 @@ export default function HrtScreen() {
                 <input type="date" className="input" value={cycleStart} onChange={(e) => setCycleStart(e.target.value)} />
               </label>
               <label className="field">
-                <span className="flabel">{t('common.end_date')} (Optional)</span>
+                <span className="flabel">{t('common.end_date')}</span>
                 <input type="date" className="input" value={cycleEnd} onChange={(e) => setCycleEnd(e.target.value)} />
               </label>
-              <PrimaryButton className="w mt-4" onPress={handleCreateCycle}>
+              <PrimaryButton className="btn grow" onPress={handleCreateCycle}>
                 {t('hrt.start_cycle')}
               </PrimaryButton>
             </div>
@@ -615,12 +623,12 @@ export default function HrtScreen() {
         <div className="hrt-form-modal">
           <div className="hrt-form-box">
             <div className="hrt-form-head">
-              <h3 className="font-bold text-lg">{t('hrt.add_item')}</h3>
+              <h3 className="lab-modal-title">{t('hrt.add_item')}</h3>
               <button type="button" className="ibtn" onClick={() => setItemModalOpen(false)}>
                 <Icon name="x" />
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="hrt-form-body">
               <label className="field">
                 <span className="flabel">{t('hrt.compound')}</span>
                 <select className="input" value={itemCompound} onChange={(e) => setItemCompound(e.target.value)}>
@@ -629,7 +637,7 @@ export default function HrtScreen() {
                   ))}
                 </select>
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="hrt-form-grid2">
                 <label className="field">
                   <span className="flabel">{t('hrt.dose')}</span>
                   <input type="number" step="0.5" className="input" value={itemDose} onChange={(e) => setItemDose(e.target.value)} />
@@ -643,7 +651,7 @@ export default function HrtScreen() {
                 <span className="flabel">{t('hrt.start_week')}</span>
                 <input type="number" min="1" className="input" value={itemStartWeek} onChange={(e) => setItemStartWeek(e.target.value)} />
               </label>
-              <PrimaryButton className="w mt-4" onPress={handleAddItem}>
+              <PrimaryButton className="btn grow" onPress={handleAddItem}>
                 {t('common.save')}
               </PrimaryButton>
             </div>
@@ -656,30 +664,30 @@ export default function HrtScreen() {
         <div className="hrt-form-modal">
           <div className="hrt-form-box">
             <div className="hrt-form-head">
-              <h3 className="font-bold text-lg">{t('hrt.log_side_effect')}</h3>
+              <h3 className="lab-modal-title">{t('hrt.log_side_effect')}</h3>
               <button type="button" className="ibtn" onClick={() => setSideEffectModalOpen(false)}>
                 <Icon name="x" />
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="hrt-form-body">
               <label className="field">
                 <span className="flabel">{t('common.date')}</span>
                 <input type="date" className="input" value={seDate} onChange={(e) => setSeDate(e.target.value)} />
               </label>
               <label className="field">
                 <span className="flabel">{t('hrt.symptom')}</span>
-                <input className="input" placeholder="e.g. acne, insomnia, elevated bp" value={seType} onChange={(e) => setSeType(e.target.value)} />
+                <input className="input" placeholder="e.g. acne, insomnia" value={seType} onChange={(e) => setSeType(e.target.value)} />
               </label>
               <label className="field">
-                <span className="flabel">Severity (1-5)</span>
-                <input type="range" min="1" max="5" className="w-full" value={seSev} onChange={(e) => setSeSev(parseInt(e.target.value, 10))} />
-                <span className="text-xs text-[var(--muted)]">Level {seSev} of 5</span>
+                <span className="flabel">{t('hrt.severity_label')}</span>
+                <input type="range" min="1" max="5" className="hrt-range-input" value={seSev} onChange={(e) => setSeSev(parseInt(e.target.value, 10))} />
+                <span className="hrt-range-sub">{t('hrt.severity_level', { sev: seSev })}</span>
               </label>
               <label className="field">
                 <span className="flabel">{t('common.note')}</span>
                 <input className="input" value={seNote} onChange={(e) => setSeNote(e.target.value)} />
               </label>
-              <PrimaryButton className="w mt-4" onPress={handleCreateSideEffect}>
+              <PrimaryButton className="btn grow" onPress={handleCreateSideEffect}>
                 {t('common.save')}
               </PrimaryButton>
             </div>

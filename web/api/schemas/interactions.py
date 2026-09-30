@@ -18,26 +18,16 @@ class ConflictRuleItem(CamelModel):
     id: int
     code: Optional[str] = None
     rule_type: str
-    type: str
     domain_a: str
     domain_b: str
-    a: str
-    b: str
     severity: str
-    sev: str
     message: str
-    msg: str
     category: str
-    cat: str
     source: Optional[str] = None
-    src: Optional[str] = None
     evidence: Optional[str] = None
-    ev: Optional[str] = None
     active: bool = True
-    on: bool = True
     firing: bool = False
     hours: Optional[int] = None
-    h: Optional[int] = None
 
 
 class RuleToggleRequest(CamelModel):
@@ -46,7 +36,6 @@ class RuleToggleRequest(CamelModel):
 
 class InteractionsView(CamelModel):
     rules: list[ConflictRuleItem] = []
-    by_category: dict[str, list[ConflictRuleItem]] = {}
     ordered_categories: list[str] = []
     firing_ids: list[int] = []
     all_domains: list[str] = []

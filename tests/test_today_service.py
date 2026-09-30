@@ -473,3 +473,54 @@ async def test_attention_names_the_domain_it_is_about(db_session):
     data = await today_service.collect(db_session, enabled_modules=ALL_OFF)
 
     assert {"severity": "warn", "message": "Витамин D ниже референса", "domain": "labs"} in data["attention"]
+
+
+async def test_attention_sorts_by_severity_and_preserves_freshness(db_session):
+    from vitals.services import alerts_service
+
+    # Clean existing alerts to test deterministic order
+    await alerts_service.resolve_all(db_session)
+    await db_session.commit()
+
+    # Raise alerts: older then newer for each severity
+    await alerts_service.raise_alert(
+        db_session, domain=Domain.LABS.value, severity=Severity.WARN.value,
+        message="warn_old", alert_key="k_warn_1", entity_ref="e1",
+    )
+    await db_session.commit()
+
+    await alerts_service.raise_alert(
+        db_session, domain=Domain.WEIGHT.value, severity=Severity.INFO.value,
+        message="info_old", alert_key="k_info_1", entity_ref="e2",
+    )
+    await db_session.commit()
+
+    await alerts_service.raise_alert(
+        db_session, domain=Domain.SUPPLEMENTS.value, severity=Severity.BLOCK.value,
+        message="block_old", alert_key="k_block_1", entity_ref="e3",
+    )
+    await db_session.commit()
+
+    await alerts_service.raise_alert(
+        db_session, domain=Domain.LABS.value, severity=Severity.WARN.value,
+        message="warn_new", alert_key="k_warn_2", entity_ref="e4",
+    )
+    await db_session.commit()
+
+    await alerts_service.raise_alert(
+        db_session, domain=Domain.SUPPLEMENTS.value, severity=Severity.BLOCK.value,
+        message="block_new", alert_key="k_block_2", entity_ref="e5",
+    )
+    await db_session.commit()
+
+    await alerts_service.raise_alert(
+        db_session, domain=Domain.WEIGHT.value, severity=Severity.INFO.value,
+        message="info_new", alert_key="k_info_2", entity_ref="e6",
+    )
+    await db_session.commit()
+
+    data = await today_service.collect(db_session, enabled_modules=ALL_OFF)
+    messages = [a["message"] for a in data["attention"] if a["message"].startswith(("block_", "warn_", "info_"))]
+
+    assert messages == ["block_new", "block_old", "warn_new", "warn_old", "info_new", "info_old"]
+

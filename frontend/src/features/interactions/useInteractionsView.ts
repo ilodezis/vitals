@@ -4,7 +4,6 @@ import type { InteractionsView } from './types'
 
 export const defaultInteractionsView: InteractionsView = {
   rules: [],
-  byCategory: {},
   orderedCategories: [],
   firingIds: [],
   allDomains: ['weight', 'glp1', 'workouts', 'garmin', 'labs', 'skincare', 'supplements', 'genetics', 'nutrition'],

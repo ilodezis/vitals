@@ -1,6 +1,6 @@
 /* Signals styles ported from mockup */
-.key { color: var(--fg); font-family: var(--f-mono, monospace); }
-.m.key { color: var(--muted); font-size: 12px; }
+.sig-key { color: var(--fg); font-family: var(--f-text); font-size: var(--t-body); }
+.m.sig-key { color: var(--muted); font-size: var(--t-label); }
 .freq { grid-template-columns: minmax(0, 1fr) 72px 24px; align-items: start; }
 .freq .fbar { margin-top: 8px; }
 .freq .fex { grid-column: 1 / -1; display: grid; gap: 1px; font-size: var(--t-micro); color: var(--muted); }

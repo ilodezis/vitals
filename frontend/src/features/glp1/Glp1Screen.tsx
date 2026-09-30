@@ -1,14 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { api } from '@/api/client'
 import { DoseChart } from '@/components/charts/DoseChart'
 import { Badge, TextButton } from '@/components/controls/Marks'
 import { Section } from '@/components/controls/Section'
+import { toast } from '@/components/controls/toast'
 import { openLogSheet } from '@/components/sheet/logSheetStore'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
-import { addDays, daysBetween, longDate, parseIsoDate, relativeDay, shortDate, weekdayLongDate, weekdayShort } from '@/lib/dates'
-import { formatNumber } from '@/lib/format'
+import { addDays, daysBetween, longDate, parseIsoDate, relativeDay, shortDate, toIsoDate, weekdayLongDate, weekdayShort } from '@/lib/dates'
+import { formatNumber, formatSigned } from '@/lib/format'
 import { BodyMap } from './BodyMap'
 import { siteUsage } from './sites'
 import { useGlp1View } from './useGlp1View'
@@ -19,7 +22,38 @@ const CYCLE_DAYS = 8
 export default function Glp1Screen() {
   const { t, lang, plural } = useT()
   const today = useToday()
+  const queryClient = useQueryClient()
   const view = useGlp1View()
+
+  const [showAllInjections, setShowAllInjections] = useState(false)
+  const [showSeForm, setShowSeForm] = useState(false)
+  const [seDate, setSeDate] = useState(() => toIsoDate(today))
+  const [seName, setSeName] = useState('')
+  const [seSeverity, setSeSeverity] = useState(1)
+
+  const sideEffectMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await api.POST('/api/v1/glp1/side-effects', {
+        body: {
+          date: seDate,
+          effectType: seName.trim(),
+          severity: seSeverity,
+        },
+      })
+      if (error || !data) throw new Error('Failed to log side effect')
+      return data
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['glp1'] })
+      setShowSeForm(false)
+      setSeName('')
+      setSeSeverity(1)
+      toast(t('app.saved'))
+    },
+    onError: (err) => {
+      toast(err instanceof Error ? err.message : t('app.error'), { icon: 'warn' })
+    },
+  })
 
   const usage = useMemo(() => siteUsage(view.injections, today, parseIsoDate), [view.injections, today])
   const phases = useMemo(() => view.dosePhases.map((p) => ({ from: parseIsoDate(p.fromIso), doseMg: p.doseMg })), [view.dosePhases])
@@ -27,6 +61,17 @@ export default function Glp1Screen() {
   const first = view.cycle.lastIso ? parseIsoDate(view.cycle.lastIso) : today
   const next = parseIsoDate(view.cycle.nextIso)
   const labels = { today: t('app.today_word'), yesterday: t('app.yesterday_word') }
+
+  const summaryText = useMemo(() => {
+    if (view.deltaOnDoseKg != null) {
+      return t('app.glp1.summary_on_dose', {
+        dose: formatNumber(view.doseMg, lang),
+        delta: formatSigned(view.deltaOnDoseKg, lang),
+        date: longDate(parseIsoDate(view.sinceIso), lang),
+      })
+    }
+    return view.summary
+  }, [view.deltaOnDoseKg, view.doseMg, view.sinceIso, view.summary, lang, t])
 
   // The days of one cycle as a line: the last injection, the days since, the next one.
   const days = Array.from({ length: CYCLE_DAYS }, (_, i) => {
@@ -72,7 +117,7 @@ export default function Glp1Screen() {
             <span className="unit">{t('app.unit.mg')}</span>
           </div>
           <div className="side">
-            <Badge tone="violet">{view.drug}</Badge>
+            <Badge tone="violet">{t(('enum.drug.' + (view.drug || '').toLowerCase()) as any) || view.drug}</Badge>
             <span className="sub">{t('app.glp1.day_on_dose', { n: view.dayOnDose, date: longDate(parseIsoDate(view.sinceIso), lang) })}</span>
           </div>
         </div>
@@ -116,7 +161,7 @@ export default function Glp1Screen() {
                   {t('app.glp1.legend_weight')}
                 </span>
               </div>
-              <p className="sub glp1-summary">{view.summary}</p>
+              <p className="sub glp1-summary">{summaryText}</p>
             </div>
           </Section>
         </div>
@@ -130,7 +175,7 @@ export default function Glp1Screen() {
               <div className="site-list">
                 {[...usage].reverse().map((u) => (
                   <div key={u.site} className={u.mark.kind === 'next' ? 'sug' : undefined}>
-                    <span>{view.siteLabels[u.site]}</span>
+                    <span>{t(('app.site.' + u.site) as any) || view.siteLabels[u.site]}</span>
                     <span>{u.mark.kind === 'next' ? t('app.glp1.least_used') : u.last === null ? '—' : shortDate(u.last, lang)}</span>
                   </div>
                 ))}
@@ -140,6 +185,18 @@ export default function Glp1Screen() {
 
           <Section title={t('app.glp1.side_effects_title')}>
             <div className="rows">
+              {view.sideEffects.length === 0 && !showSeForm && (
+                <div className="row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span className="m">{t('glp1.no_side_effects')}</span>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => setShowSeForm(true)}
+                  >
+                    {t('app.mark_action')}
+                  </button>
+                </div>
+              )}
               {view.sideEffects.map((e) => (
                 <div key={e.dateIso + e.name} className="row r-kv">
                   <div>
@@ -154,6 +211,66 @@ export default function Glp1Screen() {
                 </div>
               ))}
             </div>
+            {showSeForm && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  sideEffectMutation.mutate()
+                }}
+                className="panel"
+                style={{ marginTop: '12px' }}
+              >
+                <div className="fld">
+                  <label>{t('common.date')}</label>
+                  <input
+                    type="date"
+                    className="input"
+                    value={seDate}
+                    onChange={(e) => setSeDate(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="fld">
+                  <label>{t('app.glp1.side_effect_name')}</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={seName}
+                    onChange={(e) => setSeName(e.target.value)}
+                    placeholder={t('app.glp1.side_effect_placeholder')}
+                    required
+                  />
+                </div>
+                <div className="fld">
+                  <label>
+                    {t('app.glp1.severity_label')}: {seSeverity}/5
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value={seSeverity}
+                    onChange={(e) => setSeSeverity(Number(e.target.value))}
+                  />
+                </div>
+                <div className="form-acts" style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button
+                    type="submit"
+                    className="btn grow"
+                    disabled={sideEffectMutation.isPending || !seName.trim()}
+                  >
+                    {t('common.save')}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => setShowSeForm(false)}
+                  >
+                    {t('app.cancel')}
+                  </button>
+                </div>
+              </form>
+            )}
           </Section>
 
           <Section
@@ -161,10 +278,10 @@ export default function Glp1Screen() {
             meta={plural(view.injections.length, t('app.glp1.injections.one', { n: view.injections.length }), t('app.glp1.injections.few', { n: view.injections.length }), t('app.glp1.injections.many', { n: view.injections.length }))}
           >
             <div className="rows">
-              {view.injections.slice(0, 5).map((j) => (
+              {(showAllInjections ? view.injections : view.injections.slice(0, 5)).map((j) => (
                 <div key={j.dateIso} className="row r-3">
                   <div className="t">{relativeDay(parseIsoDate(j.dateIso), today, lang, labels)}</div>
-                  <span className="m">{view.siteLabels[j.site]}</span>
+                  <span className="m">{t(('app.site.' + j.site) as any) || view.siteLabels[j.site]}</span>
                   <div className="v">
                     {formatNumber(j.doseMg, lang, j.doseMg < 0.5 ? 2 : 1)}
                     <span className="u">{t('app.unit.mg')}</span>
@@ -172,6 +289,15 @@ export default function Glp1Screen() {
                 </div>
               ))}
             </div>
+            {view.injections.length > 5 && !showAllInjections && (
+              <button
+                type="button"
+                className="more-btn"
+                onClick={() => setShowAllInjections(true)}
+              >
+                {t('app.glp1.all_injections', { count: view.injections.length })}
+              </button>
+            )}
           </Section>
         </div>
       </div>

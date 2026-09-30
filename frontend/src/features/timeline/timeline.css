@@ -21,3 +21,9 @@
   .tl-day { grid-template-columns: 112px minmax(0, 1fr); gap: 24px; padding: 12px 0 4px; }
   .tl-day .d { padding-top: 8px; }
 }
+
+.tl-fpanel { margin-bottom: var(--s6); }
+.tl-form { display: flex; flex-direction: column; gap: var(--s3); }
+.tl-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); }
+.tl-acts { display: flex; gap: var(--s2); padding-top: var(--s2); }
+

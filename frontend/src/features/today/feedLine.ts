@@ -1,5 +1,5 @@
 import type { Lang } from '@/lib/format'
-import { formatInt, formatNumber } from '@/lib/format'
+import { formatCompact, formatInt, formatNumber } from '@/lib/format'
 import type { TFn } from '@/lib/units'
 import type { FeedRow } from './types'
 
@@ -12,8 +12,12 @@ export function feedLine(row: FeedRow, t: TFn, lang: Lang): { text: string; deta
         text: row.text,
         detail: row.value ? t('today.src_meal', { value: formatInt(row.value, lang) }) : t('nav.nutrition'),
       }
-    case 'signal':
-      return { text: row.text, detail: t('today.src_bot') }
+    case 'signal': {
+      const translated = t(`app.signal_key.${row.text}`)
+      const keyLabel = translated !== `app.signal_key.${row.text}` ? translated : row.text.replaceAll('_', ' ')
+      const valStr = row.value != null ? ` · ${formatCompact(row.value, lang)}` : ''
+      return { text: `${keyLabel}${valStr}`, detail: t('today.src_bot') }
+    }
     case 'brief':
       return { text: t('today.brief_sent'), detail: t('today.src_proactive') }
     case 'weight':

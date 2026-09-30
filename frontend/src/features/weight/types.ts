@@ -13,14 +13,14 @@ export interface WeightView {
   weighings: { date: string; kg: number }[]
   trend: { date: string; kg: number }[]
   /** Dose phases the chart shades behind the line. */
-  dosePhases: { from: string; to: string; label: string }[]
+  dosePhases: { from: string; to: string; drug?: string; doseMg?: number; label?: string }[]
   history: WeightHistoryRow[]
   pace: {
     perWeekKg: number
-    dose: { label: string; sinceIso: string; days: number; deltaKg: number }
+    dose: { label?: string; drug?: string; doseMg?: number; sinceIso: string; days: number; deltaKg: number }
     goal: { targetKg: number; weeks: number }
   }
-  lastScan: { device: string; dateIso: string; rows: { label: string; value: string; unit: string }[] }
+  lastScan: { device: string; dateIso: string; rows: { label: string; value: string | number; unit: string }[] }
 }
 
 export interface WeightHistoryRow {

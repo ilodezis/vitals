@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatCompact, formatNumber } from './format'
+import { formatCompact, formatCompactNumber, formatNumber } from './format'
 
 const MINUS = '−'
 const THIN = ' ' // narrow no-break space
@@ -44,3 +44,12 @@ describe('formatCompact', () => {
     expect(formatCompact(9.04, 'ru')).toBe('9')
   })
 })
+
+describe('formatCompactNumber', () => {
+  it('formats numbers compactly without English k in Russian', () => {
+    expect(formatCompactNumber(9500, 'ru')).toContain('9,5')
+    expect(formatCompactNumber(9500, 'ru')).not.toContain('k')
+    expect(formatCompactNumber(9500, 'en')).toBe('9.5K')
+  })
+})
+

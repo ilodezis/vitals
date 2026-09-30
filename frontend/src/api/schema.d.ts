@@ -2761,17 +2761,11 @@ export interface components {
         };
         /** ConflictRuleItem */
         ConflictRuleItem: {
-            /** A */
-            a: string;
             /**
              * Active
              * @default true
              */
             active: boolean;
-            /** B */
-            b: string;
-            /** Cat */
-            cat: string;
             /** Category */
             category: string;
             /** Code */
@@ -2780,8 +2774,6 @@ export interface components {
             domainA: string;
             /** Domainb */
             domainB: string;
-            /** Ev */
-            ev?: string | null;
             /** Evidence */
             evidence?: string | null;
             /**
@@ -2789,33 +2781,18 @@ export interface components {
              * @default false
              */
             firing: boolean;
-            /** H */
-            h?: number | null;
             /** Hours */
             hours?: number | null;
             /** Id */
             id: number;
             /** Message */
             message: string;
-            /** Msg */
-            msg: string;
-            /**
-             * On
-             * @default true
-             */
-            on: boolean;
             /** Ruletype */
             ruleType: string;
-            /** Sev */
-            sev: string;
             /** Severity */
             severity: string;
             /** Source */
             source?: string | null;
-            /** Src */
-            src?: string | null;
-            /** Type */
-            type: string;
         };
         /**
          * Corridor
@@ -2924,13 +2901,15 @@ export interface components {
         };
         /** DosePhase */
         DosePhase: {
+            /** Dose Mg */
+            dose_mg: number;
+            /** Drug */
+            drug: string;
             /**
              * From Date
              * Format: date
              */
             from_date: string;
-            /** Label */
-            label: string;
             /** To Date */
             to_date?: string | null;
         };
@@ -3794,13 +3773,6 @@ export interface components {
              * @default []
              */
             allDomains: string[];
-            /**
-             * Bycategory
-             * @default {}
-             */
-            byCategory: {
-                [key: string]: components["schemas"]["ConflictRuleItem"][];
-            };
             /**
              * Firingcount
              * @default 0
@@ -6061,7 +6033,14 @@ export interface components {
             days: number;
             /** Delta Kg */
             delta_kg: number;
-            /** Label */
+            /** Dose Mg */
+            dose_mg?: number | null;
+            /** Drug */
+            drug?: string | null;
+            /**
+             * Label
+             * @default
+             */
             label: string;
             /**
              * Since Date
@@ -12793,4 +12772,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: 6ec2fb47042ec59b1a9b21aa1dabcd998487699a4f5a6dc1d7b3b84205de7a93
+// openapi.json sha256: 094323aea3e74095f931eb87320d1d64274b8cab1e88b61970e6fbe736b7d860

@@ -11,8 +11,8 @@ export const defaultSettings: SettingsView = {
     sex: 'male',
     user_age: '18',
     timezone: 'Europe/Chisinau',
-    user_program: 'рекомпозиция тела на протоколе GLP-1',
-    user_goals: 'снижение жира, сохранение мышц',
+    user_program: '',
+    user_goals: '',
   },
   nutrition_goals: {
     nutrition_protein_target_g: '150',

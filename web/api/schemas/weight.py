@@ -51,7 +51,8 @@ class WeightPoint(BaseModel):
 class DosePhase(BaseModel):
     from_date: dt.date
     to_date: Optional[dt.date] = None
-    label: str
+    drug: str
+    dose_mg: float
 
 
 class WeightHistoryItem(BaseModel):
@@ -66,7 +67,9 @@ class WeightHistoryItem(BaseModel):
 
 
 class WeightPaceDose(BaseModel):
-    label: str
+    label: str = ""
+    drug: Optional[str] = None
+    dose_mg: Optional[float] = None
     since_date: dt.date
     days: int
     delta_kg: float

@@ -11,7 +11,7 @@ import { Headline, TopBar } from '@/components/shell/PageHead'
 import { toast } from '@/components/controls/toast'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
-import { longDate, parseIsoDate, toIsoDate } from '@/lib/dates'
+import { longDate, parseIsoDate, shortDate, toIsoDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/format'
 import { useConflictMutation } from '@/lib/useConflictMutation'
 import { computeNavyFatPct } from './navy'
@@ -308,7 +308,7 @@ export default function WeightMeasuresScreen() {
                         <input
                           type="number"
                           step="0.1"
-                          placeholder="38.0"
+                          placeholder={formatNumber(38, lang)}
                           className="input"
                           value={neckCm}
                           onChange={(e) => setNeckCm(e.target.value)}
@@ -319,7 +319,7 @@ export default function WeightMeasuresScreen() {
                         <input
                           type="number"
                           step="0.1"
-                          placeholder="85.0"
+                          placeholder={formatNumber(85, lang)}
                           className="input"
                           value={waistCm}
                           onChange={(e) => setWaistCm(e.target.value)}
@@ -332,7 +332,7 @@ export default function WeightMeasuresScreen() {
                         <input
                           type="number"
                           step="0.1"
-                          placeholder="95.0"
+                          placeholder={formatNumber(95, lang)}
                           className="input"
                           value={hipsCm}
                           onChange={(e) => setHipsCm(e.target.value)}
@@ -384,7 +384,7 @@ export default function WeightMeasuresScreen() {
                       <label>{t('app.weight.noise_reason')}</label>
                       <input
                         type="text"
-                        placeholder="Креатин, соль, задержка воды..."
+                        placeholder={t('weight.noise_placeholder')}
                         className="input"
                         value={nReason}
                         onChange={(e) => setNReason(e.target.value)}
@@ -557,7 +557,7 @@ export default function WeightMeasuresScreen() {
                             onClick={() => {
                               setPreviewMetrics([
                                 ...previewMetrics,
-                                { category: 'custom', label: 'Новая метрика', value: 0, unit: '' },
+                                { category: 'custom', label: t('app.weight.new_metric'), value: 0, unit: '' },
                               ])
                             }}
                           >
@@ -588,10 +588,13 @@ export default function WeightMeasuresScreen() {
                   <div key={n.id} className="row" style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
                     <div>
                       <div className="t num">
-                        {n.start_date} {n.end_date ? `— ${n.end_date}` : `(${t('app.active')})`}
+                        {shortDate(parseIsoDate(n.start_date), lang)}{' '}
+                        {n.end_date
+                          ? `— ${shortDate(parseIsoDate(n.end_date), lang)}`
+                          : `(${t('app.active')})`}
                       </div>
                       <div className="m">
-                        {n.reason} · {n.direction === 'up' ? '↑ Завышен' : n.direction === 'down' ? '↓ Занижен' : 'Шум'}
+                        {n.reason} · {n.direction === 'up' ? t('app.weight.noise_up') : n.direction === 'down' ? t('app.weight.noise_down') : t('app.weight.noise_flat')}
                       </div>
                     </div>
                     <button
@@ -619,7 +622,7 @@ export default function WeightMeasuresScreen() {
                     <div className="im">
                       <img src={`/static/uploads/${ph.file_key}`} alt={ph.note || 'Photo'} />
                     </div>
-                    <span className="m num">{ph.date}</span>
+                    <span className="m num">{shortDate(parseIsoDate(ph.date), lang)}</span>
                     <button
                       type="button"
                       className="ibtn danger"
@@ -644,7 +647,7 @@ export default function WeightMeasuresScreen() {
                 {headlineMetrics.map((m, idx) => (
                   <div key={idx} className="f">
                     <div className="f-v">
-                      {m.value}
+                      {typeof m.value === 'number' ? formatNumber(m.value, lang) : m.value}
                       {m.unit && <span className="u">{m.unit}</span>}
                     </div>
                     <div className="f-l">{m.label}</div>
@@ -666,9 +669,9 @@ export default function WeightMeasuresScreen() {
                       <div className="t">{longDate(parseIsoDate(m.date), lang)}</div>
                       <div className="m hd">
                         {[
-                          m.neck_cm != null ? `шея ${formatNumber(m.neck_cm, lang)}` : null,
-                          m.waist_cm != null ? `талия ${formatNumber(m.waist_cm, lang)}` : null,
-                          m.lbm_kg != null ? `LBM ${formatNumber(m.lbm_kg, lang)} кг` : null,
+                          m.neck_cm != null ? `${t('app.weight.neck_short')} ${formatNumber(m.neck_cm, lang)}` : null,
+                          m.waist_cm != null ? `${t('app.weight.waist_short')} ${formatNumber(m.waist_cm, lang)}` : null,
+                          m.lbm_kg != null ? `LBM ${formatNumber(m.lbm_kg, lang)} ${t('app.unit.kg')}` : null,
                         ].filter(Boolean).join(' · ') || '—'}
                       </div>
                     </div>
@@ -679,8 +682,8 @@ export default function WeightMeasuresScreen() {
                       <span className="u">%</span>
                     </div>
                     <div className="v hs">
-                      {m.lbm_kg != null ? `${formatNumber(m.lbm_kg, lang)}` : '—'}
-                      <span className="u">кг</span>
+                      {m.lbm_kg != null ? formatNumber(m.lbm_kg, lang) : '—'}
+                      <span className="u">{t('app.unit.kg')}</span>
                     </div>
                     <div className="acts">
                       <button
@@ -717,7 +720,7 @@ export default function WeightMeasuresScreen() {
                         <Icon name={isOpen ? 'chevD' : 'chevR'} />
                         <div>
                           <div className="t">{longDate(parseIsoDate(s.date), lang)}</div>
-                          <div className="m">{s.device} · {s.metrics_count} метрик</div>
+                          <div className="m">{s.device} · {t('app.weight.metrics_count', { count: s.metrics_count })}</div>
                         </div>
                         <span className="acts" onClick={(e) => e.stopPropagation()}>
                           <button
@@ -736,7 +739,8 @@ export default function WeightMeasuresScreen() {
                             <div key={mIdx} className="row kv" style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
                               <span>{met.label}</span>
                               <span className="v">
-                                {met.value} {met.unit && <span className="u">{met.unit}</span>}
+                                {typeof met.value === 'number' ? formatNumber(met.value, lang) : met.value}{' '}
+                                {met.unit && <span className="u">{met.unit}</span>}
                               </span>
                             </div>
                           ))}

@@ -1,7 +1,7 @@
 /* Vitals Server Pages Stylesheet (server.css)
    Clean, self-contained styles for standalone server-rendered pages:
    Login, 2FA, OAuth authorization, Share password/gone notices, Doctor's report, 404, Offline.
-   No Tailwind dependency. Deep dark background (#0C0E12), amber accents (#F5A623).
+   No Tailwind dependency. Warm dark background (#1B1820), amber accents (#F5A623).
 */
 
 @import url('/static/fonts.css');
@@ -10,12 +10,12 @@
   color-scheme: dark;
 
   /* Palette */
-  --bg: #0C0E12;
-  --bg-deep: #08090C;
-  --surface: #14171E;
-  --surface-2: #1B1F28;
-  --line: #222733;
-  --line-2: #2E3545;
+  --bg: #1B1820;
+  --bg-deep: #141217;
+  --surface: #221E27;
+  --surface-2: #2A2530;
+  --line: #2F2A36;
+  --line-2: #433C4D;
 
   --fg: #F4F0F6;
   --fg-2: #CEC6D7;

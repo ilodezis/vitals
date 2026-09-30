@@ -948,7 +948,8 @@ async def collect(
         {
             "from_date": date_type.fromisoformat(p["start"]),
             "to_date": date_type.fromisoformat(p["end"]) if p.get("end") else None,
-            "label": p.get("label") or "",
+            "drug": p.get("drug") or "",
+            "dose_mg": float(p.get("dose_mg") or 0.0),
         }
         for p in series.get("phases", [])
     ]
@@ -980,8 +981,12 @@ async def collect(
         today = today_local()
         days_on_dose = max(0, (today - active_phase["from_date"]).days)
         delta_kg = await dose_phase_delta(session, active_phase, weights=weights)
+        drug_val = active_phase.get("drug") or ""
+        dose_val = float(active_phase.get("dose_mg") or 0.0)
         dose_pace = {
-            "label": active_phase["label"] or "0,5 мг",
+            "label": f"{drug_val} {dose_val:g} мг" if drug_val else "0,5 мг",
+            "drug": drug_val,
+            "dose_mg": dose_val,
             "since_date": active_phase["from_date"],
             "days": days_on_dose,
             "delta_kg": delta_kg,

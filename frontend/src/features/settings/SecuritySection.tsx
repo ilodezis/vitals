@@ -57,7 +57,7 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
       }
       return false
     } catch (err: any) {
-      toast(err.message || 'Error changing password', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
       return false
     }
   }
@@ -72,7 +72,7 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
         setCode('')
       }
     } catch (err: any) {
-      toast(err.message || 'Error starting 2FA setup', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
     }
   }
 
@@ -126,7 +126,7 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
       <div className="c6">
         {/* Password Form */}
         <Section title={t('settings.password_label')} className="set-sec">
-          <div className="form space-y-3">
+          <div className="form">
             <label className="field">
               <span className="flabel">{t('settings.current_password')}</span>
               <input
@@ -176,13 +176,14 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
             <div className="tfa" data-tfa={tfaMode}>
               {/* OFF */}
               {tfaMode === 'off' && (
-                <div className="tfa-s flex items-center justify-between">
+                <div className="tfa-row">
                   <div className="tfa-l">
-                    <span className="badge">Выключена</span>
+                    <span className="badge">{t('settings.twofa_disabled')}</span>
                   </div>
                   <button
                     type="button"
-                    className="btn ghost flex items-center gap-2"
+                    className="btn ghost"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
                     onClick={handleStartTfa}
                   >
                     <Icon name="lock" />
@@ -193,21 +194,24 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
 
               {/* SETUP */}
               {tfaMode === 'setup' && setupData && (
-                <div className="tfa-s space-y-4">
-                  <div className="tfa-setup flex flex-col md:flex-row gap-4 items-start md:items-center">
+                <div style={{ display: 'grid', gap: '16px' }}>
+                  <div className="tfa-setup">
                     <div
-                      className="qr bg-white p-2 rounded-xl"
+                      className="tfa-qr"
                       dangerouslySetInnerHTML={{ __html: setupData.qr_svg }}
                     />
-                    <div className="tfa-key grow">
-                      <span className="flabel text-xs text-[var(--muted)]">Ключ, если камера не нужна</span>
-                      <div className="key font-mono text-sm tracking-wider my-2 p-2 bg-[var(--bg-2)] rounded border border-[var(--line)] select-all">
+                    <div className="tfa-key" style={{ flex: 1 }}>
+                      <span className="flabel" style={{ fontSize: 'var(--t-micro)', color: 'var(--muted)' }}>
+                        {t('settings.twofa_secret_key_hint')}
+                      </span>
+                      <div className="tfa-key-display">
                         {setupData.secret}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="tfa-acts">
                         <button
                           type="button"
-                          className="btn ghost text-xs flex items-center gap-1.5"
+                          className="btn ghost"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: 'var(--t-caption)' }}
                           onClick={handleCopyKey}
                         >
                           <Icon name="copy" />
@@ -216,7 +220,8 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
                         {setupData.otpauth_uri && (
                           <a
                             href={setupData.otpauth_uri}
-                            className="btn ghost text-xs flex items-center gap-1.5"
+                            className="btn ghost"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: 'var(--t-caption)' }}
                           >
                             <Icon name="link" />
                             <span>{t('settings.twofa_open_app')}</span>
@@ -234,16 +239,17 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
                       pattern="[0-9]*"
                       maxLength={6}
                       placeholder="000000"
-                      className="input text-center tracking-widest text-lg w-40"
+                      className="input tfa-code-input"
                       value={code}
                       onChange={(e) => setCode(e.target.value)}
                     />
                   </label>
 
-                  <div className="flex gap-2">
+                  <div className="tfa-acts">
                     <button
                       type="button"
-                      className="btn ghost flex items-center gap-1.5"
+                      className="btn ghost"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                       onClick={handleConfirmTfa}
                     >
                       <Icon name="check" />
@@ -266,7 +272,7 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
 
               {/* ON */}
               {tfaMode === 'on' && (
-                <div className="tfa-s flex items-center justify-between">
+                <div className="tfa-row">
                   <div className="tfa-l">
                     <span className="badge good">{t('settings.twofa_on')}</span>
                   </div>
@@ -285,22 +291,22 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
 
               {/* DISABLE */}
               {tfaMode === 'disable' && (
-                <div className="tfa-s space-y-3">
+                <div style={{ display: 'grid', gap: '12px' }}>
                   <label className="field">
-                    <span className="flabel">Код из приложения, чтобы выключить</span>
+                    <span className="flabel">{t('settings.twofa_disable_code_hint')}</span>
                     <input
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
                       maxLength={6}
                       placeholder="000000"
-                      className="input text-center tracking-widest text-lg w-40"
+                      className="input tfa-code-input"
                       value={disableCode}
                       onChange={(e) => setDisableCode(e.target.value)}
                     />
                   </label>
 
-                  <div className="flex gap-2">
+                  <div className="tfa-acts">
                     <button
                       type="button"
                       className="btn ghost danger"
@@ -311,12 +317,9 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
                     <button
                       type="button"
                       className="btn ghost"
-                      onClick={() => {
-                        setTfaMode('on')
-                        setDisableCode('')
-                      }}
+                      onClick={() => setTfaMode('on')}
                     >
-                      {t('settings.twofa_cancel')}
+                      {t('common.cancel')}
                     </button>
                   </div>
                 </div>

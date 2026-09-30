@@ -8,7 +8,7 @@ import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { toast } from '@/components/controls/toast'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
-import { longDate, parseIsoDate } from '@/lib/dates'
+import { longDate, parseIsoDate, shortDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/format'
 import type { components } from '@/api/schema'
 import './workouts.css'
@@ -39,7 +39,7 @@ export default function WorkoutsScreen() {
     },
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ['workouts'] })
-      toast(`Синхронизировано: ${data.synced} тренировок`)
+      toast(t('app.workouts.synced', { count: data.synced }))
     },
     onError: (err) => toast(err.message),
   })
@@ -60,7 +60,7 @@ export default function WorkoutsScreen() {
             onClick={() => syncMutation.mutate()}
             disabled={syncMutation.isPending}
           >
-            {syncMutation.isPending ? 'Синхронизация...' : 'Синхронизировать'}
+            {syncMutation.isPending ? t('app.syncing') : t('app.sync')}
           </TextButton>
         }
       />
@@ -68,17 +68,17 @@ export default function WorkoutsScreen() {
         <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 'var(--t-title)', fontWeight: 600 }}>{view?.workout_count ?? 0}</div>
-            <div className="sub">Всего тренировок</div>
+            <div className="sub">{t('app.workouts.total')}</div>
           </div>
           <div>
             <div style={{ fontSize: 'var(--t-title)', fontWeight: 600 }}>
               {view?.last_workout_date ? longDate(parseIsoDate(view.last_workout_date), lang) : '—'}
             </div>
-            <div className="sub">Последняя</div>
+            <div className="sub">{t('app.workouts.latest')}</div>
           </div>
           <div>
             <div style={{ fontSize: 'var(--t-title)', fontWeight: 600 }}>{view?.exercise_count ?? 0}</div>
-            <div className="sub">Упражнений в базе</div>
+            <div className="sub">{t('app.workouts.in_catalog')}</div>
           </div>
         </div>
       </Headline>
@@ -86,9 +86,9 @@ export default function WorkoutsScreen() {
       <div className="grid">
         {/* Left Column: Workouts List */}
         <div className="c7">
-          <Section title="Недавние тренировки">
+          <Section title={t('app.workouts.recent')}>
             <div className="rows">
-              {isLoading && <div className="row"><span className="m">Загрузка...</span></div>}
+              {isLoading && <div className="row"><span className="m">{t('app.loading')}</span></div>}
               {!isLoading && workouts.length === 0 && (
                 <div className="row"><span className="m">{t('app.empty')}</span></div>
               )}
@@ -106,11 +106,11 @@ export default function WorkoutsScreen() {
                       <div>
                         <div className="t">{w.title}</div>
                         <div className="m">
-                          {w.program && <Badge tone="violet">Программа {w.program}</Badge>}
+                          {w.program && <Badge tone="violet">{t('app.workouts.program', { program: w.program })}</Badge>}
                           <span className="num"> · {longDate(parseIsoDate(w.date), lang)}</span>
                         </div>
                       </div>
-                      <span className="m num">{w.duration_min ? `${w.duration_min} мин` : ''}</span>
+                      <span className="m num">{w.duration_min ? t('app.duration.min', { m: w.duration_min }) : ''}</span>
                     </div>
 
                     {isOpen && (
@@ -128,7 +128,7 @@ export default function WorkoutsScreen() {
                               {ex.sets.map((s, sIdx) => (
                                 <span key={sIdx} className="set num">
                                   {s.set_type === 'warmup' && <i>W</i>}
-                                  {s.weight_kg != null ? `${formatNumber(s.weight_kg, lang)} кг` : ''}
+                                  {s.weight_kg != null ? `${formatNumber(s.weight_kg, lang)} ${t('app.unit.kg')}` : ''}
                                   {s.reps != null ? ` × ${s.reps}` : ''}
                                 </span>
                               ))}
@@ -146,7 +146,7 @@ export default function WorkoutsScreen() {
 
         {/* Right Column: Exercise Catalog */}
         <div className="c5">
-          <Section title="Упражнения">
+          <Section title={t('app.workouts.exercises')}>
             <div className="rows">
               {catalog.map((c) => {
                 const isSel = c.exercise_template_id === activeExId
@@ -159,7 +159,7 @@ export default function WorkoutsScreen() {
                   >
                     <div>
                       <div className="t" style={{ fontWeight: 500 }}>{c.title}</div>
-                      <div className="m num">Сессий: <b>{c.sessions_count}</b></div>
+                      <div className="m num">{t('app.workouts.sessions_count', { count: c.sessions_count })}</div>
                     </div>
                     {c.last_date && (
                       <span className="m num">{longDate(parseIsoDate(c.last_date), lang)}</span>
@@ -175,37 +175,45 @@ export default function WorkoutsScreen() {
       {/* Selected Exercise Progression Section */}
       {selectedEx && (
         <Section
-          title={`Рабочий вес: ${selectedEx.title}`}
+          title={t('app.workouts.working_weight', { title: selectedEx.title })}
           meta={
             selectedEx.progression_verdict === 'advance' ? (
-              <Badge tone="good">🟢 Готов прибавить вес</Badge>
+              <Badge tone="good">{t('app.workouts.verdict_advance')}</Badge>
             ) : selectedEx.progression_verdict === 'hold' ? (
-              <Badge tone="warn">🟡 Держим вес</Badge>
+              <Badge tone="warn">{t('app.workouts.verdict_hold')}</Badge>
             ) : selectedEx.progression_verdict === 'deload' ? (
-              <Badge tone="bad">🔴 Сбросить вес (deload)</Badge>
+              <Badge tone="bad">{t('app.workouts.verdict_deload')}</Badge>
             ) : undefined
           }
         >
           <div className="panel bare" style={{ padding: '16px' }}>
-            {selectedEx.working_weight_series.length > 0 ? (
-              <div>
-                <div style={{ height: 160, width: '100%', position: 'relative' }}>
-                  <svg width="100%" height="100%" viewBox="0 0 400 160" preserveAspectRatio="none">
-                    <line x1="0" y1="80" x2="400" y2="80" stroke="var(--line)" strokeDasharray="3 3" />
-                    {(() => {
-                      const pts = selectedEx.working_weight_series
-                      const weights = pts.map((p) => p.weight_kg)
-                      const minW = Math.min(...weights)
-                      const maxW = Math.max(...weights)
-                      const rangeW = maxW - minW || 1
-                      const path = pts
-                        .map((p, idx) => {
-                          const x = (idx / (pts.length - 1 || 1)) * 400
-                          const y = 140 - ((p.weight_kg - minW) / rangeW) * 120
-                          return `${idx === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
-                        })
-                        .join(' ')
-                      return (
+            {selectedEx.working_weight_series.length > 0 ? (() => {
+              const pts = selectedEx.working_weight_series
+              const weights = pts.map((p) => p.weight_kg)
+              const minW = Math.min(...weights)
+              const maxW = Math.max(...weights)
+              const midW = (minW + maxW) / 2
+              const rangeW = maxW - minW || 1
+              const path = pts
+                .map((p, idx) => {
+                  const x = (idx / (pts.length - 1 || 1)) * 400
+                  const y = 140 - ((p.weight_kg - minW) / rangeW) * 120
+                  return `${idx === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
+                })
+                .join(' ')
+              const firstPt = pts[0]
+              const lastPt = pts[pts.length - 1]
+              return (
+                <div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch', height: 160 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: 'var(--t-micro)', color: 'var(--muted)', textAlign: 'right', minWidth: '40px' }}>
+                      <span>{formatNumber(maxW, lang)}</span>
+                      <span>{formatNumber(midW, lang)}</span>
+                      <span>{formatNumber(minW, lang)}</span>
+                    </div>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <svg width="100%" height="100%" viewBox="0 0 400 160" preserveAspectRatio="none">
+                        <line x1="0" y1="80" x2="400" y2="80" stroke="var(--line)" strokeDasharray="3 3" />
                         <path
                           d={path}
                           fill="none"
@@ -214,26 +222,27 @@ export default function WorkoutsScreen() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
-                      )
-                    })()}
-                  </svg>
+                      </svg>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingLeft: '48px' }}>
+                    <span className="m num">{firstPt?.date ? shortDate(parseIsoDate(firstPt.date), lang) : ''}</span>
+                    <span className="m num">
+                      {lastPt?.date ? shortDate(parseIsoDate(lastPt.date), lang) : ''}
+                      {lastPt?.weight_kg != null ? ` · ${formatNumber(lastPt.weight_kg, lang)} ${t('app.unit.kg')}` : ''}
+                    </span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
-                  <span className="m num">{selectedEx.working_weight_series[0]?.date}</span>
-                  <span className="m num">
-                    {selectedEx.working_weight_series[selectedEx.working_weight_series.length - 1]?.weight_kg} кг
-                  </span>
-                </div>
-              </div>
-            ) : (
+              )
+            })() : (
               <div className="m" style={{ textAlign: 'center', padding: '24px 0' }}>
-                Нет данных по этому упражнению
+                {t('app.workouts.no_data')}
               </div>
             )}
 
             {selectedEx.latest_notes && (
               <div className="tech">
-                <b>Техника</b>
+                <b>{t('app.workouts.technique')}</b>
                 {selectedEx.latest_notes}
               </div>
             )}

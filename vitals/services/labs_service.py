@@ -35,7 +35,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.enums import Domain, LabFlag, Severity, Source
-from vitals.i18n import t
+from vitals.i18n import decimal, t
 from vitals.models.labs import DOMAIN, LabMarker, LabResult
 from vitals.models.raw_payload import RawPayload
 from vitals.services import alerts_service, conflict_engine, raw_payload_service
@@ -468,7 +468,7 @@ async def refresh_alerts(
                 message=t(
                     "alert.lab_out_of_range",
                     marker=r.marker,
-                    value=r.value,
+                    value=decimal(f"{r.value:g}"),
                     unit=(' ' + r.unit) if r.unit else '',
                     # Localized flag label ("crit. high"), not the raw enum value.
                     flag=t(f"enum.flag.{r.flag}"),

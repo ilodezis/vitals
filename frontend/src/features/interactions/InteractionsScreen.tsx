@@ -2,41 +2,15 @@ import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import { Badge } from '@/components/controls/Marks'
+import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
+import { cx } from '@/lib/cx'
 import type { ConflictRuleItem } from './types'
 import { useInteractionsView } from './useInteractionsView'
 import './interactions.css'
-
-const DOM_RU: Record<string, string> = {
-  weight: 'Вес',
-  glp1: 'GLP-1',
-  workouts: 'Тренировки',
-  garmin: 'Garmin',
-  labs: 'Анализы',
-  skincare: 'Кожа',
-  supplements: 'Добавки',
-  genetics: 'Генетика',
-  nutrition: 'Питание',
-  body_comp: 'Состав тела',
-  hrt: 'ГЗТ',
-  health: 'Здоровье',
-  system: 'Система',
-  timeline: 'Хронология',
-  signals: 'Сигналы',
-}
-
-const CAT_RU: Record<string, string> = {
-  supplements: 'Добавки и лекарства',
-  skincare: 'Уход за кожей и активы',
-  training: 'Нагрузка и восстановление',
-  labs: 'Биомаркеры и риски',
-  nutrition: 'Питание и метаболизм',
-  lifestyle: 'Сон и привычки',
-  general: 'Общие взаимодействия',
-}
 
 export default function InteractionsScreen() {
   const { t } = useT()
@@ -45,6 +19,11 @@ export default function InteractionsScreen() {
 
   const [domFilter, setDomFilter] = useState('all')
   const [sevFilter, setSevFilter] = useState('all')
+  const [openCats, setOpenCats] = useState<Record<string, boolean>>({})
+
+  const toggleCat = (cat: string) => {
+    setOpenCats((prev) => ({ ...prev, [cat]: !prev[cat] }))
+  }
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['interactions'] })
@@ -56,7 +35,7 @@ export default function InteractionsScreen() {
         params: { path: { rule_id: rule.id } },
         body: { active: !rule.active },
       })
-      toast(rule.active ? 'Правило выключено' : 'Правило включено')
+      toast(rule.active ? t('app.interactions.rule_disabled') : t('app.interactions.rule_enabled'))
       refresh()
     } catch (err: any) {
       toast(err.message || 'Error toggling rule', { icon: 'warn' })
@@ -66,22 +45,23 @@ export default function InteractionsScreen() {
   const filteredRules = useMemo(() => {
     return view.rules.filter((r) => {
       if (domFilter !== 'all') {
-        const da = r.domainA || r.a
-        const db = r.domainB || r.b
-        if (da !== domFilter && db !== domFilter) return false
+        if (r.domainA !== domFilter && r.domainB !== domFilter) return false
       }
       if (sevFilter !== 'all') {
-        const s = r.severity || r.sev
-        if (s !== sevFilter) return false
+        if (r.severity !== sevFilter) return false
       }
       return true
     })
   }, [view.rules, domFilter, sevFilter])
 
+  const firingRules = useMemo(() => {
+    return view.rules.filter((r) => r.firing)
+  }, [view.rules])
+
   const groupedByCategory = useMemo(() => {
     const map = new Map<string, ConflictRuleItem[]>()
     for (const r of filteredRules) {
-      const cat = r.category || r.cat || 'general'
+      const cat = r.category || 'general'
       if (!map.has(cat)) map.set(cat, [])
       map.get(cat)!.push(r)
     }
@@ -102,54 +82,74 @@ export default function InteractionsScreen() {
     ]
   }, [])
 
+  const domainLabel = (d: string) => t(('app.domain.' + d) as any) || d
+
   const renderRule = (r: ConflictRuleItem) => {
-    const sev = r.severity || r.sev
-    const ruleType = r.ruleType || r.type
+    const sev = r.severity
+    const ruleType = r.ruleType
     const typeLabel =
       ruleType === 'hard'
-        ? 'Жёсткий блок'
+        ? t('app.interactions.type_hard')
         : ruleType === 'timing'
-          ? 'Разнесение по времени'
-          : 'Мягкое предупреждение'
+          ? t('app.interactions.type_timing')
+          : t('app.interactions.type_soft')
     const sevTone = sev === 'block' ? 'bad' : sev === 'warn' ? 'warn' : 'cool'
-    const da = r.domainA || r.a
-    const db = r.domainB || r.b
-    const ev = r.evidence || r.ev
+    const ev = r.evidence
     const evTone = ev === 'A' ? 'good' : ev === 'B' ? 'cool' : undefined
-    const hours = r.hours ?? r.h
+    const hours = r.hours
 
     return (
       <div
         key={r.id}
-        className={`row rule ${r.firing ? 'firing' : ''}`}
+        className={cx('row rule', r.firing && 'firing')}
         data-item
       >
         <div>
           <div className="rl-h">
             <Badge tone={sevTone}>{typeLabel}</Badge>
             {ruleType === 'timing' && hours && (
-              <span className="m">разнести на {hours} ч.</span>
+              <span className="m">{t('app.interactions.separate_hours', { hours })}</span>
             )}
-            {r.firing && <Badge tone="bad">Срабатывает сейчас</Badge>}
+            {r.firing && <Badge tone="bad">{t('app.interactions.firing_now')}</Badge>}
           </div>
-          <p className="rl-m">{r.message || r.msg}</p>
+          <p className="rl-m">{r.message}</p>
           <div className="rl-t">
             <span className="m">
-              {DOM_RU[da] || da} ↔ {DOM_RU[db] || db}
+              {domainLabel(r.domainA)} ↔ {domainLabel(r.domainB)}
             </span>
-            {ev && <Badge tone={evTone}>{`Доказательность ${ev}`}</Badge>}
-            {(r.source || r.src) && (
-              <span className="m">Источник: {r.source || r.src}</span>
+            {ev && <Badge tone={evTone}>{t('app.interactions.evidence', { ev })}</Badge>}
+            {r.source && (
+              <span className="m">{t('app.interactions.source', { source: r.source })}</span>
             )}
           </div>
         </div>
         <div className="opts tg">
           <button
             type="button"
-            className={`opt ${r.active || r.on ? 'on' : ''}`}
+            className="toggle-text-btn"
             onClick={() => handleToggle(r)}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '4px 8px',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: 'var(--t-label)',
+              color: r.active ? 'var(--fg)' : 'var(--muted)',
+            }}
           >
-            {r.active || r.on ? 'Включено' : 'Выключено'}
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: r.active ? 'var(--good)' : 'var(--muted)',
+                display: 'inline-block',
+              }}
+            />
+            {r.active ? t('app.on_short') : t('app.off_short')}
           </button>
         </div>
       </div>
@@ -164,34 +164,45 @@ export default function InteractionsScreen() {
         <div className="figs inline">
           <div className="f">
             <div className="f-v">{view.totalCount || view.rules.length}</div>
-            <div className="f-l">Правил</div>
+            <div className="f-l">{t('app.interactions.rules_count')}</div>
           </div>
           <div className="f">
-            <div className="f-v bad">{view.firingCount}</div>
-            <div className="f-l">Срабатывает сейчас</div>
+            <div className={cx('f-v', view.firingCount > 0 && 'bad')}>{view.firingCount}</div>
+            <div className="f-l">{t('app.interactions.firing_now')}</div>
           </div>
         </div>
       </Headline>
 
+      {/* Firing Now Section */}
+      <Section title={t('app.interactions.firing_now')}>
+        <div className="rows">
+          {firingRules.length === 0 ? (
+            <div className="row"><span className="m">{t('app.interactions.none_firing')}</span></div>
+          ) : (
+            firingRules.map(renderRule)
+          )}
+        </div>
+      </Section>
+
       {/* Domain Filters */}
       <div className="fgroup">
-        <div className="flabel">Область</div>
+        <div className="flabel">{t('app.interactions.filter_domain')}</div>
         <div className="filters">
           <button
             type="button"
-            className={`filter ${domFilter === 'all' ? 'on' : ''}`}
+            className={cx('filter', domFilter === 'all' && 'on')}
             onClick={() => setDomFilter('all')}
           >
-            Все
+            {t('app.all')}
           </button>
           {availableDomains.map((d) => (
             <button
               key={d}
               type="button"
-              className={`filter ${domFilter === d ? 'on' : ''}`}
+              className={cx('filter', domFilter === d && 'on')}
               onClick={() => setDomFilter(d)}
             >
-              {DOM_RU[d] || d}
+              {domainLabel(d)}
             </button>
           ))}
         </div>
@@ -199,54 +210,66 @@ export default function InteractionsScreen() {
 
       {/* Severity Filters */}
       <div className="fgroup">
-        <div className="flabel">Важность</div>
+        <div className="flabel">{t('app.interactions.filter_severity')}</div>
         <div className="filters">
           <button
             type="button"
-            className={`filter ${sevFilter === 'all' ? 'on' : ''}`}
+            className={cx('filter', sevFilter === 'all' && 'on')}
             onClick={() => setSevFilter('all')}
           >
-            Все
+            {t('app.all')}
           </button>
           <button
             type="button"
-            className={`filter ${sevFilter === 'block' ? 'on' : ''}`}
+            className={cx('filter', sevFilter === 'block' && 'on')}
             onClick={() => setSevFilter('block')}
           >
-            Блок
+            {t('app.interactions.sev_block')}
           </button>
           <button
             type="button"
-            className={`filter ${sevFilter === 'warn' ? 'on' : ''}`}
+            className={cx('filter', sevFilter === 'warn' && 'on')}
             onClick={() => setSevFilter('warn')}
           >
-            Предупреждение
+            {t('app.interactions.sev_warn')}
           </button>
           <button
             type="button"
-            className={`filter ${sevFilter === 'info' ? 'on' : ''}`}
+            className={cx('filter', sevFilter === 'info' && 'on')}
             onClick={() => setSevFilter('info')}
           >
-            Инфо
+            {t('app.interactions.sev_info')}
           </button>
         </div>
       </div>
 
-      {/* Categories with Rules */}
+      {/* Categories with Rules (Collapsible catalog) */}
       {filteredRules.length > 0 ? (
-        Array.from(groupedByCategory.entries()).map(([cat, rules]) => (
-          <section key={cat} className="sec rgrp">
-            <div className="sec-h">
-              <h2>{CAT_RU[cat] || cat}</h2>
-              <span className="meta num">{rules.length}</span>
-            </div>
-            <div className="rows">{rules.map(renderRule)}</div>
-          </section>
-        ))
+        Array.from(groupedByCategory.entries()).map(([cat, rules]) => {
+          const isOpen = Boolean(openCats[cat])
+          return (
+            <section key={cat} className="sec rgrp">
+              <div
+                className="sec-h"
+                onClick={() => toggleCat(cat)}
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                role="button"
+                tabIndex={0}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Icon name={isOpen ? 'chevD' : 'chevR'} />
+                  <h2>{t(('app.rule_cat.' + cat) as any) || cat}</h2>
+                </div>
+                <span className="meta num">{rules.length}</span>
+              </div>
+              {isOpen && <div className="rows">{rules.map(renderRule)}</div>}
+            </section>
+          )
+        })
       ) : (
-        <div className="empty mt-6">
+        <div className="empty">
           <Icon name="info" />
-          <p>Нет правил под этот фильтр.</p>
+          <p>{t('app.interactions.no_rules_filtered')}</p>
         </div>
       )}
     </>

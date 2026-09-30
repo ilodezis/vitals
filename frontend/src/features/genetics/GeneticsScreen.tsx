@@ -57,12 +57,12 @@ export default function GeneticsScreen() {
         body: fd,
         credentials: 'same-origin',
       })
-      if (!res.ok) throw new Error('Failed to upload VCF')
+      if (!res.ok) throw new Error(t('genetics.error_upload'))
       const data = await res.json()
-      toast(`Imported ${data.imported} variants (${data.markers} conflict markers)`, { icon: 'pulse' })
+      toast(t('genetics.toast_imported', { imported: data.imported, markers: data.markers }), { icon: 'pulse' })
       refresh()
     } catch (err: any) {
-      toast(err.message || 'Error uploading VCF', { icon: 'warn' })
+      toast(err.message || t('genetics.error_upload'), { icon: 'warn' })
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -72,7 +72,7 @@ export default function GeneticsScreen() {
   // Add manual variant
   const handleAddVariant = async (): Promise<boolean> => {
     if (!gene.trim()) {
-      toast('Gene name is required', { icon: 'warn' })
+      toast(t('genetics.gene_required'), { icon: 'warn' })
       return false
     }
     try {
@@ -98,7 +98,7 @@ export default function GeneticsScreen() {
       refresh()
       return true
     } catch (err: any) {
-      toast(err.message || 'Error saving variant', { icon: 'warn' })
+      toast(err.message || t('genetics.error_save'), { icon: 'warn' })
       return false
     }
   }
@@ -110,7 +110,7 @@ export default function GeneticsScreen() {
       toast(t('common.deleted'))
       refresh()
     } catch (err: any) {
-      toast(err.message || 'Error deleting variant', { icon: 'warn' })
+      toast(err.message || t('genetics.error_delete'), { icon: 'warn' })
     }
   }
 
@@ -128,9 +128,9 @@ export default function GeneticsScreen() {
       <Mast
         screen="genetics"
         actions={
-          <div className="flex gap-2">
+          <div className="gen-acts">
             <TextButton icon="upload" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-              {isUploading ? 'Uploading...' : t('genetics.import_vcf')}
+              {isUploading ? t('genetics.uploading') : t('genetics.import_vcf')}
             </TextButton>
             <TextButton icon="plus" onClick={() => setAddModalOpen(true)}>
               {t('common.add')}
@@ -150,17 +150,15 @@ export default function GeneticsScreen() {
       </Headline>
 
       {view.empty ? (
-        <div className="mt-8 p-10 border border-dashed border-[var(--line-2)] rounded-2xl text-center space-y-4">
-          <div className="mx-auto w-12 h-12 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--violet)]">
+        <div className="gen-empty-box">
+          <div className="gen-empty-icon">
             <Icon name="dna" />
           </div>
           <div>
-            <h3 className="font-semibold text-lg">{t('genetics.empty_title')}</h3>
-            <p className="text-sm text-[var(--muted)] max-w-md mx-auto mt-1">
-              {t('genetics.empty_sub')}
-            </p>
+            <h3 className="gen-empty-title">{t('genetics.empty_title')}</h3>
+            <p className="gen-empty-sub">{t('genetics.empty_sub')}</p>
           </div>
-          <div className="flex justify-center gap-3 pt-2">
+          <div className="gen-empty-acts">
             <PrimaryButton onPress={async () => { fileInputRef.current?.click(); return true }}>
               {t('genetics.import_vcf')}
             </PrimaryButton>
@@ -171,7 +169,7 @@ export default function GeneticsScreen() {
         </div>
       ) : (
         <>
-          <div className="mt-6">
+          <div className="gen-filter-wrap">
             <FilterRow
               value={tab}
               onChange={setTab}
@@ -184,29 +182,31 @@ export default function GeneticsScreen() {
             />
           </div>
 
-          <div className="genetics-grid">
+          <div className="rows gen-list">
             {filtered.map((v) => {
               const hasRisk = v.hasRisk || Boolean(v.marker)
+              const sourceText = t(`app.source.${v.source}`) || v.source || 'vcf'
               return (
-                <div key={v.id} className={cx('gen-card', hasRisk && 'risk')}>
-                  <div className={cx('gen-card-top-bar', hasRisk && 'risk')} />
+                <div key={v.id} className="row gen-row">
                   <div className="gen-head">
-                    <div className="gen-title-grp">
+                    <div className="gen-lead">
                       <span className="gen-gene">{v.gene}</span>
                       {v.rsid && <span className="gen-rsid">{v.rsid}</span>}
-                      <div>
-                        {hasRisk ? (
-                          <Badge tone="warn">{t('genetics.conflict_marker')}</Badge>
-                        ) : (
-                          <Badge tone="plain">{t('genetics.info_tag')}</Badge>
-                        )}
-                      </div>
                     </div>
-                    <div className="gen-gt-box">
-                      <span className="text-xs text-[var(--faint)] block mb-1">{t('genetics.genotype')}</span>
-                      <span className={cx('gen-gt-badge', hasRisk && 'risk')}>
-                        {v.genotype || '—'}
+                    <div className="gen-trail">
+                      <span className="gen-gt">{v.genotype || '—'}</span>
+                      <span className="gen-sig">
+                        <span className={cx('dot', hasRisk ? 'bad' : 'cool')} />
+                        {hasRisk ? t('genetics.conflict_marker') : t('genetics.info_tag')}
                       </span>
+                      <button
+                        type="button"
+                        className="ibtn danger"
+                        onClick={() => handleDeleteVariant(v.id)}
+                        aria-label={t('common.delete')}
+                      >
+                        <Icon name="x" />
+                      </button>
                     </div>
                   </div>
 
@@ -214,23 +214,15 @@ export default function GeneticsScreen() {
                     {v.impact && <div className="gen-impact">{v.impact}</div>}
                     {v.interpretation && <div className="gen-interp">{v.interpretation}</div>}
                     {v.actionNotes && (
-                      <div className="gen-action">
-                        <b>Action: </b>
+                      <div className="gen-rec">
+                        <b>{t('genetics.recommendation')}:</b>
                         {v.actionNotes}
                       </div>
                     )}
                   </div>
 
-                  <div className="gen-card-foot">
-                    <span className="text-xs text-[var(--muted)]">{v.source || 'vcf'}</span>
-                    <button
-                      type="button"
-                      className="ibtn danger"
-                      onClick={() => handleDeleteVariant(v.id)}
-                      aria-label={t('common.delete')}
-                    >
-                      <Icon name="x" />
-                    </button>
+                  <div className="gen-meta">
+                    <span className="meta">{sourceText}</span>
                   </div>
                 </div>
               )
@@ -244,48 +236,48 @@ export default function GeneticsScreen() {
         <div className="hrt-form-modal">
           <div className="hrt-form-box">
             <div className="hrt-form-head">
-              <h3 className="font-bold text-lg">{t('genetics.add_variant')}</h3>
+              <h3 className="lab-modal-title">{t('genetics.add_variant')}</h3>
               <button type="button" className="ibtn" onClick={() => setAddModalOpen(false)}>
                 <Icon name="x" />
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="gen-modal-form">
               <label className="field">
-                <span className="flabel">Gene *</span>
+                <span className="flabel">{t('genetics.gene_label')}</span>
                 <input className="input" placeholder="e.g. MTHFR, HFE, ACTN3" value={gene} onChange={(e) => setGene(e.target.value)} />
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="gen-modal-grid2">
                 <label className="field">
-                  <span className="flabel">rsID (Optional)</span>
+                  <span className="flabel">{t('genetics.rsid_label')}</span>
                   <input className="input" placeholder="e.g. rs1801133" value={rsid} onChange={(e) => setRsid(e.target.value)} />
                 </label>
                 <label className="field">
-                  <span className="flabel">Genotype</span>
+                  <span className="flabel">{t('genetics.genotype')}</span>
                   <input className="input" placeholder="e.g. C/T" value={genotype} onChange={(e) => setGenotype(e.target.value)} />
                 </label>
               </div>
               <label className="field">
-                <span className="flabel">Impact Domain</span>
+                <span className="flabel">{t('genetics.impact_domain')}</span>
                 <select className="input" value={impactDomain} onChange={(e) => setImpactDomain(e.target.value)}>
-                  <option value="health">Health & Systems</option>
-                  <option value="supplements">Supplements</option>
-                  <option value="workouts">Workouts & Muscle</option>
-                  <option value="metabolism">Metabolism</option>
+                  <option value="health">{t('genetics.domain_health')}</option>
+                  <option value="supplements">{t('genetics.domain_supplements')}</option>
+                  <option value="workouts">{t('genetics.domain_workouts')}</option>
+                  <option value="metabolism">{t('genetics.domain_metabolism')}</option>
                 </select>
               </label>
               <label className="field">
-                <span className="flabel">Impact Summary</span>
+                <span className="flabel">{t('genetics.impact_summary')}</span>
                 <input className="input" placeholder="e.g. Reduced folate conversion efficiency" value={impact} onChange={(e) => setImpact(e.target.value)} />
               </label>
               <label className="field">
-                <span className="flabel">Interpretation</span>
+                <span className="flabel">{t('genetics.interpretation_label')}</span>
                 <textarea className="input" rows={2} placeholder="Clinical or physiological meaning..." value={interpretation} onChange={(e) => setInterpretation(e.target.value)} />
               </label>
               <label className="field">
-                <span className="flabel">Action Notes</span>
+                <span className="flabel">{t('genetics.action_notes_label')}</span>
                 <input className="input" placeholder="e.g. Take L-methylfolate instead of folic acid" value={actionNotes} onChange={(e) => setActionNotes(e.target.value)} />
               </label>
-              <PrimaryButton className="w mt-4" onPress={handleAddVariant}>
+              <PrimaryButton className="btn grow" onPress={handleAddVariant}>
                 {t('common.save')}
               </PrimaryButton>
             </div>

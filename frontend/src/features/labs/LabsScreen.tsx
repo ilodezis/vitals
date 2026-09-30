@@ -22,10 +22,19 @@ import { statusOf, type LabMarker } from './types'
 import { useLabsView } from './useLabsView'
 import './labs.css'
 
-const lowerFirst = (text: string): string => text.charAt(0).toLowerCase() + text.slice(1)
-
 /** The order the group filters come in. */
-const GROUP_ORDER = ['metabolism', 'hormones', 'vitamins']
+const GROUP_ORDER = ['metabolic', 'hormones', 'vitamins', 'lipids', 'thyroid']
+
+/** Normalize group keys to unify variants like metabolism / metabolic. */
+function normalizeGroupKey(k: string): string {
+  const lower = k.toLowerCase().trim()
+  if (lower === 'metabolism' || lower === '\u043C\u0435\u0442\u0430\u0431\u043E\u043B\u0438\u0437\u043C' || lower === 'metabolic') return 'metabolic'
+  if (lower === 'hormones' || lower === '\u0433\u043E\u0440\u043C\u043E\u043D\u044B') return 'hormones'
+  if (lower === 'vitamins' || lower === '\u0432\u0438\u0442\u0430\u043C\u0438\u043D\u044B') return 'vitamins'
+  if (lower === 'lipids' || lower === '\u043B\u0438\u043F\u0438\u0434\u044B') return 'lipids'
+  if (lower === 'thyroid' || lower === '\u0449\u0438\u0442\u043E\u0432\u0438\u0434\u043D\u0430\u044F') return 'thyroid'
+  return lower
+}
 
 /** A stretch of the scale that reads better than the whole range for markers whose reference range
  *  is very wide next to where the results sit. The server will send this with the marker. */
@@ -97,13 +106,13 @@ export default function LabsScreen() {
       if (!res.ok) throw new Error('Lab report upload failed')
       const data = await res.json()
       if (!data.ok) {
-        toast(data.message || 'Could not parse document', { icon: 'warn' })
+        toast(data.message || t('app.error'), { icon: 'warn' })
       } else if (data.lab) {
         setPreview(data.lab)
-        toast('Document parsed — review extracted markers below', { icon: 'pulse' })
+        toast(t('app.labs.preview_title'), { icon: 'pulse' })
       }
     } catch (err: any) {
-      toast(err.message || 'Upload error', { icon: 'warn' })
+      toast(err.message || t('app.error'), { icon: 'warn' })
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -130,12 +139,12 @@ export default function LabsScreen() {
           override,
         },
       })
-      toast('Biomarkers saved successfully')
+      toast(t('common.saved'))
       setPreview(null)
       refresh()
     },
     onError: (err) => {
-      toast(err.message || 'Error confirming markers', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
     },
   })
 
@@ -143,7 +152,7 @@ export default function LabsScreen() {
   const manualConflict = useConflictMutation({
     mutationFn: async ({ override }) => {
       if (!manMarker.trim() || !manVal) {
-        throw new Error('Marker name and value are required')
+        throw new Error(t('common.required_field'))
       }
       await api.POST('/api/v1/labs/results', {
         body: {
@@ -170,7 +179,7 @@ export default function LabsScreen() {
       refresh()
     },
     onError: (err) => {
-      toast(err.message || 'Error saving marker', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
     },
   })
 
@@ -183,22 +192,33 @@ export default function LabsScreen() {
       toast(t('common.deleted'))
       refresh()
     } catch (err: any) {
-      toast(err.message || 'Error deleting result', { icon: 'warn' })
+      toast(err.message, { icon: 'warn' })
     }
   }
 
   const out = view.markers.filter((m) => statusOf(m) !== 'ok')
   const groups = useMemo(() => {
     const seen = new Map<string, string>()
-    for (const m of view.markers) if (!seen.has(m.groupKey)) seen.set(m.groupKey, m.group)
+    for (const m of view.markers) {
+      const normKey = normalizeGroupKey(m.groupKey)
+      if (!seen.has(normKey)) {
+        const translatedLabel = t(`app.lab_cat.${normKey}`) || m.group
+        seen.set(normKey, translatedLabel)
+      }
+    }
     const rank = (key: string) => {
       const i = GROUP_ORDER.indexOf(key)
       return i === -1 ? GROUP_ORDER.length : i
     }
     return [...seen].sort(([a], [b]) => rank(a) - rank(b))
-  }, [view.markers])
+  }, [view.markers, t])
 
-  const visible = view.markers.filter((m) => (filter === 'all' ? true : filter === 'out' ? statusOf(m) !== 'ok' : m.groupKey === filter))
+  const visible = view.markers.filter((m) => {
+    if (filter === 'all') return true
+    if (filter === 'out') return statusOf(m) !== 'ok'
+    return normalizeGroupKey(m.groupKey) === filter
+  })
+
   const shown = view.markers.find((m) => m.id === selected) ?? view.markers[0]
   const num = (m: LabMarker, v: number) => formatNumber(v, lang, m.decimals)
   const collected = parseIsoDate(view.collectedIso)
@@ -220,6 +240,8 @@ export default function LabsScreen() {
   }
   const historyOf = (m: LabMarker) => m.history.map((h) => ({ date: parseIsoDate(h.dateIso), value: h.value }))
 
+  const sourceLabel = t(`app.source.${view.source}`) || view.source
+
   return (
     <>
       <input
@@ -234,9 +256,9 @@ export default function LabsScreen() {
       <Mast
         screen="labs"
         actions={
-          <div className="flex gap-2">
+          <div className="labs-acts">
             <TextButton icon="upload" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-              {isUploading ? 'Parsing...' : t('app.labs.upload_action')}
+              {isUploading ? t('app.labs.parsing') : t('app.labs.upload_action')}
             </TextButton>
             <TextButton icon="plus" onClick={() => setManualOpen(true)}>
               {t('common.add')}
@@ -253,13 +275,13 @@ export default function LabsScreen() {
             <FigureBody
               value={out.length}
               label={t('app.labs.fig_out')}
-              sub={out.map((m) => lowerFirst(m.name.replace(/\s*\(.*\)$/, ''))).join(', ') || undefined}
+              sub={out.map((m) => m.name.replace(/\s*\(.*\)$/, '')).join(', ') || undefined}
               tone={out.length > 0 ? 'bad' : undefined}
               subBad={false}
             />
           </div>
           <div className="f">
-            <FigureBody value={shortDate(collected, lang)} label={t('app.labs.fig_date')} sub={`${view.lab} · ${view.source}`} />
+            <FigureBody value={shortDate(collected, lang)} label={t('app.labs.fig_date')} sub={`${view.lab} · ${sourceLabel}`} />
           </div>
         </div>
       </Headline>
@@ -275,7 +297,7 @@ export default function LabsScreen() {
           <Icon name="upload" />
         </span>
         <span>
-          <b>{isUploading ? 'Uploading and extracting biomarkers...' : t('app.labs.drop_title')}</b>
+          <b>{isUploading ? t('app.labs.extracting') : t('app.labs.drop_title')}</b>
           <small>{t('app.labs.drop_sub')}</small>
         </span>
       </button>
@@ -300,6 +322,8 @@ export default function LabsScreen() {
               const status = statusOf(m)
               const bad = status !== 'ok'
               const open = selected === m.id
+              const normKey = normalizeGroupKey(m.groupKey)
+              const groupDisplay = t(`app.lab_cat.${normKey}`) || m.group
               return (
                 <div
                   key={m.id}
@@ -318,7 +342,7 @@ export default function LabsScreen() {
                 >
                   <div>
                     <div className="t">{m.name}</div>
-                    <div className="m">{m.group}</div>
+                    <div className="m">{groupDisplay}</div>
                   </div>
                   <div className="mk-value">
                     <div className={cx('v', bad && 'bad')}>
@@ -340,7 +364,7 @@ export default function LabsScreen() {
                           <MarkerChart lo={m.lo} hi={m.hi} min={m.min} max={m.max} decimals={m.decimals} history={historyOf(m)} focus={FOCUS[m.id]} />
                         )}
                         <p className="mk-note">{noteFor(m)}</p>
-                        <div className="mt-2 text-right">
+                        <div className="mk-detail-acts">
                           <button
                             type="button"
                             className="ibtn danger"
@@ -412,15 +436,15 @@ export default function LabsScreen() {
           <div className="hrt-form-box" style={{ maxWidth: 640 }}>
             <div className="hrt-form-head">
               <div>
-                <h3 className="font-bold text-lg">Review Extracted Biomarkers</h3>
-                <p className="text-xs text-[var(--muted)]">Verify or correct the parsed values before saving to your records.</p>
+                <h3 className="lab-modal-title">{t('app.labs.preview_title')}</h3>
+                <p className="lab-modal-sub">{t('app.labs.preview_sub')}</p>
               </div>
               <button type="button" className="ibtn" onClick={() => setPreview(null)}>
                 <Icon name="x" />
               </button>
             </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+            <div className="lab-modal-form">
+              <div className="lab-modal-grid2">
                 <label className="field">
                   <span className="flabel">{t('common.date')}</span>
                   <input
@@ -431,7 +455,7 @@ export default function LabsScreen() {
                   />
                 </label>
                 <label className="field">
-                  <span className="flabel">Lab / Clinic</span>
+                  <span className="flabel">{t('app.labs.clinic_label')}</span>
                   <input
                     className="input"
                     value={preview.labName || ''}
@@ -441,23 +465,23 @@ export default function LabsScreen() {
                 </label>
               </div>
 
-              <div className="border border-[var(--line)] rounded-xl overflow-hidden">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-[var(--bg-deep)] text-[var(--muted)]">
+              <div className="preview-table-wrap">
+                <table className="preview-table">
+                  <thead>
                     <tr>
-                      <th className="p-2">Marker</th>
-                      <th className="p-2">Value</th>
-                      <th className="p-2">Unit</th>
-                      <th className="p-2">Ref Range</th>
-                      <th className="p-2"></th>
+                      <th>{t('app.labs.marker_label')}</th>
+                      <th>{t('app.labs.value_label')}</th>
+                      <th>{t('app.labs.unit_label')}</th>
+                      <th>{t('app.labs.range')}</th>
+                      <th className="cell-action"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--line)]">
+                  <tbody>
                     {preview.markers.map((m, idx) => (
                       <tr key={idx}>
-                        <td className="p-2">
+                        <td>
                           <input
-                            className="input text-xs py-1"
+                            className="input input-compact"
                             value={m.marker || ''}
                             onChange={(e) => {
                               const updated = [...preview.markers]
@@ -466,11 +490,11 @@ export default function LabsScreen() {
                             }}
                           />
                         </td>
-                        <td className="p-2 w-20">
+                        <td className="cell-sm">
                           <input
                             type="number"
                             step="any"
-                            className="input text-xs py-1"
+                            className="input input-compact"
                             value={m.value ?? ''}
                             onChange={(e) => {
                               const updated = [...preview.markers]
@@ -479,9 +503,9 @@ export default function LabsScreen() {
                             }}
                           />
                         </td>
-                        <td className="p-2 w-20">
+                        <td className="cell-sm">
                           <input
-                            className="input text-xs py-1"
+                            className="input input-compact"
                             value={m.unit || ''}
                             onChange={(e) => {
                               const updated = [...preview.markers]
@@ -490,13 +514,13 @@ export default function LabsScreen() {
                             }}
                           />
                         </td>
-                        <td className="p-2 w-28">
-                          <div className="flex gap-1 items-center">
+                        <td className="cell-range">
+                          <div className="preview-range-box">
                             <input
                               type="number"
                               step="any"
                               placeholder="min"
-                              className="input text-xs py-1"
+                              className="input input-compact"
                               value={m.refLow ?? ''}
                               onChange={(e) => {
                                 const updated = [...preview.markers]
@@ -509,7 +533,7 @@ export default function LabsScreen() {
                               type="number"
                               step="any"
                               placeholder="max"
-                              className="input text-xs py-1"
+                              className="input input-compact"
                               value={m.refHigh ?? ''}
                               onChange={(e) => {
                                 const updated = [...preview.markers]
@@ -519,7 +543,7 @@ export default function LabsScreen() {
                             />
                           </div>
                         </td>
-                        <td className="p-2 text-center">
+                        <td className="cell-action">
                           <button
                             type="button"
                             className="ibtn danger"
@@ -544,7 +568,7 @@ export default function LabsScreen() {
                 onFix={() => confirmConflict.clearConflict()}
                 onSaveAnyway={() => confirmButtonRef.current?.press({ override: true })}
               />
-              <div className="flex justify-between items-center pt-2">
+              <div className="lab-modal-foot">
                 <TextButton
                   icon="plus"
                   onClick={() => {
@@ -554,12 +578,12 @@ export default function LabsScreen() {
                     })
                   }}
                 >
-                  Add Row
+                  {t('app.labs.add_row')}
                 </TextButton>
-                <div className="flex gap-2">
-                  <TextButton onClick={() => setPreview(null)}>Cancel</TextButton>
+                <div className="lab-modal-foot-acts">
+                  <TextButton onClick={() => setPreview(null)}>{t('common.cancel')}</TextButton>
                   <PrimaryButton ref={confirmButtonRef} onPress={confirmConflict.submit}>
-                    Save {preview.markers.length} Markers
+                    {t('app.labs.save_markers_count', { count: preview.markers.length })}
                   </PrimaryButton>
                 </div>
               </div>
@@ -573,54 +597,54 @@ export default function LabsScreen() {
         <div className="hrt-form-modal">
           <div className="hrt-form-box">
             <div className="hrt-form-head">
-              <h3 className="font-bold text-lg">Record Biomarker</h3>
+              <h3 className="lab-modal-title">{t('app.labs.manual_title')}</h3>
               <button type="button" className="ibtn" onClick={() => setManualOpen(false)}>
                 <Icon name="x" />
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="lab-modal-form">
               <label className="field">
                 <span className="flabel">{t('common.date')}</span>
                 <input type="date" className="input" value={manDate} onChange={(e) => setManDate(e.target.value)} />
               </label>
               <label className="field">
-                <span className="flabel">Biomarker *</span>
-                <input className="input" placeholder="e.g. Ferritin, TSH, Total Testosterone" value={manMarker} onChange={(e) => setManMarker(e.target.value)} />
+                <span className="flabel">{t('app.labs.marker_label')}</span>
+                <input className="input" placeholder={t('app.labs.marker_ph')} value={manMarker} onChange={(e) => setManMarker(e.target.value)} />
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="lab-modal-grid2">
                 <label className="field">
-                  <span className="flabel">Value *</span>
+                  <span className="flabel">{t('app.labs.value_label')}</span>
                   <input type="number" step="any" className="input" value={manVal} onChange={(e) => setManVal(e.target.value)} />
                 </label>
                 <label className="field">
-                  <span className="flabel">Unit</span>
+                  <span className="flabel">{t('app.labs.unit_label')}</span>
                   <input className="input" placeholder="e.g. ng/mL, mIU/L" value={manUnit} onChange={(e) => setManUnit(e.target.value)} />
                 </label>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="lab-modal-grid2">
                 <label className="field">
-                  <span className="flabel">Ref Low</span>
+                  <span className="flabel">{t('app.labs.ref_low')}</span>
                   <input type="number" step="any" className="input" value={manRefLow} onChange={(e) => setManRefLow(e.target.value)} />
                 </label>
                 <label className="field">
-                  <span className="flabel">Ref High</span>
+                  <span className="flabel">{t('app.labs.ref_high')}</span>
                   <input type="number" step="any" className="input" value={manRefHigh} onChange={(e) => setManRefHigh(e.target.value)} />
                 </label>
               </div>
               <label className="field">
-                <span className="flabel">Lab / Clinic</span>
+                <span className="flabel">{t('app.labs.clinic_label')}</span>
                 <input className="input" placeholder="e.g. Invitro" value={manLab} onChange={(e) => setManLab(e.target.value)} />
               </label>
               <label className="field">
-                <span className="flabel">Note</span>
-                <input className="input" placeholder="e.g. Fasting, morning draw" value={manNote} onChange={(e) => setManNote(e.target.value)} />
+                <span className="flabel">{t('app.labs.note_label')}</span>
+                <input className="input" placeholder={t('app.labs.note_ph')} value={manNote} onChange={(e) => setManNote(e.target.value)} />
               </label>
               <ConflictAlert
                 violations={manualConflict.violations}
                 onFix={() => manualConflict.clearConflict()}
                 onSaveAnyway={() => manualButtonRef.current?.press({ override: true })}
               />
-              <PrimaryButton ref={manualButtonRef} className="w mt-4" onPress={manualConflict.submit}>
+              <PrimaryButton ref={manualButtonRef} className="btn grow" onPress={manualConflict.submit}>
                 {t('common.save')}
               </PrimaryButton>
             </div>

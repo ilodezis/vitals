@@ -94,7 +94,7 @@ export default function NutritionScreen() {
     },
     onSuccess: () => {
       invalidateNutrition()
-      toast(editingMealId ? 'Приём обновлён' : 'Приём пищи записан')
+      toast(editingMealId ? t('app.nutrition.meal_updated') : t('app.nutrition.meal_logged'))
       setFormOpen(false)
       setEditingMealId(null)
       setMealName('')
@@ -141,14 +141,26 @@ export default function NutritionScreen() {
   const fat = totals?.fat_g ?? 0
   const carbs = totals?.carbs_g ?? 0
 
+  const calMin = goals?.calories_min ?? 1800
   const calMax = goals?.calories_max ?? 2000
   const protTarget = goals?.protein_target_g ?? 150
-  const calTone = cal > calMax ? 'bad' : cal < (goals?.calories_min ?? 1800) ? 'warn' : undefined
+  const calTone = cal > calMax ? 'bad' : cal < calMin ? 'warn' : undefined
   const protTone = prot >= protTarget ? undefined : 'warn'
 
   const macroSplit = view?.macro_split ?? { protein_pct: 0, fat_pct: 0, carbs_pct: 0 }
   const meals = view?.meals ?? []
   const recentDays = view?.recent_days ?? []
+
+  // Active days for history (only days with data, newest first)
+  const activeDays = recentDays.filter((d) => (d.meal_count && d.meal_count > 0) || (d.calories && d.calories > 0))
+  const activeDaysDesc = [...activeDays].reverse()
+
+  // 30-day mini bars data (chronological: newest on right)
+  const chartHeight = 44
+  const maxDayCal = Math.max(calMax * 1.15, ...recentDays.map((d) => d.calories || 0), 100)
+  const yCorridorTop = chartHeight - (calMax / maxDayCal) * chartHeight
+  const yCorridorBottom = chartHeight - (calMin / maxDayCal) * chartHeight
+  const corridorHeight = Math.max(2, yCorridorBottom - yCorridorTop)
 
   return (
     <>
@@ -170,7 +182,7 @@ export default function NutritionScreen() {
               setFormOpen(true)
             }}
           >
-            Добавить приём
+            {t('app.nutrition.add_meal')}
           </TextButton>
         }
       />
@@ -178,27 +190,30 @@ export default function NutritionScreen() {
         <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 'var(--t-title)', fontWeight: 600 }}>
-              {formatNumber(cal, lang, 0)} <span className="unit">ккал</span>
+              {formatNumber(cal, lang, 0)} <span className="unit">{t('app.unit.kcal')}</span>
             </div>
             <div className="sub">
-              из {formatNumber(goals?.calories_min ?? 1800, lang, 0)}–{formatNumber(calMax, lang, 0)}
+              {t('app.nutrition.from_range', {
+                min: formatNumber(calMin, lang, 0),
+                max: formatNumber(calMax, lang, 0),
+              })}
             </div>
           </div>
           <div>
             <div style={{ fontSize: 'var(--t-title)', fontWeight: 600 }}>{meals.length}</div>
-            <div className="sub">Приёмы пищи</div>
+            <div className="sub">{t('app.nutrition.meals')}</div>
           </div>
         </div>
       </Headline>
 
       {/* Meal Form Panel */}
       {formOpen && (
-        <Section title={editingMealId ? 'Редактировать приём' : 'Новый приём пищи'}>
+        <Section title={editingMealId ? t('app.nutrition.edit_meal') : t('app.nutrition.new_meal')}>
           <div className="panel" style={{ padding: '16px' }}>
             <form onSubmit={(e) => { e.preventDefault(); saveMealMutation.mutate() }}>
               <div className="g2">
                 <div className="fld">
-                  <label>Дата</label>
+                  <label>{t('app.nutrition.date_label')}</label>
                   <input
                     type="date"
                     className="input"
@@ -208,7 +223,7 @@ export default function NutritionScreen() {
                   />
                 </div>
                 <div className="fld">
-                  <label>Время приёма</label>
+                  <label>{t('app.nutrition.time_label')}</label>
                   <input
                     type="time"
                     className="input"
@@ -219,10 +234,10 @@ export default function NutritionScreen() {
               </div>
 
               <div className="fld">
-                <label>Название блюда / приёма</label>
+                <label>{t('app.nutrition.dish_name')}</label>
                 <input
                   type="text"
-                  placeholder="2 яйца, тост, кофе..."
+                  placeholder={t('app.nutrition.dish_ph')}
                   className="input"
                   value={mealName}
                   onChange={(e) => setMealName(e.target.value)}
@@ -232,7 +247,7 @@ export default function NutritionScreen() {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                 <div className="fld">
-                  <label>Калории</label>
+                  <label>{t('app.nutrition.calories')}</label>
                   <input
                     type="number"
                     step="1"
@@ -243,7 +258,7 @@ export default function NutritionScreen() {
                   />
                 </div>
                 <div className="fld">
-                  <label>Белок (г)</label>
+                  <label>{t('app.nutrition.protein_g')}</label>
                   <input
                     type="number"
                     step="0.1"
@@ -254,7 +269,7 @@ export default function NutritionScreen() {
                   />
                 </div>
                 <div className="fld">
-                  <label>Жиры (г)</label>
+                  <label>{t('app.nutrition.fat_g')}</label>
                   <input
                     type="number"
                     step="0.1"
@@ -265,7 +280,7 @@ export default function NutritionScreen() {
                   />
                 </div>
                 <div className="fld">
-                  <label>Углеводы (г)</label>
+                  <label>{t('app.nutrition.carbs_g')}</label>
                   <input
                     type="number"
                     step="0.1"
@@ -278,10 +293,10 @@ export default function NutritionScreen() {
               </div>
 
               <div className="fld">
-                <label>Заметка (необязательно)</label>
+                <label>{t('app.nutrition.note_optional')}</label>
                 <input
                   type="text"
-                  placeholder="Ощущения, детали..."
+                  placeholder={t('app.nutrition.note_ph')}
                   className="input"
                   value={mealNote}
                   onChange={(e) => setMealNote(e.target.value)}
@@ -295,10 +310,10 @@ export default function NutritionScreen() {
               />
               <div className="form-acts">
                 <button type="submit" className="btn grow" disabled={saveMealMutation.isPending}>
-                  {editingMealId ? 'Сохранить изменения' : 'Записать приём'}
+                  {editingMealId ? t('app.nutrition.save_changes') : t('app.nutrition.log_meal')}
                 </button>
                 <button type="button" className="ghost" onClick={() => setFormOpen(false)}>
-                  Отмена
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>
@@ -308,7 +323,7 @@ export default function NutritionScreen() {
 
       {/* KBJU Section */}
       <Section
-        title="КБЖУ"
+        title={t('app.nutrition.kbju')}
         meta={
           <div className="dnav">
             <button
@@ -317,12 +332,12 @@ export default function NutritionScreen() {
               onClick={() => {
                 if (view?.prev_date) setSelectedDate(view.prev_date)
               }}
-              aria-label="Предыдущий день"
+              aria-label={t('app.nutrition.prev_day')}
             >
               <Icon name="chevL" />
             </button>
             <span className="dl">
-              {selectedDate === todayStr ? 'Сегодня' : longDate(parseIsoDate(selectedDate), lang)}
+              {selectedDate === todayStr ? t('app.nutrition.today') : longDate(parseIsoDate(selectedDate), lang)}
             </span>
             <button
               type="button"
@@ -331,7 +346,7 @@ export default function NutritionScreen() {
               onClick={() => {
                 if (view?.next_date) setSelectedDate(view.next_date)
               }}
-              aria-label="Следующий день"
+              aria-label={t('app.nutrition.next_day')}
             >
               <Icon name="chevR" />
             </button>
@@ -342,7 +357,7 @@ export default function NutritionScreen() {
                 onClick={() => setSelectedDate(todayStr)}
                 style={{ fontSize: 'var(--t-micro)', color: 'var(--violet)' }}
               >
-                Сегодня
+                {t('app.nutrition.today')}
               </button>
             )}
           </div>
@@ -352,9 +367,9 @@ export default function NutritionScreen() {
           <div className="mrows">
             <div className="mrow">
               <div className="mrow-h">
-                <span className="t">Калории</span>
+                <span className="t">{t('app.nutrition.calories')}</span>
                 <span className="m num">
-                  <b>{formatNumber(cal, lang, 0)}</b> / {formatNumber(goals?.calories_min ?? 1800, lang, 0)}–{formatNumber(calMax, lang, 0)} ккал
+                  <b>{formatNumber(cal, lang, 0)}</b> / {formatNumber(calMin, lang, 0)}–{formatNumber(calMax, lang, 0)} {t('app.unit.kcal')}
                 </span>
               </div>
               <Meter value={(cal / calMax) * 100} tone={calTone} />
@@ -362,9 +377,9 @@ export default function NutritionScreen() {
 
             <div className="mrow">
               <div className="mrow-h">
-                <span className="t">Белок</span>
+                <span className="t">{t('app.nutrition.protein')}</span>
                 <span className="m num">
-                  <b>{formatNumber(prot, lang, 1)}</b> / {formatNumber(protTarget, lang, 0)} г
+                  <b>{formatNumber(prot, lang, 1)}</b> / {formatNumber(protTarget, lang, 0)} {t('app.unit.g')}
                 </span>
               </div>
               <Meter value={(prot / protTarget) * 100} tone={protTone} />
@@ -373,29 +388,29 @@ export default function NutritionScreen() {
 
           <div className="mrow">
             <div className="mrow-h">
-              <span className="t">Макросы</span>
-              <span className="m">% от калорий</span>
+              <span className="t">{t('app.nutrition.macros')}</span>
+              <span className="m">{t('app.nutrition.pct_calories')}</span>
             </div>
             <div className="compo">
-              <i style={{ flex: macroSplit.protein_pct, background: 'var(--good)' }} />
-              <i style={{ flex: macroSplit.fat_pct, background: 'var(--violet)' }} />
-              <i style={{ flex: macroSplit.carbs_pct, background: 'var(--cool)' }} />
+              <i style={{ flex: macroSplit.protein_pct || 1, background: 'var(--good)' }} />
+              <i style={{ flex: macroSplit.fat_pct || 1, background: 'var(--violet)' }} />
+              <i style={{ flex: macroSplit.carbs_pct || 1, background: 'var(--cool)' }} />
             </div>
             <div className="hyp-legend" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
               <div>
                 <i style={{ background: 'var(--good)' }} />
-                Белок
-                <b>{formatNumber(prot, lang, 1)} г <em>({Math.round(macroSplit.protein_pct)} %)</em></b>
+                {t('app.nutrition.protein')}
+                <b>{formatNumber(prot, lang, 1)} {t('app.unit.g')} <em>({Math.round(macroSplit.protein_pct)} %)</em></b>
               </div>
               <div>
                 <i style={{ background: 'var(--violet)' }} />
-                Жиры
-                <b>{formatNumber(fat, lang, 1)} г <em>({Math.round(macroSplit.fat_pct)} %)</em></b>
+                {t('app.nutrition.fat')}
+                <b>{formatNumber(fat, lang, 1)} {t('app.unit.g')} <em>({Math.round(macroSplit.fat_pct)} %)</em></b>
               </div>
               <div>
                 <i style={{ background: 'var(--cool)' }} />
-                Углеводы
-                <b>{formatNumber(carbs, lang, 1)} г <em>({Math.round(macroSplit.carbs_pct)} %)</em></b>
+                {t('app.nutrition.carbs')}
+                <b>{formatNumber(carbs, lang, 1)} {t('app.unit.g')} <em>({Math.round(macroSplit.carbs_pct)} %)</em></b>
               </div>
             </div>
           </div>
@@ -406,13 +421,13 @@ export default function NutritionScreen() {
         {/* Left Column: Meals List */}
         <div className="c7">
           <Section
-            title={selectedDate === todayStr ? 'Приёмы за сегодня' : 'Приёмы'}
-            meta={`${meals.length} приёма`}
+            title={selectedDate === todayStr ? t('app.nutrition.today_meals') : t('app.nutrition.meals')}
+            meta={t('app.nutrition.meals_count', { count: meals.length })}
           >
             <div className="rows">
-              {isLoading && <div className="row"><span className="m">Загрузка...</span></div>}
+              {isLoading && <div className="row"><span className="m">{t('app.nutrition.loading')}</span></div>}
               {!isLoading && meals.length === 0 && (
-                <div className="row"><span className="m">В этот день приёмов нет.</span></div>
+                <div className="row"><span className="m">{t('app.nutrition.no_meals_day')}</span></div>
               )}
               {meals.map((m) => (
                 <div key={m.id} className="row r-meal">
@@ -420,19 +435,19 @@ export default function NutritionScreen() {
                   <div>
                     <div className="t">{m.name}</div>
                     <div className="m hd num">
-                      Б {m.protein_g ?? 0} · Ж {m.fat_g ?? 0} · У {m.carbs_g ?? 0}
+                      {t('app.nutrition.macro_short_p')} {formatNumber(m.protein_g ?? 0, lang, 1)} · {t('app.nutrition.macro_short_f')} {formatNumber(m.fat_g ?? 0, lang, 1)} · {t('app.nutrition.macro_short_c')} {formatNumber(m.carbs_g ?? 0, lang, 1)}
                     </div>
                   </div>
                   <div className="v">
                     {formatNumber(m.calories ?? 0, lang, 0)}
-                    <span className="u">ккал</span>
+                    <span className="u">{t('app.unit.kcal')}</span>
                   </div>
                   <div className="acts">
                     <button
                       type="button"
                       className="ibtn"
                       onClick={() => openEdit(m)}
-                      aria-label="Редактировать"
+                      aria-label={t('common.edit')}
                     >
                       <Icon name="edit" />
                     </button>
@@ -440,7 +455,7 @@ export default function NutritionScreen() {
                       type="button"
                       className="ibtn danger"
                       onClick={() => deleteMealMutation.mutate(m.id)}
-                      aria-label="Удалить"
+                      aria-label={t('common.delete')}
                     >
                       <Icon name="trash" />
                     </button>
@@ -453,28 +468,92 @@ export default function NutritionScreen() {
 
         {/* Right Column: 30-day History Mini */}
         <div className="c5">
-          <Section title="Последние 30 дней">
+          <Section title={t('app.nutrition.last_30_days')}>
+            {recentDays.length > 0 && (
+              <div className="nutr-bars-wrap">
+                <div className="nutr-bars-head">
+                  <span>{t('app.nutrition.goal_corridor')}</span>
+                  <span className="num">{formatNumber(calMin, lang, 0)}–{formatNumber(calMax, lang, 0)} {t('app.unit.kcal')}</span>
+                </div>
+                <svg className="nutr-bars" viewBox={`0 0 ${recentDays.length * 10} ${chartHeight}`} preserveAspectRatio="none">
+                  {/* Goal corridor band */}
+                  <rect
+                    x="0"
+                    y={yCorridorTop}
+                    width={recentDays.length * 10}
+                    height={corridorHeight}
+                    fill="var(--good)"
+                    opacity="0.12"
+                    rx="1"
+                  />
+                  {/* Daily bars */}
+                  {recentDays.map((d, i) => {
+                    const c = d.calories || 0
+                    const barH = c > 0 ? Math.max(3, (c / maxDayCal) * chartHeight) : 1
+                    const barY = chartHeight - barH
+                    const isSel = d.date === selectedDate
+                    const toneColor = c > calMax
+                      ? 'var(--bad)'
+                      : c >= calMin
+                        ? 'var(--good)'
+                        : c > 0
+                          ? 'var(--warn)'
+                          : 'var(--line)'
+                    return (
+                      <g key={d.date} onClick={() => setSelectedDate(d.date)} style={{ cursor: 'pointer' }}>
+                        <rect
+                          x={i * 10 + 1.5}
+                          y={barY}
+                          width={7}
+                          height={barH}
+                          rx={1.5}
+                          fill={toneColor}
+                          opacity={isSel ? 1 : 0.75}
+                        />
+                        {isSel && (
+                          <circle
+                            cx={i * 10 + 5}
+                            cy={chartHeight - 1}
+                            r={1.5}
+                            fill="var(--violet)"
+                          />
+                        )}
+                      </g>
+                    )
+                  })}
+                </svg>
+              </div>
+            )}
             <div className="rows">
-              {recentDays.map((d) => {
-                const isSel = d.date === selectedDate
-                return (
-                  <button
-                    key={d.date}
-                    type="button"
-                    className={cx('r-day', isSel && 'sel')}
-                    onClick={() => setSelectedDate(d.date)}
-                  >
-                    <div>
-                      <div className="t num">{longDate(parseIsoDate(d.date), lang)}</div>
-                      <div className="m num">{d.meal_count} приёмов · {d.protein_g} г белка</div>
-                    </div>
-                    <div className="v num">
-                      {formatNumber(d.calories, lang, 0)}
-                      <span className="u">ккал</span>
-                    </div>
-                  </button>
-                )
-              })}
+              {activeDaysDesc.length === 0 ? (
+                <div className="row"><span className="m">{t('app.nutrition.no_history_meals')}</span></div>
+              ) : (
+                activeDaysDesc.map((d) => {
+                  const isSel = d.date === selectedDate
+                  return (
+                    <button
+                      key={d.date}
+                      type="button"
+                      className={cx('r-day', isSel && 'sel')}
+                      onClick={() => setSelectedDate(d.date)}
+                    >
+                      <div>
+                        <div className="t num">{longDate(parseIsoDate(d.date), lang)}</div>
+                        <div className="m num">
+                          {t('app.nutrition.day_meals_summary', {
+                            count: d.meal_count,
+                            protein: formatNumber(d.protein_g, lang, 1),
+                          })}
+                        </div>
+                      </div>
+                      <div className="v num">
+                        {formatNumber(d.calories, lang, 0)}
+                        <span className="u">{t('app.unit.kcal')}</span>
+                      </div>
+                    </button>
+                  )
+                })
+              )}
             </div>
           </Section>
         </div>
