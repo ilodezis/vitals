@@ -19,6 +19,7 @@
   <img src="https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis">
   <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker">
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React">
+  <img src="https://img.shields.io/badge/TypeScript-7-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-PWA-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite">
   <img src="https://img.shields.io/badge/MCP-Claude_AI-D4A574?style=flat-square" alt="MCP">
   <img src="https://img.shields.io/badge/PWA-Mobile_First-5A0FC8?style=flat-square&logo=pwa&logoColor=white" alt="PWA">
@@ -30,17 +31,19 @@
 </p>
 
 <p align="center">
-  <a href="#vitals---личный-кабинет-здоровья-и-data-lake"><img src="https://raw.githubusercontent.com/lipis/flag-icons/main/flags/4x3/ru.svg" width="20" valign="middle" alt="ru"> Русский</a> &nbsp;·&nbsp;
-  <a href="#vitals---personal-health-dashboard-and-data-lake"><img src="https://raw.githubusercontent.com/lipis/flag-icons/main/flags/4x3/us.svg" width="20" valign="middle" alt="en"> English</a>
+  <a href="#lang-ru"><img src="https://raw.githubusercontent.com/lipis/flag-icons/main/flags/4x3/ru.svg" width="20" valign="middle" alt="ru"> Русский</a> &nbsp;·&nbsp;
+  <a href="#lang-en"><img src="https://raw.githubusercontent.com/lipis/flag-icons/main/flags/4x3/us.svg" width="20" valign="middle" alt="en"> English</a>
 </p>
 
 ---
+
+<a id="lang-ru"></a>
 
 ## Vitals - Личный кабинет здоровья и data lake
 
 **Vitals** — персональный дашборд здоровья и полноценное «озеро данных» (data lake) для одного пользователя. Система спроектирована для долгосрочного отслеживания биомаркеров, рекомпозиции тела, контроля терапии GLP-1, прохождения курсов гормональной терапии (ГЗТ / TRT), анализа спортивных показателей и построения еженедельных AI-отчётов с помощью языковых моделей через OpenRouter.
 
-Интерфейс полностью стандартизирован на единственной оболочке **Masthead** — издательском (editorial) дизайне с тёплой глубокой темой (`#1D1A21` / `#332F3C`), milk-white текстом, точечными акцентами цвета янтарного мёда (`#F5A623`) и высококлассной типографикой (Geologica / Golos Text, без использования моноширинных шрифтов). Дизайн-система целиком описана в [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
+Интерфейс — React-приложение (PWA) с тёплой сливово-угольной темой, а не «клинический терминал»: поверхности никогда не чисто-чёрные и не белые, янтарный акцент (`#F5A623`) тратится только на «сейчас / ты здесь / главное действие», шрифты — Geologica и Golos Text (кириллица из коробки, без моноширинных). Тревоги идут лесенкой `note → info → warn → block`, а не стеной красного. Дизайн-система целиком описана в [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
 
 Главное отличие от фитнес-трекеров — **принцип максимального сохранения сырых данных**. Vitals — умный навигатор здоровья, который подсвечивает неочевидные взаимосвязи между сном, тренировками, медикаментами и весом, помогая принимать взвешенные решения. Не надзиратель — штурман.
 
@@ -57,6 +60,8 @@ Vitals написан с Claude в качестве основного инст�
 <p align="center">
   <img src="./gifs/dashboard_en.gif" alt="Vitals dashboard walkthrough" width="100%">
 </p>
+
+https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 
 <table>
 <tr>
@@ -118,18 +123,43 @@ Vitals написан с Claude в качестве основного инст�
 
 ### 📖 Содержание
 
-- [Философия и ключевые принципы](#-философия-и-ключевые-принципы)
-- [Домены данных (15 модулей)](#-домены-данных)
-- [Архитектура системы](#-архитектура-системы)
-- [MCP-интеграция с Claude.ai (75 инструментов)](#-mcp-интеграция-с-claudeai)
-- [Быстрый старт (Docker Compose)](#-быстрый-старт)
-- [Безопасный деплой (Сетап автора)](#-безопасный-деплой-сетап-автора)
-- [Параметры конфигурации (.env)](#-параметры-конфигурации)
-- [Разработка и тесты](#-разработка-и-тесты)
-- [Поддержать проект](#-поддержать-проект)
-- [Лицензия](#-лицензия)
+- [Экраны приложения](#ru-screens)
+- [Философия и ключевые принципы](#ru-principles)
+- [Домены данных (15 модулей)](#ru-domains)
+- [Архитектура системы](#ru-architecture)
+- [MCP-интеграция с Claude.ai (75 инструментов)](#ru-mcp)
+- [Быстрый старт (Docker Compose)](#ru-quickstart)
+- [Безопасный деплой (Сетап автора)](#ru-deploy)
+- [Параметры конфигурации (.env)](#ru-config)
+- [Разработка и тесты](#ru-dev)
+- [Поддержать проект](#ru-support)
+- [Лицензия](#ru-license)
 
 ---
+
+<a id="ru-screens"></a>
+
+### 🧭 Экраны приложения
+
+Приложение живёт на собственных адресах — `/today`, `/weight`, `/recovery` и так далее. Экран выключенного модуля отправляет на «Сегодня»; старые адреса (`/app/...`, `/garmin`, `/hevy`) постоянно перенаправляются, так что закладки и установленное PWA не ломаются.
+
+| Экран | Адрес | Что там |
+| :--- | :--- | :--- |
+| **Сегодня** | `/today` | Старт дня: ключевые цифры всех включённых доменов и активные предупреждения |
+| **Вес** | `/weight`, `/weight/measures` | Тренд, скользящее среднее, прогноз даты цели, замеры тела, BIA-сканы, прогресс-фото |
+| **Восстановление** | `/recovery` (+ `/sleep/<дата>`, `/nights`, `/activities`) | Garmin: сон и его фазы, HRV, пульс покоя, стресс, Body Battery; страница каждой ночи; нормы считаются по твоей же истории |
+| **Тренировки** · **Питание** | `/workouts`, `/nutrition` | Hevy и КБЖУ с целями |
+| **GLP-1** · **ГЗТ** | `/glp1`, `/hrt` | Протокол, карта инъекций, курсы, кривая активного релиза |
+| **Анализы** · **Генетика** | `/labs`, `/genetics` | Фото/PDF → биомаркеры; VCF → варианты |
+| **Добавки** · **Уход** · **Взаимодействия** | `/supplements`, `/skincare`, `/interactions` | Каталог и рутина, плюс весь каталог правил конфликтов с переключателями |
+| **Сигналы** | `/signals` | Всё, что бот поймал из свободного текста |
+| **Хронология** · **Отчёты** · **Графики** | `/timeline`, `/reports`, `/charts` | События, дайджесты и брифы, конструктор графиков |
+| **Отчёт врача** | `/share` | Снимок за период по ссылке с паролем |
+| **Настройки** | `/settings` | Модули, язык, 2FA, интеграции, проактивный слой, бэкап |
+
+---
+
+<a id="ru-principles"></a>
 
 ### 🧠 Философия и ключевые принципы
 
@@ -156,6 +186,8 @@ Vitals написан с Claude в качестве основного инст�
 > Отдельная дорога наружу — **отчёт для врача** (`/share`): выбираешь разделы и период, приложение замораживает снимок и отдаёт ссылку с паролем. Ссылка живёт заданное число дней, отзывается в один клик, считает открытия и в бэкап не попадает. Тот же документ скачивается одним самодостаточным HTML-файлом — без скриптов и внешних запросов, открывается офлайн двойным кликом и печатается. Снимок неизменяемый: данные поменялись — создаёшь новый отчёт, а не подменяешь тот, что уже у врача на руках.
 
 ---
+
+<a id="ru-domains"></a>
 
 ### 📊 Домены данных
 
@@ -317,6 +349,8 @@ Vitals написан с Claude в качестве основного инст�
 
 ---
 
+<a id="ru-architecture"></a>
+
 ### 🏗️ Архитектура системы
 
 ```mermaid
@@ -377,6 +411,8 @@ graph TD
 Время брифа, вечернего блока, частота опроса Garmin, интервал экспорта веса и его окно свежести живут в БД (карточка в `/settings`), а не в `.env` — сохранение перерегистрирует задачи на работающем планировщике, перезапуск не нужен.
 
 ---
+
+<a id="ru-mcp"></a>
 
 ### 🔗 MCP-интеграция с Claude.ai
 
@@ -514,6 +550,8 @@ Claude: [вызывает get_weight_logs, get_hevy_workouts, get_garmin_metrics
 
 ---
 
+<a id="ru-quickstart"></a>
+
 ### 🚀 Быстрый старт
 
 #### 1. Клонируйте и настройте окружение
@@ -583,6 +621,8 @@ curl -s http://127.0.0.1:8000/health
 5. Включите модуль **Сигналы** в `/settings` — он же рубильник всего проактивного слоя — и настройте время брифа, тихие часы и бюджет сообщений на карточке «Проактивный слой».
 
 ---
+
+<a id="ru-deploy"></a>
 
 ### 🛡️ Безопасный деплой (Сетап автора)
 
@@ -657,6 +697,8 @@ curl -s http://127.0.0.1:8000/health
 > **Нужен просто публичный доступ, без VPN и Basic Auth?** Пропустите шаг 5, поставьте домен под прокси Cloudflare (оранжевое облако — реальный IP сервера скрыт) и включите режим шифрования **Full (strict)** в **SSL/TLS → Overview**. Вместо Let's Encrypt можно взять Origin-сертификат Cloudflare (**SSL/TLS → Origin Server**). Учтите: в этом случае страница входа Vitals — единственное, что отделяет ваши медицинские данные от интернета. Именно для такой установки и стоит включить двухфакторный вход (**Настройки → Двухфакторная защита**): тогда одного утёкшего пароля будет мало.
 
 ---
+
+<a id="ru-config"></a>
 
 ### ⚙️ Параметры конфигурации
 
@@ -743,6 +785,8 @@ curl -s http://127.0.0.1:8000/health
 
 ---
 
+<a id="ru-dev"></a>
+
 ### 🛠️ Разработка и тесты
 
 #### Локальное окружение
@@ -752,15 +796,27 @@ python -m venv .venv
 .venv\Scripts\activate          # Windows
 source .venv/bin/activate       # macOS/Linux
 pip install -r requirements-dev.txt
+npm --prefix frontend ci
 ```
 
 #### Dev-сервер (без Docker)
 
+Сначала соберите приложение — сервер отдаёт готовую сборку из `web/static/app`, без неё на экранах будет `frontend not built`:
+
 ```bash
+npm --prefix frontend run build
 python run_local.py
 ```
 
 Автоматически поднимает SQLite + FakeRedis. Логин по умолчанию: `timur` / `password`. Адрес: `http://127.0.0.1:8000`.
+
+Правите фронтенд — запустите рядом Vite с горячей перезагрузкой (проксирует API на `:8000`):
+
+```bash
+npm --prefix frontend run dev     # http://127.0.0.1:5173
+```
+
+Поменяли API — перегенерируйте типизированный клиент и словарь переводов одной командой: `npm --prefix frontend run gen`.
 
 #### Демо-данные
 
@@ -778,9 +834,14 @@ python -m pytest -q
 
 # Интеграционные (Postgres Docker)
 bash scripts/test_postgres.sh
+
+# Фронтенд: типы + тесты + сборка + бюджет размера
+npm --prefix frontend run check
 ```
 
 ---
+
+<a id="ru-support"></a>
 
 ### ☕ Поддержать проект
 
@@ -794,6 +855,8 @@ bash scripts/test_postgres.sh
 
 ---
 
+<a id="ru-license"></a>
+
 ### 📄 Лицензия
 
 **PolyForm Noncommercial License 1.0.0** — использование и модификация разрешены в некоммерческих целях. Коммерческое использование запрещено. Подробности: [LICENSE](LICENSE).
@@ -801,11 +864,13 @@ bash scripts/test_postgres.sh
 ---
 ---
 
+<a id="lang-en"></a>
+
 ## Vitals - Personal Health Dashboard and Data Lake
 
 **Vitals** is a personal health dashboard and data lake designed for a single user. Built for long-term tracking of biomarkers, body recomposition, GLP-1 therapy, hormone replacement therapy (HRT / TRT) cycles, athletic performance, and AI-powered weekly analytical digests via OpenRouter LLMs.
 
-The interface standardizes entirely on a single UI shell — **Masthead** — featuring a warm dark plum-charcoal aesthetic (`#1D1A21` / `#332F3C`), milk-white typography, selective honey-amber (`#F5A623`) highlights, and editorial-grade typography (Geologica / Golos Text, without a single monospace font). The full design system is documented in [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
+The interface is a React app (PWA) with a warm plum-charcoal theme — a health companion, not a clinical terminal: surfaces are never pure black or white, the honey-amber accent (`#F5A623`) is spent only on "now / you are here / the one action", and type is Geologica + Golos Text (Cyrillic out of the box, no monospace). Alerts climb a ladder, `note → info → warn → block`, instead of a wall of red. The full design system is documented in [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
 
 Unlike typical fitness trackers, Vitals prioritizes **preserving raw historical data**. It serves as a smart wellness navigator — uncovering correlations between sleep, workouts, supplements, and body composition. Not a watchdog — a co-pilot.
 
@@ -826,6 +891,8 @@ Built with Claude as the primary coding tool — but the data model, architectur
 <p align="center">
   <img src="./gifs/dashboard_en.gif" alt="Vitals dashboard walkthrough" width="100%">
 </p>
+
+https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 
 <table>
 <tr>
@@ -887,18 +954,43 @@ Built with Claude as the primary coding tool — but the data model, architectur
 
 ### 📖 Table of Contents
 
-- [Core Philosophy](#-core-philosophy)
-- [Supported Domains (15 modules)](#-supported-domains)
-- [Technical Architecture](#-technical-architecture)
-- [MCP Integration with Claude.ai (75 tools)](#-mcp-integration-with-claudeai-1)
-- [Quick Start (Docker Compose)](#-quick-start)
-- [Secure Deployment (Creator's Setup)](#-secure-deployment-creators-setup)
-- [Configuration (.env)](#-configuration)
-- [Development & Testing](#-development--testing)
-- [Support the Project](#-support-the-project)
-- [License](#-license)
+- [App Screens](#en-screens)
+- [Core Philosophy](#en-principles)
+- [Supported Domains (15 modules)](#en-domains)
+- [Technical Architecture](#en-architecture)
+- [MCP Integration with Claude.ai (75 tools)](#en-mcp)
+- [Quick Start (Docker Compose)](#en-quickstart)
+- [Secure Deployment (Creator's Setup)](#en-deploy)
+- [Configuration (.env)](#en-config)
+- [Development & Testing](#en-dev)
+- [Support the Project](#en-support)
+- [License](#en-license)
 
 ---
+
+<a id="en-screens"></a>
+
+### 🧭 App Screens
+
+The app lives on its own addresses — `/today`, `/weight`, `/recovery`, and so on. A screen of a switched-off module sends you to Today; the old addresses (`/app/...`, `/garmin`, `/hevy`) redirect permanently, so bookmarks and an installed PWA keep working.
+
+| Screen | Address | What's there |
+| :--- | :--- | :--- |
+| **Today** | `/today` | The start of the day: key numbers from every enabled domain and the active warnings |
+| **Weight** | `/weight`, `/weight/measures` | Trend, moving average, goal-date projection, body measurements, BIA scans, progress photos |
+| **Recovery** | `/recovery` (+ `/sleep/<date>`, `/nights`, `/activities`) | Garmin: sleep and its stages, HRV, resting heart rate, stress, Body Battery; a page for every night; norms computed from your own history |
+| **Workouts** · **Nutrition** | `/workouts`, `/nutrition` | Hevy and macros against targets |
+| **GLP-1** · **HRT** | `/glp1`, `/hrt` | The protocol, injection-site map, cycles, the active-release curve |
+| **Labs** · **Genetics** | `/labs`, `/genetics` | Photo/PDF → biomarkers; VCF → variants |
+| **Supplements** · **Skincare** · **Interactions** | `/supplements`, `/skincare`, `/interactions` | Catalog and routine, plus the whole conflict-rule catalog with toggles |
+| **Signals** | `/signals` | Everything the bot caught from free text |
+| **Timeline** · **Reports** · **Charts** | `/timeline`, `/reports`, `/charts` | Events, digests and briefs, the chart builder |
+| **Doctor report** | `/share` | A snapshot for a period behind a password-protected link |
+| **Settings** | `/settings` | Modules, language, 2FA, integrations, the proactive layer, backup |
+
+---
+
+<a id="en-principles"></a>
 
 ### 🧠 Core Philosophy
 
@@ -925,6 +1017,8 @@ Built with Claude as the primary coding tool — but the data model, architectur
 > A separate way out is the **doctor report** (`/share`): pick the sections and the period, and the app freezes a snapshot behind a password-protected link. The link expires on a schedule you set, is revocable in one click, counts its openings, and never reaches a backup. The same document downloads as a single self-contained HTML file — no scripts, no outside requests — which opens offline on a double-click and prints. The snapshot is immutable: when the data changes you create a new report rather than swapping the one already in a doctor's hands.
 
 ---
+
+<a id="en-domains"></a>
 
 ### 📊 Supported Domains
 
@@ -1086,6 +1180,8 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 
 ---
 
+<a id="en-architecture"></a>
+
 ### 🏗️ Technical Architecture
 
 ```mermaid
@@ -1146,6 +1242,8 @@ Every job runs under a Redis lock (one runner across workers) and stamps a heart
 Brief time, evening time, the Garmin poll rate, the weight-export interval and its freshness window live in the database (the `/settings` card), not in `.env` — saving re-registers the jobs on the running scheduler, no restart needed.
 
 ---
+
+<a id="en-mcp"></a>
 
 ### 🔗 MCP Integration with Claude.ai
 
@@ -1283,6 +1381,8 @@ Recommendation: recovery looks sufficient, next session is fine to proceed.
 
 ---
 
+<a id="en-quickstart"></a>
+
 ### 🚀 Quick Start
 
 #### 1. Clone and configure
@@ -1352,6 +1452,8 @@ Leave these four empty and the app behaves exactly as before: the bot never send
 5. Enable the **Signals** module in `/settings` — it is the master switch for the whole proactive layer — then set brief time, quiet hours and the daily message budget on the "Proactive layer" card.
 
 ---
+
+<a id="en-deploy"></a>
 
 ### 🛡️ Secure Deployment (Creator's Setup)
 
@@ -1428,6 +1530,8 @@ A traditional setup using Nginx as a reverse proxy.
 > **Just want plain public access, without VPN or Basic Auth?** Skip step 5, put the domain behind the Cloudflare proxy (orange cloud — your server's real IP stays hidden) and set the encryption mode to **Full (strict)** under **SSL/TLS → Overview**. Instead of Let's Encrypt you can use a Cloudflare Origin Certificate (**SSL/TLS → Origin Server**). Keep in mind: in that case the Vitals login page is the only thing between your medical data and the internet. That is exactly the setup worth turning two-factor sign-in on for (**Settings → Two-factor authentication**) — a leaked password alone is then not enough.
 
 ---
+
+<a id="en-config"></a>
 
 ### ⚙️ Configuration
 
@@ -1514,6 +1618,8 @@ Two-factor sign-in has no variable: it is off by default and switched on in the 
 
 ---
 
+<a id="en-dev"></a>
+
 ### 🛠️ Development & Testing
 
 #### Local environment
@@ -1523,15 +1629,27 @@ python -m venv .venv
 .venv\Scripts\activate          # Windows
 source .venv/bin/activate       # macOS/Linux
 pip install -r requirements-dev.txt
+npm --prefix frontend ci
 ```
 
 #### Dev server (no Docker)
 
+Build the app first — the server serves the finished bundle from `web/static/app`, and without it the screens answer `frontend not built`:
+
 ```bash
+npm --prefix frontend run build
 python run_local.py
 ```
 
 Auto-provisions SQLite + FakeRedis. Default login: `timur` / `password`. Address: `http://127.0.0.1:8000`.
+
+Working on the frontend? Run Vite beside it for hot reload (it proxies the API to `:8000`):
+
+```bash
+npm --prefix frontend run dev     # http://127.0.0.1:5173
+```
+
+After changing the API, regenerate the typed client and the translation dictionary in one go: `npm --prefix frontend run gen`.
 
 #### Demo data
 
@@ -1549,9 +1667,14 @@ python -m pytest -q
 
 # Integration tests (Postgres Docker)
 bash scripts/test_postgres.sh
+
+# Frontend: types + tests + build + bundle-size budget
+npm --prefix frontend run check
 ```
 
 ---
+
+<a id="en-support"></a>
 
 ### ☕ Support the Project
 
@@ -1564,6 +1687,8 @@ bash scripts/test_postgres.sh
 > * **USDT (Arbitrum One)**: `0x3eac15f5d07bba100d4038cad603e420a84753bb`
 
 ---
+
+<a id="en-license"></a>
 
 ### 📄 License
 

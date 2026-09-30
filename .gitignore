@@ -80,3 +80,6 @@ yarn-error.log*
 .eslintcache
 # React app build output (Vite outDir) — produced by `npm run build` / the image
 web/static/app/
+
+# Full-size promo renders (~33 MB each); the web cuts live in gifs/
+docs/promo/video/
