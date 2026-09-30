@@ -209,7 +209,26 @@ def _day(resting_hr: int | None) -> GarminDaily:
     )
 
 
-async def test_recovery_norm_units_are_codes(auth_client):
+async def _seed_history(db_session) -> None:
+    """Twenty earlier days whose own corridors come out as sleep 80–90, HRV 50–60
+    and resting pulse 48–58 (mean give or take one deviation)."""
+    for i in range(1, 21):
+        low = i % 2 == 1
+        db_session.add(
+            GarminDaily(
+                date=today_local() - timedelta(days=i),
+                domain=GARMIN_DOMAIN,
+                source=Source.GARMIN_API.value,
+                sleep_score=80 if low else 90,
+                hrv_avg=50.0 if low else 60.0,
+                resting_hr=48 if low else 58,
+            )
+        )
+    await db_session.commit()
+
+
+async def test_recovery_norm_units_are_codes(auth_client, db_session):
+    await _seed_history(db_session)
     norms = (await auth_client.get(RECOVERY)).json()["norms"]
 
     assert norms["hrv"]["unit"] == "ms"
@@ -222,6 +241,7 @@ async def test_recovery_norm_units_are_codes(auth_client):
     [(52, "normal"), (56, "upper"), (62, "above"), (44, "below"), (None, "")],
 )
 async def test_recovery_resting_pulse_note_is_a_code(auth_client, db_session, resting_hr, note):
+    await _seed_history(db_session)
     db_session.add(_day(resting_hr))
     await db_session.commit()
 

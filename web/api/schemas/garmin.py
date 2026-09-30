@@ -38,9 +38,10 @@ class RecoveryBar(BaseModel):
     min: float
     max: float
     value: Optional[float] = None
-    lo: float
-    hi: float
+    lo: Optional[float] = None  # no corridor until there is enough history
+    hi: Optional[float] = None
     tone: str = ""
+    unit: str = ""  # "" | "ms" | "bpm" — a code, like the norm's
 
 
 class RecoveryDayItem(BaseModel):
@@ -61,7 +62,9 @@ class RecoveryView(BaseModel):
     last_sync: Optional[str] = None
     headline: RecoveryHeadline
     night: Optional[RecoveryNightPreview] = None
-    norms: dict[str, RecoveryNorm]
+    norms: dict[str, RecoveryNorm]  # only the metrics with enough history
+    norms_days: int = 0  # how many days the corridors were computed from
+    norms_min_days: int = 0  # how many it takes before a corridor is shown
     bars: list[RecoveryBar] = []
     days: list[RecoveryDayItem] = []
 

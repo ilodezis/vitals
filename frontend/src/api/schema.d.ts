@@ -4687,11 +4687,11 @@ export interface components {
         /** RecoveryBar */
         RecoveryBar: {
             /** Hi */
-            hi: number;
+            hi?: number | null;
             /** Key */
             key: string;
             /** Lo */
-            lo: number;
+            lo?: number | null;
             /** Max */
             max: number;
             /** Min */
@@ -4701,6 +4701,11 @@ export interface components {
              * @default
              */
             tone: string;
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
             /** Value */
             value?: number | null;
         };
@@ -4811,6 +4816,16 @@ export interface components {
             norms: {
                 [key: string]: components["schemas"]["RecoveryNorm"];
             };
+            /**
+             * Norms Days
+             * @default 0
+             */
+            norms_days: number;
+            /**
+             * Norms Min Days
+             * @default 0
+             */
+            norms_min_days: number;
             /**
              * Today Date
              * Format: date
@@ -12765,4 +12780,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: e2cb1a82d60e21ce3d0f0b2eba606d489bdb15f7b9d2ce0f0121cb0bae0f08d4
+// openapi.json sha256: f19f70e2a4406905e60eaebf5908acdb06cfbcf90f0329b07fa0281b00a45806

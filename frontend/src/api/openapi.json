@@ -7020,16 +7020,30 @@
       "RecoveryBar": {
         "properties": {
           "hi": {
-            "title": "Hi",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hi"
           },
           "key": {
             "title": "Key",
             "type": "string"
           },
           "lo": {
-            "title": "Lo",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lo"
           },
           "max": {
             "title": "Max",
@@ -7042,6 +7056,11 @@
           "tone": {
             "default": "",
             "title": "Tone",
+            "type": "string"
+          },
+          "unit": {
+            "default": "",
+            "title": "Unit",
             "type": "string"
           },
           "value": {
@@ -7059,9 +7078,7 @@
         "required": [
           "key",
           "min",
-          "max",
-          "lo",
-          "hi"
+          "max"
         ],
         "title": "RecoveryBar",
         "type": "object"
@@ -7357,6 +7374,16 @@
             },
             "title": "Norms",
             "type": "object"
+          },
+          "norms_days": {
+            "default": 0,
+            "title": "Norms Days",
+            "type": "integer"
+          },
+          "norms_min_days": {
+            "default": 0,
+            "title": "Norms Min Days",
+            "type": "integer"
           },
           "today_date": {
             "format": "date",

@@ -43,7 +43,7 @@ async def test_recovery_empty_overview(auth_client):
     data = r.json()
     assert set(data) == {
         "date", "today_date", "is_today", "is_configured", "last_sync",
-        "headline", "night", "norms", "bars", "days",
+        "headline", "night", "norms", "norms_days", "norms_min_days", "bars", "days",
     }  # fmt: skip
     assert data["headline"]["sleep_score"] is None
     assert data["night"] is None
@@ -239,3 +239,80 @@ async def test_import_garmin_json(auth_client):
         assert r.status_code == 200
         assert r.json()["ok"] is True
         assert len(r.json()["imported_dates"]) == 2
+
+
+# ── Personal corridors ────────────────────────────────────────────────────────
+
+
+def _daily(day: dt.date, **values):
+    return GarminDaily(date=day, domain=GARMIN_DOMAIN, source=Source.GARMIN_API.value, **values)
+
+
+def test_norms_are_mean_plus_minus_one_deviation_of_the_days_before_today():
+    from types import SimpleNamespace
+
+    from vitals.services import garmin_service
+
+    today = dt.date(2026, 9, 30)
+    # 20 earlier days alternating 50 / 60 (mean 55, deviation 5), and an outlier today
+    # that must not move its own yardstick.
+    rows = [
+        SimpleNamespace(date=today - dt.timedelta(days=i), hrv_avg=50 if i % 2 else 60, resting_hr=None)
+        for i in range(1, 21)
+    ]
+    rows.append(SimpleNamespace(date=today, hrv_avg=5, resting_hr=None))
+
+    norms = garmin_service.norms_from(rows, today)
+
+    assert norms["hrv"] == {"lo": 50.0, "hi": 60.0, "better": 1, "days": 20}
+    assert "rhr" not in norms  # nothing recorded — no corridor, not a default one
+
+
+def test_norms_need_enough_history_and_ignore_days_outside_the_window():
+    from types import SimpleNamespace
+
+    from vitals.services import garmin_service
+
+    today = dt.date(2026, 9, 30)
+    few = [SimpleNamespace(date=today - dt.timedelta(days=i), hrv_avg=50) for i in range(1, 14)]
+    assert garmin_service.norms_from(few, today) == {}
+
+    old = [SimpleNamespace(date=today - dt.timedelta(days=i), hrv_avg=50) for i in range(61, 100)]
+    assert garmin_service.norms_from(old, today) == {}
+
+
+async def test_recovery_without_history_shows_values_without_a_corridor(auth_client, db_session):
+    from vitals.utils.timeutils import today_local
+
+    db_session.add(_daily(today_local(), hrv_avg=52.0, resting_hr=51, sleep_score=80))
+    await db_session.commit()
+
+    body = (await auth_client.get(RECOVERY)).json()
+
+    assert body["norms"] == {}
+    assert body["norms_days"] == 0
+    assert body["norms_min_days"] == 14
+    hrv = next(b for b in body["bars"] if b["key"] == "hrv")
+    assert hrv["value"] == 52.0 and hrv["lo"] is None and hrv["hi"] is None and hrv["unit"] == "ms"
+    assert body["headline"]["rhr_note"] == ""
+
+
+async def test_recovery_corridor_comes_from_his_own_days(auth_client, db_session):
+    from vitals.utils.timeutils import today_local
+
+    today = today_local()
+    for i in range(1, 21):
+        db_session.add(_daily(today - dt.timedelta(days=i), hrv_avg=80.0 if i % 2 else 90.0, resting_hr=44 if i % 2 else 46))
+    db_session.add(_daily(today, hrv_avg=70.0, resting_hr=50))
+    await db_session.commit()
+
+    body = (await auth_client.get(RECOVERY)).json()
+
+    # Far from the old fixed 45–65 / 48–58 ranges: these are his numbers.
+    assert body["norms"]["hrv"] == {"lo": 80.0, "hi": 90.0, "better": 1, "unit": "ms"}
+    assert body["norms"]["rhr"] == {"lo": 44.0, "hi": 46.0, "better": -1, "unit": "bpm"}
+    assert body["norms_days"] == 20
+    assert body["headline"]["rhr_note"] == "above"
+    assert body["headline"]["hrv_nights_below"] == 1
+    hrv = next(b for b in body["bars"] if b["key"] == "hrv")
+    assert hrv["tone"] == "bad" and hrv["max"] >= 90.0

@@ -167,27 +167,31 @@ export default function RecoveryScreen() {
         )}
 
         <div className="c5">
-          <Section title={t('app.recovery.norms_title')} meta={t('app.recovery.norms_meta')}>
+          <Section
+            title={t('app.recovery.norms_title')}
+            meta={view.normsDays > 0 ? t('app.recovery.norms_meta', { days: view.normsDays }) : t('app.recovery.norms_pending', { days: view.normsMinDays })}
+          >
             <div className="rows norms">
               {view.bars.map((bar) => {
                 const norm = norms[bar.key]
-                if (norm === undefined) return null
                 const bad = isWorse(bar.value, norm)
-                const unitLabel = unitName(norm.unit, t)
+                const unitLabel = unitName(bar.unit, t)
                 return (
                   <div key={bar.key} className="row">
                     <div>
                       <div className="t">{t(`app.metric.${bar.key}`)}</div>
-                      <div className="m">
-                        {t('app.recovery.norm', { range: rangeText(norm) })}
-                        {unitLabel !== '' && ` ${unitLabel}`}
-                      </div>
+                      {norm !== undefined && (
+                        <div className="m">
+                          {t('app.recovery.norm', { range: rangeText(norm) })}
+                          {unitLabel !== '' && ` ${unitLabel}`}
+                        </div>
+                      )}
                     </div>
                     <div className={cx('v', bad && 'bad')}>
                       {num(bar.value)}
                       {bar.value !== null && unitLabel !== '' && <span className="u">{unitLabel}</span>}
                     </div>
-                    {bar.value !== null && <RangeBar value={bar.value} lo={norm.lo} hi={norm.hi} min={bar.min} max={bar.max} tone={bad ? 'bad' : ''} />}
+                    {bar.value !== null && norm !== undefined && <RangeBar value={bar.value} lo={norm.lo} hi={norm.hi} min={bar.min} max={bar.max} tone={bad ? 'bad' : ''} />}
                   </div>
                 )
               })}

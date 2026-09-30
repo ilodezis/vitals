@@ -45,20 +45,23 @@ logger = logging.getLogger(__name__)
 
 router = ApiRouter(prefix="/recovery", dependencies=[Depends(require_auth)])
 
-# User norms reference
-DEFAULT_NORMS: dict[str, RecoveryNorm] = {
-    "sleep": RecoveryNorm(lo=72, hi=88, better=1, unit=""),
-    "hrv": RecoveryNorm(lo=45, hi=65, better=1, unit="ms"),
-    "rhr": RecoveryNorm(lo=48, hi=58, better=-1, unit="bpm"),
-    "stress": RecoveryNorm(lo=15, hi=35, better=-1, unit=""),
-    "steps": RecoveryNorm(lo=8000, hi=12000, better=1, unit=""),
-    "bb": RecoveryNorm(lo=40, hi=90, better=1, unit=""),
+# Unit codes per metric (the screen words them) and the scale each bar is drawn on.
+_NORM_UNITS = {"hrv": "ms", "rhr": "bpm"}
+_BAR_SCALES: dict[str, tuple[float, float]] = {
+    "sleep": (40, 100),
+    "hrv": (35, 75),
+    "rhr": (40, 65),
+    "stress": (0, 60),
 }
 
 
-def _norm_bar(key: str, value: Optional[float], min_val: float, max_val: float, norm: RecoveryNorm) -> RecoveryBar:
+def _norm_bar(key: str, value: Optional[float], norm: Optional[RecoveryNorm]) -> RecoveryBar:
+    """One "against your norm" row. The scale stretches to keep both the corridor
+    and the reading on the bar; with no corridor yet the row carries the value alone."""
+    lo_scale, hi_scale = _BAR_SCALES[key]
+    marks = [v for v in (value, norm.lo if norm else None, norm.hi if norm else None) if v is not None]
     tone = ""
-    if value is not None:
+    if value is not None and norm is not None:
         if norm.better > 0 and value < norm.lo:
             tone = "bad"
         elif norm.better < 0 and value > norm.hi:
@@ -69,12 +72,13 @@ def _norm_bar(key: str, value: Optional[float], min_val: float, max_val: float, 
             tone = "good"
     return RecoveryBar(
         key=key,
-        min=min_val,
-        max=max_val,
+        min=min([lo_scale, *marks]),
+        max=max([hi_scale, *marks]),
         value=value,
-        lo=norm.lo,
-        hi=norm.hi,
+        lo=norm.lo if norm else None,
+        hi=norm.hi if norm else None,
         tone=tone,
+        unit=_NORM_UNITS.get(key, ""),
     )
 
 
@@ -111,21 +115,32 @@ async def read_recovery_overview(
     date_shown = latest.date if latest else today
     is_today = date_shown == today
 
+    # His own corridors, off the days before the one on screen; a metric without
+    # enough history simply has none.
+    raw_norms = await garmin_service.personal_norms(db, date_shown)
+    norms = {
+        key: RecoveryNorm(lo=n["lo"], hi=n["hi"], better=n["better"], unit=_NORM_UNITS.get(key, ""))
+        for key, n in raw_norms.items()
+    }
+    norms_days = max((n["days"] for n in raw_norms.values()), default=0)
+
     # Count recent nights where HRV was below norm
-    hrv_norm = DEFAULT_NORMS["hrv"]
+    hrv_norm = norms.get("hrv")
     hrv_nights_below = 0
     for d in history:
+        if hrv_norm is None:
+            break
         if d.hrv_avg is not None and d.hrv_avg < hrv_norm.lo:
             hrv_nights_below += 1
         elif d.hrv_avg is not None:
             break
 
     # RHR note
-    rhr_norm = DEFAULT_NORMS["rhr"]
+    rhr_norm = norms.get("rhr")
     # Where the resting pulse stands against the corridor — a code, the screen words
     # it; empty when there is no reading to place.
     rhr_note = ""
-    if latest and latest.resting_hr is not None:
+    if latest and latest.resting_hr is not None and rhr_norm is not None:
         if latest.resting_hr > rhr_norm.hi:
             rhr_note = "above"
         elif latest.resting_hr > (rhr_norm.lo + rhr_norm.hi) / 2:
@@ -177,10 +192,10 @@ async def read_recovery_overview(
 
     # Bars: sleep, hrv, rhr, stress
     bars = [
-        _norm_bar("sleep", float(latest.sleep_score) if (latest and latest.sleep_score) else None, 40, 100, DEFAULT_NORMS["sleep"]),
-        _norm_bar("hrv", latest.hrv_avg if latest else None, 35, 75, DEFAULT_NORMS["hrv"]),
-        _norm_bar("rhr", float(latest.resting_hr) if (latest and latest.resting_hr) else None, 40, 65, DEFAULT_NORMS["rhr"]),
-        _norm_bar("stress", float(latest.avg_stress) if (latest and latest.avg_stress) else None, 0, 60, DEFAULT_NORMS["stress"]),
+        _norm_bar("sleep", float(latest.sleep_score) if (latest and latest.sleep_score) else None, norms.get("sleep")),
+        _norm_bar("hrv", latest.hrv_avg if latest else None, norms.get("hrv")),
+        _norm_bar("rhr", float(latest.resting_hr) if (latest and latest.resting_hr) else None, norms.get("rhr")),
+        _norm_bar("stress", float(latest.avg_stress) if (latest and latest.avg_stress) else None, norms.get("stress")),
     ]
 
     # Days (oldest first for charts/matrix)
@@ -206,7 +221,9 @@ async def read_recovery_overview(
         last_sync=last_sync,
         headline=headline,
         night=night_preview,
-        norms=DEFAULT_NORMS,
+        norms=norms,
+        norms_days=norms_days,
+        norms_min_days=garmin_service.NORM_MIN_DAYS,
         bars=bars,
         days=days_items,
     )

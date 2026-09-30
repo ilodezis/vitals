@@ -349,7 +349,8 @@ async def seed_garmin(session):
     for i in (2, 1):
         _seed_intraday_day(session, _d(i))
         nights[_d(i)] = _seed_night(session, _d(i))
-    for i in range(14, 0, -1):
+    # Two months of days: the recovery corridors are computed from his own history.
+    for i in range(60, 0, -1):
         d = _d(i)
         sleep_h = random.uniform(6.5, 8.5)
         session.add(GarminDaily(

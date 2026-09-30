@@ -48,7 +48,11 @@ export interface RecoveryView {
     stageMinutes: [number, number, number, number] | null
   } | null
   norms: Partial<Record<NormKey, Norm>>
+  /** How many days the corridors were computed from; 0 while there is too little history. */
+  normsDays: number
+  /** How many days of history a corridor takes. */
+  normsMinDays: number
   /** The "against your norm" rows: the latest value and how wide the bar is drawn. */
-  bars: { key: 'sleep' | 'hrv' | 'rhr' | 'stress'; min: number; max: number; value: number | null }[]
+  bars: { key: 'sleep' | 'hrv' | 'rhr' | 'stress'; min: number; max: number; value: number | null; unit: string }[]
   days: NightDay[]
 }

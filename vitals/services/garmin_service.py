@@ -26,6 +26,7 @@ handed a client (tests pass a fake), never touching the network itself.
 from __future__ import annotations
 
 import logging
+import statistics
 from datetime import date as date_type, datetime, timedelta, timezone
 from typing import Any, Optional, Sequence
 
@@ -998,6 +999,64 @@ async def list_daily(
         select(GarminDaily).order_by(GarminDaily.date.desc()).limit(limit)
     )
     return result.scalars().all()
+
+
+# The corridor a recovery metric is read against: which column it lives in and
+# which way is better (1: higher, -1: lower).
+NORM_METRICS: dict[str, tuple[str, int]] = {
+    "sleep": ("sleep_score", 1),
+    "hrv": ("hrv_avg", 1),
+    "rhr": ("resting_hr", -1),
+    "stress": ("avg_stress", -1),
+    "steps": ("steps", 1),
+    "bb": ("body_battery_high", 1),
+}
+NORM_WINDOW_DAYS = 60
+NORM_MIN_DAYS = 14
+
+
+def norms_from(
+    rows: Sequence[Any],
+    today: date_type,
+    *,
+    window: int = NORM_WINDOW_DAYS,
+    minimum: int = NORM_MIN_DAYS,
+) -> dict[str, dict[str, Any]]:
+    """His own corridor per metric: the mean of the days *before* today, give or
+    take one standard deviation.
+
+    Strictly before, so the day being judged never moves its own yardstick. A
+    metric with fewer than ``minimum`` readings in the window gets no corridor at
+    all — the caller shows the value bare rather than against a made-up range.
+    Each entry also says how many days it was computed from.
+    """
+    norms: dict[str, dict[str, Any]] = {}
+    past = [r for r in rows if 0 < (today - r.date).days <= window]
+    for key, (column, better) in NORM_METRICS.items():
+        values = [v for v in (getattr(r, column, None) for r in past) if v is not None]
+        if len(values) < minimum:
+            continue
+        mean = statistics.fmean(values)
+        spread = statistics.pstdev(values)
+        norms[key] = {
+            "lo": round(mean - spread, 1),
+            "hi": round(mean + spread, 1),
+            "better": better,
+            "days": len(values),
+        }
+    return norms
+
+
+async def personal_norms(
+    session: AsyncSession,
+    today: date_type,
+    *,
+    window: int = NORM_WINDOW_DAYS,
+    minimum: int = NORM_MIN_DAYS,
+) -> dict[str, dict[str, Any]]:
+    """``norms_from`` over the stored days of the window before ``today``."""
+    rows = await list_daily_between(session, today - timedelta(days=window), today - timedelta(days=1))
+    return norms_from(rows, today, window=window, minimum=minimum)
 
 
 async def list_daily_between(

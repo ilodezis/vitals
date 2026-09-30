@@ -50,9 +50,11 @@ export function toRecoveryView(data: RawRecoveryView): RecoveryView {
               awake === undefined || rem === undefined || light === undefined || deep === undefined ? null : [awake, rem, light, deep],
           },
     norms,
+    normsDays: data.norms_days,
+    normsMinDays: data.norms_min_days,
     bars: data.bars.flatMap((b) => {
       const key = BAR_KEYS.find((k) => k === b.key)
-      return key === undefined ? [] : [{ key, min: b.min, max: b.max, value: b.value ?? null }]
+      return key === undefined ? [] : [{ key, min: b.min, max: b.max, value: b.value ?? null, unit: b.unit }]
     }),
     days: data.days.map((d) => ({
       dateIso: d.date,

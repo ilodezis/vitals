@@ -13,6 +13,8 @@ const SILENT: RawRecoveryView = {
   is_configured: false,
   is_today: true,
   norms: {},
+  norms_days: 0,
+  norms_min_days: 14,
   today_date: '2026-09-30',
 }
 
@@ -51,6 +53,18 @@ describe('toRecoveryView', () => {
     expect(view.headline.rhrNote).toBe('upper')
     expect(view.norms.hrv?.unit).toBe('ms')
     expect(view.norms.rhr).toEqual({ lo: 49, hi: 55, better: -1, unit: 'bpm' })
+  })
+
+  it('keeps a bar without a corridor as a bare value, and says how much history the corridors rest on', () => {
+    const bare = toRecoveryView({ ...SILENT, bars: [{ key: 'hrv', min: 35, max: 75, value: 52, unit: 'ms', tone: '' }] })
+
+    expect(bare.normsDays).toBe(0)
+    expect(bare.bars).toEqual([{ key: 'hrv', min: 35, max: 75, value: 52, unit: 'ms' }])
+
+    const known = toRecoveryView({ ...SILENT, norms_days: 41, norms_min_days: 14 })
+
+    expect(known.normsDays).toBe(41)
+    expect(known.normsMinDays).toBe(14)
   })
 
   it('leaves a day’s missing readings null', () => {
