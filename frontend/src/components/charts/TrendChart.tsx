@@ -49,6 +49,8 @@ export function TrendChart({ weighings, trend, phases, range, end }: TrendChartP
   const g = geometry
   const tick = (v: number) => formatNumber(v, lang, v % 1 === 0 ? 0 : 1)
 
+  const clipId = useId()
+
   return (
     <ChartFrame boxRef={box} scrub={g.scrub} readout={(p) => t('app.unit.kg_value', { value: formatNumber(p.value, lang) })}>
       {width > 0 && (
@@ -58,6 +60,9 @@ export function TrendChart({ weighings, trend, phases, range, end }: TrendChartP
               <stop offset="0" stopColor="#F4F0F6" stopOpacity=".07" />
               <stop offset="1" stopColor="#F4F0F6" stopOpacity="0" />
             </linearGradient>
+            <clipPath id={clipId}>
+              <rect x={0} y={0} width={width - 36 + 6} height={g.height} />
+            </clipPath>
           </defs>
           {g.phases.map((ph) => (
             <g key={ph.index}>
@@ -83,19 +88,21 @@ export function TrendChart({ weighings, trend, phases, range, end }: TrendChartP
               {shortDate(x.date, lang)}
             </text>
           ))}
-          {g.areaPath !== '' && <path className="late" d={g.areaPath} fill={`url(#${gradient})`} />}
-          <g className="late">
-            {g.dots.map((p, i) => (
-              <circle key={i} cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r={desktop ? 2.4 : 2} fill="#857B93" />
-            ))}
-          </g>
-          <path className="draw" pathLength={1} d={g.trendPath} fill="none" stroke="#F4F0F6" strokeWidth={2} strokeLinecap="round" />
-          {g.now !== null && (
+          <g clipPath={`url(#${clipId})`}>
+            {g.areaPath !== '' && <path className="late" d={g.areaPath} fill={`url(#${gradient})`} />}
             <g className="late">
-              <circle className="now-ring" cx={g.now.x} cy={g.now.y} r={4} fill="#F5A623" />
-              <circle cx={g.now.x} cy={g.now.y} r={4.5} fill="#F5A623" stroke="#221E27" strokeWidth={2} />
+              {g.dots.map((p, i) => (
+                <circle key={i} cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r={desktop ? 2.4 : 2} fill="#857B93" />
+              ))}
             </g>
-          )}
+            <path className="draw" pathLength={1} d={g.trendPath} fill="none" stroke="#F4F0F6" strokeWidth={2} strokeLinecap="round" />
+            {g.now !== null && (
+              <g className="late">
+                <circle className="now-ring" cx={g.now.x} cy={g.now.y} r={4} fill="#F5A623" />
+                <circle cx={g.now.x} cy={g.now.y} r={4.5} fill="#F5A623" stroke="#221E27" strokeWidth={2} />
+              </g>
+            )}
+          </g>
         </svg>
       )}
     </ChartFrame>

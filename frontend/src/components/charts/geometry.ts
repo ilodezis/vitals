@@ -76,7 +76,12 @@ export function trendGeometry(input: TrendInput): TrendGeometry {
   const x0 = start.getTime()
   const x1 = end.getTime()
 
-  const all = [...trend.map((p) => p.kg), ...weighings.map((p) => p.kg)]
+  const visibleWeighings = weighings.filter((p) => {
+    const t = p.date.getTime()
+    return t >= x0 && t <= x1
+  })
+
+  const all = [...trend.map((p) => p.kg), ...visibleWeighings.map((p) => p.kg)]
   const lo = all.length === 0 ? 0 : Math.floor(Math.min(...all) - 0.4)
   const hi = all.length === 0 ? 1 : Math.ceil(Math.max(...all) + 0.4)
   const X = scaleLinear().domain([x0, x1 === x0 ? x0 + DAY_MS : x1]).range([L, width - R])
@@ -108,7 +113,7 @@ export function trendGeometry(input: TrendInput): TrendGeometry {
     phases: bands,
     trendPath: smoothPath(trendPoints),
     areaPath: trendPoints.length > 1 ? areaPath(trendPoints, height - B) : '',
-    dots: weighings.map((p) => ({ x: X(p.date.getTime()), y: Y(p.kg) })),
+    dots: visibleWeighings.map((p) => ({ x: X(p.date.getTime()), y: Y(p.kg) })),
     now: last === undefined ? null : { x: last[0], y: last[1] },
     scrub: trend.map((p, i) => ({ x: (trendPoints[i] as Point)[0], y: (trendPoints[i] as Point)[1], value: p.kg, date: p.date })),
   }
@@ -193,9 +198,62 @@ export function doseGeometry(input: {
   const height = phone ? 170 : 210
   const [T, B, L, R] = [20, 24, 2, 38]
   const X = scaleLinear().domain([start.getTime(), end.getTime()]).range([L, width - R])
-  const top = Math.max(0, ...phases.map((p) => p.doseMg)) * 1.2 || 0.6
-  const Yd = scaleLinear().domain([0, top]).range([height - B, T])
-  const Yw = scaleLinear().domain([85, 95]).range([height - B, T])
+
+  // Weight scale: derived from trend data with padding, instead of hardcoded [85, 95]
+  const weights = trend.map((p) => p.kg)
+  const minW = weights.length > 0 ? Math.min(...weights) : 85
+  const maxW = weights.length > 0 ? Math.max(...weights) : 95
+  const span = Math.max(2, maxW - minW)
+  const pad = Math.max(0.5, span * 0.1)
+  const wLo = Math.floor(minW - pad)
+  const wHi = Math.ceil(maxW + pad)
+  const Yw = scaleLinear().domain([wLo, wHi]).range([height - B, T])
+
+  // Dose levels: equal steps so levels (e.g. 0.25 and 0.5) do not clump together
+  const sortedDoses = [...new Set(phases.map((p) => p.doseMg).filter((d) => d > 0))].sort((a, b) => a - b)
+  const K = sortedDoses.length
+  const availH = height - B - T
+
+  const doseYMap = new Map<number, number>()
+  sortedDoses.forEach((d, i) => {
+    const y = (height - B) - ((i + 1) / (K + 0.35)) * availH
+    doseYMap.set(d, y)
+  })
+
+  const Yd = (dose: number): number => {
+    if (dose <= 0) return height - B
+    const exact = doseYMap.get(dose)
+    if (exact !== undefined) return exact
+    if (K === 0) return height - B
+    if (dose < sortedDoses[0]!) {
+      const y0 = doseYMap.get(sortedDoses[0]!)!
+      return (height - B) + (y0 - (height - B)) * (dose / sortedDoses[0]!)
+    }
+    for (let i = 0; i < K - 1; i++) {
+      const d0 = sortedDoses[i]!
+      const d1 = sortedDoses[i + 1]!
+      if (dose >= d0 && dose <= d1) {
+        const y0 = doseYMap.get(d0)!
+        const y1 = doseYMap.get(d1)!
+        return y0 + ((dose - d0) / (d1 - d0)) * (y1 - y0)
+      }
+    }
+    const lastDose = sortedDoses[K - 1]!
+    const lastY = doseYMap.get(lastDose)!
+    return Math.max(T, lastY - ((dose - lastDose) / lastDose) * (availH / (K + 0.35)))
+  }
+
+  // Thin out levels if any two adjacent labels are closer than MIN_LABEL_GAP px
+  const MIN_LABEL_GAP = 16
+  const rawLevels = sortedDoses.map((dose) => ({ dose, y: doseYMap.get(dose)! }))
+  const filteredLevels: { dose: number; y: number }[] = []
+  for (let i = 0; i < rawLevels.length; i++) {
+    const curr = rawLevels[i]!
+    const prev = filteredLevels[filteredLevels.length - 1]
+    if (prev === undefined || Math.abs(curr.y - prev.y) >= MIN_LABEL_GAP || i === rawLevels.length - 1) {
+      filteredLevels.push(curr)
+    }
+  }
 
   let step = `M${L} ${height - B}`
   phases.forEach((p, i) => {
@@ -217,7 +275,7 @@ export function doseGeometry(input: {
     width,
     height,
     bottom: height - B,
-    levels: [...new Set(phases.map((p) => p.doseMg))].map((dose) => ({ dose, y: Yd(dose) })),
+    levels: filteredLevels,
     stepPath: step,
     weightPath: smoothPath(wp),
     first: firstP === undefined ? null : { x: X(firstP.date.getTime()), y: Yw(firstP.kg), kg: firstP.kg },

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { PARALLAX, SHADE, sheetCloses, swipeCommits, swipeFrame, whenPresent } from './stageMotion'
+import { stageMountedEntries } from './Stage'
+import { fade, PARALLAX, SHADE, sheetCloses, slide, swipeCommits, swipeFrame, whenPresent } from './stageMotion'
 
 describe('whenPresent', () => {
   it('returns at once when the element is already there', async () => {
@@ -51,5 +52,57 @@ describe('sheet drag', () => {
     expect(sheetCloses(300, 1000, 0)).toBe(true)
     expect(sheetCloses(270, 1000, 0.1)).toBe(false)
     expect(sheetCloses(20, 1000, 0.7)).toBe(true)
+  })
+})
+
+describe('stage motions and DOM order (B1)', () => {
+  function makeMockElement(): HTMLElement {
+    return {
+      hidden: false,
+      style: {} as Record<string, string>,
+      animate: vi.fn(() => ({ finished: Promise.resolve(), cancel: vi.fn() })),
+      getAnimations: vi.fn(() => []),
+    } as unknown as HTMLElement
+  }
+
+  it('hides node a after fade() so it cannot blink over b', async () => {
+    const a = makeMockElement()
+    const b = makeMockElement()
+    b.hidden = true
+    b.style.display = 'none'
+
+    await fade(a, b)
+
+    expect(a.hidden).toBe(true)
+    expect(a.style.display).toBe('none')
+    expect(b.hidden).toBe(false)
+    expect(b.style.display).toBe('')
+  })
+
+  it('hides departing node a after slide() push and pop', async () => {
+    const a = makeMockElement()
+    const b = makeMockElement()
+    const shade = makeMockElement()
+
+    await slide(a, b, shade, 400, 1)
+    expect(a.hidden).toBe(true)
+    expect(a.style.display).toBe('none')
+    expect(b.hidden).toBe(false)
+    expect(b.style.display).toBe('')
+
+    // Reset and test pop (-1)
+    a.hidden = false
+    a.style.display = ''
+    await slide(a, b, shade, 400, -1)
+    expect(a.hidden).toBe(true)
+    expect(a.style.display).toBe('none')
+  })
+
+  it('orders leaving entries before logical entries in DOM tree order', () => {
+    const logical = [{ id: 'weight' as const, key: 2, back: 'today' as const }]
+    const leaving = [{ id: 'today' as const, key: 1, back: null }]
+
+    const mounted = stageMountedEntries(logical, leaving)
+    expect(mounted.map((e) => e.id)).toEqual(['today', 'weight'])
   })
 })

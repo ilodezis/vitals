@@ -43,7 +43,10 @@ export function ScreenFrame({ id, hidden, register, children }: ScreenFrameProps
 
   // A hidden screen has no layout, so its scroll position is put back when it returns.
   useLayoutEffect(() => {
-    if (!hidden && node.current !== null) node.current.scrollTop = saved.current
+    if (!hidden && node.current !== null) {
+      node.current.style.display = ''
+      node.current.scrollTop = saved.current
+    }
   }, [hidden])
 
   return (

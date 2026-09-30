@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { sessionQuery } from '@/app/session'
 import { api, failText, InvalidError, ok } from '@/api/client'
 import { MarkerChart } from '@/components/charts/MarkerChart'
 import { FilterRow } from '@/components/controls/Choices'
@@ -26,17 +27,52 @@ import { useLabsView } from './useLabsView'
 import './labs.css'
 
 /** The order the group filters come in. */
-const GROUP_ORDER = ['metabolic', 'hormones', 'vitamins', 'lipids', 'thyroid']
+export const GROUP_ORDER = ['metabolic', 'hormones', 'hrt_panel', 'vitamins', 'lipids', 'thyroid']
 
 /** Normalize group keys to unify variants like metabolism / metabolic. */
-function normalizeGroupKey(k: string): string {
+export function normalizeGroupKey(k: string): string {
   const lower = k.toLowerCase().trim()
   if (lower === 'metabolism' || lower === '\u043C\u0435\u0442\u0430\u0431\u043E\u043B\u0438\u0437\u043C' || lower === 'metabolic') return 'metabolic'
   if (lower === 'hormones' || lower === '\u0433\u043E\u0440\u043C\u043E\u043D\u044B') return 'hormones'
+  if (lower === 'hrt_panel' || lower === 'hrt' || lower === '\u043F\u0430\u043D\u0435\u043B\u044C \u0433\u0437\u0442' || lower === '\u0433\u0437\u0442') return 'hrt_panel'
   if (lower === 'vitamins' || lower === '\u0432\u0438\u0442\u0430\u043C\u0438\u043D\u044B') return 'vitamins'
   if (lower === 'lipids' || lower === '\u043B\u0438\u043F\u0438\u0434\u044B') return 'lipids'
   if (lower === 'thyroid' || lower === '\u0449\u0438\u0442\u043E\u0432\u0438\u0434\u043D\u0430\u044F') return 'thyroid'
   return lower
+}
+
+export function deriveLabGroups(
+  markers: readonly LabMarker[],
+  hrtEnabled: boolean,
+  translate: (key: string, fallback: string) => string,
+): [string, string][] {
+  const seen = new Map<string, string>()
+  for (const m of markers) {
+    const normKey = normalizeGroupKey(m.groupKey)
+    if (normKey === 'hrt_panel' && !hrtEnabled) continue
+    if (!seen.has(normKey)) {
+      const translatedLabel = translate(`app.lab_cat.${normKey}`, m.group)
+      seen.set(normKey, translatedLabel)
+    }
+  }
+  const rank = (key: string) => {
+    const i = GROUP_ORDER.indexOf(key)
+    return i === -1 ? GROUP_ORDER.length : i
+  }
+  return [...seen].sort(([a], [b]) => rank(a) - rank(b))
+}
+
+export function filterLabMarkers(
+  markers: readonly LabMarker[],
+  filter: string,
+  hrtEnabled: boolean,
+): LabMarker[] {
+  const activeFilter = !hrtEnabled && filter === 'hrt_panel' ? 'all' : filter
+  return markers.filter((m) => {
+    if (activeFilter === 'all') return true
+    if (activeFilter === 'out') return statusOf(m) !== 'ok'
+    return normalizeGroupKey(m.groupKey) === activeFilter
+  })
 }
 
 /** A stretch of the scale that reads better than the whole range for markers whose reference range
@@ -254,28 +290,12 @@ export default function LabsScreen() {
     }
   }
 
-  const out = view.markers.filter((m) => statusOf(m) !== 'ok')
-  const groups = useMemo(() => {
-    const seen = new Map<string, string>()
-    for (const m of view.markers) {
-      const normKey = normalizeGroupKey(m.groupKey)
-      if (!seen.has(normKey)) {
-        const translatedLabel = tOr(`app.lab_cat.${normKey}`, m.group)
-        seen.set(normKey, translatedLabel)
-      }
-    }
-    const rank = (key: string) => {
-      const i = GROUP_ORDER.indexOf(key)
-      return i === -1 ? GROUP_ORDER.length : i
-    }
-    return [...seen].sort(([a], [b]) => rank(a) - rank(b))
-  }, [view.markers, tOr])
+  const session = useQuery({ ...sessionQuery, retry: false }).data
+  const hrtEnabled = session?.enabled_modules?.hrt === true
 
-  const visible = view.markers.filter((m) => {
-    if (filter === 'all') return true
-    if (filter === 'out') return statusOf(m) !== 'ok'
-    return normalizeGroupKey(m.groupKey) === filter
-  })
+  const out = view.markers.filter((m) => statusOf(m) !== 'ok')
+  const groups = useMemo(() => deriveLabGroups(view.markers, hrtEnabled, tOr), [view.markers, hrtEnabled, tOr])
+  const visible = useMemo(() => filterLabMarkers(view.markers, filter, hrtEnabled), [view.markers, filter, hrtEnabled])
 
   const shown = view.markers.find((m) => m.id === selected) ?? view.markers[0]
   const num = (m: LabMarker, v: number) => formatNumber(v, lang, m.decimals)

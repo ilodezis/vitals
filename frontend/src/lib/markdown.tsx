@@ -63,6 +63,18 @@ export function renderInline(text: string): ReactNode[] {
   return out
 }
 
+function splitTableRow(line: string): string[] {
+  let trimmed = line.trim()
+  if (trimmed.startsWith('|')) trimmed = trimmed.slice(1)
+  if (trimmed.endsWith('|')) trimmed = trimmed.slice(0, -1)
+  return trimmed.split('|').map((c) => c.trim())
+}
+
+function isTableDelimiter(line: string): boolean {
+  const cells = splitTableRow(line)
+  return cells.length > 0 && cells.every((c) => /^:?-+:?$/.test(c))
+}
+
 export interface MarkdownProps {
   source: string
 }
@@ -96,11 +108,79 @@ export function Markdown({ source }: MarkdownProps) {
     listItems = []
   }
 
-  for (const rawLine of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i]!
     const line = rawLine.trim()
     if (!line) {
       flushParagraph()
       flushList()
+      continue
+    }
+
+    // Horizontal rule: ---, ***, ___
+    if (/^(?:---|\*\*\*|___)\s*$/.test(line)) {
+      flushParagraph()
+      flushList()
+      blocks.push(<hr key={blockKey++} />)
+      continue
+    }
+
+    // Table: header line containing | followed by delimiter line
+    if (line.includes('|') && i + 1 < lines.length && isTableDelimiter(lines[i + 1]!.trim())) {
+      flushParagraph()
+      flushList()
+      const header = splitTableRow(line)
+      i += 1 // Skip delimiter line
+      const rows: string[][] = []
+      while (i + 1 < lines.length) {
+        const nextLine = lines[i + 1]!.trim()
+        if (!nextLine || !nextLine.includes('|')) break
+        i += 1
+        const rawCells = splitTableRow(nextLine)
+        const row = header.map((_, colIdx) => rawCells[colIdx] ?? '')
+        rows.push(row)
+      }
+      blocks.push(
+        <table key={blockKey++}>
+          <thead>
+            <tr>
+              {header.map((col, cIdx) => (
+                <th key={cIdx}>{renderInline(col)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rIdx) => (
+              <tr key={rIdx}>
+                {row.map((cell, cIdx) => (
+                  <td key={cIdx}>{renderInline(cell)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>,
+      )
+      continue
+    }
+
+    // Blockquote: > quote
+    const quoteMatch = /^>\s*(.*)$/.exec(line)
+    if (quoteMatch) {
+      flushParagraph()
+      flushList()
+      const quoteLines = [quoteMatch[1] ?? '']
+      while (i + 1 < lines.length) {
+        const nextLine = lines[i + 1]!.trim()
+        const nextMatch = /^>\s*(.*)$/.exec(nextLine)
+        if (!nextMatch) break
+        i += 1
+        quoteLines.push(nextMatch[1] ?? '')
+      }
+      blocks.push(
+        <blockquote key={blockKey++}>
+          {renderInline(quoteLines.join(' '))}
+        </blockquote>,
+      )
       continue
     }
 

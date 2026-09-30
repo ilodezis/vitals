@@ -26,6 +26,8 @@ export async function slide(
   const duration = SLIDE_MS * (1 - fromProgress)
   const top = dir > 0 ? b : a
   const under = dir > 0 ? a : b
+  b.style.display = ''
+  b.hidden = false
   under.style.zIndex = '1'
   shade.style.zIndex = '2'
   top.style.zIndex = '3'
@@ -42,6 +44,8 @@ export async function slide(
     animate(under, [{ transform: `translateX(${u0 * width}px)` }, { transform: `translateX(${u1 * width}px)` }], { duration }).finished,
     animate(shade, [{ opacity: s0 }, { opacity: s1 }], { duration }).finished,
   ])
+  a.hidden = true
+  a.style.display = 'none'
   settle(top, under, shade)
   for (const n of [top, under, shade]) n.style.zIndex = ''
   top.style.boxShadow = ''
@@ -50,6 +54,8 @@ export async function slide(
 /** A tab, a section tab, any change on the desktop: the old screen leaves fast and linear, the new
  *  one rises 10 px into place. */
 export async function fade(a: HTMLElement | null, b: HTMLElement): Promise<void> {
+  b.style.display = ''
+  b.hidden = false
   b.style.zIndex = '2'
   if (a !== null) a.style.zIndex = '1'
   const jobs = [
@@ -57,6 +63,10 @@ export async function fade(a: HTMLElement | null, b: HTMLElement): Promise<void>
   ]
   if (a !== null) jobs.push(animate(a, [{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'linear' }).finished)
   await Promise.all(jobs)
+  if (a !== null) {
+    a.hidden = true
+    a.style.display = 'none'
+  }
   settle(a, b)
   b.style.zIndex = ''
   if (a !== null) a.style.zIndex = ''
@@ -100,6 +110,8 @@ export async function sharedMorph(
   host.appendChild(flyer)
   source.style.visibility = 'hidden'
   target.style.visibility = 'hidden'
+  b.style.display = ''
+  b.hidden = false
   b.style.zIndex = '2'
   a.style.zIndex = '1'
 
@@ -114,6 +126,8 @@ export async function sharedMorph(
   target.style.visibility = ''
   source.style.visibility = ''
   flyer.remove()
+  a.hidden = true
+  a.style.display = 'none'
   settle(a, b)
   a.style.zIndex = ''
   b.style.zIndex = ''

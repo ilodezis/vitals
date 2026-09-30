@@ -86,6 +86,13 @@ function WeightEdit({ row, onClose }: { row: WeightHistoryRow; onClose: () => vo
   )
 }
 
+export function filterVisibleHistoryRows(
+  rows: readonly WeightHistoryRow[],
+  showSuperseded: boolean,
+): readonly WeightHistoryRow[] {
+  return showSuperseded ? rows : rows.filter((r) => !r.superseded)
+}
+
 /** Every weigh-in, newest first. One the person entered can be corrected; any of them can be
  *  deleted — and if it was the day's reading, the one it had outranked takes its place. */
 export function WeightHistory({ rows }: { rows: readonly WeightHistoryRow[] }) {
@@ -93,7 +100,11 @@ export function WeightHistory({ rows }: { rows: readonly WeightHistoryRow[] }) {
   const today = useToday()
   const queryClient = useQueryClient()
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [showSuperseded, setShowSuperseded] = useState(false)
   const labels = { today: t('app.today_word'), yesterday: t('app.yesterday_word') }
+
+  const supersededCount = rows.filter((r) => r.superseded).length
+  const displayedRows = filterVisibleHistoryRows(rows, showSuperseded)
 
   const remove = useMutation({
     mutationFn: (id: number) => ok(api.DELETE('/api/v1/weight/logs/{log_id}', { params: { path: { log_id: id } } })),
@@ -106,7 +117,7 @@ export function WeightHistory({ rows }: { rows: readonly WeightHistoryRow[] }) {
 
   return (
     <>
-      {rows.map((h) => (
+      {displayedRows.map((h) => (
         <Fragment key={h.id}>
           <div className={cx('row', 'r-hist', h.superseded && 'dim')}>
             <div>
@@ -150,6 +161,17 @@ export function WeightHistory({ rows }: { rows: readonly WeightHistoryRow[] }) {
           {editingId === h.id ? <WeightEdit row={h} onClose={() => setEditingId(null)} /> : null}
         </Fragment>
       ))}
+      {supersededCount > 0 && (
+        <button
+          type="button"
+          className="ghost more-btn superseded-toggle"
+          onClick={() => setShowSuperseded((s) => !s)}
+        >
+          {showSuperseded
+            ? t('app.weight.hide_superseded')
+            : t('app.weight.show_superseded_n', { count: supersededCount })}
+        </button>
+      )}
     </>
   )
 }

@@ -51,6 +51,20 @@ describe('trend chart', () => {
     expect(trendGeometry(base).xTicks).toHaveLength(4)
     expect(trendGeometry({ ...base, phone: false }).xTicks).toHaveLength(7)
   })
+
+  it('discards weighings outside [start, end] so earlier readings do not get negative x (B2)', () => {
+    const g = trendGeometry({
+      ...base,
+      weighings: [
+        { date: d(7, 20), kg: 91.5 },
+        { date: d(8, 15), kg: 88.9 },
+        { date: d(9, 5), kg: 86.0 },
+      ],
+    })
+    expect(g.dots).toHaveLength(1)
+    expect(g.dots[0]?.x).toBeGreaterThanOrEqual(0)
+    expect(g.dots[0]?.x).toBeLessThanOrEqual(400 - 36)
+  })
 })
 
 describe('hypnogram', () => {
@@ -89,6 +103,50 @@ describe('dose chart', () => {
     expect(g.levels[0]?.y).toBeGreaterThan(g.levels[1]?.y ?? Infinity)
     expect(g.stepPath.startsWith('M2 146')).toBe(true)
     expect(g.months.map((m) => m.date.getMonth())).toEqual([6, 7, 8])
+  })
+
+  it('places weight 102 inside the visible vertical chart range (B3)', () => {
+    const g = doseGeometry({
+      width: 400,
+      phone: true,
+      phases: [{ from: d(6, 29), doseMg: 0.25 }],
+      trend: [
+        { date: d(6, 29), kg: 104 },
+        { date: d(9, 29), kg: 102 },
+      ],
+      start: d(6, 29),
+      end: d(9, 29),
+    })
+    expect(g.last?.kg).toBe(102)
+    expect(g.last?.y).toBeGreaterThan(20)
+    expect(g.last?.y).toBeLessThan(146)
+  })
+
+  it('spaces 5+ levels of doses including 10 mg apart so they do not clump (B3)', () => {
+    const g = doseGeometry({
+      width: 400,
+      phone: true,
+      phases: [
+        { from: d(1, 1), doseMg: 0.25 },
+        { from: d(2, 1), doseMg: 0.5 },
+        { from: d(3, 1), doseMg: 1.0 },
+        { from: d(4, 1), doseMg: 2.5 },
+        { from: d(5, 1), doseMg: 5.0 },
+        { from: d(6, 1), doseMg: 10.0 },
+      ],
+      trend: [
+        { date: d(1, 1), kg: 100 },
+        { date: d(6, 1), kg: 90 },
+      ],
+      start: d(1, 1),
+      end: d(6, 1),
+    })
+    expect(g.levels.length).toBeGreaterThanOrEqual(5)
+    expect(g.levels.map((l) => l.dose)).toContain(10.0)
+    for (let i = 1; i < g.levels.length; i++) {
+      const dist = Math.abs(g.levels[i]!.y - g.levels[i - 1]!.y)
+      expect(dist).toBeGreaterThanOrEqual(16)
+    }
   })
 })
 

@@ -229,7 +229,7 @@ export function Stage({ onStack }: { onStack: (info: StackInfo) => void }) {
   }
 
   const top = topOf(view.logical)
-  const mounted: StackEntry[] = [...view.logical.entries, ...view.leaving]
+  const mounted: StackEntry[] = stageMountedEntries(view.logical.entries, view.leaving)
   return (
     <div
       ref={stage}
@@ -266,4 +266,8 @@ export function Stage({ onStack }: { onStack: (info: StackInfo) => void }) {
 function ScreenBody({ id }: { id: ScreenId }) {
   const Screen = screenComponent(id)
   return <Screen />
+}
+
+export function stageMountedEntries(logical: StackEntry[], leaving: StackEntry[]): StackEntry[] {
+  return [...leaving, ...logical]
 }
