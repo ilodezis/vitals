@@ -8,6 +8,7 @@ import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { parseIsoDate, shortDate } from '@/lib/dates'
+import { cx } from '@/lib/cx'
 import { formatNumber } from '@/lib/format'
 import { emptySeries, MAX_SERIES, metricOf, metricOptionLabel, metricsOf, needsParam, pickDomain, pickMetric, readCatalog, rowReady, seriesBody, type SeriesDraft } from './catalog'
 import { seriesColor } from './seriesColors'
@@ -372,14 +373,10 @@ export default function ChartsScreen() {
             </button>
             )}
 
-            <label className="norm-check">
-              <input
-                type="checkbox"
-                checked={normalize}
-                onChange={(e) => setNormalize(e.target.checked)}
-              />
-              <span>{t('app.charts.normalize_label')}</span>
-            </label>
+            <button type="button" className={cx('tgl', normalize && 'on')} aria-pressed={normalize} onClick={() => setNormalize(!normalize)}>
+              <i />
+              {t('app.charts.normalize_label')}
+            </button>
 
             <div className="form-acts">
               <PrimaryButton

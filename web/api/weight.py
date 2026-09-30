@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.enums import Domain, Source
 from vitals.integrations.llm_client import LLMClient, LLMNotConfigured
-from vitals.services import body_scan_service, garmin_weight_service, raw_payload_service, weight_service
+from vitals.services import body_scan_service, raw_payload_service, weight_service
 from vitals.utils.timeutils import today_local
 from web.api.errors import MUTATION_ERRORS, ApiRouter, not_found
 from web.api.schemas.weight import (
@@ -26,7 +26,6 @@ from web.api.schemas.weight import (
     BodyScanMetricItem,
     BodyScanPreview,
     BodyScanUploadResponse,
-    GarminExportResponse,
     NoiseMarkerCreate,
     NoiseMarkerRef,
     ProgressPhotoItem,
@@ -37,7 +36,7 @@ from web.api.schemas.weight import (
     WeightMeasuresView,
     WeightView,
 )
-from web.deps import get_redis, get_session, require_auth, require_module
+from web.deps import get_session, require_auth, require_module
 from web.templating import STATIC_DIR
 from web.uploads import DOC_EXTS, IMAGE_EXTS, file_ext, read_capped, validate_extension
 
@@ -392,26 +391,6 @@ async def delete_body_scan(scan_id: int, db: AsyncSession = Depends(get_session)
                 pass
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-# ── Garmin Weight Export ──────────────────────────────────────────────────────
-
-
-@router.post("/garmin-export", response_model=GarminExportResponse)
-async def trigger_garmin_weight_export(
-    db: AsyncSession = Depends(get_session),
-    redis=Depends(get_redis),
-) -> GarminExportResponse:
-    """Explicitly trigger Garmin weight export reconciliation."""
-    result = await garmin_weight_service.send_now(db, redis=redis)
-    await db.commit()
-    st = await garmin_weight_service.get_status(db)
-    return GarminExportResponse(
-        ok=result.get("status") not in ("error", "failed"),
-        status=result.get("status", "done"),
-        last_error=st.get("last_error"),
-        next_attempt_at=st.get("next_attempt_at"),
-    )
 
 
 # ── Existing Weight Logs ──────────────────────────────────────────────────────

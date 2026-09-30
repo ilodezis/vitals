@@ -9,6 +9,7 @@ import { Icon } from '@/components/icons/Icon'
 import { DomainAlerts } from '@/components/controls/DomainAlerts'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
+import { cx } from '@/lib/cx'
 import { useGeneticsView } from './useGeneticsView'
 import './genetics.css'
 
@@ -137,10 +138,10 @@ export default function GeneticsScreen() {
         screen="genetics"
         actions={
           <div className="gen-acts">
-            <label className="gen-only">
-              <input type="checkbox" checked={onlySignificant} onChange={(e) => setOnlySignificant(e.target.checked)} />
-              <span>{t('app.genetics.only_significant')}</span>
-            </label>
+            <button type="button" className={cx('tgl', onlySignificant && 'on')} aria-pressed={onlySignificant} onClick={() => setOnlySignificant(!onlySignificant)}>
+              <i />
+              {t('app.genetics.only_significant')}
+            </button>
             <TextButton icon="upload" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
               {isUploading ? t('genetics.uploading') : t('genetics.import_vcf')}
             </TextButton>
@@ -163,10 +164,10 @@ export default function GeneticsScreen() {
       {/* On a phone the masthead's actions are hidden: the same actions sit under the title. */}
       {!view.empty && (
         <div className="gen-acts-m">
-          <label className="gen-only">
-            <input type="checkbox" checked={onlySignificant} onChange={(e) => setOnlySignificant(e.target.checked)} />
-            <span>{t('app.genetics.only_significant')}</span>
-          </label>
+          <button type="button" className={cx('tgl', onlySignificant && 'on')} aria-pressed={onlySignificant} onClick={() => setOnlySignificant(!onlySignificant)}>
+            <i />
+            {t('app.genetics.only_significant')}
+          </button>
           <TextButton icon="upload" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
             {isUploading ? t('genetics.uploading') : t('genetics.import_vcf')}
           </TextButton>
@@ -187,10 +188,10 @@ export default function GeneticsScreen() {
             <p className="gen-empty-sub">{t('genetics.empty_sub')}</p>
           </div>
           <div className="gen-empty-acts">
-            <label className="gen-only">
-              <input type="checkbox" checked={onlySignificant} onChange={(e) => setOnlySignificant(e.target.checked)} />
-              <span>{t('app.genetics.only_significant')}</span>
-            </label>
+            <button type="button" className={cx('tgl', onlySignificant && 'on')} aria-pressed={onlySignificant} onClick={() => setOnlySignificant(!onlySignificant)}>
+              <i />
+              {t('app.genetics.only_significant')}
+            </button>
             <PrimaryButton onPress={async () => { fileInputRef.current?.click(); return true }}>
               {t('genetics.import_vcf')}
             </PrimaryButton>

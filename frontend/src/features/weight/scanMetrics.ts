@@ -37,8 +37,11 @@ export function groupScanMetrics(metrics: readonly BodyScanMetricItem[]): { cate
   })).filter((g) => g.metrics.length > 0)
 }
 
-/** "3,5–5,0": a metric's reference range; either end may be missing, both missing is no range. */
+/** "3,5–5,0": a metric's reference range. With one end missing it is a limit, "≤ 100" or
+ *  "≥ 33"; with both missing there is no range. */
 export function scanRefText(m: Pick<BodyScanMetricItem, 'ref_low' | 'ref_high'>, fmt: (v: number) => string): string | null {
   if (m.ref_low == null && m.ref_high == null) return null
-  return `${m.ref_low == null ? '' : fmt(m.ref_low)}–${m.ref_high == null ? '' : fmt(m.ref_high)}`
+  if (m.ref_low == null) return `≤ ${fmt(m.ref_high as number)}`
+  if (m.ref_high == null) return `≥ ${fmt(m.ref_low)}`
+  return `${fmt(m.ref_low)}–${fmt(m.ref_high)}`
 }

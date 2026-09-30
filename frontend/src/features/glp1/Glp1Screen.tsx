@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, failText, ok } from '@/api/client'
 import { DoseChart } from '@/components/charts/DoseChart'
+import { OptionGroup } from '@/components/controls/Choices'
 import { ConfirmButton } from '@/components/controls/ConfirmButton'
 import { DomainAlerts } from '@/components/controls/DomainAlerts'
 import { Badge, TextButton } from '@/components/controls/Marks'
@@ -25,6 +26,9 @@ import './glp1.css'
 const CYCLE_DAYS = 8
 /** The usual side effects, one tap each; anything else is typed. */
 const EFFECT_PRESETS = ['glp1.preset.nausea', 'glp1.preset.fatigue', 'glp1.preset.constipation', 'glp1.preset.diarrhea', 'glp1.preset.heartburn', 'glp1.preset.headache'] as const
+
+/** A side effect's strength, mild to severe. */
+const SEVERITIES = ['1', '2', '3', '4', '5'].map((id) => ({ id, label: id }))
 
 export default function Glp1Screen() {
   const { t, tOr, lang, plural } = useT()
@@ -253,68 +257,67 @@ export default function Glp1Screen() {
                   e.preventDefault()
                   sideEffectMutation.mutate()
                 }}
-                className="panel"
-                style={{ marginTop: '12px' }}
+                className="panel fpanel"
               >
-                <div className="fld">
-                  <label>{t('common.date')}</label>
-                  <input
-                    type="date"
-                    className="input"
-                    value={seDate}
-                    onChange={(e) => setSeDate(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="fld">
-                  <label>{t('app.glp1.side_effect_name')}</label>
-                  <input
-                    type="text"
-                    className="input"
-                    value={seName}
-                    onChange={(e) => setSeName(e.target.value)}
-                    placeholder={t('app.glp1.side_effect_placeholder')}
-                    required
-                  />
-                  <div className="se-presets" role="group" aria-label={t('app.glp1.effect_presets')}>
-                    {EFFECT_PRESETS.map((key) => (
-                      <button key={key} type="button" className={cx('filter', seName === t(key) && 'on')} onClick={() => setSeName(t(key))}>
-                        {t(key)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="fld">
-                  <label>
-                    {t('app.glp1.severity_label')}: {seSeverity}/5
+                <div className="form">
+                  <label className="field">
+                    <span className="flabel">{t('common.date')}</span>
+                    <input
+                      type="date"
+                      className="input"
+                      value={seDate}
+                      onChange={(e) => setSeDate(e.target.value)}
+                      required
+                    />
                   </label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    value={seSeverity}
-                    onChange={(e) => setSeSeverity(Number(e.target.value))}
-                  />
-                </div>
-                <div className="fld">
-                  <label>{t('app.glp1.side_effect_note')}</label>
-                  <textarea className="input" rows={2} value={seNote} placeholder={t('app.glp1.side_effect_note_ph')} onChange={(e) => setSeNote(e.target.value)} />
-                </div>
-                <div className="form-acts" style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                  <button
-                    type="submit"
-                    className="btn grow"
-                    disabled={sideEffectMutation.isPending || !seName.trim()}
-                  >
-                    {t('common.save')}
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={() => setShowSeForm(false)}
-                  >
-                    {t('app.cancel')}
-                  </button>
+                  <div className="field">
+                    <label className="flabel" htmlFor="se-name">{t('app.glp1.side_effect_name')}</label>
+                    <input
+                      id="se-name"
+                      type="text"
+                      className="input"
+                      value={seName}
+                      onChange={(e) => setSeName(e.target.value)}
+                      placeholder={t('app.glp1.side_effect_placeholder')}
+                      required
+                    />
+                    <div className="se-presets" role="group" aria-label={t('app.glp1.effect_presets')}>
+                      {EFFECT_PRESETS.map((key) => (
+                        <button key={key} type="button" className={cx('filter', seName === t(key) && 'on')} onClick={() => setSeName(t(key))}>
+                          {t(key)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="field">
+                    <span className="flabel">{t('app.glp1.severity_label')}</span>
+                    <OptionGroup
+                      label={t('app.glp1.severity_label')}
+                      options={SEVERITIES}
+                      value={String(seSeverity)}
+                      onChange={(id) => setSeSeverity(Number(id))}
+                    />
+                  </div>
+                  <label className="field">
+                    <span className="flabel">{t('app.glp1.side_effect_note')}</span>
+                    <textarea className="input" rows={2} value={seNote} placeholder={t('app.glp1.side_effect_note_ph')} onChange={(e) => setSeNote(e.target.value)} />
+                  </label>
+                  <div className="form-acts">
+                    <button
+                      type="submit"
+                      className="btn grow"
+                      disabled={sideEffectMutation.isPending || !seName.trim()}
+                    >
+                      {t('common.save')}
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() => setShowSeForm(false)}
+                    >
+                      {t('app.cancel')}
+                    </button>
+                  </div>
                 </div>
               </form>
             )}

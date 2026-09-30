@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDoseBody, buildItemBody, buildItemPatch, groupByClass, templateFileName, todayIndex } from './hrtBody'
+import { buildDoseBody, buildItemBody, buildItemPatch, groupByClass, startingDrug, templateFileName, todayIndex } from './hrtBody'
 
 describe('buildDoseBody', () => {
   it('reads the typed dose', () => {
@@ -111,5 +111,22 @@ describe('templateFileName', () => {
 
   it('has a name for a template without one', () => {
     expect(templateFileName('')).toBe('hrt_template_template.json')
+  })
+})
+
+describe('startingDrug', () => {
+  const enanthate = { compoundKey: 'testosterone_enanthate', unit: 'mg' }
+  const hcg = { compoundKey: 'hcg', unit: 'iu' }
+
+  it('starts a new dose on the drug injected last', () => {
+    expect(startingDrug({ doses: [hcg, enanthate], cycle: { items: [enanthate] } })).toEqual(hcg)
+  })
+
+  it('falls back to the first drug of the running course', () => {
+    expect(startingDrug({ doses: [], cycle: { items: [enanthate, hcg] } })).toEqual(enanthate)
+  })
+
+  it('picks nothing when there is neither, so the form asks instead of offering the top of the catalog', () => {
+    expect(startingDrug({ doses: [], cycle: null })).toEqual({ compoundKey: '', unit: 'mg' })
   })
 })

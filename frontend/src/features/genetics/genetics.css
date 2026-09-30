@@ -149,7 +149,6 @@
 }
 
 /* "Significant only" beside the import */
-.gen-only { display: inline-flex; align-items: center; gap: 8px; font-size: var(--t-label); color: var(--fg-2); cursor: pointer; white-space: nowrap; }
 .gen-hint { font-size: var(--t-micro); color: var(--muted); }
 .gen-acts-m { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: var(--s4); }
 @container app (min-width: 768px) {

@@ -219,14 +219,6 @@ async def test_body_scans_confirm_and_delete(auth_client, db_session, redis):
     assert r_del.status_code == 204
 
 
-async def test_garmin_weight_export_endpoint(auth_client):
-    r = await auth_client.post(f"{WEIGHT}/garmin-export")
-    assert r.status_code == 200
-    body = r.json()
-    assert "ok" in body
-    assert "status" in body
-
-
 async def test_latest_weight_returns_newest_not_oldest(auth_client, db_session):
     """list_active_weights orders ascending, so latest_kg and
     latest_date must come from weights[-1], never weights[0]."""

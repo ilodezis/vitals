@@ -96,3 +96,9 @@ export function formatNumber(value: number, lang: Lang, digits = 1): string {
   }
   return out
 }
+
+/** ["SpO₂ 93 %", null, "Body Battery +55"] → "SpO₂ 93 % · Body Battery +55": only what is known,
+ *  so a missing reading leaves no separator behind. */
+export function joinKnown(parts: (string | false | null | undefined)[]): string {
+  return parts.filter(Boolean).join(' · ')
+}

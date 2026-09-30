@@ -1984,47 +1984,6 @@
         "title": "FeedRow",
         "type": "object"
       },
-      "GarminExportResponse": {
-        "properties": {
-          "last_error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Error"
-          },
-          "next_attempt_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Next Attempt At"
-          },
-          "ok": {
-            "title": "Ok",
-            "type": "boolean"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "ok",
-          "status"
-        ],
-        "title": "GarminExportResponse",
-        "type": "object"
-      },
       "GarminImportResponse": {
         "properties": {
           "imported_dates": {
@@ -18513,45 +18472,6 @@
           }
         },
         "summary": "Delete Body Scan"
-      }
-    },
-    "/api/v1/weight/garmin-export": {
-      "post": {
-        "description": "Explicitly trigger Garmin weight export reconciliation.",
-        "operationId": "trigger_garmin_weight_export",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GarminExportResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnauthenticatedBody"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundBody"
-                }
-              }
-            },
-            "description": "Not Found"
-          }
-        },
-        "summary": "Trigger Garmin Weight Export"
       }
     },
     "/api/v1/weight/logs": {

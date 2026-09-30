@@ -308,8 +308,19 @@ a.row:hover { background: rgba(255, 255, 255, .02); }
 .sheet-pane[hidden] { display: none; }
 .sheet-pane.enter { animation: paneIn var(--d3) var(--ease-out) both; }
 @keyframes paneIn { from { opacity: 0; transform: translateX(10px); } }
-.field { display: grid; gap: 6px; }
+/* A form opened in place: its panel, its fields, a two-column row and its actions. They live
+   here because a screen's own stylesheet loads only with that screen, and a rule kept there
+   would reach the other forms only after that screen had been opened. */
+.fpanel { margin-top: var(--s6); margin-bottom: var(--s6); }
+.fpanel .form { display: grid; gap: var(--s3); }
+.form-g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); }
+.form-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding-top: var(--s2); }
+.field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+/* Fields stacked in a plain form keep a step between them; the in-place form spaces its own. */
+.form > .field + .field { margin-top: var(--s3); }
+.fpanel .form > .field + .field { margin-top: 0; }
 .field label, .flabel { font-size: var(--t-label); color: var(--muted); font-weight: 500; }
+.fhint { margin: 0; font-size: var(--t-micro); line-height: 1.45; color: var(--muted); }
 .input { height: 48px; padding: 0 14px; border-radius: var(--r); background: var(--bg-deep); border: 1px solid var(--line); color: var(--fg); font: inherit; font-size: 16px; transition: border-color var(--d2), box-shadow var(--d2); width: 100%; }
 .input:focus { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
 .meta-line { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -365,6 +376,11 @@ a.row:hover { background: rgba(255, 255, 255, .02); }
 .opt { height: 38px; font-size: var(--t-body); }
 .opt .hint { margin-left: 6px; font-size: var(--t-micro); font-weight: 400; color: var(--faint); }
 .opt.on .hint { color: #6E6479; }
+/* One on/off choice with its name: a dot that lights up, the way a rule is switched. */
+.tgl { display: inline-flex; align-items: center; gap: var(--s2); min-height: 44px; font-size: var(--t-label); color: var(--muted); touch-action: manipulation; }
+.tgl i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); transition: background var(--d2) var(--ease-out); }
+.tgl.on { color: var(--fg); }
+.tgl.on i { background: var(--good); }
 .sheet .opt:hover:not(.on) { background: var(--surface-3); }
 
 .badge { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-micro); font-weight: 500; color: var(--muted); white-space: nowrap; }

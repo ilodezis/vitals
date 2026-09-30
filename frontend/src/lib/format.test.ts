@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clockTime, formatCompact, formatCompactNumber, formatNumber, formatPercent } from './format'
+import { clockTime, formatCompact, formatCompactNumber, formatNumber, formatPercent, joinKnown } from './format'
 
 const MINUS = '−'
 const THIN = ' ' // narrow no-break space
@@ -85,3 +85,11 @@ describe('formatCompactNumber', () => {
   })
 })
 
+
+describe('joinKnown', () => {
+  it('joins what is known and leaves no separator hanging where a part is missing', () => {
+    expect(joinKnown(['SpO₂ 93 %', 'Body Battery +55'])).toBe('SpO₂ 93 % · Body Battery +55')
+    expect(joinKnown([null, 'Body Battery +55'])).toBe('Body Battery +55')
+    expect(joinKnown([false, undefined, ''])).toBe('')
+  })
+})

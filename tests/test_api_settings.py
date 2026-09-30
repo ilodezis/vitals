@@ -217,6 +217,13 @@ async def test_settings_garmin_weight_actions(auth_client, db_session, tmp_path,
     assert "status" in r_send.json()
 
 
+async def test_sending_the_weight_with_the_export_off_says_so(auth_client):
+    """The screen words its message from this status; "off" must not read as sent."""
+    r = await auth_client.post(f"{URL}/garmin/weight/send-now")
+    assert r.status_code == 200
+    assert r.json() == {"status": "disabled"}
+
+
 async def test_settings_update_mcp(auth_client, tmp_path, monkeypatch):
     env_file = tmp_path / "test.env"
     env_file.write_text("", encoding="utf-8")

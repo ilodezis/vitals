@@ -23,7 +23,8 @@ export function ConflictAlert({
   const { t } = useT()
 
   return (
-    <div className={violations.length > 0 ? 'collapse open' : 'collapse'}>
+    // Folded away it must not take the keyboard either: its buttons would be reachable unseen.
+    <div className={violations.length > 0 ? 'collapse open' : 'collapse'} inert={violations.length === 0}>
       <div>
         <Alert
           tone="block"

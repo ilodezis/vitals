@@ -30,7 +30,6 @@
 .fld { display: grid; gap: 6px; margin-bottom: 12px; }
 .fld label { font-size: var(--t-label); color: var(--fg-2); }
 .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.form-acts { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s4); align-items: center; }
 .navy-line { margin: var(--s2) 0 var(--s4); }
 .scan-lead { margin: 0 0 var(--s3); }
 .pv-title { margin: 0 0 var(--s2); font-family: var(--f-display); font-size: var(--t-ui); font-weight: 600; }

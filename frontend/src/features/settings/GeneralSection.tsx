@@ -301,7 +301,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
               <p className="fhint">{t('settings.timezone_hint')}</p>
             </label>
 
-            <label className="field">
+            <label className="field set-mt3">
               <span className="flabel">{t('settings.program')}</span>
               <input
                 className="input"
@@ -312,7 +312,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
               <p className="fhint">{t('settings.program_hint')}</p>
             </label>
 
-            <label className="field">
+            <label className="field set-mt3">
               <span className="flabel">{t('settings.goals_label')}</span>
               <input
                 className="input"

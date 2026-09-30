@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api, failText, InvalidError, ok } from '@/api/client'
+import { OptionGroup } from '@/components/controls/Choices'
 import { ConfirmButton } from '@/components/controls/ConfirmButton'
 import { ConflictAlert } from '@/components/controls/ConflictAlert'
 import { Disclosure } from '@/components/controls/Disclosure'
@@ -16,10 +17,13 @@ import { useT } from '@/i18n/useT'
 import { parseIsoDate, shortDate, toIsoDate } from '@/lib/dates'
 import { formatCompact } from '@/lib/format'
 import { useConflictMutation } from '@/lib/useConflictMutation'
-import { buildDoseBody, buildItemBody, buildItemPatch, groupByClass, templateFileName, todayIndex } from './hrtBody'
+import { buildDoseBody, buildItemBody, buildItemPatch, groupByClass, startingDrug, templateFileName, todayIndex } from './hrtBody'
 import type { HrtCyclePlanItem, HrtDoseItem, HrtTemplateItem } from './types'
 import { useHrtView } from './useHrtView'
 import './hrt.css'
+
+/** A side effect's strength, mild to severe. */
+const SEVERITIES = ['1', '2', '3', '4', '5'].map((id) => ({ id, label: id }))
 
 export default function HrtScreen() {
   const { t, tOr, lang } = useT()
@@ -47,9 +51,9 @@ export default function HrtScreen() {
   // Form states
   const todayStr = useMemo(() => toIsoDate(new Date()), [])
   const [doseDate, setDoseDate] = useState(todayStr)
-  const [doseCompound, setDoseCompound] = useState(() => view.compounds[0]?.key ?? 'testosterone_cypionate')
+  const [doseCompound, setDoseCompound] = useState(() => startingDrug(view).compoundKey)
   const [doseVal, setDoseVal] = useState('')
-  const [doseUnit, setDoseUnit] = useState(() => view.compounds[0]?.doseUnit ?? 'mg')
+  const [doseUnit, setDoseUnit] = useState(() => startingDrug(view).unit)
   const [doseSite, setDoseSite] = useState('glute_left')
   const [doseBrand, setDoseBrand] = useState('')
   const [doseNote, setDoseNote] = useState('')
@@ -73,7 +77,7 @@ export default function HrtScreen() {
 
   // Side effect form states
   const [seDate, setSeDate] = useState(todayStr)
-  const [seType, setSeType] = useState('acne')
+  const [seType, setSeType] = useState('')
   const [seSev, setSeSev] = useState(2)
   const [seNote, setSeNote] = useState('')
 
@@ -365,12 +369,13 @@ export default function HrtScreen() {
       await ok(api.POST('/api/v1/hrt/side-effects', {
         body: {
           date: seDate,
-          effectType: seType,
+          effectType: seType.trim(),
           severity: seSev,
           note: seNote || null,
         },
       }))
       toast(t('common.saved'))
+      setSeType('')
       setSideEffectModalOpen(false)
       refresh()
       return true
@@ -857,7 +862,7 @@ export default function HrtScreen() {
                 onFix={() => doseConflict.clearConflict()}
                 onSaveAnyway={() => doseButtonRef.current?.press({ override: true })}
               />
-              <PrimaryButton ref={doseButtonRef} className="btn grow" disabled={doseBody === null} onPress={doseConflict.submit}>
+              <PrimaryButton ref={doseButtonRef} className="btn grow" disabled={doseBody === null || doseCompound === ''} onPress={doseConflict.submit}>
                 {t('common.save')}
               </PrimaryButton>
             </div>
@@ -980,16 +985,20 @@ export default function HrtScreen() {
                 <span className="flabel">{t('hrt.symptom')}</span>
                 <input className="input" placeholder={t('hrt.symptom_ph')} value={seType} onChange={(e) => setSeType(e.target.value)} />
               </label>
-              <label className="field">
+              <div className="field">
                 <span className="flabel">{t('hrt.severity_label')}</span>
-                <input type="range" min="1" max="5" className="hrt-range-input" value={seSev} onChange={(e) => setSeSev(parseInt(e.target.value, 10))} />
-                <span className="hrt-range-sub">{t('hrt.severity_level', { sev: seSev })}</span>
-              </label>
+                <OptionGroup
+                  label={t('hrt.severity_label')}
+                  options={SEVERITIES}
+                  value={String(seSev)}
+                  onChange={(id) => setSeSev(Number(id))}
+                />
+              </div>
               <label className="field">
                 <span className="flabel">{t('common.note')}</span>
                 <input className="input" value={seNote} onChange={(e) => setSeNote(e.target.value)} />
               </label>
-              <PrimaryButton className="btn grow" onPress={handleCreateSideEffect}>
+              <PrimaryButton className="btn grow" disabled={seType.trim() === ''} onPress={handleCreateSideEffect}>
                 {t('common.save')}
               </PrimaryButton>
             </div>

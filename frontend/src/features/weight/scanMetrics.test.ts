@@ -39,10 +39,12 @@ describe('saved scan detail', () => {
     ])
   })
 
-  it('prints a reference range with either end missing', () => {
+  it('prints a one-sided reference as a limit, not as a range with a hole', () => {
     const fmt = (v: number) => String(v)
     expect(scanRefText({ ref_low: 3.5, ref_high: 5 }, fmt)).toBe('3.5–5')
-    expect(scanRefText({ ref_low: null, ref_high: 5 }, fmt)).toBe('–5')
+    // "–5" reads as minus five
+    expect(scanRefText({ ref_low: null, ref_high: 5 }, fmt)).toBe('≤ 5')
+    expect(scanRefText({ ref_low: 3.5, ref_high: null }, fmt)).toBe('≥ 3.5')
     expect(scanRefText({ ref_low: null, ref_high: null }, fmt)).toBeNull()
   })
 })

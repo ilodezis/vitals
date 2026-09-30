@@ -8,6 +8,7 @@ import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
+import { cx } from '@/lib/cx'
 import { longDate, parseIsoDate, syncedLabel } from '@/lib/dates'
 import { formatCompact } from '@/lib/format'
 import { HealthImport } from './HealthImport'
@@ -23,6 +24,18 @@ export function exportTone(status: string | null | undefined): AlertTone {
   if (status === 'failed' || status === 'conflict' || status === 'unverified' || status === 'delete_failed') return 'warn'
   if (status == null || status === '' || status === 'skipped') return 'note'
   return 'info'
+}
+
+const SEND_NOW_WORDED = new Set(['sent', 'matched', 'deleted', 'empty', 'disabled', 'unconfigured', 'busy', 'error'])
+const SEND_NOW_REFUSED = new Set(['disabled', 'unconfigured', 'busy', 'error'])
+
+/** What one "send now" run is reported as. An outcome without wording of its own points at the
+ *  status card, which already shows it. */
+export function sendNowOutcome(status: string): { key: string; warn: boolean } {
+  return {
+    key: `settings.garmin_weight_action.${SEND_NOW_WORDED.has(status) ? status : 'done'}`,
+    warn: SEND_NOW_REFUSED.has(status) || exportTone(status) === 'warn',
+  }
 }
 
 export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
@@ -131,8 +144,9 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
   const handleSendWeightNow = async () => {
     try {
       toast(t('settings.garmin_weight_action.manual_sync_started'))
-      const result = await ok(api.POST('/api/v1/weight/garmin-export'))
-      toast(result.ok ? t('settings.garmin_weight_action.manual_sync_success') : t('settings.garmin_weight_action.manual_sync_failed'), result.ok ? undefined : { icon: 'warn' })
+      const result = await ok(api.POST('/api/v1/settings/garmin/weight/send-now'))
+      const outcome = sendNowOutcome(result.status)
+      toast(t(outcome.key), outcome.warn ? { icon: 'warn' } : undefined)
       void queryClient.invalidateQueries({ queryKey: ['settings'] })
     } catch (err) {
       toast(failText(err, t('app.save_failed')), { icon: 'warn' })
@@ -312,9 +326,11 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
               </span>
               <button
                 type="button"
-                className={`opt ${weightExportEnabled ? 'on' : ''}`}
+                className={cx('tgl', weightExportEnabled && 'on')}
+                aria-pressed={weightExportEnabled}
                 onClick={handleToggleWeightExport}
               >
+                <i />
                 {weightExportEnabled ? t('common.enabled') : t('common.disabled')}
               </button>
               <p className="fhint set-mt2">{t('settings.garmin_weight_export_hint')}</p>
@@ -346,16 +362,18 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
                 )}
               </Alert>
 
-              <div className="set-mt3">
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={handleSendWeightNow}
-                >
-                  <Icon name="upload" />
-                  <span>{t('settings.garmin_weight_send_now')}</span>
-                </button>
-              </div>
+              {weightExportEnabled ? (
+                <div className="set-mt3">
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={handleSendWeightNow}
+                  >
+                    <Icon name="upload" />
+                    <span>{t('settings.garmin_weight_send_now')}</span>
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <HealthImport />

@@ -248,8 +248,3 @@ class WeightMeasuresView(BaseModel):
     noise_markers: list[NoiseMarkerItem] = []
 
 
-class GarminExportResponse(BaseModel):
-    ok: bool
-    status: str
-    last_error: Optional[str] = None
-    next_attempt_at: Optional[dt.datetime] = None

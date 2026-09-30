@@ -16,7 +16,6 @@
 .skinmap { margin: 0 0 14px; color: var(--faint); }
 
 /* Semantic layout & catalog classes replacing Tailwind */
-.fpanel { margin-bottom: var(--s6); }
 .fpanel.mb-s4 { margin-bottom: var(--s4); }
 .sk-form { display: grid; gap: var(--s3); }
 .sk-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s3); }

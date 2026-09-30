@@ -12,7 +12,7 @@ import { Icon } from '@/components/icons/Icon'
 import { Headline, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { longDate, parseIsoDate } from '@/lib/dates'
-import { formatNumber } from '@/lib/format'
+import { formatNumber, formatSigned, joinKnown } from '@/lib/format'
 import { durationText } from '@/lib/units'
 import type { components } from '@/api/schema'
 import './recovery.css'
@@ -99,6 +99,14 @@ export default function SleepNightScreen() {
   }
 
   const dateObj = parseIsoDate(night.date)
+  const readings = joinKnown([
+    night.spo2_min ? t('app.sleep.min_spo2', { spo2: formatNumber(night.spo2_min, lang) }) : null,
+    night.bb_change != null ? t('app.sleep.bb_change', { change: formatSigned(night.bb_change, lang, 0) }) : null,
+  ])
+  const disturbances = joinKnown([
+    night.awake_count != null ? t('app.sleep.awakenings', { n: night.awake_count }) : null,
+    night.restless_moments != null ? t('app.sleep.restless', { n: night.restless_moments }) : null,
+  ])
 
   return (
     <>
@@ -110,13 +118,10 @@ export default function SleepNightScreen() {
               <span className="num">{night.score ?? '—'}</span>
             </div>
             <div className="side">
-              <span className="sub">
-                {night.rhr ? t('app.sleep.sleeping_rhr', { rhr: formatNumber(night.rhr, lang, 0) }) : ''}
-              </span>
-              <span className="sub">
-                {night.spo2_min ? t('app.sleep.min_spo2', { spo2: formatNumber(night.spo2_min, lang) }) : ''}
-                {night.bb_change ? t('app.sleep.bb_change', { change: formatNumber(night.bb_change, lang, 0) }) : ''}
-              </span>
+              {night.rhr ? (
+                <span className="sub">{t('app.sleep.sleeping_rhr', { rhr: formatNumber(night.rhr, lang, 0) })}</span>
+              ) : null}
+              {readings !== '' && <span className="sub">{readings}</span>}
               {night.sleep_need_minutes != null && night.sleep_need_minutes > 0 && (
                 <span className="sub">{t('app.sleep.need', { duration: durationText(night.sleep_need_minutes, t) })}</span>
               )}
@@ -145,11 +150,7 @@ export default function SleepNightScreen() {
         </div>
       </Headline>
 
-      {(night.awake_count != null || night.restless_moments != null) && (
-        <p className="night-note">
-          {t('app.sleep.awakenings_and_restless', { awake: night.awake_count ?? '—', restless: night.restless_moments ?? '—' })}
-        </p>
-      )}
+      {disturbances !== '' && <p className="night-note">{disturbances}</p>}
       {night.breathing_disrupted && (
         <Alert tone="info" className="night-alert">
           {t('app.sleep.breathing_disrupted')}

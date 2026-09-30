@@ -2103,26 +2103,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/weight/garmin-export": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Trigger Garmin Weight Export
-         * @description Explicitly trigger Garmin weight export reconciliation.
-         */
-        post: operations["trigger_garmin_weight_export"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/weight/logs": {
         parameters: {
             query?: never;
@@ -3049,17 +3029,6 @@ export interface components {
             time: string;
             /** Value */
             value: number | null;
-        };
-        /** GarminExportResponse */
-        GarminExportResponse: {
-            /** Last Error */
-            last_error?: string | null;
-            /** Next Attempt At */
-            next_attempt_at?: string | null;
-            /** Ok */
-            ok: boolean;
-            /** Status */
-            status: string;
         };
         /** GarminImportResponse */
         GarminImportResponse: {
@@ -12490,44 +12459,6 @@ export interface operations {
             };
         };
     };
-    trigger_garmin_weight_export: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GarminExportResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthenticatedBody"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundBody"];
-                };
-            };
-        };
-    };
     create_weight_log: {
         parameters: {
             query?: never;
@@ -13250,4 +13181,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: eb7ec23f32f8c9a9408688608adbea3dfa2193f0abd38141dbea6d85dcf4263f
+// openapi.json sha256: e33cd2c41bac63e9f6f297d737347722310fedb0aee7b8f7865465e152eee597

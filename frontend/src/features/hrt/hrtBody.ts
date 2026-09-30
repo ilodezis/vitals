@@ -92,3 +92,15 @@ export function templateFileName(name: string): string {
   const safe = [...name].map((ch) => (/[\p{L}\p{N}_-]/u.test(ch) ? ch : '_')).join('').slice(0, 64)
   return `hrt_template_${safe === '' ? 'template' : safe}.json`
 }
+
+interface DrugAndUnit {
+  compoundKey: string
+  unit: string
+}
+
+/** The drug a new dose starts on: the one injected last, else the first of the running course,
+ *  else none, so the form asks. Never the top of the catalog, which is only first by name. */
+export function startingDrug(view: { doses: readonly DrugAndUnit[]; cycle?: { items: readonly DrugAndUnit[] } | null }): DrugAndUnit {
+  const from = view.doses[0] ?? view.cycle?.items[0]
+  return from ? { compoundKey: from.compoundKey, unit: from.unit } : { compoundKey: '', unit: 'mg' }
+}
