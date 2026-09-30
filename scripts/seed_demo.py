@@ -46,8 +46,11 @@ from vitals.models.timeline import Annotation
 from vitals.models.garmin import (
     SERIES_BODY_BATTERY,
     SERIES_HEART_RATE,
+    SERIES_SLEEP_BB,
     SERIES_SLEEP_HR,
     SERIES_SLEEP_HRV,
+    SERIES_SLEEP_SPO2,
+    SERIES_SLEEP_STRESS,
     SERIES_STRESS,
     GarminActivity,
     GarminDaily,
@@ -304,6 +307,11 @@ _NIGHT_STAGES = (
     ("light", 40), ("deep", 70), ("light", 50), ("rem", 45),
     ("light", 60), ("awake", 10), ("rem", 45), ("light", 100),
 )
+_NIGHT_BB_GAIN = 55
+
+
+def _night_start(d):
+    return datetime.combine(d, time(0, 0)) - timedelta(hours=1, minutes=30)
 
 
 def _seed_night(session, d):
@@ -311,23 +319,33 @@ def _seed_night(session, d):
     starts the evening before — the same way the parser dates a night to the
     morning of waking. Heart rate lands every minute and HRV every five, as they
     do in the real payload: the chart's hover has to reconcile the two cadences,
-    and a demo with everything on one grid would never show it failing."""
-    start = datetime.combine(d, time(0, 0)) - timedelta(hours=1, minutes=30)
+    and a demo with everything on one grid would never show it failing. SpO2
+    drops out for forty minutes, the way a loose strap loses it: the curve has to
+    break there instead of bridging the hole."""
+    start = _night_start(d)
     total_minutes = sum(mins for _, mins in _NIGHT_STAGES)
-    hr, hrv = 58.0, 55.0
+    hr, hrv, spo2, stress = 58.0, 55.0, 96.0, 18.0
+
+    def sample(series_type, ts, value):
+        session.add(GarminIntraday(
+            date=d, series_type=series_type, ts=ts, value=value,
+            domain=Domain.GARMIN, source=Source.GARMIN_API,
+        ))
+
     for m in range(total_minutes):
         ts = start + timedelta(minutes=m)
         hr = max(46.0, min(72.0, hr + random.uniform(-1.2, 1.2)))
-        session.add(GarminIntraday(
-            date=d, series_type=SERIES_SLEEP_HR, ts=ts, value=round(hr, 1),
-            domain=Domain.GARMIN, source=Source.GARMIN_API,
-        ))
+        sample(SERIES_SLEEP_HR, ts, round(hr, 1))
+        if not 180 <= m < 220:
+            spo2 = max(93.0, min(99.0, spo2 + random.uniform(-0.6, 0.6)))
+            sample(SERIES_SLEEP_SPO2, ts, float(round(spo2)))
         if m % 5 == 0:
             hrv = max(28.0, min(85.0, hrv + random.uniform(-4, 4)))
-            session.add(GarminIntraday(
-                date=d, series_type=SERIES_SLEEP_HRV, ts=ts, value=round(hrv, 1),
-                domain=Domain.GARMIN, source=Source.GARMIN_API,
-            ))
+            sample(SERIES_SLEEP_HRV, ts, round(hrv, 1))
+        if m % 3 == 0:
+            stress = max(5.0, min(45.0, stress + random.uniform(-3, 3)))
+            sample(SERIES_SLEEP_STRESS, ts, float(round(stress)))
+            sample(SERIES_SLEEP_BB, ts, float(round(20 + _NIGHT_BB_GAIN * m / total_minutes)))
 
     stages, cursor = [], start
     for stage, mins in _NIGHT_STAGES:
@@ -353,8 +371,20 @@ async def seed_garmin(session):
     for i in range(60, 0, -1):
         d = _d(i)
         sleep_h = random.uniform(6.5, 8.5)
+        # A night with curves starts where its curves do; the rest go to bed around eleven.
+        if d in nights:
+            bed = _night_start(d)
+            sleep_h = sum(mins for _, mins in _NIGHT_STAGES) / 60
+        else:
+            bed = datetime.combine(d, time(0, 0)) - timedelta(minutes=random.randint(20, 110))
         session.add(GarminDaily(
             date=d,
+            sleep_start=bed,
+            sleep_end=bed + timedelta(hours=sleep_h),
+            awake_count=random.randint(0, 4),
+            body_battery_change=_NIGHT_BB_GAIN if d in nights else random.randint(35, 70),
+            sleep_need_actual=random.randint(450, 510),
+            breathing_disruption="MILD" if i == 2 else "NONE",
             sleep_seconds=int(sleep_h * 3600),
             sleep_score=random.randint(65, 92),
             deep_sleep_seconds=int(random.uniform(0.8, 1.8) * 3600),
@@ -786,13 +816,36 @@ async def seed_activities(session):
             continue
         kind, name, dur, dist, hr = kinds[i % len(kinds)]
         d = _d(i)
+        dur += random.randint(-300, 300)
+        # What the detail calls add: a run has laps and a climb, a ride has power,
+        # a strength session only its training effect, a walk nothing at all.
+        detail = {}
+        if kind != "walking":
+            detail["training_effect_aerobic"] = round(random.uniform(1.8, 3.6), 1)
+            detail["training_effect_anaerobic"] = round(random.uniform(0.0, 1.4), 1)
+            shares = (0.08, 0.22, 0.4, 0.24, 0.06)
+            detail["hr_zone_seconds"] = [
+                {"zone": z + 1, "secs": round(dur * share)} for z, share in enumerate(shares)
+            ]
+        if kind == "running":
+            detail["elevation_gain_m"] = float(random.randint(20, 70))
+            laps = int(dist // 1000)
+            detail["splits"] = [
+                {"index": n + 1, "distance_m": 1000.0, "duration_s": round(dur / (dist / 1000)) + random.randint(-12, 12),
+                 "avg_hr": hr + random.randint(-5, 8)}
+                for n in range(laps)
+            ]
+        if kind == "cycling":
+            detail["elevation_gain_m"] = float(random.randint(90, 240))
+            detail["avg_power"] = random.randint(140, 190)
         session.add(GarminActivity(
             date=d, external_id=f"demo-{i}", activity_type=kind, name=name,
             start_time=datetime.combine(d, time(7, 30)),
-            duration_seconds=dur + random.randint(-300, 300),
+            duration_seconds=dur,
             distance_m=dist, calories=random.randint(250, 650),
             avg_hr=hr + random.randint(-6, 6), max_hr=hr + random.randint(20, 35),
             domain=Domain.GARMIN, source=Source.GARMIN_API,
+            **detail,
         ))
 
 
