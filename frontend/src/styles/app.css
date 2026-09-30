@@ -244,11 +244,11 @@ a.row:hover { background: rgba(255, 255, 255, .02); }
 .legend i.now { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 
 /* ---- Odometer digits ---- */
-.odo { display: inline-flex; white-space: nowrap; }
-.odo-d { display: inline-block; height: 1.1em; overflow: hidden; vertical-align: top; line-height: 1.1; }
-.odo-s { display: flex; flex-direction: column; transition: transform 900ms var(--ease-out); }
-.odo-s > span { height: 1.1em; }
-.odo-c { display: inline-block; line-height: 1.1; }
+.odo { display: inline-flex; white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
+.odo-d { display: inline-block; height: 1.1em; overflow: hidden; vertical-align: top; line-height: 1.1; text-align: center; }
+.odo-s { display: flex; flex-direction: column; transition: transform 900ms var(--ease-out); text-align: center; }
+.odo-s > span { height: 1.1em; display: flex; align-items: center; justify-content: center; text-align: center; }
+.odo-c { display: inline-block; line-height: 1.1; text-align: center; }
 .odo { transition: opacity 360ms var(--ease-out); }
 .odo.pre { opacity: 0; }
 .nw { white-space: nowrap; }
@@ -263,6 +263,7 @@ a.row:hover { background: rgba(255, 255, 255, .02); }
 .collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--d3) var(--ease-out), opacity var(--d3); opacity: 0; }
 .collapse > div { overflow: hidden; }
 .collapse.open { grid-template-rows: 1fr; opacity: 1; }
+.collapse:not(.open) { display: none; }
 
 /* ==========================================================================
    Bottom nav (phone)
@@ -296,7 +297,7 @@ a.row:hover { background: rgba(255, 255, 255, .02); }
   box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, .6);
   transform: translateY(105%); visibility: hidden;
   display: flex; flex-direction: column;
-  padding-bottom: calc(var(--sab) + 16px);
+  padding-bottom: calc(var(--sab) + 12px);
 }
 .sheet.vis { visibility: visible; }
 .sheet-grab { flex: none; padding: 10px 0 4px; display: grid; place-items: center; cursor: grab; touch-action: none; }
@@ -372,7 +373,7 @@ a.row:hover { background: rgba(255, 255, 255, .02); }
 .filter.on, .opt.on { background: var(--fg); color: var(--bg); font-weight: 600; }
 .filter .n { margin-left: 5px; color: var(--bad-strong); font-variant-numeric: tabular-nums; }
 .filter.on .n { color: #B8412A; }
-.opts { display: flex; flex-wrap: wrap; gap: 2px; margin: 0 -13px; }
+.opts { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; }
 .opt { height: 38px; font-size: var(--t-body); }
 .opt .hint { margin-left: 6px; font-size: var(--t-micro); font-weight: 400; color: var(--faint); }
 .opt.on .hint { color: #6E6479; }
@@ -381,6 +382,7 @@ a.row:hover { background: rgba(255, 255, 255, .02); }
 .tgl i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); transition: background var(--d2) var(--ease-out); }
 .tgl.on { color: var(--fg); }
 .tgl.on i { background: var(--good); }
+.sheet .opts { gap: 6px; margin: 0; }
 .sheet .opt:hover:not(.on) { background: var(--surface-3); }
 
 .badge { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-micro); font-weight: 500; color: var(--muted); white-space: nowrap; }
@@ -514,7 +516,7 @@ a.row:hover { background: rgba(255, 255, 255, .02); }
   .sheet {
     left: auto; top: 12px; right: 12px; bottom: 12px; width: 420px; max-height: none;
     border-radius: var(--r-lg); border: 1px solid var(--line-2);
-    transform: translateX(calc(100% + 24px)); padding-bottom: 20px;
+    transform: translateX(calc(100% + 24px)); padding-bottom: 16px;
   }
   .sheet-grab { display: none; }
   .sheet-head { padding: 20px 22px 14px; }
@@ -539,7 +541,7 @@ a.row:hover { background: rgba(255, 255, 255, .02); }
   .rail-ink { position: absolute; left: 0; right: 0; top: 0; height: 32px; border-radius: var(--r-sm); background: var(--accent-soft); transition: transform var(--d4) var(--ease-sheet), height var(--d4) var(--ease-sheet), opacity var(--d2); pointer-events: none; } /* impeccable-disable-line layout-transition -- an absolutely positioned indicator: its box is the animation, as in the approved mockup */
   .mast > .chips { border-bottom: 0; }
   .chip { font-size: var(--t-body); height: 40px; }
-  .filters { margin: var(--s5) 0 0 -13px; padding: 0; }
+  .filters { margin: var(--s5) 0 0 0; padding: 0; }
   .mk.sel { background: var(--surface); box-shadow: none; }
   .figs.inline.n3 > * { padding: 0 28px !important; }
   .figs.inline.n3 > *:first-child { padding-left: 0 !important; }

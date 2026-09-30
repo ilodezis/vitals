@@ -20,11 +20,13 @@
 .share-form .field { margin-top: var(--s4); }
 .share-form .field:first-child { margin-top: 0; }
 .share-opts { display: flex; gap: var(--s1); flex-wrap: wrap; }
-.share-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s3); }
+.share-grid-2 { display: grid; grid-template-columns: 1fr; gap: var(--s4); margin-top: var(--s4); }
+.share-custom-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); margin-top: var(--s2); }
 .share-labs-toggle { margin-top: var(--s4); }
 .share-btn-submit { width: 100%; margin-top: var(--s4); }
 
 @container app (min-width: 768px) {
+  .share-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .made-r { grid-template-columns: 64px minmax(0, 1fr) auto; }
   .made-r .flabel { grid-column: auto; }
 }

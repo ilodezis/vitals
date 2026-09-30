@@ -281,79 +281,83 @@ export default function ShareScreen() {
                   </div>
                 </div>
 
-                {/* Period */}
-                <div className="field">
-                  <span className="flabel">{t('share.report_period')}</span>
-                  <div className="opts share-opts">
-                    {['30', '90', '180', '365', 'all', 'custom'].map((pChoice) => (
-                      <button
-                        key={pChoice}
-                        type="button"
-                        className={`opt ${period === pChoice ? 'on' : ''}`}
-                        onClick={() => setPeriod(pChoice)}
-                      >
-                        {pChoice === 'all'
-                          ? t('share.period_all')
-                          : pChoice === 'custom'
-                            ? t('share.period_custom')
-                            : t('share.period_n_days', { n: pChoice })}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <div className="share-grid-2">
+                  {/* Period */}
+                  <div className="field">
+                    <span className="flabel">{t('share.report_period')}</span>
+                    <div className="opts share-opts">
+                      {['30', '90', '180', '365', 'all', 'custom'].map((pChoice) => (
+                        <button
+                          key={pChoice}
+                          type="button"
+                          className={`opt ${period === pChoice ? 'on' : ''}`}
+                          onClick={() => setPeriod(pChoice)}
+                        >
+                          {pChoice === 'all'
+                            ? t('share.period_all')
+                            : pChoice === 'custom'
+                              ? t('share.period_custom')
+                              : t('share.period_n_days', { n: pChoice })}
+                        </button>
+                      ))}
+                    </div>
 
-                {/* Custom Range Picker */}
-                {period === 'custom' && (
-                  <div className="share-grid-2">
-                    <label className="field">
-                      <span className="flabel">{t('share.period_from')}</span>
-                      <input
-                        type="date"
-                        className="input"
-                        value={customStart}
-                        onChange={(e) => setCustomStart(e.target.value)}
+                    {/* Custom Range Picker */}
+                    {period === 'custom' && (
+                      <div className="share-custom-dates">
+                        <label className="field">
+                          <span className="flabel">{t('share.period_from')}</span>
+                          <input
+                            type="date"
+                            className="input"
+                            value={customStart}
+                            onChange={(e) => setCustomStart(e.target.value)}
+                          />
+                        </label>
+                        <label className="field">
+                          <span className="flabel">{t('share.period_to')}</span>
+                          <input
+                            type="date"
+                            className="input"
+                            value={customEnd}
+                            onChange={(e) => setCustomEnd(e.target.value)}
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    {/* Expiration */}
+                    <div className="field">
+                      <span className="flabel">{t('share.link_expires')}</span>
+                      <div className="opts share-opts">
+                        {[7, 14, 30].map((days) => (
+                          <button
+                            key={days}
+                            type="button"
+                            className={`opt ${expiresDays === days ? 'on' : ''}`}
+                            onClick={() => setExpiresDays(days)}
+                          >
+                            {t('share.expires_n_days', { n: days })}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Flagged labs toggle using OptionGroup */}
+                    <div className="field share-labs-toggle">
+                      <span className="flabel">{t('share.section.labs')}</span>
+                      <OptionGroup
+                        value={labsFlaggedOnly ? 'flagged' : 'all'}
+                        onChange={(val) => setLabsFlaggedOnly(val === 'flagged')}
+                        options={[
+                          { id: 'all', label: t('share.labs_all') },
+                          { id: 'flagged', label: t('share.labs_flagged_only') },
+                        ]}
                       />
-                    </label>
-                    <label className="field">
-                      <span className="flabel">{t('share.period_to')}</span>
-                      <input
-                        type="date"
-                        className="input"
-                        value={customEnd}
-                        onChange={(e) => setCustomEnd(e.target.value)}
-                      />
-                    </label>
+                    </div>
                   </div>
-                )}
-
-                {/* Expiration */}
-                <div className="field">
-                  <span className="flabel">{t('share.link_expires')}</span>
-                  <div className="opts share-opts">
-                    {[7, 14, 30].map((days) => (
-                      <button
-                        key={days}
-                        type="button"
-                        className={`opt ${expiresDays === days ? 'on' : ''}`}
-                        onClick={() => setExpiresDays(days)}
-                      >
-                        {t('share.expires_n_days', { n: days })}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Flagged labs toggle using OptionGroup */}
-                <div className="field share-labs-toggle">
-                  <span className="flabel">{t('share.labs_flagged_only')}</span>
-                  <OptionGroup
-                    value={labsFlaggedOnly ? 'flagged' : 'all'}
-                    onChange={(val) => setLabsFlaggedOnly(val === 'flagged')}
-                    options={[
-                      { id: 'all', label: t('share.labs_all') },
-                      { id: 'flagged', label: t('share.labs_flagged_only') },
-                    ]}
-                  />
                 </div>
 
                 {/* Note */}

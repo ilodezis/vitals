@@ -247,7 +247,6 @@ export function LogSheet() {
             {tab === 'dose' && <DosePane enter={switched} />}
             {tab === 'measure' && <MeasurePane enter={switched} />}
           </div>
-          <div style={{ height: 6 }} />
         </div>
       </div>
     </>

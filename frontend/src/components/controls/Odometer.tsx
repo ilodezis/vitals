@@ -44,7 +44,7 @@ export function Odometer({ value, hidden = false, stagger = 0 }: OdometerProps) 
         }
         const delay = stagger > 0 && !atZero ? `${reel++ * stagger}ms` : undefined
         return (
-          <span key={i} className="odo-d">
+          <span key={i} className="odo-d" data-digit={ch}>
             <span
               className="odo-s"
               style={{ transform: `translateY(${atZero ? 0 : -Number(ch) * 1.1}em)`, transitionDelay: delay }}

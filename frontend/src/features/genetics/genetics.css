@@ -7,6 +7,7 @@
 .gen-acts { display: flex; gap: 8px; }
 
 .gen-filter-wrap { margin-top: var(--s6); }
+.gen-filter-wrap .filters { margin: 0; padding: 0; }
 .gen-list { margin-top: var(--s4); }
 
 .gen-row {

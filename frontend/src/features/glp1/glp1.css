@@ -21,10 +21,10 @@
 .pips.l2 i.on { background: var(--fg-2); }
 
 /* GLP-1 cycle: a line of days, not a row of boxes */
-.cycle { position: relative; display: grid; grid-template-columns: repeat(8, 1fr); margin-top: 20px; }
+.cycle { position: relative; display: grid; grid-template-columns: repeat(8, 1fr); margin-top: 20px; margin-bottom: 8px; }
 .cycle::before, .cycle .prog { content: ''; position: absolute; top: 7px; left: 6.25%; height: 2px; border-radius: 1px; }
 .cycle::before { right: 6.25%; background: var(--line-2); }
-.cycle .prog { width: 25%; background: var(--violet); opacity: .55; }
+.cycle .prog { background: var(--violet); opacity: .55; }
 .cyc { position: relative; display: grid; justify-items: center; gap: 2px; font-size: var(--t-micro); color: var(--muted); }
 .cyc i { width: 16px; height: 16px; display: grid; place-items: center; }
 .cyc i::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--line-2); box-shadow: 0 0 0 4px var(--bg); }

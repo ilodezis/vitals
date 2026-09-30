@@ -277,9 +277,13 @@ export default function TodayScreen() {
               <div className="feed">
                 {view.feed.map((row) => {
                   const line = feedLine(row, t, lang)
+                  const hasTime = Boolean(row.time && row.time.trim())
                   return (
-                    <div key={row.kind === 'weight' ? 'weight' : `${row.kind}:${row.time}:${row.text}`} className={cx('feed-row', row.kind === 'weight' && !hadWeighIn && 'enter')}>
-                      <span className="time">{row.time}</span>
+                    <div
+                      key={row.kind === 'weight' ? 'weight' : `${row.kind}:${row.time}:${row.text}`}
+                      className={cx('feed-row', !hasTime && 'no-time', row.kind === 'weight' && !hadWeighIn && 'enter')}
+                    >
+                      {hasTime && <span className="time">{row.time}</span>}
                       <span className="rail-dot">
                         <Dot tone={row.dot === 'amber' ? 'accent' : row.dot} />
                       </span>

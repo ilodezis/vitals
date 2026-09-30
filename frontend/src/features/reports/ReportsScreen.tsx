@@ -192,7 +192,7 @@ export default function ReportsScreen() {
         {t('app.reports.lede')}
       </p>
 
-      <div className="rep-grid">
+      <div className="grid">
         {/* Left Column: Goals */}
         <div className="c5">
           <section className="sec o1">

@@ -102,6 +102,10 @@ export default function Glp1Screen() {
           return { date, k, kind }
         })
 
+  const cycleProgressPct =
+    cycle !== null
+      ? Math.min(87.5, Math.max(0, (daysBetween(cycle.first, today) / Math.max(1, CYCLE_DAYS - 1)) * 87.5))
+      : 0
   const isOverdue = cycle !== null && (view.cycle.overdue || cycle.daysToNext < 0)
   const cycleStatusText =
     cycle === null
@@ -161,7 +165,7 @@ export default function Glp1Screen() {
                   <span className={cx('sub', isOverdue && 'warn')}>{cycleStatusText}</span>
                 </div>
                 <div className="cycle">
-                  <span className="prog" />
+                  <span className="prog" style={{ width: `${cycleProgressPct}%` }} />
                   {days.map(({ date, k, kind }) => (
                     <div key={date.getTime()} className={cx('cyc', kind)}>
                       <i />
