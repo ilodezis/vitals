@@ -23,6 +23,8 @@ import { useGlp1View } from './useGlp1View'
 import './glp1.css'
 
 const CYCLE_DAYS = 8
+/** The usual side effects, one tap each; anything else is typed. */
+const EFFECT_PRESETS = ['glp1.preset.nausea', 'glp1.preset.fatigue', 'glp1.preset.constipation', 'glp1.preset.diarrhea', 'glp1.preset.heartburn', 'glp1.preset.headache'] as const
 
 export default function Glp1Screen() {
   const { t, tOr, lang, plural } = useT()
@@ -35,6 +37,7 @@ export default function Glp1Screen() {
   const [seDate, setSeDate] = useState(() => toIsoDate(today))
   const [seName, setSeName] = useState('')
   const [seSeverity, setSeSeverity] = useState(1)
+  const [seNote, setSeNote] = useState('')
 
   const sideEffectMutation = useMutation({
     mutationFn: () =>
@@ -44,6 +47,7 @@ export default function Glp1Screen() {
             date: seDate,
             effectType: seName.trim(),
             severity: seSeverity,
+            note: seNote.trim() || null,
           },
         }),
       ),
@@ -51,6 +55,7 @@ export default function Glp1Screen() {
       void refetchAfterGlp1(queryClient)
       setShowSeForm(false)
       setSeName('')
+      setSeNote('')
       setSeSeverity(1)
       toast(t('app.saved'))
     },
@@ -271,6 +276,13 @@ export default function Glp1Screen() {
                     placeholder={t('app.glp1.side_effect_placeholder')}
                     required
                   />
+                  <div className="se-presets" role="group" aria-label={t('app.glp1.effect_presets')}>
+                    {EFFECT_PRESETS.map((key) => (
+                      <button key={key} type="button" className={cx('filter', seName === t(key) && 'on')} onClick={() => setSeName(t(key))}>
+                        {t(key)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="fld">
                   <label>
@@ -283,6 +295,10 @@ export default function Glp1Screen() {
                     value={seSeverity}
                     onChange={(e) => setSeSeverity(Number(e.target.value))}
                   />
+                </div>
+                <div className="fld">
+                  <label>{t('app.glp1.side_effect_note')}</label>
+                  <textarea className="input" rows={2} value={seNote} placeholder={t('app.glp1.side_effect_note_ph')} onChange={(e) => setSeNote(e.target.value)} />
                 </div>
                 <div className="form-acts" style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                   <button

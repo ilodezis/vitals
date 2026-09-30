@@ -11,11 +11,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.integrations.garmin_client import GarminClient
 from vitals.models.garmin import (
+    SERIES_BODY_BATTERY,
+    SERIES_HEART_RATE,
     SERIES_SLEEP_BB,
     SERIES_SLEEP_HR,
     SERIES_SLEEP_HRV,
     SERIES_SLEEP_MOVEMENT,
     SERIES_SLEEP_RESPIRATION,
+    SERIES_SLEEP_SPO2,
+    SERIES_SLEEP_STRESS,
+    SERIES_STRESS,
     SLEEP_SERIES_TYPES,
 )
 from vitals.services import garmin_service
@@ -24,14 +29,19 @@ from web.api.errors import ApiRouter, not_found
 from web.api.schemas.garmin import (
     ActivitiesListView,
     ActivityItem,
+    ActivitySplit,
+    ActivityZone,
     GarminImportResponse,
     GarminSyncResponse,
+    IntradayPoint,
     IntradaySeriesPoint,
     NightListItem,
     NightsListView,
+    RecoveryActivity,
     RecoveryBar,
     RecoveryDayItem,
     RecoveryHeadline,
+    RecoveryIntraday,
     RecoveryNightPreview,
     RecoveryNorm,
     RecoveryView,
@@ -108,7 +118,7 @@ async def read_recovery_overview(
                 dt_sync = datetime.fromtimestamp(int(last_sync_raw), timezone.utc)
                 local_dt = to_local_naive(dt_sync)
                 if local_dt:
-                    last_sync = local_dt.strftime("%d-%m-%Y %H:%M")
+                    last_sync = local_dt.isoformat(timespec="minutes")
             except (ValueError, TypeError, OverflowError):
                 logger.debug("Invalid sync:last_success:garmin timestamp: %r", last_sync_raw)
 
@@ -209,9 +219,33 @@ async def read_recovery_overview(
             stress=d.avg_stress,
             steps=d.steps,
             bb=d.body_battery_high,
+            awake_count=d.awake_count,
         )
         for d in days_sorted
     ]
+
+    # The shown day's curves, asked for by name: the same date also holds the
+    # night's samples, which belong to the sleep screen.
+    curves = (
+        await garmin_service.intraday_series_map(
+            db, latest.date, series_types=(SERIES_STRESS, SERIES_BODY_BATTERY, SERIES_HEART_RATE)
+        )
+        if latest
+        else {}
+    )
+    intraday = RecoveryIntraday(
+        **{
+            key: [IntradayPoint(ts=p["ts"], value=float(p["value"])) for p in curves.get(key, [])]
+            for key in (SERIES_STRESS, SERIES_BODY_BATTERY, SERIES_HEART_RATE)
+        }
+    )
+    activity = RecoveryActivity(
+        steps=latest.steps if latest else None,
+        stress=latest.avg_stress if latest else None,
+        intensity_moderate=latest.intensity_minutes_moderate if latest else None,
+        intensity_vigorous=latest.intensity_minutes_vigorous if latest else None,
+        active_calories=latest.active_calories if latest else None,
+    )
 
     return RecoveryView(
         date=date_shown,
@@ -220,6 +254,9 @@ async def read_recovery_overview(
         is_configured=is_configured,
         last_sync=last_sync,
         headline=headline,
+        activity=activity,
+        intraday=intraday,
+        advice=garmin_service.recovery_advice(latest),
         night=night_preview,
         norms=norms,
         norms_days=norms_days,
@@ -275,7 +312,9 @@ async def read_sleep_night_detail(
             # Format time HH:MM if long
             if len(t_str) >= 16 and "T" in t_str:
                 t_str = t_str[11:16]
-            out.append(IntradaySeriesPoint(time=t_str, value=float(p.get("value", 0))))
+            out.append(
+                IntradaySeriesPoint(time=t_str, value=float(p.get("value", 0)), ts=str(p.get("ts") or ""))
+            )
         return out
 
     stages_minutes = {
@@ -298,6 +337,8 @@ async def read_sleep_night_detail(
         bb_change=daily.body_battery_change,
         awake_count=daily.awake_count,
         restless_moments=daily.restless_moments,
+        sleep_need_minutes=daily.sleep_need_actual,
+        breathing_disrupted=bool(daily.breathing_disruption and daily.breathing_disruption != "NONE"),
         deep_seconds=daily.deep_sleep_seconds,
         light_seconds=daily.light_sleep_seconds,
         rem_seconds=daily.rem_sleep_seconds,
@@ -308,6 +349,9 @@ async def read_sleep_night_detail(
         respiration=_to_points(series.get(SERIES_SLEEP_RESPIRATION, [])),
         hrv=_to_points(series.get(SERIES_SLEEP_HRV, [])),
         movement=_to_points(series.get(SERIES_SLEEP_MOVEMENT, [])),
+        spo2=_to_points(series.get(SERIES_SLEEP_SPO2, [])),
+        stress=_to_points(series.get(SERIES_SLEEP_STRESS, [])),
+        body_battery=_to_points(series.get(SERIES_SLEEP_BB, [])),
         prev_date=prev_date,
         next_date=next_date,
     )
@@ -327,6 +371,10 @@ async def read_nights_list(
             date=n.date,
             score=n.sleep_score,
             duration_seconds=n.sleep_seconds,
+            start_time=n.sleep_start.strftime("%H:%M") if n.sleep_start else None,
+            end_time=n.sleep_end.strftime("%H:%M") if n.sleep_end else None,
+            awake_count=n.awake_count,
+            bb_change=n.body_battery_change,
             hrv=n.hrv_avg,
             rhr=n.resting_hr or n.avg_sleep_hr,
             deep_seconds=n.deep_sleep_seconds,
@@ -340,6 +388,34 @@ async def read_nights_list(
 
 
 # ── GET /api/v1/recovery/activities ───────────────────────────────────────────
+
+
+def _zones(raw: object) -> list[ActivityZone]:
+    """Seconds per heart-rate zone, as the sync stored them; a zone without a number is skipped."""
+    if not isinstance(raw, list):
+        return []
+    return [
+        ActivityZone(zone=int(z["zone"]), seconds=float(z.get("secs") or 0))
+        for z in raw
+        if isinstance(z, dict) and isinstance(z.get("zone"), int)
+    ]
+
+
+def _splits(raw: object) -> list[ActivitySplit]:
+    """Per-lap splits, only when there is more than one lap: a single lap is the activity itself."""
+    if not isinstance(raw, list) or len(raw) < 2:
+        return []
+    return [
+        ActivitySplit(
+            index=s.get("index") if isinstance(s.get("index"), int) else i + 1,
+            distance_meters=s.get("distance_m"),
+            duration_seconds=s.get("duration_s"),
+            avg_hr=s.get("avg_hr"),
+        )
+        for i, s in enumerate(raw)
+        if isinstance(s, dict)
+    ]
+
 
 
 @router.get("/activities", response_model=ActivitiesListView)
@@ -359,6 +435,12 @@ async def read_activities_list(
             calories=a.calories,
             avg_hr=a.avg_hr,
             max_hr=a.max_hr,
+            training_effect_aerobic=a.training_effect_aerobic,
+            training_effect_anaerobic=a.training_effect_anaerobic,
+            elevation_gain_meters=a.elevation_gain_m,
+            avg_power=a.avg_power,
+            hr_zones=_zones(a.hr_zone_seconds),
+            splits=_splits(a.splits),
         )
         for a in activities
     ]

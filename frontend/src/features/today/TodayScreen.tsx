@@ -11,9 +11,10 @@ import { rangeAxis } from '@/components/controls/gauges'
 import { Icon } from '@/components/icons/Icon'
 import { openLogSheet } from '@/components/sheet/logSheetStore'
 import { MODULE_SCREEN } from '@/components/shell/nav'
-import { ScreenLink } from '@/components/shell/navigation'
+import { ScreenLink, useGo } from '@/components/shell/navigation'
 import { TopBar } from '@/components/shell/PageHead'
 import { useScreen } from '@/components/shell/ScreenFrame'
+import { requestNewEvent } from '@/features/timeline/newEventIntent'
 import { WeightForm } from '@/features/weight/WeightForm'
 import { useLastWeighed } from '@/features/weight/useLastWeighed'
 import { useT } from '@/i18n/useT'
@@ -305,6 +306,7 @@ export default function TodayScreen() {
               {modules.nutrition === true && <Chip icon="bowl" tab="meal" label={t('app.log.tab.meal')} />}
               {modules.glp1 === true && <Chip icon="syringe" tab="dose" label={t('app.log.tab.dose')} />}
               <Chip icon="ruler" tab="measure" label={t('app.log.tab.measure')} />
+              {modules.timeline === true && <EventChip label={t('app.today.event_chip')} />}
             </div>
           </div>
 
@@ -405,6 +407,24 @@ function GoalCard({ goal }: { goal: NonNullable<TodayView['goal']> }) {
       </div>
       {forecastLine !== null && <p className="sub goal-forecast">{forecastLine}</p>}
     </>
+  )
+}
+
+/** A quick way to the timeline's add form. */
+function EventChip({ label }: { label: string }) {
+  const go = useGo()
+  return (
+    <button
+      type="button"
+      className="qchip"
+      onClick={() => {
+        requestNewEvent()
+        go('timeline')
+      }}
+    >
+      <Icon name="timeline" />
+      {label}
+    </button>
   )
 }
 

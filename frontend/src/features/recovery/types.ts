@@ -21,12 +21,34 @@ export interface NightDay {
   stress: number | null
   steps: number | null
   bb: number | null
+  awake: number | null
+}
+
+/** A point of a day's curve: local wall-clock ISO datetime and the reading. */
+export interface CurvePoint {
+  ts: string
+  value: number
 }
 
 /** `GET /api/v1/recovery`. What the watch has not reported is `null`: the screen prints a dash. */
 export interface RecoveryView {
   /** Garmin is connected; without it there is nothing to sync. */
   isConfigured: boolean
+  /** The day on screen: the newest one the watch reported, which before the morning sync is yesterday. */
+  dateIso: string
+  isToday: boolean
+  /** When the last sync went through, local ISO datetime; null before the first one. */
+  lastSync: string | null
+  /** The recovery observation, already in the user's language; null when recovery is fine. */
+  advice: string | null
+  activity: {
+    steps: number | null
+    stress: number | null
+    intensityModerate: number | null
+    intensityVigorous: number | null
+    activeCalories: number | null
+  }
+  intraday: { stress: CurvePoint[]; bodyBattery: CurvePoint[]; heartRate: CurvePoint[] }
   headline: {
     sleepScore: number | null
     sleepMinutes: number | null

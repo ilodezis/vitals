@@ -39,6 +39,17 @@
             ],
             "title": "Avg Hr"
           },
+          "avg_power": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Power"
+          },
           "calories": {
             "anyOf": [
               {
@@ -65,6 +76,25 @@
             "title": "Duration Seconds",
             "type": "integer"
           },
+          "elevation_gain_meters": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elevation Gain Meters"
+          },
+          "hr_zones": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ActivityZone"
+            },
+            "title": "Hr Zones",
+            "type": "array"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -84,9 +114,39 @@
             "title": "Name",
             "type": "string"
           },
+          "splits": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ActivitySplit"
+            },
+            "title": "Splits",
+            "type": "array"
+          },
           "start_time": {
             "title": "Start Time",
             "type": "string"
+          },
+          "training_effect_aerobic": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Training Effect Aerobic"
+          },
+          "training_effect_anaerobic": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Training Effect Anaerobic"
           }
         },
         "required": [
@@ -97,6 +157,70 @@
           "duration_seconds"
         ],
         "title": "ActivityItem",
+        "type": "object"
+      },
+      "ActivitySplit": {
+        "properties": {
+          "avg_hr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Hr"
+          },
+          "distance_meters": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Meters"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index"
+        ],
+        "title": "ActivitySplit",
+        "type": "object"
+      },
+      "ActivityZone": {
+        "properties": {
+          "seconds": {
+            "title": "Seconds",
+            "type": "number"
+          },
+          "zone": {
+            "title": "Zone",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "zone",
+          "seconds"
+        ],
+        "title": "ActivityZone",
         "type": "object"
       },
       "AiSettings": {
@@ -3461,6 +3585,17 @@
             ],
             "title": "Doseunit"
           },
+          "ester": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ester"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -3947,6 +4082,17 @@
             "title": "Compoundkey",
             "type": "string"
           },
+          "concMgMl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concmgml"
+          },
           "date": {
             "title": "Date",
             "type": "string"
@@ -4186,6 +4332,11 @@
       },
       "HrtPlannedItem": {
         "properties": {
+          "compoundKey": {
+            "default": "",
+            "title": "Compoundkey",
+            "type": "string"
+          },
           "date": {
             "title": "Date",
             "type": "string"
@@ -4194,8 +4345,24 @@
             "title": "Dose",
             "type": "string"
           },
+          "doseVal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doseval"
+          },
           "name": {
             "title": "Name",
+            "type": "string"
+          },
+          "unit": {
+            "default": "mg",
+            "title": "Unit",
             "type": "string"
           }
         },
@@ -4424,6 +4591,14 @@
               }
             ]
           },
+          "cycleKinds": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Cyclekinds",
+            "type": "array"
+          },
           "doses": {
             "items": {
               "$ref": "#/components/schemas/HrtDoseItem"
@@ -4482,6 +4657,14 @@
               "$ref": "#/components/schemas/HrtTemplateItem"
             },
             "title": "Templates",
+            "type": "array"
+          },
+          "units": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Units",
             "type": "array"
           }
         },
@@ -4565,10 +4748,33 @@
         "title": "InteractionsView",
         "type": "object"
       },
+      "IntradayPoint": {
+        "properties": {
+          "ts": {
+            "title": "Ts",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "ts",
+          "value"
+        ],
+        "title": "IntradayPoint",
+        "type": "object"
+      },
       "IntradaySeriesPoint": {
         "properties": {
           "time": {
             "title": "Time",
+            "type": "string"
+          },
+          "ts": {
+            "default": "",
+            "title": "Ts",
             "type": "string"
           },
           "value": {
@@ -4656,6 +4862,47 @@
           "n"
         ],
         "title": "KeyFrequencyItem",
+        "type": "object"
+      },
+      "LabCatalogEntry": {
+        "description": "A marker of the catalog: how often it is retested, its priority, and a paused reminder.",
+        "properties": {
+          "deferUntil": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deferuntil"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "retestIntervalDays": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retestintervaldays"
+          },
+          "tier": {
+            "default": 2,
+            "title": "Tier",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "LabCatalogEntry",
         "type": "object"
       },
       "LabConfirm": {
@@ -5285,6 +5532,14 @@
       },
       "LabsView": {
         "properties": {
+          "catalog": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LabCatalogEntry"
+            },
+            "title": "Catalog",
+            "type": "array"
+          },
           "collectedIso": {
             "title": "Collectediso",
             "type": "string"
@@ -6178,6 +6433,17 @@
       },
       "NightListItem": {
         "properties": {
+          "awake_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Awake Count"
+          },
           "awake_seconds": {
             "anyOf": [
               {
@@ -6188,6 +6454,17 @@
               }
             ],
             "title": "Awake Seconds"
+          },
+          "bb_change": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bb Change"
           },
           "date": {
             "format": "date",
@@ -6215,6 +6492,17 @@
               }
             ],
             "title": "Duration Seconds"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time"
           },
           "hrv": {
             "anyOf": [
@@ -6270,6 +6558,17 @@
               }
             ],
             "title": "Score"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
           }
         },
         "required": [
@@ -7148,6 +7447,68 @@
         "title": "RailStat",
         "type": "object"
       },
+      "RecoveryActivity": {
+        "description": "The shown day's movement: steps, stress, intensity minutes and active calories.",
+        "properties": {
+          "active_calories": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Calories"
+          },
+          "intensity_moderate": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intensity Moderate"
+          },
+          "intensity_vigorous": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intensity Vigorous"
+          },
+          "steps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Steps"
+          },
+          "stress": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stress"
+          }
+        },
+        "title": "RecoveryActivity",
+        "type": "object"
+      },
       "RecoveryBar": {
         "properties": {
           "hi": {
@@ -7216,6 +7577,17 @@
       },
       "RecoveryDayItem": {
         "properties": {
+          "awake_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Awake Count"
+          },
           "bb": {
             "anyOf": [
               {
@@ -7376,6 +7748,37 @@
         "title": "RecoveryHeadline",
         "type": "object"
       },
+      "RecoveryIntraday": {
+        "description": "The shown day's curves; a series the watch did not record is empty.",
+        "properties": {
+          "body_battery": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IntradayPoint"
+            },
+            "title": "Body Battery",
+            "type": "array"
+          },
+          "heart_rate": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IntradayPoint"
+            },
+            "title": "Heart Rate",
+            "type": "array"
+          },
+          "stress": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IntradayPoint"
+            },
+            "title": "Stress",
+            "type": "array"
+          }
+        },
+        "title": "RecoveryIntraday",
+        "type": "object"
+      },
       "RecoveryNightPreview": {
         "properties": {
           "date": {
@@ -7446,6 +7849,21 @@
       },
       "RecoveryView": {
         "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/RecoveryActivity",
+            "default": {}
+          },
+          "advice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Advice"
+          },
           "bars": {
             "default": [],
             "items": {
@@ -7469,6 +7887,14 @@
           },
           "headline": {
             "$ref": "#/components/schemas/RecoveryHeadline"
+          },
+          "intraday": {
+            "$ref": "#/components/schemas/RecoveryIntraday",
+            "default": {
+              "body_battery": [],
+              "heart_rate": [],
+              "stress": []
+            }
           },
           "is_configured": {
             "title": "Is Configured",
@@ -7896,6 +8322,11 @@
           "expiresAt": {
             "title": "Expiresat",
             "type": "string"
+          },
+          "hasSnapshot": {
+            "default": false,
+            "title": "Hassnapshot",
+            "type": "boolean"
           },
           "id": {
             "title": "Id",
@@ -8891,6 +9322,19 @@
             ],
             "title": "Bb Change"
           },
+          "body_battery": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IntradaySeriesPoint"
+            },
+            "title": "Body Battery",
+            "type": "array"
+          },
+          "breathing_disrupted": {
+            "default": false,
+            "title": "Breathing Disrupted",
+            "type": "boolean"
+          },
           "date": {
             "format": "date",
             "title": "Date",
@@ -9044,6 +9488,25 @@
             ],
             "title": "Score"
           },
+          "sleep_need_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep Need Minutes"
+          },
+          "spo2": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IntradaySeriesPoint"
+            },
+            "title": "Spo2",
+            "type": "array"
+          },
           "spo2_min": {
             "anyOf": [
               {
@@ -9081,6 +9544,14 @@
               }
             ],
             "title": "Start Time"
+          },
+          "stress": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IntradaySeriesPoint"
+            },
+            "title": "Stress",
+            "type": "array"
           },
           "today_date": {
             "format": "date",

@@ -8,6 +8,7 @@ from fastapi import Depends, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from vitals.enums import CycleKind, DoseUnit
 from vitals.services import (
     hrt_cycle_service,
     hrt_service,
@@ -44,7 +45,13 @@ async def read_hrt(db: AsyncSession = Depends(get_session)) -> HrtView:
     dose journal, body-map injection rotation, side effects, and cycle templates.
     ONLY RECORDING, NO DOSE RECOMMENDATIONS."""
     data = await hrt_service.collect(db)
-    return HrtView.model_validate(data)
+    return HrtView.model_validate(
+        {
+            **data,
+            "units": [u.value for u in DoseUnit],
+            "cycleKinds": [k.value for k in CycleKind],
+        }
+    )
 
 
 @router.get("/release", response_model=HrtReleaseResponse)

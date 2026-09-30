@@ -6,6 +6,7 @@ import { Icon } from '@/components/icons/Icon'
 import { Headline, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { longDate, parseIsoDate } from '@/lib/dates'
+import { formatSigned } from '@/lib/format'
 import type { components } from '@/api/schema'
 import './recovery.css'
 
@@ -13,6 +14,7 @@ type NightsListView = components['schemas']['NightsListView']
 
 export default function NightsListScreen() {
   const { t, lang } = useT()
+  const bbText = (change: number | null | undefined) => (change == null ? '—' : t('app.sleep.row_bb', { change: formatSigned(change, lang, 0) }))
 
   const { data } = useSuspenseQuery({
     queryKey: ['recovery', 'nights'],
@@ -42,12 +44,18 @@ export default function NightsListScreen() {
             <div className="hr-l">
               <div className="sub">{t('app.sleep.last_night')}</div>
               <div className="hr-t">{longDate(parseIsoDate(n0.date), lang)}</div>
-              <div className="sub num">{fmtHM(n0.duration_seconds)}</div>
+              <div className="sub num">
+                {n0.start_time && n0.end_time ? `${n0.start_time}–${n0.end_time} · ${fmtHM(n0.duration_seconds)}` : fmtHM(n0.duration_seconds)}
+              </div>
             </div>
             <div className="hr-f">
               <div className="f">
                 <div className="f-v">{n0.score ?? '—'}</div>
                 <div className="f-l">{t('today.metric_sleep_score')}</div>
+              </div>
+              <div className="f">
+                <div className="f-v">{n0.awake_count ?? '—'}</div>
+                <div className="f-l">{t('app.metric.awake')}</div>
               </div>
             </div>
             <Icon name="chevR" />
@@ -76,6 +84,8 @@ export default function NightsListScreen() {
                 <i style={{ flex: n.rem_seconds ?? 0, background: 'var(--violet)' }} />
                 <i style={{ flex: n.awake_seconds ?? 0, background: 'var(--bad)' }} />
               </div>
+              <span className="m num r-wide">{n.awake_count == null ? '—' : t('app.sleep.row_awake', { n: n.awake_count })}</span>
+              <span className="m num r-wide">{bbText(n.bb_change)}</span>
               <Icon name="chevR" />
             </Link>
           ))}

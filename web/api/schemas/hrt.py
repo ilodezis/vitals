@@ -52,6 +52,7 @@ class HrtDoseItem(CamelModel):
     dose_val: float
     unit: str
     ml: Optional[float] = None
+    conc_mg_ml: Optional[float] = None
     brand: Optional[str] = None
     lab: Optional[str] = None
     batch: Optional[str] = None
@@ -78,7 +79,10 @@ class HrtTemplateItem(CamelModel):
 class HrtPlannedItem(CamelModel):
     date: str
     name: str
+    compound_key: str = ""
     dose: str
+    dose_val: Optional[float] = None
+    unit: str = "mg"
 
 
 class HrtReleasePoint(CamelModel):
@@ -91,6 +95,7 @@ class HrtCompoundItem(CamelModel):
     key: str
     name: str
     compound_class: Optional[str] = None
+    ester: Optional[str] = None
     route: Optional[str] = None
     dose_unit: Optional[str] = None
     conc_mg_ml: Optional[float] = None
@@ -114,6 +119,9 @@ class HrtView(CamelModel):
     site_labels: dict[str, str]
     site_counts: dict[str, int]
     last: Optional[HrtLastDose] = None
+    # What the forms may choose from: the dose units and the cycle kinds the service accepts.
+    units: list[str] = []
+    cycle_kinds: list[str] = []
 
 
 class HrtDoseCreate(CamelModel):

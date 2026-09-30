@@ -32,3 +32,8 @@
 .hyp-legend i.good, .compo i.good { background: var(--good); }
 .hyp-legend i.violet, .compo i.violet { background: var(--violet); }
 .hyp-legend i.cool, .compo i.cool { background: var(--cool); }
+
+/* The day's date opens a calendar: the input sits under the label, out of sight */
+.dpick { position: relative; }
+.dpick-b { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted var(--faint); text-underline-offset: 3px; }
+.dpick-i { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }

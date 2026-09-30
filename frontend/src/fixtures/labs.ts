@@ -20,4 +20,5 @@ export const labsFixture: LabsView = {
     { id: 'tt', name: 'Тестостерон общий', groupKey: 'hormones', group: 'Гормоны', unit: 'нмоль/л', value: 21.4, lo: 8.6, hi: 29.0, min: 0, max: 35, decimals: 1, history: hist(17.9, 19.6, 21.4) },
     { id: 'fer', name: 'Ферритин', groupKey: 'vitamins', group: 'Витамины', unit: 'нг/мл', value: 96, lo: 30, hi: 400, min: 0, max: 450, decimals: 0, history: hist(88, 101, 96) },
   ],
+  catalog: [],
 }

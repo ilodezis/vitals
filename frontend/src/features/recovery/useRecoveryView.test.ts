@@ -6,6 +6,8 @@ type RawRecoveryView = components['schemas']['RecoveryView']
 
 /** A watch that has reported nothing. */
 const SILENT: RawRecoveryView = {
+  activity: {},
+  intraday: { stress: [], body_battery: [], heart_rate: [] },
   bars: [],
   date: '2026-09-30',
   days: [],
@@ -70,6 +72,28 @@ describe('toRecoveryView', () => {
   it('leaves a day’s missing readings null', () => {
     const view = toRecoveryView({ ...SILENT, days: [{ date: '2026-09-29', sleep: 81, hrv: 40.4 }] })
 
-    expect(view.days).toEqual([{ dateIso: '2026-09-29', sleep: 81, hrv: 40.4, rhr: null, stress: null, steps: null, bb: null }])
+    expect(view.days).toEqual([{ dateIso: '2026-09-29', sleep: 81, hrv: 40.4, rhr: null, stress: null, steps: null, bb: null, awake: null }])
+  })
+
+  it('keeps the day strip, curves, observation and last sync, and nothing made up without them', () => {
+    const silent = toRecoveryView(SILENT)
+    expect(silent.activity).toEqual({ steps: null, stress: null, intensityModerate: null, intensityVigorous: null, activeCalories: null })
+    expect(silent.intraday).toEqual({ stress: [], bodyBattery: [], heartRate: [] })
+    expect(silent.advice).toBeNull()
+    expect(silent.lastSync).toBeNull()
+
+    const view = toRecoveryView({
+      ...SILENT,
+      last_sync: '2026-09-30T07:05',
+      advice: 'Recovery: low sleep score',
+      activity: { steps: 8000, stress: 30, intensity_moderate: 20, intensity_vigorous: 15, active_calories: 600 },
+      intraday: { stress: [{ ts: '2026-09-30T08:00:00', value: 25 }], body_battery: [], heart_rate: [] },
+      days: [{ date: '2026-09-29', awake_count: 3 }],
+    })
+    expect(view.lastSync).toBe('2026-09-30T07:05')
+    expect(view.advice).toBe('Recovery: low sleep score')
+    expect(view.activity.intensityVigorous).toBe(15)
+    expect(view.intraday.stress).toEqual([{ ts: '2026-09-30T08:00:00', value: 25 }])
+    expect(view.days[0]?.awake).toBe(3)
   })
 })

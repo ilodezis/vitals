@@ -786,6 +786,8 @@ async def collect(
             "last_opened_at": r.last_opened_at.isoformat() if r.last_opened_at else None,
             "state": state,
             "url": f"/r/{r.token}",
+            # The frozen copy the download serves; reports made before snapshots have none.
+            "has_snapshot": bool(r.snapshot),
         })
 
     presets_dict = {

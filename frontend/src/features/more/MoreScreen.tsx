@@ -1,4 +1,6 @@
+import { logOut } from '@/app/logout'
 import { useSession } from '@/app/session'
+import { TextButton } from '@/components/controls/Marks'
 import { Icon } from '@/components/icons/Icon'
 import { ScreenLink } from '@/components/shell/navigation'
 import { TopBar } from '@/components/shell/PageHead'
@@ -61,6 +63,11 @@ export default function MoreScreen() {
           </ScreenLink>
         </div>
       </section>
+      <div className="more-out">
+        <TextButton icon="lock" onClick={() => void logOut()}>
+          {t('nav.logout')}
+        </TextButton>
+      </div>
     </>
   )
 }

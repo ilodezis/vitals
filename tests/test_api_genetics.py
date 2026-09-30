@@ -100,3 +100,22 @@ async def test_genetics_vcf_upload(auth_client):
     data = r.json()
     assert data["empty"] is False
     assert any(v["rsid"] == "rs1800562" for v in data["variants"])
+
+
+async def test_genetics_vcf_upload_significant_only(auth_client):
+    """With `only_interpreted`, a variant the catalog has no conflict marker for is left out."""
+    vcf_content = (
+        "##fileformat=VCFv4.2\n"
+        "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE\n"
+        "6\t26093141\trs1800562\tG\tA\t.\tPASS\t.\tGT\t0/1\n"
+        "1\t12345\trs0000001\tA\tG\t.\tPASS\t.\tGT\t0/1\n"
+    ).encode("utf-8")
+
+    everything = (await auth_client.post(f"{URL}/upload", files={"file": ("all.vcf", io.BytesIO(vcf_content), "text/plain")})).json()
+    r = await auth_client.post(
+        f"{URL}/upload?only_interpreted=true",
+        files={"file": ("some.vcf", io.BytesIO(vcf_content), "text/plain")},
+    )
+    assert r.status_code == 200
+    assert r.json()["imported"] <= everything["imported"]
+    assert r.json()["imported"] == r.json()["markers"]

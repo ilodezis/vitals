@@ -273,3 +273,50 @@ async def test_a_plan_item_says_whether_its_schedule_is_one_flat_dose(auth_clien
         "testosterone_cypionate": True,
         "testosterone_enanthate": False,
     }
+
+
+async def test_the_screen_carries_what_the_forms_choose_from(auth_client, db_session):
+    """Units and cycle kinds come from the server, compounds carry their ester, a dose its vial,
+    and a planned administration its dose as a number."""
+    from vitals.enums import DoseUnit
+
+    await hrt_catalog.sync_catalog(db_session)
+    await db_session.commit()
+    today = today_local()
+
+    r = await auth_client.post(
+        f"{URL}/doses",
+        json={
+            "date": today.isoformat(),
+            "compoundKey": "testosterone_enanthate",
+            "volumeMl": 0.5,
+            "concentrationMgMl": 250.0,
+            "lab": "Pharmacy",
+            "batch": "B-12",
+        },
+    )
+    assert r.status_code == 201
+    r = await auth_client.post(f"{URL}/cycles", json={"kind": CycleKind.COURSE.value, "startDate": today.isoformat()})
+    cycle_id = r.json()["id"]
+    r = await auth_client.post(
+        f"{URL}/cycles/{cycle_id}/items",
+        json={"compoundKey": "testosterone_cypionate", "dose": 125.0, "intervalDays": 3.5, "startWeek": 1},
+    )
+    assert r.status_code == 201
+
+    data = (await auth_client.get(URL)).json()
+    assert data["units"] == [u.value for u in DoseUnit]
+    assert data["cycleKinds"] == [k.value for k in CycleKind]
+    enanthate = next(c for c in data["compounds"] if c["key"] == "testosterone_enanthate")
+    assert enanthate["ester"]
+    dose = data["doses"][0]
+    assert dose["ml"] == 0.5
+    assert dose["concMgMl"] == 250.0
+    assert dose["doseVal"] == 125.0  # 0.5 ml × 250 mg/ml
+    assert (dose["lab"], dose["batch"]) == ("Pharmacy", "B-12")
+    assert data["planned"]
+    first = data["planned"][0]
+    assert first["compoundKey"] == "testosterone_cypionate"
+    assert first["doseVal"] == 125.0
+    assert first["unit"] == "mg"
+    assert data["cycle"]["cadence"] > 0

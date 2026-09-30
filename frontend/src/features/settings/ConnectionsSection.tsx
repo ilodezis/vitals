@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api, failText, ok } from '@/api/client'
+import { Alert, type AlertTone } from '@/components/controls/Alert'
 import { PrimaryButton } from '@/components/controls/PrimaryButton'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
@@ -14,6 +15,14 @@ import type { SettingsView } from './useSettingsView'
 
 interface ConnectionsSectionProps {
   settings: SettingsView
+}
+
+/** How the export's state reads: a done export is plain news, a stuck or refused one a warning,
+ *  nothing queued yet a quiet note. */
+export function exportTone(status: string | null | undefined): AlertTone {
+  if (status === 'failed' || status === 'conflict' || status === 'unverified' || status === 'delete_failed') return 'warn'
+  if (status == null || status === '' || status === 'skipped') return 'note'
+  return 'info'
 }
 
 export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
@@ -154,6 +163,7 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
     date?: string | null
     weight_kg?: number | null
     next_attempt_at?: string | null
+    last_error?: string | null
   } | null
 
   return (
@@ -309,24 +319,32 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
               </button>
               <p className="fhint set-mt2">{t('settings.garmin_weight_export_hint')}</p>
 
-              {weightStatus && weightStatus.status && (
-                <div className="alert info set-mt3">
-                  <Icon name="check" />
-                  <div>
-                    <div>
-                      {tOr(`settings.garmin_weight_status.${weightStatus.status}`, weightStatus.status, {
+              <p className="fhint set-mt2">
+                {settings.garmin.garmin_credentials_configured
+                  ? t('settings.garmin_weight_credentials_ready')
+                  : t('settings.garmin_weight_credentials_missing')}
+              </p>
+
+              <Alert tone={exportTone(weightStatus?.status)} icon={exportTone(weightStatus?.status) === 'info' ? 'check' : undefined} className="set-mt3">
+                <div>
+                  {weightStatus?.status
+                    ? tOr(`settings.garmin_weight_status.${weightStatus.status}`, weightStatus.status, {
                         weight: weightStatus.weight_kg == null ? '—' : formatCompact(weightStatus.weight_kg, lang),
                         date: weightStatus.date ? longDate(parseIsoDate(weightStatus.date), lang) : '—',
-                      })}
-                    </div>
-                    {Boolean(weightStatus.next_attempt_at) && (
-                      <span className="set-note">
-                        {t('settings.garmin_weight_next_attempt', { at: syncedLabel(String(weightStatus.next_attempt_at), today, lang) })}
-                      </span>
-                    )}
-                  </div>
+                      })
+                    : t('settings.garmin_weight_status.empty')}
                 </div>
-              )}
+                {weightStatus?.last_error ? (
+                  <span className="set-note">
+                    {t('settings.garmin_weight_last_error')}: {weightStatus.last_error}
+                  </span>
+                ) : null}
+                {Boolean(weightStatus?.next_attempt_at) && (
+                  <span className="set-note">
+                    {t('settings.garmin_weight_next_attempt', { at: syncedLabel(String(weightStatus?.next_attempt_at), today, lang) })}
+                  </span>
+                )}
+              </Alert>
 
               <div className="set-mt3">
                 <button

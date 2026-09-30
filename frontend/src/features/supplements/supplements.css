@@ -17,3 +17,4 @@
   .r-supp { grid-template-columns: minmax(0, 1fr) 120px 72px 136px; align-items: center; }
   .r-supp > .badge, .r-supp > span:empty, .r-supp .acts { grid-column: auto; }
 }
+.supp-custom { margin-top: var(--s2); }

@@ -69,3 +69,23 @@ async def test_share_create_revoke_delete(auth_client):
     r = await auth_client.get(URL)
     data = r.json()
     assert not any(rep["id"] == report_id for rep in data["reports"])
+
+
+async def test_share_list_says_which_reports_can_be_downloaded(auth_client, db_session):
+    from vitals.models.share import SharedReport
+
+    r = await auth_client.post(URL, json={"title": "Copy", "domains": ["weight"], "period": "30"})
+    assert r.status_code == 201
+    report_id = r.json()["id"]
+
+    found = next(rep for rep in (await auth_client.get(URL)).json()["reports"] if rep["id"] == report_id)
+    assert found["hasSnapshot"] is True
+    r = await auth_client.get(f"/share/{report_id}/download")
+    assert r.status_code == 200
+
+    # A report without its frozen copy has nothing to download.
+    row = await db_session.get(SharedReport, report_id)
+    row.snapshot = None
+    await db_session.commit()
+    found = next(rep for rep in (await auth_client.get(URL)).json()["reports"] if rep["id"] == report_id)
+    assert found["hasSnapshot"] is False

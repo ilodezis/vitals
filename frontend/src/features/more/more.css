@@ -20,3 +20,6 @@
 .more-row .mi svg { width: 21px; height: 21px; }
 
 .more-kicker { margin-top: 4px; }
+
+/* Signing out: the quietest thing on the screen, under everything else. */
+.more-out { display: flex; justify-content: center; margin: var(--s8) 0 var(--s4); }

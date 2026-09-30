@@ -151,3 +151,19 @@ async def test_labs_upload_and_confirm(auth_client, monkeypatch):
     names = {m["name"] for m in r.json()["markers"]}
     assert "Ferritin" in names
     assert "Vitamin D" in names
+
+
+async def test_labs_screen_carries_the_marker_catalog(auth_client):
+    today = today_local()
+    r = await auth_client.post(f"{URL}/results", json={"date": today.isoformat(), "marker": "TSH", "value": 2.0})
+    assert r.status_code == 201
+    marker_id = (await auth_client.get(f"{URL}/markers/TSH")).json()["id"]
+    r = await auth_client.patch(f"{URL}/markers/{marker_id}", json={"tier": 1, "retestIntervalDays": 180})
+    assert r.status_code == 200
+    until = today + timedelta(days=30)
+    r = await auth_client.post(f"{URL}/markers/TSH/defer", json={"until": until.isoformat()})
+    assert r.status_code == 200
+
+    catalog = (await auth_client.get(URL)).json()["catalog"]
+    entry = next(c for c in catalog if c["name"] == "TSH")
+    assert entry == {"name": "TSH", "tier": 1, "retestIntervalDays": 180, "deferUntil": until.isoformat()}

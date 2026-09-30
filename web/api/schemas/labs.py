@@ -35,11 +35,20 @@ class LabMarker(CamelModel):
     history: list[LabHistoryPoint]
 
 
+class LabCatalogEntry(CamelModel):
+    """A marker of the catalog: how often it is retested, its priority, and a paused reminder."""
+    name: str
+    tier: int = 2  # 1 is the highest priority
+    retest_interval_days: Optional[int] = None
+    defer_until: Optional[str] = None  # ISO date
+
+
 class LabsView(CamelModel):
     collected_iso: str
     lab: str
     source: str
     markers: list[LabMarker]
+    catalog: list[LabCatalogEntry] = []
 
 
 class LabExtractedMarker(CamelModel):

@@ -9,16 +9,11 @@ import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { parseIsoDate, shortDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/format'
+import { emptySeries, MAX_SERIES, metricOf, metricOptionLabel, metricsOf, needsParam, pickDomain, pickMetric, readCatalog, rowReady, seriesBody, type SeriesDraft } from './catalog'
 import { seriesColor } from './seriesColors'
 import type { CustomChartItem } from './types'
 import { useChartsView } from './useChartsView'
 import './charts.css'
-
-interface SeriesDraft {
-  domain: string
-  metricKey: string
-  param?: string
-}
 
 export default function ChartsScreen() {
   const { t, lang } = useT()
@@ -28,9 +23,8 @@ export default function ChartsScreen() {
   const [formOpen, setFormOpen] = useState(false)
   const [chartName, setChartName] = useState('')
   const [normalize, setNormalize] = useState(false)
-  const [seriesRows, setSeriesRows] = useState<SeriesDraft[]>([
-    { domain: 'weight', metricKey: 'ma' },
-  ])
+  const domains = useMemo(() => readCatalog(view.catalog), [view.catalog])
+  const [seriesRows, setSeriesRows] = useState<SeriesDraft[]>([emptySeries()])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
@@ -39,11 +33,11 @@ export default function ChartsScreen() {
   }
 
   const addSeriesRow = () => {
-    if (seriesRows.length >= 8) {
+    if (seriesRows.length >= MAX_SERIES) {
       toast(t('app.charts.max_8_series'), { icon: 'warn' })
       return
     }
-    setSeriesRows([...seriesRows, { domain: 'garmin', metricKey: 'sleep' }])
+    setSeriesRows([...seriesRows, emptySeries()])
   }
 
   const removeSeriesRow = (index: number) => {
@@ -51,15 +45,17 @@ export default function ChartsScreen() {
     setSeriesRows(seriesRows.filter((_, i) => i !== index))
   }
 
-  const updateSeriesRow = (index: number, patch: Partial<SeriesDraft>) => {
-    setSeriesRows((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, ...patch } : row))
-    )
+  const updateSeriesRow = (index: number, change: (row: SeriesDraft) => SeriesDraft) => {
+    setSeriesRows((prev) => prev.map((row, i) => (i === index ? change(row) : row)))
   }
 
   const handleSaveChart = async (): Promise<boolean> => {
     if (!chartName.trim()) {
       toast(t('app.charts.enter_name'), { icon: 'warn' })
+      return false
+    }
+    if (!seriesRows.every((r) => rowReady(domains, r))) {
+      toast(t('app.charts.pick_all'), { icon: 'warn' })
       return false
     }
     setIsSubmitting(true)
@@ -68,16 +64,13 @@ export default function ChartsScreen() {
         body: {
           name: chartName.trim(),
           normalize,
-          series: seriesRows.map((r) => ({
-            domain: r.domain,
-            metricKey: r.metricKey,
-            param: r.param || null,
-          })),
+          series: seriesRows.map((r) => seriesBody(domains, r)),
         },
       }))
       toast(t('app.charts.chart_saved'))
       setFormOpen(false)
       setChartName('')
+      setSeriesRows([emptySeries()])
       refresh()
       return true
     } catch (err) {
@@ -250,16 +243,6 @@ export default function ChartsScreen() {
     )
   }
 
-  const catalogDomains = useMemo(() => {
-    return [
-      { key: 'weight', label: t('nav.weight') },
-      { key: 'garmin', label: t('nav.garmin') },
-      { key: 'workouts', label: t('nav.workouts') },
-      { key: 'nutrition', label: t('nav.nutrition') },
-      { key: 'labs', label: t('nav.labs') },
-    ]
-  }, [t])
-
   return (
     <>
       <TopBar
@@ -321,21 +304,52 @@ export default function ChartsScreen() {
                   <div className="srow-f">
                     <select
                       className="input"
+                      aria-label={t('app.charts.domain')}
                       value={r.domain}
-                      onChange={(e) => updateSeriesRow(i, { domain: e.target.value })}
+                      onChange={(e) => updateSeriesRow(i, (row) => pickDomain(row, e.target.value))}
                     >
-                      {catalogDomains.map((d) => (
+                      <option value="" disabled>
+                        {t('app.charts.pick_domain')}
+                      </option>
+                      {domains.map((d) => (
                         <option key={d.key} value={d.key}>
                           {d.label}
                         </option>
                       ))}
                     </select>
-                    <input
+                    <select
                       className="input"
-                      placeholder={t('app.charts.metric_key_ph')}
+                      aria-label={t('app.charts.metric')}
                       value={r.metricKey}
-                      onChange={(e) => updateSeriesRow(i, { metricKey: e.target.value })}
-                    />
+                      disabled={r.domain === ''}
+                      onChange={(e) => updateSeriesRow(i, (row) => pickMetric(row, e.target.value))}
+                    >
+                      <option value="" disabled>
+                        {t('app.charts.pick_metric')}
+                      </option>
+                      {metricsOf(domains, r.domain).map((m) => (
+                        <option key={m.key} value={m.key}>
+                          {metricOptionLabel(m)}
+                        </option>
+                      ))}
+                    </select>
+                    {needsParam(metricOf(domains, r.domain, r.metricKey)) && (
+                      <select
+                        className="input"
+                        aria-label={t('app.charts.param')}
+                        value={r.param}
+                        onChange={(e) => updateSeriesRow(i, (row) => ({ ...row, param: e.target.value }))}
+                      >
+                        <option value="" disabled>
+                          {(metricOf(domains, r.domain, r.metricKey)?.params.length ?? 0) > 0 ? t('app.charts.pick_param') : t('app.charts.no_params')}
+                        </option>
+                        {metricOf(domains, r.domain, r.metricKey)?.params.map((p) => (
+                          <option key={p.value} value={p.value}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   {seriesRows.length > 1 && (
                     <button
@@ -351,10 +365,12 @@ export default function ChartsScreen() {
               ))}
             </div>
 
+            {seriesRows.length < MAX_SERIES && (
             <button type="button" className="ghost" onClick={addSeriesRow}>
               <Icon name="plus" />
               <span>{t('app.charts.add_metric')}</span>
             </button>
+            )}
 
             <label className="norm-check">
               <input

@@ -13,10 +13,11 @@ import { useT } from '@/i18n/useT'
 import { useConflictMutation } from '@/lib/useConflictMutation'
 import type { SupplementItem } from './types'
 import { useSupplementsView } from './useSupplementsView'
+import { CUSTOM, joinTiming, splitTiming, TIMING_CHOICES, timingWorthShowing } from './timing'
 import './supplements.css'
 
 export default function SupplementsScreen() {
-  const { t } = useT()
+  const { t, tOr } = useT()
   const view = useSupplementsView()
   const queryClient = useQueryClient()
 
@@ -29,6 +30,7 @@ export default function SupplementsScreen() {
   const [name, setName] = useState('')
   const [dose, setDose] = useState('')
   const [timing, setTiming] = useState('morning')
+  const [timingCustom, setTimingCustom] = useState('')
   const [evidence, setEvidence] = useState('')
   const [active, setActive] = useState(true)
   const [contra, setContra] = useState('')
@@ -50,7 +52,7 @@ export default function SupplementsScreen() {
           body: {
             name: name.trim(),
             dose: dose.trim() || null,
-            timing,
+            timing: joinTiming(timing, timingCustom),
             evidence: evidence || null,
             active,
             contraindications: contra.trim() || null,
@@ -63,7 +65,7 @@ export default function SupplementsScreen() {
           body: {
             name: name.trim(),
             dose: dose.trim() || null,
-            timing,
+            timing: joinTiming(timing, timingCustom),
             evidence: evidence || null,
             active,
             contraindications: contra.trim() || null,
@@ -102,6 +104,7 @@ export default function SupplementsScreen() {
     setName('')
     setDose('')
     setTiming('morning')
+    setTimingCustom('')
     setEvidence('')
     setActive(true)
     setContra('')
@@ -114,7 +117,9 @@ export default function SupplementsScreen() {
     setEditingItem(item)
     setName(item.name)
     setDose(item.dose || '')
-    setTiming(item.timing || 'morning')
+    const split = splitTiming(item.timing)
+    setTiming(split.choice)
+    setTimingCustom(split.custom)
     setEvidence(item.evidence || '')
     setActive(item.active)
     setContra(item.contraindications || item.contra || '')
@@ -153,6 +158,7 @@ export default function SupplementsScreen() {
               <span>{contraText}</span>
             </div>
           )}
+          {timingWorthShowing(s.timing) && !archived && <div className="m">{tOr(`app.supplements.timing.${(s.timing ?? '').trim().toLowerCase()}`, s.timing ?? '')}</div>}
           {s.note && !archived && <div className="m">{s.note}</div>}
         </div>
         <span className="v">{s.dose || '—'}</span>
@@ -260,10 +266,22 @@ export default function SupplementsScreen() {
                   value={timing}
                   onChange={(e) => setTiming(e.target.value)}
                 >
-                  <option value="morning">{t('app.supplements.timing.morning')}</option>
-                  <option value="day">{t('app.supplements.timing.day')}</option>
-                  <option value="evening">{t('app.supplements.timing.evening')}</option>
+                  {TIMING_CHOICES.map((c) => (
+                    <option key={c} value={c}>
+                      {t(`app.supplements.timing.${c}`)}
+                    </option>
+                  ))}
+                  <option value={CUSTOM}>{t('app.supplements.timing_custom')}</option>
                 </select>
+                {timing === CUSTOM && (
+                  <input
+                    className="input supp-custom"
+                    aria-label={t('app.supplements.timing_custom')}
+                    placeholder={t('app.supplements.timing_custom_ph')}
+                    value={timingCustom}
+                    onChange={(e) => setTimingCustom(e.target.value)}
+                  />
+                )}
               </label>
             </div>
             <label className="field">

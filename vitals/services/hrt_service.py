@@ -544,6 +544,7 @@ async def collect(
             "doseVal": d.dose,
             "unit": d.unit,
             "ml": d.volume_ml,
+            "concMgMl": d.concentration_mg_ml,
             "brand": d.brand,
             "lab": d.lab,
             "batch": d.batch,
@@ -589,7 +590,10 @@ async def collect(
         planned_list.append({
             "date": dt_val.isoformat() if hasattr(dt_val, "isoformat") else str(dt_val),
             "name": compound_names.get(comp_k, comp_k),
+            "compoundKey": comp_k,
             "dose": f"{dose_val:g} {unit_val}",
+            "doseVal": dose_val,
+            "unit": unit_val,
         })
 
     # Site counts & labels
@@ -618,6 +622,7 @@ async def collect(
                 "key": c.key,
                 "name": compound_label(c),
                 "compoundClass": c.compound_class,
+                "ester": c.ester,
                 "route": c.route,
                 "doseUnit": c.dose_unit,
                 "concMgMl": c.conc_mg_ml,

@@ -49,3 +49,4 @@
 .r-inj .t { font-weight: 400; }
 .row .acts .pips { margin-right: var(--s1); }
 .glp1-summary { margin: 12px 0 0; }
+.se-presets { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }

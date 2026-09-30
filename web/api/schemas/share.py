@@ -29,6 +29,7 @@ class SharedReportItem(CamelModel):
     last_opened_at: Optional[str] = None
     state: str = "live"
     url: str
+    has_snapshot: bool = False
 
 
 class SharePresetSpec(CamelModel):

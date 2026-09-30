@@ -13,6 +13,7 @@ export interface SharedReportItem {
   lastOpenedAt?: string | null
   state: 'live' | 'revoked' | 'expired' | string
   url: string
+  hasSnapshot: boolean
 }
 
 export interface SharePresetSpec {

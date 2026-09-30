@@ -35,6 +35,7 @@ export interface HrtDoseItem {
   doseVal: number
   unit: string
   ml?: number | null
+  concMgMl?: number | null
   brand?: string | null
   lab?: string | null
   batch?: string | null
@@ -54,6 +55,7 @@ export interface HrtTemplateItem {
   id: number
   name: string
   kind: string
+  /** Each compound's name and the whole weeks after the start it begins (0 = from the start). */
   items: [string, number][]
   exportJson: string
 }
@@ -61,7 +63,10 @@ export interface HrtTemplateItem {
 export interface HrtPlannedItem {
   date: string
   name: string
+  compoundKey: string
   dose: string
+  doseVal?: number | null
+  unit: string
 }
 
 export interface HrtCompoundItem {
@@ -69,6 +74,7 @@ export interface HrtCompoundItem {
   key: string
   name: string
   compoundClass?: string | null
+  ester?: string | null
   route?: string | null
   doseUnit?: string | null
   concMgMl?: number | null
@@ -92,4 +98,7 @@ export interface HrtView {
   siteLabels: Record<string, string>
   siteCounts: Record<string, number>
   last?: HrtLastDose | null
+  /** The dose units and the cycle kinds the service accepts. */
+  units: string[]
+  cycleKinds: string[]
 }

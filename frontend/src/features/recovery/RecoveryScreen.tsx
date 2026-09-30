@@ -1,6 +1,9 @@
+import { useMemo } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, failText, ok } from '@/api/client'
 import { Hypnogram, STAGE_COLOR } from '@/components/charts/Hypnogram'
+import { TimeCurves, type TimeCurveSeries } from '@/components/charts/TimeCurves'
+import { Alert } from '@/components/controls/Alert'
 import { FigureBody, Section } from '@/components/controls/Section'
 import { RangeBar } from '@/components/controls/Meters'
 import { SectionTabs } from '@/components/controls/SectionTabs'
@@ -14,7 +17,7 @@ import { type ScreenId } from '@/components/shell/nav'
 import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
-import { daysBetween, longDate, parseIsoDate, shortDate, weekdayShort } from '@/lib/dates'
+import { daysBetween, longDate, parseIsoDate, shortDate, syncedLabel, weekdayShort } from '@/lib/dates'
 import { formatCompact, formatCompactNumber, formatInt } from '@/lib/format'
 import { durationShort, durationText } from '@/lib/units'
 import { isWorse, toneCell } from './tones'
@@ -23,6 +26,8 @@ import { useRecoveryView } from './useRecoveryView'
 import './recovery.css'
 
 const HEAT_ROWS: readonly NormKey[] = ['sleep', 'hrv', 'rhr', 'stress', 'steps', 'bb']
+/** Stress and Body Battery are both 0–100 scores: one scale, so a stress spike reads against the drain. */
+const DAY_SCALE = [0, 100] as const
 const GARMIN_TABS: readonly { id: ScreenId; key: string }[] = [
   { id: 'recovery', key: 'app.garmin.tab.overview' },
   { id: 'nights', key: 'app.garmin.tab.sleep' },
@@ -58,7 +63,26 @@ export default function RecoveryScreen() {
     onError: (err) => toast(failText(err, t('app.recovery.sync_failed')), { icon: 'warn' }),
   })
 
-  const { headline: h, night, norms } = view
+  const { headline: h, night, norms, activity: act } = view
+  const curves = useMemo<TimeCurveSeries[]>(
+    () => [
+      { key: 'stress', axis: 'left', label: t('app.recovery.curve.stress'), color: 'var(--bad)', points: view.intraday.stress },
+      { key: 'bb', axis: 'left', label: t('app.recovery.curve.body_battery'), color: 'var(--good)', points: view.intraday.bodyBattery },
+      { key: 'hr', axis: 'right', label: t('app.recovery.curve.heart_rate'), color: 'var(--violet)', points: view.intraday.heartRate },
+    ],
+    [view.intraday, t],
+  )
+  const hasCurves = curves.some((c) => c.points.length > 0)
+  const shownDay = shortDate(parseIsoDate(view.dateIso), lang)
+  // Garmin counts a vigorous minute as two toward the weekly goal: the watch shows the weighted sum.
+  const intensity =
+    act.intensityModerate === null && act.intensityVigorous === null ? null : (act.intensityModerate ?? 0) + 2 * (act.intensityVigorous ?? 0)
+  const dayMeta = [
+    view.isToday ? null : t('app.recovery.day_of', { date: shownDay }),
+    view.lastSync === null ? t('app.recovery.never_synced') : t('app.recovery.synced', { when: syncedLabel(view.lastSync, today, lang) }),
+  ]
+    .filter((x) => x !== null)
+    .join(' · ')
   const dash = '—'
   const num = (v: number | null) => (v === null ? dash : formatCompact(v, lang))
   const cellText = (key: NormKey, value: number | null) => (value === null ? dash : key === 'steps' ? formatCompactNumber(value, lang) : formatCompact(value, lang))
@@ -121,6 +145,44 @@ export default function RecoveryScreen() {
         </div>
       </Headline>
       <DomainAlerts domain="garmin" scope="recovery" />
+      {view.advice !== null && (
+        <Alert tone="note" className="rec-advice" evidence={t('app.recovery.observation')}>
+          {view.advice}
+        </Alert>
+      )}
+
+      <Section title={t('app.recovery.day_title')} meta={dayMeta}>
+        <div className="figs">
+          <div className="f">
+            <FigureBody value={act.steps === null ? dash : formatInt(act.steps, lang)} label={t('app.metric.steps')} />
+          </div>
+          <div className="f">
+            <FigureBody value={num(act.stress)} label={t('app.recovery.stress_avg')} />
+          </div>
+          <div className="f">
+            <FigureBody
+              value={intensity === null ? dash : formatInt(intensity, lang)}
+              label={t('app.recovery.intensity')}
+              sub={act.intensityVigorous ? t('app.recovery.intensity_breakdown', { mod: act.intensityModerate ?? 0, vig: act.intensityVigorous }) : undefined}
+            />
+          </div>
+          <div className="f">
+            <FigureBody
+              value={act.activeCalories === null ? dash : formatInt(act.activeCalories, lang)}
+              unit={act.activeCalories === null ? undefined : t('app.unit.kcal')}
+              label={t('app.recovery.active_cal')}
+            />
+          </div>
+        </div>
+      </Section>
+
+      {hasCurves && (
+        <Section title={t('app.recovery.intraday_title')} meta={shownDay}>
+          <div className="panel bare">
+            <TimeCurves series={curves} leftRange={DAY_SCALE} label={t('app.recovery.intraday_label')} />
+          </div>
+        </Section>
+      )}
 
       <div className="grid recovery-grid">
         {night !== null && (
@@ -240,6 +302,14 @@ export default function RecoveryScreen() {
                   ))}
                 </tr>
               ))}
+              <tr>
+                <td className="lbl">{t('app.metric.awake')}</td>
+                {view.days.map((d) => (
+                  <td key={d.dateIso}>
+                    <div className="cell">{d.awake === null ? dash : formatInt(d.awake, lang)}</div>
+                  </td>
+                ))}
+              </tr>
             </tbody>
           </table>
         </div>
@@ -251,6 +321,7 @@ export default function RecoveryScreen() {
             <span>{t('app.recovery.col_hrv')}</span>
             <span>{t('app.recovery.col_rhr')}</span>
             <span>{t('app.recovery.col_steps')}</span>
+            <span>{t('app.recovery.col_awake')}</span>
           </div>
           <div className="days">
             {[...view.days]
@@ -267,6 +338,7 @@ export default function RecoveryScreen() {
                       {cellText(key, d[key])}
                     </div>
                   ))}
+                  <div className="cell">{d.awake === null ? dash : formatInt(d.awake, lang)}</div>
                 </div>
               ))}
           </div>

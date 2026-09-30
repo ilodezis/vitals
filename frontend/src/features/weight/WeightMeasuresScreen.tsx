@@ -17,33 +17,30 @@ import { useT } from '@/i18n/useT'
 import { longDate, parseIsoDate, shortDate } from '@/lib/dates'
 import { formatCompact, formatNumber, formatPercent } from '@/lib/format'
 import { useConflictMutation } from '@/lib/useConflictMutation'
+import { measuresQuery } from './measuresQuery'
 import { computeNavyFatPct } from './navy'
-import { readScanMetrics, toScanPreview, type ScanPreviewMetric } from './scanMetrics'
+import { groupScanMetrics, readScanMetrics, scanRefText, toScanPreview, type ScanPreviewMetric } from './scanMetrics'
 import { buildMeasureBody } from './weightEdit'
 import type { components } from '@/api/schema'
 import './weight.css'
 
-type WeightMeasuresView = components['schemas']['WeightMeasuresView']
 type BodyScanUploadResponse = components['schemas']['BodyScanUploadResponse']
 type Measurement = components['schemas']['BodyMeasurementItem']
 
-export const measuresQuery = {
-  queryKey: ['weight', 'measures'],
-  queryFn: async (): Promise<WeightMeasuresView> => {
-    const { data, error } = await api.GET('/api/v1/weight/measures')
-    if (error !== undefined || data === undefined) throw new Error('Measures could not be read')
-    return data
-  },
-}
-
 export default function WeightMeasuresScreen() {
-  const { t, lang, plural } = useT()
+  const { t, tOr, lang, plural } = useT()
   const queryClient = useQueryClient()
   const view = useSuspenseQuery(measuresQuery).data
   const metricsCount = (n: number) => plural(n, t('app.weight.metrics.one', { n }), t('app.weight.metrics.few', { n }), t('app.weight.metrics.many', { n }))
 
   const [activePane, setActivePane] = useState<'measure' | 'noise' | 'photo' | 'body'>('measure')
   const [openScanId, setOpenScanId] = useState<number | null>(null)
+  // The progress photo shown large, with its delete.
+  const [largePhotoId, setLargePhotoId] = useState<number | null>(null)
+  const female = view.sex === 'female'
+  const bodyComp = view.body_comp_enabled
+  // The scan tab exists only with the body-composition module on.
+  const pane = activePane === 'body' && !bodyComp ? 'measure' : activePane
 
   // Measure form state
   const todayStr = useTodayIso()
@@ -349,19 +346,19 @@ export default function WeightMeasuresScreen() {
           <Section title={t('app.weight.new_entry')}>
             <div className="panel">
               <Segmented
-                value={activePane}
+                value={pane}
                 onChange={setActivePane}
                 label={t('app.weight.new_entry')}
                 options={[
                   { id: 'measure', label: t('app.weight.tab_measures') },
                   { id: 'noise', label: t('app.weight.tab_noise') },
                   { id: 'photo', label: t('app.weight.tab_photo') },
-                  { id: 'body', label: t('app.weight.tab_body') },
+                  ...(bodyComp ? [{ id: 'body' as const, label: t('app.weight.tab_body') }] : []),
                 ]}
               />
 
               <div className="mt-s4">
-                {activePane === 'measure' && (
+                {pane === 'measure' && (
                   <form ref={measureForm} onSubmit={(e) => { e.preventDefault(); measureMutation.mutate() }}>
                     {editingMeasure !== null ? (
                       <p className="sub editing-mark">
@@ -441,7 +438,7 @@ export default function WeightMeasuresScreen() {
                   </form>
                 )}
 
-                {activePane === 'noise' && (
+                {pane === 'noise' && (
                   <form onSubmit={(e) => { e.preventDefault(); noiseMutation.mutate() }}>
                     <div className="g2">
                       <div className="fld">
@@ -484,7 +481,7 @@ export default function WeightMeasuresScreen() {
                   </form>
                 )}
 
-                {activePane === 'photo' && (
+                {pane === 'photo' && (
                   <form onSubmit={(e) => { e.preventDefault(); photoMutation.mutate() }}>
                     <div className="fld">
                       <label>{t('common.date')}</label>
@@ -518,7 +515,7 @@ export default function WeightMeasuresScreen() {
                   </form>
                 )}
 
-                {activePane === 'body' && (
+                {pane === 'body' && (
                   <div>
                     {!previewFileKey ? (
                       <div>
@@ -685,13 +682,12 @@ export default function WeightMeasuresScreen() {
                 <span className="m ribbon-empty">{t('app.empty')}</span>
               ) : (
                 photos.map((ph) => (
-                  <div key={ph.id} className="ph-tile">
-                    <div className="im">
+                  <button key={ph.id} type="button" className="ph-tile" aria-label={t('app.weight.photo_open')} onClick={() => setLargePhotoId(ph.id)}>
+                    <span className="im">
                       <img src={ph.url} alt={ph.note ?? t('app.weight.tab_photo')} />
-                    </div>
+                    </span>
                     <span className="m num">{shortDate(parseIsoDate(ph.date), lang)}</span>
-                    <ConfirmButton label={t('app.delete')} onConfirm={() => deletePhotoMutation.mutate(ph.id)} />
-                  </div>
+                  </button>
                 ))
               )}
             </div>
@@ -701,7 +697,7 @@ export default function WeightMeasuresScreen() {
         {/* Right Column: Body Composition & Measurement History */}
         <div className="c7">
           {/* Body Composition 6-grid */}
-          {headlineMetrics.length > 0 && (
+          {bodyComp && headlineMetrics.length > 0 && (
             <Section title={t('app.weight.body_comp_headline')}>
               <div className="figs six">
                 {headlineMetrics.map((m, idx) => (
@@ -724,19 +720,21 @@ export default function WeightMeasuresScreen() {
                 <div className="row"><span className="m">{t('app.empty')}</span></div>
               ) : (
                 measurements.map((m) => (
-                  <div key={`${m.source}:${m.id}`} className="row t-meas">
+                  <div key={`${m.source}:${m.id}`} className={female ? 'row t-meas fem' : 'row t-meas'}>
                     <div>
                       <div className="t">{longDate(parseIsoDate(m.date), lang)}</div>
                       <div className="m hd">
                         {[
                           m.neck_cm != null ? `${t('app.weight.neck_short')} ${formatNumber(m.neck_cm, lang)}` : null,
                           m.waist_cm != null ? `${t('app.weight.waist_short')} ${formatNumber(m.waist_cm, lang)}` : null,
+                          female && m.hips_cm != null ? `${t('app.weight.hips_short')} ${formatNumber(m.hips_cm, lang)}` : null,
                           m.lbm_kg != null ? `LBM ${formatNumber(m.lbm_kg, lang)} ${t('app.unit.kg')}` : null,
                         ].filter(Boolean).join(' · ') || '—'}
                       </div>
                     </div>
                     <div className="v hs">{m.neck_cm != null ? formatNumber(m.neck_cm, lang) : '—'}</div>
                     <div className="v hs">{m.waist_cm != null ? formatNumber(m.waist_cm, lang) : '—'}</div>
+                    {female && <div className="v hs">{m.hips_cm != null ? formatNumber(m.hips_cm, lang) : '—'}</div>}
                     <div className="v">{m.body_fat_pct != null ? formatPercent(m.body_fat_pct, lang, 1) : '—'}</div>
                     <div className="v hs">
                       {m.lbm_kg != null ? formatNumber(m.lbm_kg, lang) : '—'}
@@ -762,6 +760,7 @@ export default function WeightMeasuresScreen() {
           </Section>
 
           {/* BIA Scan History Accordion */}
+          {bodyComp && (
           <Section title={t('app.weight.scans_history')}>
             <div className="rows">
               {scans.length === 0 ? (
@@ -775,29 +774,79 @@ export default function WeightMeasuresScreen() {
                     title={longDate(parseIsoDate(s.date), lang)}
                     sub={[s.device, metricsCount(s.metrics_count)].filter(Boolean).join(' · ')}
                     actions={
-                      <ConfirmButton label={t('app.delete')} onConfirm={() => deleteScanMutation.mutate(s.id)} />
+                      <span className="acts">
+                        {s.file_key && (
+                          <a className="ibtn" href={`/static/uploads/${s.file_key}`} target="_blank" rel="noopener noreferrer" aria-label={t('app.weight.scan_original')} title={t('app.weight.scan_original')}>
+                            <Icon name="image" />
+                          </a>
+                        )}
+                        <ConfirmButton label={t('app.delete')} onConfirm={() => deleteScanMutation.mutate(s.id)} />
+                      </span>
                     }
                   >
                     <div className="disc-body">
-                      <div className="rows">
-                        {(s.metrics ?? []).map((met, mIdx) => (
-                          <div key={mIdx} className="row r-kv tight">
-                            <span className="t plain">{met.label}</span>
-                            <span className="v">
-                              {formatCompact(met.value, lang, 3)}
-                              {met.unit && <span className="u">{met.unit}</span>}
-                            </span>
+                      {groupScanMetrics(s.metrics ?? []).map((group) => (
+                        <div key={group.category}>
+                          <div className="cat">{tOr(`body.cat.${group.category}`, group.category)}</div>
+                          <div className="rows">
+                            {group.metrics.map((met, mIdx) => {
+                              const ref = scanRefText(met, (v) => formatCompact(v, lang, 3))
+                              return (
+                                <div key={mIdx} className="row scan-met">
+                                  <span className="t plain">
+                                    {met.label}
+                                    {met.segment ? <small> · {tOr(`body.seg.${met.segment}`, met.segment)}</small> : null}
+                                  </span>
+                                  <span className="v">
+                                    {formatCompact(met.value, lang, 3)}
+                                    {met.unit && met.metric_key !== 'phase_angle' && <span className="u">{met.unit}</span>}
+                                  </span>
+                                  <span className="m num">{ref ?? ''}</span>
+                                </div>
+                              )
+                            })}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
                     </div>
                   </Disclosure>
                 ))
               )}
             </div>
           </Section>
+          )}
         </div>
       </div>
+      {largePhotoId !== null && (() => {
+        const ph = photos.find((p) => p.id === largePhotoId)
+        if (ph === undefined) return null
+        return (
+          <div className="ph-large" role="dialog" aria-modal="true" aria-label={t('app.weight.tab_photo')} onClick={() => setLargePhotoId(null)}>
+            <div className="ph-large-box" onClick={(e) => e.stopPropagation()}>
+              <img src={ph.url} alt={ph.note ?? t('app.weight.tab_photo')} />
+              <div className="ph-large-foot">
+                <span className="m num">
+                  {longDate(parseIsoDate(ph.date), lang)}
+                  {ph.note ? ` · ${ph.note}` : ''}
+                </span>
+                <span className="acts">
+                  <ConfirmButton
+                    text
+                    label={t('app.delete')}
+                    onConfirm={() => {
+                      deletePhotoMutation.mutate(ph.id)
+                      setLargePhotoId(null)
+                    }}
+                  />
+                  <button type="button" className="ibtn" aria-label={t('app.close')} onClick={() => setLargePhotoId(null)}>
+                    <Icon name="x" />
+                  </button>
+                </span>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </>
   )
 }

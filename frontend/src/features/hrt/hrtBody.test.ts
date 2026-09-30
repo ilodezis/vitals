@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDoseBody, buildItemBody, buildItemPatch, templateFileName } from './hrtBody'
+import { buildDoseBody, buildItemBody, buildItemPatch, groupByClass, templateFileName, todayIndex } from './hrtBody'
 
 describe('buildDoseBody', () => {
   it('reads the typed dose', () => {
@@ -8,6 +8,41 @@ describe('buildDoseBody', () => {
 
   it('has no body for an empty, zero, negative or unreadable dose', () => {
     for (const dose of ['', '  ', '0', '-5', 'abc']) expect(buildDoseBody({ dose })).toBeNull()
+  })
+
+  it('takes a volume with the vial concentration instead of a dose', () => {
+    expect(buildDoseBody({ dose: '', volume: '0.5', concentration: '250' })).toEqual({ volumeMl: 0.5, concentrationMgMl: 250 })
+  })
+
+  it('takes a volume alone when the catalog knows the concentration', () => {
+    expect(buildDoseBody({ dose: '', volume: '0.5', catalogConcentration: 200 })).toEqual({ volumeMl: 0.5 })
+    expect(buildDoseBody({ dose: '', volume: '0.5', catalogConcentration: null })).toBeNull()
+  })
+
+  it('keeps the vial details next to a typed dose', () => {
+    expect(buildDoseBody({ dose: '125', volume: '0.5', concentration: '250' })).toEqual({ dose: 125, volumeMl: 0.5, concentrationMgMl: 250 })
+  })
+})
+
+describe('groupByClass', () => {
+  it('groups the catalog by class in the order the classes appear', () => {
+    const groups = groupByClass([
+      { key: 'a', compoundClass: 'testosterone' },
+      { key: 'b', compoundClass: 'ai' },
+      { key: 'c', compoundClass: 'testosterone' },
+    ])
+    expect(groups.map((g) => [g.cls, g.items.map((i) => i.key)])).toEqual([
+      ['testosterone', ['a', 'c']],
+      ['ai', ['b']],
+    ])
+  })
+})
+
+describe('todayIndex', () => {
+  it('finds today on the release curve, or nothing outside it', () => {
+    const series = [{ date: '2026-09-29' }, { date: '2026-09-30' }]
+    expect(todayIndex(series, '2026-09-30')).toBe(1)
+    expect(todayIndex(series, '2026-10-30')).toBeNull()
   })
 })
 

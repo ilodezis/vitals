@@ -20,6 +20,7 @@ from vitals.services import labs_service, raw_payload_service
 from vitals.utils.timeutils import today_local
 from web.api.errors import MUTATION_ERRORS, ApiRouter, not_found
 from web.api.schemas.labs import (
+    LabCatalogEntry,
     LabConfirm,
     LabConfirmResponse,
     LabMarkerDefer,
@@ -46,7 +47,16 @@ async def read_labs(db: AsyncSession = Depends(get_session)) -> LabsView:
     """The whole Labs dashboard in one request: latest values with reference
     ranges, category groupings, and collection history."""
     data = await labs_service.collect(db)
-    return LabsView.model_validate(data)
+    catalog = [
+        LabCatalogEntry(
+            name=m.name,
+            tier=m.tier,
+            retest_interval_days=m.retest_interval_days,
+            defer_until=m.defer_until.isoformat() if m.defer_until else None,
+        )
+        for m in await labs_service.list_markers(db)
+    ]
+    return LabsView.model_validate({**data, "catalog": catalog})
 
 
 @router.get("/markers/{marker_id_or_name}", response_model=LabMarkerDetail)

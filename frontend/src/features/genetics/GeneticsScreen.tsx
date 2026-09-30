@@ -12,6 +12,9 @@ import { useT } from '@/i18n/useT'
 import { useGeneticsView } from './useGeneticsView'
 import './genetics.css'
 
+/** The modules a variant can bear on — the domain is free text, these are only suggestions. */
+const GENE_DOMAINS = ['supplements', 'workouts', 'weight', 'glp1', 'labs', 'skincare', 'system', 'health'] as const
+
 export default function GeneticsScreen() {
   const { t, tOr } = useT()
   const view = useGeneticsView()
@@ -28,6 +31,9 @@ export default function GeneticsScreen() {
   const [genotype, setGenotype] = useState('')
   const [impact, setImpact] = useState('')
   const [impactDomain, setImpactDomain] = useState('health')
+  const [marker, setMarker] = useState('')
+  // Import only the variants the catalog has an interpretation for.
+  const [onlySignificant, setOnlySignificant] = useState(false)
   const [interpretation, setInterpretation] = useState('')
   const [actionNotes, setActionNotes] = useState('')
 
@@ -52,7 +58,7 @@ export default function GeneticsScreen() {
     try {
       const fd = new FormData()
       fd.append('file', file)
-      const res = await fetch('/api/v1/genetics/upload', {
+      const res = await fetch(`/api/v1/genetics/upload?only_interpreted=${onlySignificant}`, {
         method: 'POST',
         body: fd,
         credentials: 'same-origin',
@@ -81,8 +87,9 @@ export default function GeneticsScreen() {
           gene: gene.trim(),
           rsid: rsid.trim() || null,
           genotype: genotype.trim() || null,
+          marker: marker.trim() || null,
           impact: impact.trim() || null,
-          impactDomain: impactDomain || null,
+          impactDomain: impactDomain.trim() || null,
           interpretation: interpretation.trim() || null,
           actionNotes: actionNotes.trim() || null,
         },
@@ -93,6 +100,7 @@ export default function GeneticsScreen() {
       setRsid('')
       setGenotype('')
       setImpact('')
+      setMarker('')
       setInterpretation('')
       setActionNotes('')
       refresh()
@@ -129,6 +137,10 @@ export default function GeneticsScreen() {
         screen="genetics"
         actions={
           <div className="gen-acts">
+            <label className="gen-only">
+              <input type="checkbox" checked={onlySignificant} onChange={(e) => setOnlySignificant(e.target.checked)} />
+              <span>{t('app.genetics.only_significant')}</span>
+            </label>
             <TextButton icon="upload" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
               {isUploading ? t('genetics.uploading') : t('genetics.import_vcf')}
             </TextButton>
@@ -148,6 +160,21 @@ export default function GeneticsScreen() {
           </div>
         </div>
       </Headline>
+      {/* On a phone the masthead's actions are hidden: the same actions sit under the title. */}
+      {!view.empty && (
+        <div className="gen-acts-m">
+          <label className="gen-only">
+            <input type="checkbox" checked={onlySignificant} onChange={(e) => setOnlySignificant(e.target.checked)} />
+            <span>{t('app.genetics.only_significant')}</span>
+          </label>
+          <TextButton icon="upload" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+            {isUploading ? t('genetics.uploading') : t('genetics.import_vcf')}
+          </TextButton>
+          <TextButton icon="plus" onClick={() => setAddModalOpen(true)}>
+            {t('common.add')}
+          </TextButton>
+        </div>
+      )}
       <DomainAlerts domain="genetics" />
 
       {view.empty ? (
@@ -160,6 +187,10 @@ export default function GeneticsScreen() {
             <p className="gen-empty-sub">{t('genetics.empty_sub')}</p>
           </div>
           <div className="gen-empty-acts">
+            <label className="gen-only">
+              <input type="checkbox" checked={onlySignificant} onChange={(e) => setOnlySignificant(e.target.checked)} />
+              <span>{t('app.genetics.only_significant')}</span>
+            </label>
             <PrimaryButton onPress={async () => { fileInputRef.current?.click(); return true }}>
               {t('genetics.import_vcf')}
             </PrimaryButton>
@@ -257,12 +288,18 @@ export default function GeneticsScreen() {
               </div>
               <label className="field">
                 <span className="flabel">{t('genetics.impact_domain')}</span>
-                <select className="input" value={impactDomain} onChange={(e) => setImpactDomain(e.target.value)}>
-                  <option value="health">{t('genetics.domain_health')}</option>
-                  <option value="supplements">{t('genetics.domain_supplements')}</option>
-                  <option value="workouts">{t('genetics.domain_workouts')}</option>
-                  <option value="metabolism">{t('genetics.domain_metabolism')}</option>
-                </select>
+                <input className="input" list="gen-domains" value={impactDomain} onChange={(e) => setImpactDomain(e.target.value)} />
+                <datalist id="gen-domains">
+                  {GENE_DOMAINS.map((d) => (
+                    <option key={d} value={d} />
+                  ))}
+                </datalist>
+                <span className="gen-hint">{t('app.genetics.domain_hint')}</span>
+              </label>
+              <label className="field">
+                <span className="flabel">{t('app.genetics.marker')}</span>
+                <input className="input" placeholder="hemochromatosis_carrier" value={marker} onChange={(e) => setMarker(e.target.value)} />
+                <span className="gen-hint">{t('app.genetics.marker_hint')}</span>
               </label>
               <label className="field">
                 <span className="flabel">{t('genetics.impact_summary')}</span>

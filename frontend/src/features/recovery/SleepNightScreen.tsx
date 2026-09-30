@@ -3,18 +3,25 @@ import { useParams, useNavigate } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { api, ok } from '@/api/client'
 import { useTodayIso } from '@/app/session'
+import { Alert } from '@/components/controls/Alert'
 import { Segmented } from '@/components/controls/Segmented'
 import { Section } from '@/components/controls/Section'
 import { Hypnogram } from '@/components/charts/Hypnogram'
+import { TimeCurves, type TimeCurveSeries } from '@/components/charts/TimeCurves'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { longDate, parseIsoDate } from '@/lib/dates'
 import { formatNumber } from '@/lib/format'
+import { durationText } from '@/lib/units'
 import type { components } from '@/api/schema'
 import './recovery.css'
 
 type SleepNightView = components['schemas']['SleepNightView']
+type CurveGroup = 'pulse' | 'breathing' | 'recovery' | 'movement'
+
+/** Stress and Body Battery are both 0–100 scores: one scale for the two. */
+const SCORE_SCALE = [0, 100] as const
 
 export default function SleepNightScreen() {
   const { t, lang } = useT()
@@ -30,7 +37,7 @@ export default function SleepNightScreen() {
       ok(api.GET('/api/v1/recovery/sleep/{on_date}', { params: { path: { on_date: selectedDate } } })),
   })
 
-  const [activeCurveGroup, setActiveCurveGroup] = useState<'pulse' | 'breathing' | 'movement'>('pulse')
+  const [activeCurveGroup, setActiveCurveGroup] = useState<CurveGroup>('pulse')
 
   // The night's breakdown, when the watch reported one.
   const stageMins = useMemo(() => {
@@ -59,23 +66,31 @@ export default function SleepNightScreen() {
     return blocks
   }, [night.stages_series])
 
-  // Active curve points
-  const activeSeries = useMemo(() => {
-    if (activeCurveGroup === 'pulse') {
-      return [
-        { label: t('app.sleep.curve.heart_rate'), color: '#F4F0F6', points: night.heart_rate ?? [] },
-        { label: t('app.sleep.curve.hrv'), color: '#BCA4DC', points: night.hrv ?? [] },
-      ]
+  // The night's curves, grouped by what shares a scale; where two do not (bpm and ms), the second
+  // one gets the right-hand axis.
+  const activeSeries = useMemo<TimeCurveSeries[]>(() => {
+    const pts = (list: SleepNightView['heart_rate']) => list.filter((p) => p.ts !== '').map((p) => ({ ts: p.ts, value: p.value }))
+    switch (activeCurveGroup) {
+      case 'pulse':
+        return [
+          { key: 'hr', axis: 'left', label: t('app.sleep.curve.heart_rate'), color: 'var(--bad)', points: pts(night.heart_rate) },
+          { key: 'hrv', axis: 'right', label: t('app.sleep.curve.hrv'), color: 'var(--violet)', points: pts(night.hrv) },
+        ]
+      case 'breathing':
+        return [
+          { key: 'spo2', axis: 'left', label: t('app.sleep.curve.spo2'), color: 'var(--cool)', points: pts(night.spo2) },
+          { key: 'resp', axis: 'right', label: t('app.sleep.curve.respiration'), color: 'var(--good)', points: pts(night.respiration) },
+        ]
+      case 'recovery':
+        return [
+          { key: 'stress', axis: 'left', label: t('app.sleep.curve.stress'), color: 'var(--bad)', points: pts(night.stress) },
+          { key: 'bb', axis: 'left', label: t('app.sleep.curve.body_battery'), color: 'var(--good)', points: pts(night.body_battery) },
+        ]
+      case 'movement':
+        return [{ key: 'move', axis: 'left', label: t('app.sleep.curve.movement'), color: 'var(--violet)', points: pts(night.movement) }]
     }
-    if (activeCurveGroup === 'breathing') {
-      return [
-        { label: t('app.sleep.curve.respiration'), color: '#6FB6C9', points: night.respiration ?? [] },
-      ]
-    }
-    return [
-      { label: t('app.sleep.curve.movement'), color: '#F0B24A', points: night.movement ?? [] },
-    ]
   }, [night, activeCurveGroup, t])
+  const groupHasData = activeSeries.some((s) => s.points.length > 0)
 
   const fmtHM = (mins: number) => {
     const h = Math.floor(mins / 60)
@@ -96,12 +111,15 @@ export default function SleepNightScreen() {
             </div>
             <div className="side">
               <span className="sub">
-                {night.rhr ? t('app.sleep.sleeping_rhr', { rhr: formatNumber(night.rhr, lang) }) : ''}
+                {night.rhr ? t('app.sleep.sleeping_rhr', { rhr: formatNumber(night.rhr, lang, 0) }) : ''}
               </span>
               <span className="sub">
                 {night.spo2_min ? t('app.sleep.min_spo2', { spo2: formatNumber(night.spo2_min, lang) }) : ''}
-                {night.bb_change ? t('app.sleep.bb_change', { change: formatNumber(night.bb_change, lang) }) : ''}
+                {night.bb_change ? t('app.sleep.bb_change', { change: formatNumber(night.bb_change, lang, 0) }) : ''}
               </span>
+              {night.sleep_need_minutes != null && night.sleep_need_minutes > 0 && (
+                <span className="sub">{t('app.sleep.need', { duration: durationText(night.sleep_need_minutes, t) })}</span>
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -131,6 +149,11 @@ export default function SleepNightScreen() {
         <p className="night-note">
           {t('app.sleep.awakenings_and_restless', { awake: night.awake_count ?? '—', restless: night.restless_moments ?? '—' })}
         </p>
+      )}
+      {night.breathing_disrupted && (
+        <Alert tone="info" className="night-alert">
+          {t('app.sleep.breathing_disrupted')}
+        </Alert>
       )}
 
       {/* Sleep Stages Section */}
@@ -182,7 +205,7 @@ export default function SleepNightScreen() {
       {/* Overnight Curves Section */}
       <Section title={t('app.sleep.metrics_title')}>
         <div className="panel bare">
-          <div className="panel-h" style={{ padding: '16px 16px 0' }}>
+          <div className="night-groups">
             <Segmented
               value={activeCurveGroup}
               onChange={setActiveCurveGroup}
@@ -190,52 +213,18 @@ export default function SleepNightScreen() {
               options={[
                 { id: 'pulse', label: t('app.sleep.tab_pulse') },
                 { id: 'breathing', label: t('app.sleep.tab_breathing') },
+                { id: 'recovery', label: t('app.sleep.tab_recovery') },
                 { id: 'movement', label: t('app.sleep.tab_movement') },
               ]}
             />
           </div>
 
-          <div style={{ padding: '16px' }}>
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
-              {activeSeries.map((s) => (
-                <span key={s.label} style={{ fontSize: 'var(--t-label)', color: 'var(--fg-2)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                  <i style={{ width: 8, height: 8, borderRadius: 2, background: s.color, display: 'inline-block' }} />
-                  {s.label}
-                </span>
-              ))}
-            </div>
-
-            {/* SVG line chart */}
-            <div style={{ height: 180, width: '100%', position: 'relative' }}>
-              <svg width="100%" height="100%" viewBox="0 0 400 180" preserveAspectRatio="none">
-                <line x1="0" y1="90" x2="400" y2="90" stroke="var(--line)" strokeDasharray="3 3" />
-                {activeSeries.map((s, sIdx) => {
-                  if (s.points.length === 0) return null
-                  const vals = s.points.map((p) => p.value)
-                  const minV = Math.min(...vals)
-                  const maxV = Math.max(...vals)
-                  const rangeV = maxV - minV || 1
-                  const pathData = s.points
-                    .map((p, pIdx) => {
-                      const x = (pIdx / (s.points.length - 1 || 1)) * 400
-                      const y = 160 - ((p.value - minV) / rangeV) * 140
-                      return `${pIdx === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
-                    })
-                    .join(' ')
-                  return (
-                    <path
-                      key={sIdx}
-                      d={pathData}
-                      fill="none"
-                      stroke={s.color}
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  )
-                })}
-              </svg>
-            </div>
+          <div className="night-curves">
+            {groupHasData ? (
+              <TimeCurves series={activeSeries} leftRange={activeCurveGroup === 'recovery' ? SCORE_SCALE : undefined} label={t('app.sleep.curves_label')} />
+            ) : (
+              <p className="m">{t('app.sleep.no_curves')}</p>
+            )}
           </div>
         </div>
       </Section>

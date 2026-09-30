@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readScanMetrics, toScanPreview } from './scanMetrics'
+import { groupScanMetrics, readScanMetrics, scanRefText, toScanPreview } from './scanMetrics'
 
 describe('scan preview metrics', () => {
   it('round-trips the recognised values', () => {
@@ -24,5 +24,25 @@ describe('scan preview metrics', () => {
     for (const value of ['', '  ', 'abc', '12.', '1e3']) {
       expect(readScanMetrics([fine, { label: 'New metric', value, unit: '' }])).toBeNull()
     }
+  })
+})
+
+describe('saved scan detail', () => {
+  const metric = (label: string, category: string | null) => ({ label, value: 1, category })
+
+  it('groups the metrics by category in reading order, unknown ones under other', () => {
+    const groups = groupScanMetrics([metric('a', 'water'), metric('b', 'composition'), metric('c', 'mystery'), metric('d', null), metric('e', 'water')])
+    expect(groups.map((g) => [g.category, g.metrics.map((m) => m.label)])).toEqual([
+      ['composition', ['b']],
+      ['water', ['a', 'e']],
+      ['other', ['c', 'd']],
+    ])
+  })
+
+  it('prints a reference range with either end missing', () => {
+    const fmt = (v: number) => String(v)
+    expect(scanRefText({ ref_low: 3.5, ref_high: 5 }, fmt)).toBe('3.5–5')
+    expect(scanRefText({ ref_low: null, ref_high: 5 }, fmt)).toBe('–5')
+    expect(scanRefText({ ref_low: null, ref_high: null }, fmt)).toBeNull()
   })
 })

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
+import { logOut } from '@/app/logout'
 import { useSession } from '@/app/session'
 import { Icon } from '@/components/icons/Icon'
 import { useT } from '@/i18n/useT'
@@ -81,7 +82,12 @@ export function Rail({ active }: { active: ScreenId }) {
 
   return (
     <aside className="rail">
-      <div className="brand">Vitals</div>
+      <div className="brand rail-brand">
+        Vitals
+        <button type="button" className="rail-out" aria-label={t('nav.logout')} title={t('nav.logout')} onClick={() => void logOut()}>
+          <Icon name="lock" />
+        </button>
+      </div>
       <button type="button" className="rail-log" onClick={() => toggleLogSheet('weight')}>
         <Icon name="plus" />
         {t('app.log')}

@@ -24,6 +24,9 @@ export interface LabsView {
   lab: string
   source: string
   markers: LabMarker[]
+  /** Every marker of the catalog: its retest interval, its priority (1 is the highest) and a
+   *  paused reminder. */
+  catalog: { name: string; tier: number; retestIntervalDays?: number | null; deferUntil?: string | null }[]
 }
 
 export function statusOf(m: Pick<LabMarker, 'value' | 'lo' | 'hi'>): LabStatus {

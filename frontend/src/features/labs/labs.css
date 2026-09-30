@@ -55,8 +55,6 @@
 .labs-acts { display: flex; gap: 8px; }
 .mk-detail-acts { margin-top: 8px; text-align: right; }
 
-.lab-modal-title { font-weight: 700; font-size: var(--t-heading); }
-.lab-modal-sub { font-size: var(--t-micro); color: var(--muted); margin-top: 2px; }
 .lab-modal-form { display: grid; gap: 16px; margin-top: 16px; }
 .lab-modal-grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 
@@ -73,3 +71,8 @@
 
 .lab-modal-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; }
 .lab-modal-foot-acts { display: flex; gap: 8px; }
+
+/* The file under review in a queue, and the marker catalog */
+.lab-file-thumb { display: block; max-height: 160px; max-width: 100%; margin: 0 0 12px; border-radius: var(--r-sm); object-fit: contain; }
+.lab-catalog { margin-top: var(--s8); }
+.lab-tier { margin-left: 8px; }

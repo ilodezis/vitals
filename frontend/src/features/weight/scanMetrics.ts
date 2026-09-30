@@ -21,3 +21,24 @@ export function readScanMetrics(rows: ScanPreviewMetric[]): BodyScanMetricItem[]
   }
   return metrics
 }
+
+/** The order a scan's metrics are read in, by category; anything else goes under "other". */
+export const SCAN_CATEGORIES = ['composition', 'water', 'segmental', 'score', 'derived', 'other'] as const
+
+/** A saved scan's metrics grouped by category, in the order above; an empty group is left out. */
+export function groupScanMetrics(metrics: readonly BodyScanMetricItem[]): { category: string; metrics: BodyScanMetricItem[] }[] {
+  const known = new Set<string>(SCAN_CATEGORIES)
+  return SCAN_CATEGORIES.map((category) => ({
+    category,
+    metrics: metrics.filter((m) => {
+      const c = m.category ?? 'other'
+      return category === 'other' ? !known.has(c) || c === 'other' : c === category
+    }),
+  })).filter((g) => g.metrics.length > 0)
+}
+
+/** "3,5–5,0": a metric's reference range; either end may be missing, both missing is no range. */
+export function scanRefText(m: Pick<BodyScanMetricItem, 'ref_low' | 'ref_high'>, fmt: (v: number) => string): string | null {
+  if (m.ref_low == null && m.ref_high == null) return null
+  return `${m.ref_low == null ? '' : fmt(m.ref_low)}–${m.ref_high == null ? '' : fmt(m.ref_high)}`
+}

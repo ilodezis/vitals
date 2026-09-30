@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api, ok, failText } from '@/api/client'
 import { Badge } from '@/components/controls/Marks'
@@ -11,6 +11,7 @@ import { parseIsoDate, shortDate } from '@/lib/dates'
 import type { TimelineEventItem } from './types'
 import { useTimelineView } from './useTimelineView'
 import './timeline.css'
+import { hasNewEventRequest, onNewEventRequest, takeNewEventRequest } from './newEventIntent'
 
 const DOM_ICON: Record<string, IconName> = {
   weight: 'scale',
@@ -38,6 +39,7 @@ const TL_KIND_TONE: Record<string, string> = {
   side_effect: 'bad',
 }
 
+
 export default function TimelineScreen() {
   const { t, tOr, lang } = useT()
   const [selectedDomain, setSelectedDomain] = useState('all')
@@ -47,7 +49,14 @@ export default function TimelineScreen() {
   const view = useTimelineView(shownDomain)
   const queryClient = useQueryClient()
 
-  const [formOpen, setFormOpen] = useState(false)
+  // Opened at once when another screen asked for a new event (Today's quick chip).
+  const [formOpen, setFormOpen] = useState(hasNewEventRequest)
+  useEffect(() => {
+    takeNewEventRequest()
+    return onNewEventRequest(() => {
+      if (takeNewEventRequest()) setFormOpen(true)
+    })
+  }, [])
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(view.today)
   const [endDate, setEndDate] = useState('')

@@ -428,6 +428,17 @@ export default function ShareScreen() {
                         </span>
                       </div>
                       <span className="acts">
+                        {s.hasSnapshot && (
+                          <a
+                            href={`/share/${s.id}/download`}
+                            download
+                            className="ibtn"
+                            aria-label={t('share.download')}
+                            title={t('share.download')}
+                          >
+                            <Icon name="download" />
+                          </a>
+                        )}
                         {dead ? (
                           <button
                             type="button"

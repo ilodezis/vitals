@@ -1,13 +1,14 @@
 import { useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { api, failText, InvalidError, ok, RequestError } from '@/api/client'
+import { api, failText, InvalidError, ok } from '@/api/client'
 import { MarkerChart } from '@/components/charts/MarkerChart'
 import { FilterRow } from '@/components/controls/Choices'
+import { Disclosure } from '@/components/controls/Disclosure'
 import { ConflictAlert } from '@/components/controls/ConflictAlert'
 import { RangeBar } from '@/components/controls/Meters'
-import { Delta, TextButton } from '@/components/controls/Marks'
+import { Badge, Delta, TextButton } from '@/components/controls/Marks'
 import { PrimaryButton, type PrimaryButtonHandle } from '@/components/controls/PrimaryButton'
-import { FigureBody } from '@/components/controls/Section'
+import { FigureBody, Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { useLayout } from '@/components/shell/layout'
@@ -20,6 +21,7 @@ import { formatNumber } from '@/lib/format'
 import { useConflictMutation } from '@/lib/useConflictMutation'
 import { markerTrend, rangeText } from './notes'
 import { statusOf, type LabMarker } from './types'
+import { failureLine, hasSummary, uploadLabFile, type QueueTally } from './uploadQueue'
 import { useLabsView } from './useLabsView'
 import './labs.css'
 
@@ -70,9 +72,14 @@ export default function LabsScreen() {
   const [filtered, setFiltered] = useState(false)
   const [selected, setSelected] = useState<string | null>(() => view.markers.find((m) => statusOf(m) !== 'ok')?.id ?? view.markers[0]?.id ?? null)
 
-  // Upload & Extraction Preview state
+  // Upload & Extraction Preview state. Several files go one at a time: each is read, checked and
+  // saved (or skipped) before the next one is sent.
   const [isUploading, setIsUploading] = useState(false)
   const [preview, setPreview] = useState<ExtractedPreview | null>(null)
+  const queueRef = useRef<File[]>([])
+  const tallyRef = useRef<QueueTally>({ added: 0, errors: [] })
+  const [progress, setProgress] = useState<{ index: number; total: number; name: string; image: string | null } | null>(null)
+  const [catalogOpen, setCatalogOpen] = useState(false)
 
   // Manual entry modal state
   const [manualOpen, setManualOpen] = useState(false)
@@ -91,40 +98,86 @@ export default function LabsScreen() {
     void queryClient.invalidateQueries({ queryKey: ['today'] })
   }
 
-  // Upload handler
-  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setIsUploading(true)
-    try {
-      const fd = new FormData()
-      fd.append('file', file)
-      const res = await fetch('/api/v1/labs/upload', {
-        method: 'POST',
-        body: fd,
-        credentials: 'same-origin',
-      })
-      if (!res.ok) throw new RequestError(res.status)
-      const data = await res.json()
-      if (!data.ok) {
-        toast(data.message || t('app.upload_failed'), { icon: 'warn' })
-      } else if (data.lab) {
-        setPreview(data.lab)
-        toast(t('app.labs.preview_title'), { icon: 'pulse' })
-      }
-    } catch (err) {
-      toast(failText(err, t('app.upload_failed')), { icon: 'warn' })
-    } finally {
-      setIsUploading(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
+  const releaseImage = () => setProgress((p) => {
+    if (p?.image) URL.revokeObjectURL(p.image)
+    return p === null ? null : { ...p, image: null }
+  })
+
+  // The queue is done: one line for what was added, one per file that failed.
+  const finishQueue = () => {
+    const tally = tallyRef.current
+    if (hasSummary(tally)) {
+      toast(t('app.labs.queue_added', { count: tally.added }), tally.errors.length > 0 ? { icon: 'warn' } : undefined)
+      for (const line of tally.errors) toast(line, { icon: 'warn' })
     }
+    tallyRef.current = { added: 0, errors: [] }
+    queueRef.current = []
+    releaseImage()
+    setProgress(null)
+  }
+
+  // Send the next file; a failed one is noted and the queue moves past it.
+  const advanceQueue = async () => {
+    for (;;) {
+      const file = queueRef.current.shift()
+      if (file === undefined) {
+        finishQueue()
+        return
+      }
+      releaseImage()
+      setProgress((p) => ({
+        index: (p?.index ?? 0) + 1,
+        total: p?.total ?? 1,
+        name: file.name,
+        image: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+      }))
+      setIsUploading(true)
+      const outcome = await uploadLabFile(file, t('app.upload_failed'))
+      setIsUploading(false)
+      if (outcome.kind === 'preview') {
+        setPreview(outcome.lab)
+        return
+      }
+      if (outcome.kind === 'stop' && tallyRef.current.added === 0 && tallyRef.current.errors.length === 0) {
+        toast(outcome.reason, { icon: 'warn' })
+        tallyRef.current = { added: 0, errors: [] }
+        finishQueue()
+        return
+      }
+      tallyRef.current.errors.push(failureLine(file.name, outcome.reason))
+    }
+  }
+
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (files.length === 0) return
+    queueRef.current = files
+    tallyRef.current = { added: 0, errors: [] }
+    setProgress({ index: 0, total: files.length, name: '', image: null })
+    void advanceQueue()
+  }
+
+  // This file's markers are not saved; the next file comes up.
+  const skipPreview = () => {
+    setPreview(null)
+    confirmConflict.clearConflict()
+    void advanceQueue()
+  }
+
+  // Closing the review stops the queue; what was saved stays saved.
+  const stopQueue = () => {
+    queueRef.current = []
+    setPreview(null)
+    confirmConflict.clearConflict()
+    finishQueue()
   }
 
   // Confirm extracted markers
   const confirmConflict = useConflictMutation({
     mutationFn: async ({ override }) => {
       if (!preview) throw new InvalidError('')
-      await ok(api.POST('/api/v1/labs/confirm', {
+      const saved = await ok(api.POST('/api/v1/labs/confirm', {
         body: {
           date: preview.date,
           labName: preview.labName || null,
@@ -140,9 +193,10 @@ export default function LabsScreen() {
           override,
         },
       }))
-      toast(t('common.saved'))
+      tallyRef.current.added += saved.created
       setPreview(null)
       refresh()
+      void advanceQueue()
     },
     fallbackErrorMessage: t('app.save_failed'),
     onError: (err) => {
@@ -254,6 +308,7 @@ export default function LabsScreen() {
         ref={fileInputRef}
         type="file"
         accept=".pdf,.png,.jpg,.jpeg"
+        multiple
         style={{ display: 'none' }}
         onChange={handleFileSelected}
       />
@@ -263,7 +318,7 @@ export default function LabsScreen() {
         screen="labs"
         actions={
           <div className="labs-acts">
-            <TextButton icon="upload" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+            <TextButton icon="upload" onClick={() => fileInputRef.current?.click()} disabled={progress !== null}>
               {isUploading ? t('app.labs.parsing') : t('app.labs.upload_action')}
             </TextButton>
             <TextButton icon="plus" onClick={() => setManualOpen(true)}>
@@ -302,14 +357,16 @@ export default function LabsScreen() {
         type="button"
         className="drop sec drop-first"
         onClick={() => fileInputRef.current?.click()}
-        disabled={isUploading}
+        disabled={progress !== null}
       >
         <span className="ico">
           <Icon name="upload" />
         </span>
         <span>
           <b>{isUploading ? t('app.labs.extracting') : t('app.labs.drop_title')}</b>
-          <small>{t('app.labs.drop_sub')}</small>
+          <small>
+            {progress !== null && progress.total > 1 ? t('app.labs.queue_progress', { index: progress.index, total: progress.total }) : t('app.labs.drop_sub_many')}
+          </small>
         </span>
       </button>
 
@@ -436,6 +493,37 @@ export default function LabsScreen() {
         </div>
       </div>
 
+      {view.catalog.length > 0 && (
+        <Section className="lab-catalog">
+          <Disclosure open={catalogOpen} onToggle={() => setCatalogOpen(!catalogOpen)} title={t('app.labs.catalog_title')} count={view.catalog.length}>
+            <div className="rows">
+              {view.catalog.map((c) => (
+                <div key={c.name} className="row r-kv tight">
+                  <span className="t plain">
+                    {c.name}
+                    {c.tier === 1 && (
+                      <Badge tone="bad" className="lab-tier">
+                        {t('app.labs.tier1')}
+                      </Badge>
+                    )}
+                  </span>
+                  <span className="m num">
+                    {c.retestIntervalDays == null
+                      ? '—'
+                      : [
+                          t('app.labs.retest_every', { days: c.retestIntervalDays }),
+                          c.deferUntil ? t('app.labs.deferred_until', { date: shortDate(parseIsoDate(c.deferUntil), lang) }) : null,
+                        ]
+                          .filter((x) => x !== null)
+                          .join(' · ')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Disclosure>
+        </Section>
+      )}
+
       {/* Modal: Extracted Markers Review & Confirm */}
       {preview && (
         <div className="hrt-form-modal">
@@ -443,12 +531,17 @@ export default function LabsScreen() {
             <div className="hrt-form-head">
               <div>
                 <h3 className="lab-modal-title">{t('app.labs.preview_title')}</h3>
-                <p className="lab-modal-sub">{t('app.labs.preview_sub')}</p>
+                <p className="lab-modal-sub">
+                  {progress !== null && progress.total > 1 && <b className="num">{t('app.labs.queue_progress', { index: progress.index, total: progress.total })} · </b>}
+                  {progress?.name ? `${progress.name} · ` : ''}
+                  {t('app.labs.preview_sub')}
+                </p>
               </div>
-              <button type="button" className="ibtn" onClick={() => setPreview(null)}>
+              <button type="button" className="ibtn" aria-label={t('app.close')} onClick={stopQueue}>
                 <Icon name="x" />
               </button>
             </div>
+            {progress?.image && <img className="lab-file-thumb" src={progress.image} alt={progress.name} />}
             <div className="lab-modal-form">
               <div className="lab-modal-grid2">
                 <label className="field">
@@ -587,7 +680,11 @@ export default function LabsScreen() {
                   {t('app.labs.add_row')}
                 </TextButton>
                 <div className="lab-modal-foot-acts">
-                  <TextButton onClick={() => setPreview(null)}>{t('common.cancel')}</TextButton>
+                  {progress !== null && progress.index < progress.total ? (
+                    <TextButton onClick={skipPreview}>{t('app.labs.skip')}</TextButton>
+                  ) : (
+                    <TextButton onClick={skipPreview}>{t('common.cancel')}</TextButton>
+                  )}
                   <PrimaryButton ref={confirmButtonRef} onPress={confirmConflict.submit}>
                     {t('app.labs.save_markers_count', { count: preview.markers.length })}
                   </PrimaryButton>

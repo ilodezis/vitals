@@ -1,4 +1,4 @@
-import { useDeferredValue, useState } from 'react'
+import { useDeferredValue, useRef, useState } from 'react'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { api, failText, ok } from '@/api/client'
 import { useTodayIso } from '@/app/session'
@@ -27,6 +27,7 @@ export default function NutritionScreen() {
   const todayStr = useTodayIso()
 
   const [selectedDate, setSelectedDate] = useState<string>(todayStr)
+  const pickerRef = useRef<HTMLInputElement>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [editingMealId, setEditingMealId] = useState<number | null>(null)
 
@@ -340,8 +341,24 @@ export default function NutritionScreen() {
             >
               <Icon name="chevL" />
             </button>
-            <span className="dl">
-              {selectedDate === todayStr ? t('app.nutrition.today') : longDate(parseIsoDate(selectedDate), lang)}
+            {/* The date itself opens a calendar: any day, not only the neighbours and the last 30. */}
+            <span className="dl dpick">
+              <button type="button" className="dpick-b" aria-label={t('app.nutrition.pick_date')} title={t('app.nutrition.pick_date')} onClick={() => pickerRef.current?.showPicker?.()}>
+                {selectedDate === todayStr ? t('app.nutrition.today') : longDate(parseIsoDate(selectedDate), lang)}
+              </button>
+              <input
+                ref={pickerRef}
+                type="date"
+                className="dpick-i"
+                tabIndex={-1}
+                aria-hidden="true"
+                max={todayStr}
+                value={selectedDate}
+                onChange={(e) => {
+                  const next = e.target.value
+                  if (next !== '' && next <= todayStr) setSelectedDate(next)
+                }}
+              />
             </span>
             <button
               type="button"

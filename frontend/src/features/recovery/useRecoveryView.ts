@@ -26,8 +26,25 @@ export function toRecoveryView(data: RawRecoveryView): RecoveryView {
     norms[key] = norm
   }
   const [awake, rem, light, deep] = n?.stage_minutes ?? []
+  const a = data.activity
   return {
     isConfigured: data.is_configured,
+    dateIso: data.date,
+    isToday: data.is_today,
+    lastSync: data.last_sync ?? null,
+    advice: data.advice ?? null,
+    activity: {
+      steps: a.steps ?? null,
+      stress: a.stress ?? null,
+      intensityModerate: a.intensity_moderate ?? null,
+      intensityVigorous: a.intensity_vigorous ?? null,
+      activeCalories: a.active_calories ?? null,
+    },
+    intraday: {
+      stress: data.intraday.stress,
+      bodyBattery: data.intraday.body_battery,
+      heartRate: data.intraday.heart_rate,
+    },
     headline: {
       sleepScore: hl.sleep_score ?? null,
       sleepMinutes: hl.sleep_minutes ?? null,
@@ -64,6 +81,7 @@ export function toRecoveryView(data: RawRecoveryView): RecoveryView {
       stress: d.stress ?? null,
       steps: d.steps ?? null,
       bb: d.bb ?? null,
+      awake: d.awake_count ?? null,
     })),
   }
 }

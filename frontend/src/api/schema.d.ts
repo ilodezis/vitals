@@ -2356,20 +2356,56 @@ export interface components {
             activity_type: string;
             /** Avg Hr */
             avg_hr?: number | null;
+            /** Avg Power */
+            avg_power?: number | null;
             /** Calories */
             calories?: number | null;
             /** Distance Meters */
             distance_meters?: number | null;
             /** Duration Seconds */
             duration_seconds: number;
+            /** Elevation Gain Meters */
+            elevation_gain_meters?: number | null;
+            /**
+             * Hr Zones
+             * @default []
+             */
+            hr_zones: components["schemas"]["ActivityZone"][];
             /** Id */
             id: string;
             /** Max Hr */
             max_hr?: number | null;
             /** Name */
             name: string;
+            /**
+             * Splits
+             * @default []
+             */
+            splits: components["schemas"]["ActivitySplit"][];
             /** Start Time */
             start_time: string;
+            /** Training Effect Aerobic */
+            training_effect_aerobic?: number | null;
+            /** Training Effect Anaerobic */
+            training_effect_anaerobic?: number | null;
+        };
+        /** ActivitySplit */
+        ActivitySplit: {
+            /** Avg Hr */
+            avg_hr?: number | null;
+            /** Distance Meters */
+            distance_meters?: number | null;
+            /** Duration Seconds */
+            duration_seconds?: number | null;
+            /** Index */
+            index: number;
+        };
+        /** ActivityZone */
+        ActivityZone: {
+            /** Seconds */
+            seconds: number;
+            /** Zone */
+            zone: number;
         };
         /** AiSettings */
         AiSettings: {
@@ -3536,6 +3572,8 @@ export interface components {
             concMgMl?: number | null;
             /** Doseunit */
             doseUnit?: string | null;
+            /** Ester */
+            ester?: string | null;
             /** Id */
             id: number;
             /** Key */
@@ -3676,6 +3714,8 @@ export interface components {
             brand?: string | null;
             /** Compoundkey */
             compoundKey: string;
+            /** Concmgml */
+            concMgMl?: number | null;
             /** Date */
             date: string;
             /** Dose */
@@ -3738,12 +3778,24 @@ export interface components {
         };
         /** HrtPlannedItem */
         HrtPlannedItem: {
+            /**
+             * Compoundkey
+             * @default
+             */
+            compoundKey: string;
             /** Date */
             date: string;
             /** Dose */
             dose: string;
+            /** Doseval */
+            doseVal?: number | null;
             /** Name */
             name: string;
+            /**
+             * Unit
+             * @default mg
+             */
+            unit: string;
         };
         /** HrtReleaseResponse */
         HrtReleaseResponse: {
@@ -3826,6 +3878,11 @@ export interface components {
             /** Compounds */
             compounds: components["schemas"]["HrtCompoundItem"][];
             cycle?: components["schemas"]["HrtActiveCycle"] | null;
+            /**
+             * Cyclekinds
+             * @default []
+             */
+            cycleKinds: string[];
             /** Doses */
             doses: components["schemas"]["HrtDoseItem"][];
             last?: components["schemas"]["HrtLastDose"] | null;
@@ -3847,6 +3904,11 @@ export interface components {
             };
             /** Templates */
             templates: components["schemas"]["HrtTemplateItem"][];
+            /**
+             * Units
+             * @default []
+             */
+            units: string[];
         };
         /** ImportResult */
         ImportResult: {
@@ -3891,10 +3953,22 @@ export interface components {
              */
             totalCount: number;
         };
+        /** IntradayPoint */
+        IntradayPoint: {
+            /** Ts */
+            ts: string;
+            /** Value */
+            value: number;
+        };
         /** IntradaySeriesPoint */
         IntradaySeriesPoint: {
             /** Time */
             time: string;
+            /**
+             * Ts
+             * @default
+             */
+            ts: string;
             /** Value */
             value: number;
         };
@@ -3939,6 +4013,23 @@ export interface components {
              * @default []
              */
             variants: string[];
+        };
+        /**
+         * LabCatalogEntry
+         * @description A marker of the catalog: how often it is retested, its priority, and a paused reminder.
+         */
+        LabCatalogEntry: {
+            /** Deferuntil */
+            deferUntil?: string | null;
+            /** Name */
+            name: string;
+            /** Retestintervaldays */
+            retestIntervalDays?: number | null;
+            /**
+             * Tier
+             * @default 2
+             */
+            tier: number;
         };
         /** LabConfirm */
         LabConfirm: {
@@ -4133,6 +4224,11 @@ export interface components {
         };
         /** LabsView */
         LabsView: {
+            /**
+             * Catalog
+             * @default []
+             */
+            catalog: components["schemas"]["LabCatalogEntry"][];
             /** Collectediso */
             collectedIso: string;
             /** Lab */
@@ -4433,8 +4529,12 @@ export interface components {
         };
         /** NightListItem */
         NightListItem: {
+            /** Awake Count */
+            awake_count?: number | null;
             /** Awake Seconds */
             awake_seconds?: number | null;
+            /** Bb Change */
+            bb_change?: number | null;
             /**
              * Date
              * Format: date
@@ -4444,6 +4544,8 @@ export interface components {
             deep_seconds?: number | null;
             /** Duration Seconds */
             duration_seconds?: number | null;
+            /** End Time */
+            end_time?: string | null;
             /** Hrv */
             hrv?: number | null;
             /** Light Seconds */
@@ -4454,6 +4556,8 @@ export interface components {
             rhr?: number | null;
             /** Score */
             score?: number | null;
+            /** Start Time */
+            start_time?: string | null;
         };
         /** NightsListView */
         NightsListView: {
@@ -4778,6 +4882,22 @@ export interface components {
             /** Weight Kg */
             weight_kg: number | null;
         };
+        /**
+         * RecoveryActivity
+         * @description The shown day's movement: steps, stress, intensity minutes and active calories.
+         */
+        RecoveryActivity: {
+            /** Active Calories */
+            active_calories?: number | null;
+            /** Intensity Moderate */
+            intensity_moderate?: number | null;
+            /** Intensity Vigorous */
+            intensity_vigorous?: number | null;
+            /** Steps */
+            steps?: number | null;
+            /** Stress */
+            stress?: number | null;
+        };
         /** RecoveryBar */
         RecoveryBar: {
             /** Hi */
@@ -4805,6 +4925,8 @@ export interface components {
         };
         /** RecoveryDayItem */
         RecoveryDayItem: {
+            /** Awake Count */
+            awake_count?: number | null;
             /** Bb */
             bb?: number | null;
             /**
@@ -4848,6 +4970,27 @@ export interface components {
             /** Sleep Score */
             sleep_score?: number | null;
         };
+        /**
+         * RecoveryIntraday
+         * @description The shown day's curves; a series the watch did not record is empty.
+         */
+        RecoveryIntraday: {
+            /**
+             * Body Battery
+             * @default []
+             */
+            body_battery: components["schemas"]["IntradayPoint"][];
+            /**
+             * Heart Rate
+             * @default []
+             */
+            heart_rate: components["schemas"]["IntradayPoint"][];
+            /**
+             * Stress
+             * @default []
+             */
+            stress: components["schemas"]["IntradayPoint"][];
+        };
         /** RecoveryNightPreview */
         RecoveryNightPreview: {
             /**
@@ -4883,6 +5026,10 @@ export interface components {
         };
         /** RecoveryView */
         RecoveryView: {
+            /** @default {} */
+            activity: components["schemas"]["RecoveryActivity"];
+            /** Advice */
+            advice?: string | null;
             /**
              * Bars
              * @default []
@@ -4899,6 +5046,14 @@ export interface components {
              */
             days: components["schemas"]["RecoveryDayItem"][];
             headline: components["schemas"]["RecoveryHeadline"];
+            /**
+             * @default {
+             *       "body_battery": [],
+             *       "heart_rate": [],
+             *       "stress": []
+             *     }
+             */
+            intraday: components["schemas"]["RecoveryIntraday"];
             /** Is Configured */
             is_configured: boolean;
             /** Is Today */
@@ -5107,6 +5262,11 @@ export interface components {
             domains: string[];
             /** Expiresat */
             expiresAt: string;
+            /**
+             * Hassnapshot
+             * @default false
+             */
+            hasSnapshot: boolean;
             /** Id */
             id: number;
             /** Lastopenedat */
@@ -5511,6 +5671,16 @@ export interface components {
             /** Bb Change */
             bb_change?: number | null;
             /**
+             * Body Battery
+             * @default []
+             */
+            body_battery: components["schemas"]["IntradaySeriesPoint"][];
+            /**
+             * Breathing Disrupted
+             * @default false
+             */
+            breathing_disrupted: boolean;
+            /**
              * Date
              * Format: date
              */
@@ -5557,6 +5727,13 @@ export interface components {
             rhr?: number | null;
             /** Score */
             score?: number | null;
+            /** Sleep Need Minutes */
+            sleep_need_minutes?: number | null;
+            /**
+             * Spo2
+             * @default []
+             */
+            spo2: components["schemas"]["IntradaySeriesPoint"][];
             /** Spo2 Min */
             spo2_min?: number | null;
             /**
@@ -5573,6 +5750,11 @@ export interface components {
             stages_series: components["schemas"]["SleepStageSegment"][];
             /** Start Time */
             start_time?: string | null;
+            /**
+             * Stress
+             * @default []
+             */
+            stress: components["schemas"]["IntradaySeriesPoint"][];
             /**
              * Today Date
              * Format: date
@@ -13068,4 +13250,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: 335764a798f22da7608d56b4696a7626455ab9e0c7a7cb8e3d9bf91d0dcd3a00
+// openapi.json sha256: eb7ec23f32f8c9a9408688608adbea3dfa2193f0abd38141dbea6d85dcf4263f

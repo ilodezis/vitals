@@ -11,6 +11,8 @@ interface ChartFrameProps {
   scrub?: readonly ScrubPoint[]
   /** How a point is read out: the big value line of the tip. */
   readout?: (p: ScrubPoint) => string
+  /** The quiet line under it; the point's weekday and date unless told otherwise (a clock time). */
+  caption?: (p: ScrubPoint) => string
   className?: string
   style?: CSSProperties
   /** The line-drawing intro; off when a chart is only being redrawn at a new width. */
@@ -27,7 +29,7 @@ interface Reading {
 
 /** The box every chart sits in: `.chart` styles, the intro draw, and the scrub — hold a finger
  *  (or the pointer) anywhere on the chart to get a rule, a dot and the reading. */
-export function ChartFrame({ children, scrub = [], readout, className, style, intro = true, boxRef }: ChartFrameProps) {
+export function ChartFrame({ children, scrub = [], readout, caption, className, style, intro = true, boxRef }: ChartFrameProps) {
   const { lang } = useT()
   const ownRef = useRef<HTMLDivElement>(null)
   const box = boxRef ?? ownRef
@@ -66,7 +68,7 @@ export function ChartFrame({ children, scrub = [], readout, className, style, in
         {point !== undefined && (
           <>
             <b>{readout === undefined ? String(point.value) : readout(point)}</b>
-            {weekdayDate(point.date, lang)}
+            {caption === undefined ? weekdayDate(point.date, lang) : caption(point)}
           </>
         )}
       </div>

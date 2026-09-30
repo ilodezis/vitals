@@ -6,8 +6,11 @@
 
 /* Measures styling */
 .t-meas { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
+/* On a phone the tape's columns are the line under the date; the table has them from a desktop up. */
+.t-meas .hs { display: none; }
 @container app (min-width: 768px) {
   .t-meas { grid-template-columns: minmax(0, 1fr) 64px 64px 72px 96px 88px; }
+  .t-meas .hs { display: block; }
 }
 .cat { font-size: var(--t-micro); color: var(--muted); font-weight: 600; margin: 12px 0 4px; text-transform: uppercase; letter-spacing: 0.04em; }
 .pv { display: grid; gap: 6px; }
@@ -34,3 +37,15 @@
 .ribbon-empty { padding: var(--s2) 0; }
 .ph-tile .ibtn { width: 32px; height: 32px; color: var(--muted); }
 .ph-tile .ibtn svg { width: 16px; height: 16px; }
+
+/* Hips beside neck and waist for a woman's tape; a saved scan's metric with its range; a photo shown large */
+@container app (min-width: 768px) {
+  .t-meas.fem { grid-template-columns: minmax(0, 1fr) 64px 64px 64px 72px 96px 88px; }
+}
+.scan-met { display: grid; grid-template-columns: minmax(0, 1fr) auto 72px; gap: 8px; align-items: center; min-height: 40px; }
+.scan-met small { color: var(--muted); font-size: var(--t-micro); }
+.scan-met .m { text-align: right; }
+.ph-large { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .78); }
+.ph-large-box { display: grid; gap: 10px; max-width: min(760px, 100%); }
+.ph-large-box img { max-width: 100%; max-height: 76vh; object-fit: contain; border-radius: var(--r); background: var(--surface); }
+.ph-large-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

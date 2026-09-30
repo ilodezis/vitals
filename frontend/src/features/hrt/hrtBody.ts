@@ -13,9 +13,51 @@ function wholeFrom1(raw: string): number | null {
   return value >= 1 ? value : null
 }
 
-export function buildDoseBody(fields: { dose: string }): { dose: number } | null {
+export interface DoseBody {
+  dose?: number
+  volumeMl?: number
+  concentrationMgMl?: number
+}
+
+/** The amount of a dose: typed in the compound's unit, or drawn from a vial — a volume and the
+ *  vial's concentration (or the catalog's typical one), which the service turns into mg. */
+export function buildDoseBody(fields: { dose: string; volume?: string; concentration?: string; catalogConcentration?: number | null }): DoseBody | null {
   const dose = positive(fields.dose)
-  return dose === null ? null : { dose }
+  const volumeMl = positive(fields.volume ?? '')
+  const concentrationMgMl = positive(fields.concentration ?? '')
+  const body: DoseBody = {}
+  if (dose !== null) body.dose = dose
+  if (volumeMl !== null) body.volumeMl = volumeMl
+  if (concentrationMgMl !== null) body.concentrationMgMl = concentrationMgMl
+  if (dose !== null) return body
+  const knownConcentration = concentrationMgMl ?? (fields.catalogConcentration != null && fields.catalogConcentration > 0 ? fields.catalogConcentration : null)
+  return volumeMl !== null && knownConcentration !== null ? body : null
+}
+
+export interface CompoundGroup<T> {
+  cls: string
+  items: T[]
+}
+
+/** The catalog grouped by class, in the order the classes first appear. */
+export function groupByClass<T extends { compoundClass?: string | null }>(compounds: readonly T[]): CompoundGroup<T>[] {
+  const groups: CompoundGroup<T>[] = []
+  for (const c of compounds) {
+    const cls = c.compoundClass ?? ''
+    let group = groups.find((g) => g.cls === cls)
+    if (group === undefined) {
+      group = { cls, items: [] }
+      groups.push(group)
+    }
+    group.items.push(c)
+  }
+  return groups
+}
+
+/** A release series' index of today, or null when today is outside it. */
+export function todayIndex(series: readonly { date: string }[], todayIso: string): number | null {
+  const i = series.findIndex((p) => p.date === todayIso)
+  return i < 0 ? null : i
 }
 
 export interface ItemBody {

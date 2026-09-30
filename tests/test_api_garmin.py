@@ -14,8 +14,14 @@ from vitals.models.garmin import (
     GarminActivity,
     GarminDaily,
     GarminIntraday,
+    SERIES_BODY_BATTERY,
+    SERIES_HEART_RATE,
+    SERIES_SLEEP_BB,
     SERIES_SLEEP_HR,
     SERIES_SLEEP_HRV,
+    SERIES_SLEEP_SPO2,
+    SERIES_SLEEP_STRESS,
+    SERIES_STRESS,
 )
 from vitals.utils.timeutils import today_local
 
@@ -43,8 +49,11 @@ async def test_recovery_empty_overview(auth_client):
     data = r.json()
     assert set(data) == {
         "date", "today_date", "is_today", "is_configured", "last_sync",
-        "headline", "night", "norms", "norms_days", "norms_min_days", "bars", "days",
+        "headline", "activity", "intraday", "advice",
+        "night", "norms", "norms_days", "norms_min_days", "bars", "days",
     }  # fmt: skip
+    assert data["intraday"] == {"stress": [], "body_battery": [], "heart_rate": []}
+    assert data["advice"] is None
     assert data["headline"]["sleep_score"] is None
     assert data["night"] is None
     assert data["days"] == []
@@ -355,3 +364,167 @@ async def test_recovery_corridor_comes_from_his_own_days(auth_client, db_session
     assert body["headline"]["hrv_nights_below"] == 1
     hrv = next(b for b in body["bars"] if b["key"] == "hrv")
     assert hrv["tone"] == "bad" and hrv["max"] >= 90.0
+
+
+async def test_recovery_overview_day_details(auth_client, db_session, redis):
+    """The day strip, the recovery observation, the day's curves and the last sync time."""
+    today = today_local()
+    db_session.add(
+        GarminDaily(
+            date=today,
+            domain=GARMIN_DOMAIN,
+            source=Source.GARMIN_API.value,
+            sleep_score=40,
+            steps=8000,
+            avg_stress=31,
+            intensity_minutes_moderate=20,
+            intensity_minutes_vigorous=15,
+            active_calories=640,
+            awake_count=3,
+        )
+    )
+    # A night sample on the same date stays on the sleep screen.
+    for series, hour, value in [
+        (SERIES_STRESS, 9, 25.0),
+        (SERIES_BODY_BATTERY, 9, 70.0),
+        (SERIES_HEART_RATE, 10, 64.0),
+        (SERIES_SLEEP_HR, 2, 50.0),
+    ]:
+        db_session.add(
+            GarminIntraday(
+                date=today,
+                domain=GARMIN_DOMAIN,
+                source=Source.GARMIN_API.value,
+                series_type=series,
+                ts=dt.datetime.combine(today, dt.time(hour, 0)),
+                value=value,
+            )
+        )
+    await db_session.commit()
+    await redis.set("sync:last_success:garmin", "1790000000")
+
+    data = (await auth_client.get(RECOVERY)).json()
+    assert data["activity"] == {
+        "steps": 8000,
+        "stress": 31,
+        "intensity_moderate": 20,
+        "intensity_vigorous": 15,
+        "active_calories": 640,
+    }
+    assert [p["value"] for p in data["intraday"]["stress"]] == [25.0]
+    assert data["intraday"]["stress"][0]["ts"].startswith(today.isoformat())
+    assert [p["value"] for p in data["intraday"]["body_battery"]] == [70.0]
+    assert [p["value"] for p in data["intraday"]["heart_rate"]] == [64.0]
+    assert data["advice"]  # a sleep score of 40 is worth a word
+    assert data["days"][0]["awake_count"] == 3
+    # An ISO timestamp the screen formats, not a pre-formatted string.
+    assert dt.datetime.fromisoformat(data["last_sync"])
+
+
+async def test_sleep_night_need_breathing_and_recovery_curves(auth_client, db_session):
+    day = dt.date(2026, 4, 2)
+    db_session.add(
+        GarminDaily(
+            date=day,
+            domain=GARMIN_DOMAIN,
+            source=Source.GARMIN_API.value,
+            sleep_score=70,
+            sleep_seconds=7 * 3600,
+            sleep_need_actual=480,
+            breathing_disruption="MODERATE",
+        )
+    )
+    for series, value in [(SERIES_SLEEP_SPO2, 93.0), (SERIES_SLEEP_STRESS, 12.0), (SERIES_SLEEP_BB, 55.0)]:
+        db_session.add(
+            GarminIntraday(
+                date=day,
+                domain=GARMIN_DOMAIN,
+                source=Source.GARMIN_API.value,
+                series_type=series,
+                ts=dt.datetime(2026, 4, 1, 23, 45),
+                value=value,
+            )
+        )
+    await db_session.commit()
+
+    data = (await auth_client.get(f"{RECOVERY}/sleep/{day.isoformat()}")).json()
+    assert data["sleep_need_minutes"] == 480
+    assert data["breathing_disrupted"] is True
+    assert [p["value"] for p in data["spo2"]] == [93.0]
+    assert [p["value"] for p in data["stress"]] == [12.0]
+    assert [p["value"] for p in data["body_battery"]] == [55.0]
+    assert data["body_battery"][0]["ts"] == "2026-04-01T23:45:00"
+
+
+async def test_nights_list_carries_times_awakenings_and_battery(auth_client, db_session):
+    day = dt.date(2026, 4, 3)
+    db_session.add(
+        GarminDaily(
+            date=day,
+            domain=GARMIN_DOMAIN,
+            source=Source.GARMIN_API.value,
+            sleep_score=77,
+            sleep_seconds=7 * 3600,
+            sleep_start=dt.datetime(2026, 4, 2, 23, 10),
+            sleep_end=dt.datetime(2026, 4, 3, 6, 40),
+            awake_count=2,
+            body_battery_change=48,
+        )
+    )
+    await db_session.commit()
+
+    night = (await auth_client.get(f"{RECOVERY}/nights")).json()["nights"][0]
+    assert night["start_time"] == "23:10"
+    assert night["end_time"] == "06:40"
+    assert night["awake_count"] == 2
+    assert night["bb_change"] == 48
+
+
+async def test_activities_carry_the_detail(auth_client, db_session):
+    db_session.add_all(
+        [
+            GarminActivity(
+                external_id="run-1",
+                date=dt.date(2026, 4, 3),
+                domain=GARMIN_DOMAIN,
+                source=Source.GARMIN_API.value,
+                activity_type="running",
+                name="Morning run",
+                start_time=dt.datetime(2026, 4, 3, 7, 0),
+                duration_seconds=1800,
+                training_effect_aerobic=3.2,
+                training_effect_anaerobic=1.1,
+                elevation_gain_m=42.0,
+                avg_power=250,
+                hr_zone_seconds=[{"zone": 1, "secs": 120.0, "low_hr": None}, {"zone": 2, "secs": 900.0, "low_hr": None}],
+                splits=[
+                    {"index": 1, "distance_m": 1000.0, "duration_s": 300.0, "avg_hr": 140},
+                    {"index": 2, "distance_m": 1000.0, "duration_s": 290.0, "avg_hr": 150},
+                ],
+            ),
+            GarminActivity(
+                external_id="lift-1",
+                date=dt.date(2026, 4, 2),
+                domain=GARMIN_DOMAIN,
+                source=Source.GARMIN_API.value,
+                activity_type="strength_training",
+                start_time=dt.datetime(2026, 4, 2, 18, 0),
+                duration_seconds=3600,
+                splits=[{"index": 1, "distance_m": None, "duration_s": 3600.0, "avg_hr": 110}],
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    items = {a["id"]: a for a in (await auth_client.get(f"{RECOVERY}/activities")).json()["activities"]}
+    run = items["run-1"]
+    assert run["training_effect_aerobic"] == 3.2
+    assert run["training_effect_anaerobic"] == 1.1
+    assert run["elevation_gain_meters"] == 42.0
+    assert run["avg_power"] == 250
+    assert run["hr_zones"] == [{"zone": 1, "seconds": 120.0}, {"zone": 2, "seconds": 900.0}]
+    assert [s["avg_hr"] for s in run["splits"]] == [140, 150]
+    assert run["splits"][0] == {"index": 1, "distance_meters": 1000.0, "duration_seconds": 300.0, "avg_hr": 140}
+    # One lap is the activity itself: no splits table.
+    assert items["lift-1"]["splits"] == []
+    assert items["lift-1"]["hr_zones"] == []

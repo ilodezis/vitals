@@ -11,11 +11,12 @@ import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
+import { useTodayIso } from '@/app/session'
 import { useT } from '@/i18n/useT'
 import { parseIsoDate, shortDate, toIsoDate } from '@/lib/dates'
 import { formatCompact } from '@/lib/format'
 import { useConflictMutation } from '@/lib/useConflictMutation'
-import { buildDoseBody, buildItemBody, buildItemPatch, templateFileName } from './hrtBody'
+import { buildDoseBody, buildItemBody, buildItemPatch, groupByClass, templateFileName, todayIndex } from './hrtBody'
 import type { HrtCyclePlanItem, HrtDoseItem, HrtTemplateItem } from './types'
 import { useHrtView } from './useHrtView'
 import './hrt.css'
@@ -36,19 +37,29 @@ export default function HrtScreen() {
   const [importOpen, setImportOpen] = useState(false)
   const [importPayload, setImportPayload] = useState('')
   const doseButtonRef = useRef<PrimaryButtonHandle>(null)
+  const todayIso = useTodayIso()
+  const unitName = (unit: string | null | undefined) => (unit ? tOr(`app.hrt.unit_name.${unit}`, unit) : '')
+  const compoundGroups = useMemo(() => groupByClass(view.compounds), [view.compounds])
+  // Which template is being started, and from which day.
+  const [applyingTpl, setApplyingTpl] = useState<number | null>(null)
+  const [applyDate, setApplyDate] = useState('')
 
   // Form states
   const todayStr = useMemo(() => toIsoDate(new Date()), [])
   const [doseDate, setDoseDate] = useState(todayStr)
   const [doseCompound, setDoseCompound] = useState(() => view.compounds[0]?.key ?? 'testosterone_cypionate')
   const [doseVal, setDoseVal] = useState('')
-  const [doseUnit, setDoseUnit] = useState('mg')
+  const [doseUnit, setDoseUnit] = useState(() => view.compounds[0]?.doseUnit ?? 'mg')
   const [doseSite, setDoseSite] = useState('glute_left')
   const [doseBrand, setDoseBrand] = useState('')
   const [doseNote, setDoseNote] = useState('')
+  const [doseVolume, setDoseVolume] = useState('')
+  const [doseConc, setDoseConc] = useState('')
+  const [doseLab, setDoseLab] = useState('')
+  const [doseBatch, setDoseBatch] = useState('')
 
   // Cycle form states
-  const [cycleKind, setCycleKind] = useState('trt')
+  const [cycleKind, setCycleKind] = useState(() => view.cycleKinds[0] ?? 'course')
   const [cycleName, setCycleName] = useState('')
   const [cycleStart, setCycleStart] = useState(todayStr)
   const [cycleEnd, setCycleEnd] = useState('')
@@ -67,7 +78,8 @@ export default function HrtScreen() {
   const [seNote, setSeNote] = useState('')
 
   const activeC = view.cycle
-  const doseBody = buildDoseBody({ dose: doseVal })
+  const doseCompoundItem = view.compounds.find((c) => c.key === doseCompound)
+  const doseBody = buildDoseBody({ dose: doseVal, volume: doseVolume, concentration: doseConc, catalogConcentration: doseCompoundItem?.concMgMl })
   const itemFields = { dose: itemDose, interval: itemInterval, startWeek: itemStartWeek, duration: itemDuration }
   const itemFlat = editingItem === null || editingItem.flat !== false
   const itemBody = buildItemBody(itemFields)
@@ -92,6 +104,10 @@ export default function HrtScreen() {
     setDoseSite(d.site ?? '')
     setDoseBrand(d.brand ?? '')
     setDoseNote(d.note ?? '')
+    setDoseVolume(d.ml == null ? '' : String(d.ml))
+    setDoseConc(d.concMgMl == null ? '' : String(d.concMgMl))
+    setDoseLab(d.lab ?? '')
+    setDoseBatch(d.batch ?? '')
     setDoseModalOpen(true)
   }
 
@@ -102,6 +118,10 @@ export default function HrtScreen() {
       setDoseVal('')
       setDoseBrand('')
       setDoseNote('')
+      setDoseVolume('')
+      setDoseConc('')
+      setDoseLab('')
+      setDoseBatch('')
     }
     setEditingDoseId(null)
     setDoseModalOpen(false)
@@ -119,6 +139,8 @@ export default function HrtScreen() {
         unit: doseUnit,
         site: doseSite || null,
         brand: doseBrand || null,
+        lab: doseLab || null,
+        batch: doseBatch || null,
         note: doseNote || null,
         override,
       }
@@ -285,9 +307,10 @@ export default function HrtScreen() {
     try {
       await ok(api.POST('/api/v1/hrt/templates/{template_id}/create-cycle', {
         params: { path: { template_id: templateId } },
-        body: { startDate: todayStr },
+        body: { startDate: applyDate || todayIso },
       }))
       toast(t('hrt.cycle_started'))
+      setApplyingTpl(null)
       refresh()
     } catch (err) {
       toast(failText(err, t('app.action_failed')), { icon: 'warn' })
@@ -380,8 +403,10 @@ export default function HrtScreen() {
       const y = h - (p.total_mg / maxMg) * (h - 8) - 4
       return `${x.toFixed(1)},${y.toFixed(1)}`
     })
-    return { points: coords.join(' '), maxMg: formatCompact(maxMg, lang, 1) }
-  }, [view.release, lang])
+    const ti = todayIndex(pts, todayIso)
+    const todayX = ti === null ? null : (ti / (pts.length - 1)) * w
+    return { points: coords.join(' '), maxMg: formatCompact(maxMg, lang, 1), todayX }
+  }, [view.release, lang, todayIso])
 
   const lastDoseVal = view.last ? parseFloat(view.last.dose) : NaN
   const lastDoseNum = !Number.isNaN(lastDoseVal) ? formatCompact(lastDoseVal, lang, 2) : (view.last?.dose ?? '—')
@@ -396,11 +421,9 @@ export default function HrtScreen() {
             <TextButton icon="syringe" onClick={openDoseAdd}>
               {t('hrt.add_dose')}
             </TextButton>
-            {!activeC && (
-              <TextButton icon="pulse" onClick={() => setCycleModalOpen(true)}>
-                {t('hrt.start_cycle')}
-              </TextButton>
-            )}
+            <TextButton icon="pulse" onClick={() => setCycleModalOpen(true)}>
+              {activeC ? t('app.hrt.new_cycle') : t('hrt.start_cycle')}
+            </TextButton>
           </div>
         }
       />
@@ -434,8 +457,10 @@ export default function HrtScreen() {
                       {shortDate(parseIsoDate(activeC.start), lang)}
                       {activeC.end ? ` — ${shortDate(parseIsoDate(activeC.end), lang)}` : ''}
                     </p>
+                    {activeC.cadence > 0 && <p className="sub hrt-cadence">{t('app.hrt.panel_cadence', { days: activeC.cadence })}</p>}
                   </div>
                   <div className="hrt-acts">
+                    <TextButton onClick={() => setCycleModalOpen(true)}>{t('app.hrt.new_cycle')}</TextButton>
                     <TextButton onClick={handleCloseCycle}>
                       {t('hrt.close_cycle')}
                     </TextButton>
@@ -470,9 +495,17 @@ export default function HrtScreen() {
                       <span>{t('hrt.release_curve')}</span>
                       <span>{t('app.hrt.peak_mg', { val: releaseSvg.maxMg })}</span>
                     </div>
-                    <svg viewBox="0 0 500 70" preserveAspectRatio="none" className="hrt-sparkline-svg">
-                      <polyline fill="none" stroke="var(--violet)" strokeWidth="2.5" points={releaseSvg.points} />
+                    <svg viewBox="0 0 500 70" preserveAspectRatio="none" className="hrt-sparkline-svg" role="img" aria-label={t('app.hrt.release_label')}>
+                      {releaseSvg.todayX !== null && (
+                        <line x1={releaseSvg.todayX} x2={releaseSvg.todayX} y1="0" y2="70" stroke="var(--accent-line)" strokeWidth="1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+                      )}
+                      <polyline fill="none" stroke="var(--violet)" strokeWidth="2.5" points={releaseSvg.points} vectorEffect="non-scaling-stroke" />
                     </svg>
+                    {releaseSvg.todayX !== null && (
+                      <span className="hrt-today" style={{ left: `${(releaseSvg.todayX / 500) * 100}%` }}>
+                        {t('app.hrt.today_mark')}
+                      </span>
+                    )}
                   </div>
                 )}
 
@@ -490,7 +523,7 @@ export default function HrtScreen() {
                         <div className="hrt-plan-info">
                           <span className="hrt-plan-name">{it.name}</span>
                           <span className="hrt-plan-sub">
-                            {formatCompact(it.dose, lang, 2)} {t('app.unit.mg')}
+                            {formatCompact(it.dose, lang, 2)} {unitName(it.unit)}
                             {it.every != null ? ` · ${t('app.hrt.every_d', { days: formatCompact(it.every, lang, 2) })}` : ''} · {t('app.hrt.week_plus', { week: it.from })}
                           </span>
                         </div>
@@ -504,6 +537,24 @@ export default function HrtScreen() {
                     ))}
                   </div>
                 </div>
+
+                {view.planned.length > 0 && (
+                  <div className="hrt-planned">
+                    <span className="flabel">{t('app.hrt.planned_title')}</span>
+                    <div className="rows">
+                      {view.planned.map((p, i) => (
+                        <div key={`${p.date}-${p.compoundKey}-${i}`} className="row r-planned">
+                          <span className="m num">{shortDate(parseIsoDate(p.date), lang)}</span>
+                          <span className="t plain">{p.name}</span>
+                          <span className="v num">
+                            {p.doseVal == null ? p.dose : formatCompact(p.doseVal, lang, 2)}
+                            {p.doseVal != null && <span className="u">{unitName(p.unit)}</span>}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Save as template */}
                 <div className="hrt-template-save-bar">
@@ -547,14 +598,21 @@ export default function HrtScreen() {
                     <div>
                       <div className="t">{d.name}</div>
                       <div className="m">
-                        {shortDate(parseIsoDate(d.date), lang)}
-                        {d.site ? ` · ${view.siteLabels[d.site] || d.site}` : ''}
-                        {d.brand ? ` · ${d.brand}` : ''}
+                        {[
+                          shortDate(parseIsoDate(d.date), lang),
+                          d.site ? view.siteLabels[d.site] || d.site : null,
+                          [d.brand, d.lab].filter(Boolean).join(' / ') || null,
+                          d.batch || null,
+                          d.ml != null ? t('app.hrt.ml_value', { value: formatCompact(d.ml, lang, 2) }) : null,
+                          d.concMgMl != null ? t('app.hrt.conc_value', { value: formatCompact(d.concMgMl, lang, 1) }) : null,
+                        ]
+                          .filter((x) => x !== null)
+                          .join(' · ')}
                       </div>
                     </div>
                     <div className="v">
                       {formatCompact(d.doseVal, lang, 2)}
-                      <span className="u">{t('app.unit.mg')}</span>
+                      <span className="u">{unitName(d.unit)}</span>
                     </div>
                     <div className="acts">
                       <button type="button" className="ibtn" onClick={() => openDoseEdit(d)} aria-label={t('common.edit')} title={t('common.edit')}>
@@ -570,6 +628,20 @@ export default function HrtScreen() {
         </div>
 
         <div className="c5">
+          {Object.keys(view.siteCounts).length > 0 && (
+            <Section title={t('app.hrt.site_rotation')}>
+              <div className="hrt-sites">
+                {Object.entries(view.siteCounts)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([site, n]) => (
+                    <Badge key={site} tone="plain">
+                      {t('app.hrt.site_count', { site: view.siteLabels[site] || site, n })}
+                    </Badge>
+                  ))}
+              </div>
+            </Section>
+          )}
+
           {/* Side Effects */}
           <Section
             title={t('hrt.side_effects')}
@@ -620,13 +692,20 @@ export default function HrtScreen() {
                 view.templates.map((tpl) => (
                   <div key={tpl.id} className="row hrt-template-item">
                     <div className="hrt-template-info">
-                      <span className="hrt-template-name">{tpl.name}</span>
+                      <span className="hrt-template-name">
+                        <Badge tone="violet">{tOr(`hrt.kind.${tpl.kind}`, tpl.kind)}</Badge> {tpl.name}
+                      </span>
                       <span className="hrt-template-sub">
-                        {tpl.items.map(([c]) => c).join(', ')}
+                        {tpl.items.map(([c, week]) => (week > 0 ? `${c} (${t('app.hrt.from_week', { week: week + 1 })})` : c)).join(', ')}
                       </span>
                     </div>
                     <div className="acts">
-                      <TextButton onClick={() => handleApplyTemplate(tpl.id)}>
+                      <TextButton
+                        onClick={() => {
+                          setApplyDate(todayIso)
+                          setApplyingTpl(applyingTpl === tpl.id ? null : tpl.id)
+                        }}
+                      >
                         {t('hrt.apply_template')}
                       </TextButton>
                       <button type="button" className="ibtn" onClick={() => void handleExportTemplate(tpl)} aria-label={t('hrt.export')} title={t('hrt.export')}>
@@ -634,6 +713,17 @@ export default function HrtScreen() {
                       </button>
                       <ConfirmButton label={t('hrt.delete')} onConfirm={() => void handleDeleteTemplate(tpl.id)} />
                     </div>
+                    {applyingTpl === tpl.id && (
+                      <div className="hrt-apply">
+                        <label className="field">
+                          <span className="flabel">{t('app.hrt.start_on')}</span>
+                          <input type="date" className="input" value={applyDate} onChange={(e) => setApplyDate(e.target.value)} />
+                        </label>
+                        <PrimaryButton onPress={async () => { await handleApplyTemplate(tpl.id); return true }} disabled={applyDate === ''}>
+                          {t('app.hrt.create_cycle')}
+                        </PrimaryButton>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -674,9 +764,28 @@ export default function HrtScreen() {
               </label>
               <label className="field">
                 <span className="flabel">{t('hrt.compound')}</span>
-                <select className="input" value={doseCompound} onChange={(e) => setDoseCompound(e.target.value)}>
-                  {view.compounds.map((c) => (
-                    <option key={c.key} value={c.key}>{c.name}</option>
+                <select
+                  className="input"
+                  value={doseCompound}
+                  onChange={(e) => {
+                    setDoseCompound(e.target.value)
+                    const next = view.compounds.find((c) => c.key === e.target.value)
+                    if (next?.doseUnit) setDoseUnit(next.doseUnit)
+                  }}
+                >
+                  <option value="" disabled>
+                    {t('app.hrt.pick_compound')}
+                  </option>
+                  {compoundGroups.map((g) => (
+                    <optgroup key={g.cls} label={g.cls === '' ? '—' : tOr(`enum.compound_class.${g.cls}`, g.cls)}>
+                      {g.items.map((c) => (
+                        <option key={c.key} value={c.key}>
+                          {c.name}
+                          {c.ester ? ` · ${c.ester}` : ''}
+                          {c.doseUnit ? ` (${unitName(c.doseUnit)})` : ''}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </label>
@@ -686,10 +795,36 @@ export default function HrtScreen() {
                   <input type="number" step="0.1" className="input" value={doseVal} onChange={(e) => setDoseVal(e.target.value)} />
                 </label>
                 <label className="field">
-                  <span className="flabel">{t('common.unit')}</span>
-                  <input className="input" value={doseUnit} onChange={(e) => setDoseUnit(e.target.value)} />
+                  <span className="flabel">{t('app.hrt.unit')}</span>
+                  <select className="input" value={doseUnit} onChange={(e) => setDoseUnit(e.target.value)}>
+                    {view.units.map((u) => (
+                      <option key={u} value={u}>
+                        {unitName(u)}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
+              <div className="hrt-form-grid2">
+                <label className="field">
+                  <span className="flabel">{t('app.hrt.volume')}</span>
+                  <input type="number" inputMode="decimal" step="0.01" min="0" className="input" value={doseVolume} onChange={(e) => setDoseVolume(e.target.value)} />
+                </label>
+                <label className="field">
+                  <span className="flabel">{t('app.hrt.concentration')}</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.1"
+                    min="0"
+                    className="input"
+                    placeholder={doseCompoundItem?.concMgMl != null ? formatCompact(doseCompoundItem.concMgMl, lang, 1) : undefined}
+                    value={doseConc}
+                    onChange={(e) => setDoseConc(e.target.value)}
+                  />
+                </label>
+              </div>
+              {doseBody === null && <p className="sub flush">{t('app.hrt.dose_or_volume')}</p>}
               <label className="field">
                 <span className="flabel">{t('hrt.site')}</span>
                 <select className="input" value={doseSite} onChange={(e) => setDoseSite(e.target.value)}>
@@ -703,6 +838,16 @@ export default function HrtScreen() {
                 <span className="flabel">{t('hrt.brand')}</span>
                 <input className="input" value={doseBrand} onChange={(e) => setDoseBrand(e.target.value)} />
               </label>
+              <div className="hrt-form-grid2">
+                <label className="field">
+                  <span className="flabel">{t('app.hrt.lab')}</span>
+                  <input className="input" maxLength={64} value={doseLab} onChange={(e) => setDoseLab(e.target.value)} />
+                </label>
+                <label className="field">
+                  <span className="flabel">{t('app.hrt.batch')}</span>
+                  <input className="input" maxLength={64} value={doseBatch} onChange={(e) => setDoseBatch(e.target.value)} />
+                </label>
+              </div>
               <label className="field">
                 <span className="flabel">{t('common.note')}</span>
                 <input className="input" value={doseNote} onChange={(e) => setDoseNote(e.target.value)} />
@@ -725,7 +870,7 @@ export default function HrtScreen() {
         <div className="hrt-form-modal">
           <div className="hrt-form-box">
             <div className="hrt-form-head">
-              <h3 className="lab-modal-title">{t('hrt.start_cycle')}</h3>
+              <h3 className="lab-modal-title">{activeC ? t('app.hrt.new_cycle') : t('hrt.start_cycle')}</h3>
               <button type="button" className="ibtn" onClick={() => setCycleModalOpen(false)}>
                 <Icon name="x" />
               </button>
@@ -734,12 +879,15 @@ export default function HrtScreen() {
               <label className="field">
                 <span className="flabel">{t('hrt.cycle_kind')}</span>
                 <select className="input" value={cycleKind} onChange={(e) => setCycleKind(e.target.value)}>
-                  <option value="trt">{t('hrt.kind.trt')}</option>
-                  <option value="blast">{t('hrt.kind.blast')}</option>
-                  <option value="cruise">{t('hrt.kind.cruise')}</option>
-                  <option value="pct">{t('hrt.kind.pct')}</option>
+                  {view.cycleKinds.map((k) => (
+                    <option key={k} value={k}>
+                      {tOr(`hrt.kind.${k}`, k)}
+                    </option>
+                  ))}
                 </select>
+                {tOr(`hrt.kind_help.${cycleKind}`, '') !== '' && <span className="hrt-range-sub">{tOr(`hrt.kind_help.${cycleKind}`, '')}</span>}
               </label>
+              {activeC && <p className="sub flush">{t('app.hrt.new_cycle_note')}</p>}
               <label className="field">
                 <span className="flabel">{t('hrt.cycle_name')}</span>
                 <input className="input" placeholder={t('hrt.cycle_name_ph')} value={cycleName} onChange={(e) => setCycleName(e.target.value)} />
