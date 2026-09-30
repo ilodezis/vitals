@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api, failText, ok } from '@/api/client'
-import { useSession } from '@/app/session'
+import { restartInNewLanguage } from '@/app/language'
 import { OptionGroup } from '@/components/controls/Choices'
 import { PrimaryButton } from '@/components/controls/PrimaryButton'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { useT } from '@/i18n/useT'
-import type { NavItem } from '@/components/shell/nav'
 import type { SettingsView } from './useSettingsView'
 
 interface GeneralSectionProps {
@@ -27,60 +26,26 @@ export interface SettingsModuleGroup {
   items: SettingsModuleItem[]
 }
 
-export const CORE_MODULES = new Set([
-  'today',
-  'more',
-  'weight',
-  'measures',
-  'recovery',
-  'garmin',
-  'sleep',
-  'nights',
-  'activities',
-  'labs',
-  'reports',
-  'charts',
-  'share',
-  'settings',
-])
+type ModuleInfo = NonNullable<SettingsView['modules']['registry']>[number]
 
+/** Every switchable section, grouped by rubric in the server's order. The list comes from the
+ *  registry, not from the navigation: a section that is switched off leaves the navigation, and
+ *  it has to stay here or it could never be switched back on. */
 export function groupSettingsModules(
-  navItems: NavItem[] = [],
+  registry: readonly ModuleInfo[] = [],
   enabledModules: Record<string, boolean> = {},
 ): SettingsModuleGroup[] {
   const groupsByRubric = new Map<string, SettingsModuleItem[]>()
-
-  for (const item of navItems) {
-    const rubric = item.rubric || 'other'
-    if (!groupsByRubric.has(rubric)) {
-      groupsByRubric.set(rubric, [])
-    }
-    const id = item.key
-    const isCore = CORE_MODULES.has(id)
-    const isEnabled = isCore || enabledModules[id] !== false
-    groupsByRubric.get(rubric)!.push({
-      id,
-      titleKey: `nav.${id}`,
-      core: isCore,
-      enabled: isEnabled,
+  for (const module of registry) {
+    const items = groupsByRubric.get(module.rubric) ?? []
+    items.push({
+      id: module.key,
+      titleKey: `nav.${module.key}`,
+      core: module.core,
+      enabled: module.core || enabledModules[module.key] === true,
     })
+    groupsByRubric.set(module.rubric, items)
   }
-
-  // body_comp is in 'health' group as a separate item
-  const healthGroup = groupsByRubric.get('health')
-  if (healthGroup) {
-    const isCore = false
-    const isEnabled = enabledModules['body_comp'] !== false
-    if (!healthGroup.some((it) => it.id === 'body_comp')) {
-      healthGroup.push({
-        id: 'body_comp',
-        titleKey: 'nav.body_comp',
-        core: isCore,
-        enabled: isEnabled,
-      })
-    }
-  }
-
   return Array.from(groupsByRubric.entries()).map(([rubric, items]) => ({
     rubric,
     rubricKey: `masthead.rubric.${rubric}`,
@@ -90,7 +55,6 @@ export function groupSettingsModules(
 
 export function GeneralSection({ settings }: GeneralSectionProps) {
   const { t } = useT()
-  const session = useSession()
   const queryClient = useQueryClient()
 
   // Profile form state
@@ -109,11 +73,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
   // Language state
   const [lang, setLang] = useState(settings.language.language)
 
-  // Dynamic modules grouped from session.nav.items
-  const moduleGroups = groupSettingsModules(
-    session?.nav?.items ?? [],
-    settings.modules.enabled_modules ?? {},
-  )
+  const moduleGroups = groupSettingsModules(settings.modules.registry, settings.modules.enabled_modules)
 
   // Profile save
   const handleSaveProfile = async () => {
@@ -163,9 +123,7 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
         body: { language: lang },
       }))
       toast(t('settings.saved.language'))
-      void queryClient.invalidateQueries({ queryKey: ['settings'] })
-      void queryClient.invalidateQueries({ queryKey: ['session'] })
-      window.location.reload()
+      await restartInNewLanguage()
       return true
     } catch (err) {
       toast(failText(err, t('app.save_failed')), { icon: 'warn' })
@@ -175,7 +133,6 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
 
   // Module toggle
   const handleToggleModule = async (moduleId: string, currentEnabled: boolean) => {
-    if (CORE_MODULES.has(moduleId)) return
     try {
       await ok(api.POST('/api/v1/settings/modules', {
         body: { module: moduleId, enabled: !currentEnabled },

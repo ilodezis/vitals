@@ -154,6 +154,21 @@ async def test_settings_toggle_modules(auth_client, db_session, redis):
     assert r_bad.status_code == 400
 
 
+async def test_settings_lists_every_module_even_when_switched_off(auth_client, db_session, redis):
+    """A switched-off module must stay in the list, or it could never be switched back on."""
+    await auth_client.post(f"{URL}/modules", json={"module": "genetics", "enabled": False})
+    await auth_client.post(f"{URL}/modules", json={"module": "nutrition", "enabled": False})
+
+    data = (await auth_client.get(URL)).json()["modules"]
+    registry = {m["key"]: m for m in data["registry"]}
+
+    assert registry["genetics"] == {"key": "genetics", "rubric": "markers", "core": False}
+    assert registry["nutrition"]["rubric"] == "health"
+    assert registry["weight"]["core"] is True
+    assert registry["body_comp"]["rubric"] == "health"
+    assert data["enabled_modules"]["genetics"] is False
+
+
 async def test_settings_update_ai(auth_client, tmp_path, monkeypatch):
     env_file = tmp_path / "test.env"
     env_file.write_text("VITALS_OPENROUTER_API_KEY=existing_key\n", encoding="utf-8")

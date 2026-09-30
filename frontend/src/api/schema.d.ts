@@ -4431,6 +4431,18 @@ export interface components {
             /** Status */
             status: string;
         };
+        /**
+         * ModuleInfo
+         * @description One switchable dashboard section, on or off — the list a switched-off one stays in.
+         */
+        ModuleInfo: {
+            /** Core */
+            core: boolean;
+            /** Key */
+            key: string;
+            /** Rubric */
+            rubric: string;
+        };
         /** ModuleToggleUpdate */
         ModuleToggleUpdate: {
             /** Enabled */
@@ -4444,6 +4456,8 @@ export interface components {
             enabled_modules?: {
                 [key: string]: boolean;
             };
+            /** Registry */
+            registry?: components["schemas"]["ModuleInfo"][];
         };
         /** MoreView */
         MoreView: {
@@ -13181,4 +13195,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: e33cd2c41bac63e9f6f297d737347722310fedb0aee7b8f7865465e152eee597
+// openapi.json sha256: 7282f74a452128fad25740c69156f970f76da31722ec652d0a17cf292ae55dda

@@ -56,10 +56,19 @@ class LanguageUpdate(BaseModel):
     language: str
 
 
+class ModuleInfo(BaseModel):
+    """One switchable dashboard section, on or off — the list a switched-off one stays in."""
+
+    key: str
+    rubric: str
+    core: bool
+
+
 class ModulesSettings(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     enabled_modules: dict[str, bool] = Field(default_factory=dict)
+    registry: list[ModuleInfo] = Field(default_factory=list)
 
 
 class ModuleToggleUpdate(BaseModel):

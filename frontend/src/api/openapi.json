@@ -6236,6 +6236,30 @@
         "title": "MilestoneStatusUpdate",
         "type": "object"
       },
+      "ModuleInfo": {
+        "description": "One switchable dashboard section, on or off — the list a switched-off one stays in.",
+        "properties": {
+          "core": {
+            "title": "Core",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "rubric": {
+            "title": "Rubric",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "rubric",
+          "core"
+        ],
+        "title": "ModuleInfo",
+        "type": "object"
+      },
       "ModuleToggleUpdate": {
         "properties": {
           "enabled": {
@@ -6262,6 +6286,13 @@
             },
             "title": "Enabled Modules",
             "type": "object"
+          },
+          "registry": {
+            "items": {
+              "$ref": "#/components/schemas/ModuleInfo"
+            },
+            "title": "Registry",
+            "type": "array"
           }
         },
         "title": "ModulesSettings",

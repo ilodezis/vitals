@@ -48,6 +48,7 @@ from web.api.schemas.settings import (
     LanguageUpdate,
     McpSettings,
     McpUpdate,
+    ModuleInfo,
     ModulesSettings,
     ModuleToggleUpdate,
     NutritionGoalsSettings,
@@ -120,7 +121,14 @@ async def read_settings(
     lang_code = getattr(request.state, "lang", None) or await language_service.get_language(db, redis)
     language = LanguageSettings(language=lang_code)
 
-    modules = ModulesSettings(enabled_modules=enabled_modules)
+    modules = ModulesSettings(
+        enabled_modules=enabled_modules,
+        registry=[
+            # Body composition is a tab of the weight section, so it is listed with Health.
+            ModuleInfo(key=spec.key, rubric=spec.rubric or "health", core=spec.category == "core")
+            for spec in modules_service.MODULE_REGISTRY.values()
+        ],
+    )
 
     ai = AiSettings(
         openrouter_api_key_set=bool(read_key("VITALS_OPENROUTER_API_KEY")),

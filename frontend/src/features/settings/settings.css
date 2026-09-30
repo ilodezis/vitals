@@ -121,23 +121,19 @@
   box-sizing: border-box;
 }
 
-.set-grid-2 {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.set-times-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
+/* Field grids fit the column they sit in, not the window: a settings card is often half the
+   page, and a fixed count of columns there pushes the fields past its edge. */
+.set-grid-2,
+.set-times-grid,
 .set-garmin-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px 12px;
+  align-items: start;
 }
+
+.set-sec .field { align-content: start; min-width: 0; }
+.set-sec .field .input { width: 100%; min-width: 0; box-sizing: border-box; }
 
 .set-sub-sec {
   padding-top: 20px;
@@ -256,12 +252,6 @@
     flex-direction: row;
     align-items: center;
   }
-  .set-times-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-  .set-garmin-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 767px) {
@@ -280,12 +270,6 @@
   }
 }
 
-@media (max-width: 640px) {
-  .set-grid-2 {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* Labels, hints and stacks */
 .flabel.block { display: block; margin-bottom: var(--s2); }
 .flabel.strong { font-weight: 600; }
@@ -301,7 +285,7 @@
 .set-note { display: block; margin-top: var(--s1); font-size: var(--t-micro); color: var(--muted); }
 .tfa-key { flex: 1; }
 .opts-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
-.opts-col { display: flex; flex-direction: column; gap: var(--s2); }
+.opts-col { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); }
 .opts-col .opt { text-align: left; }
 .data-drop-name { display: block; font-size: var(--t-body); }
 .data-drop-meta { font-size: var(--t-micro); color: var(--muted); }
