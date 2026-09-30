@@ -396,11 +396,14 @@ function DosePane({ enter }: { enter: boolean }) {
   const [drugMode, setDrugMode] = useState<'current' | 'other'>('current')
   const [customDose, setCustomDose] = useState('')
   const [selectedSite, setSelectedSite] = useState<string | null>(null)
+  // An injection is often logged afterwards, so the day can be set back; left alone it is today.
+  const [pickedDate, setPickedDate] = useState<string | null>(null)
+  const date = pickedDate !== null && pickedDate !== '' && pickedDate <= todayIso ? pickedDate : todayIso
   const site = selectedSite ?? leastUsedSite ?? SITES[0]
   const button = useRef<PrimaryButtonHandle>(null)
   // Without a current phase the dose can only be typed in.
   const mode = currentDose === null ? 'other' : drugMode
-  const bodyNow = buildInjectionBody({ date: todayIso, mode, currentDoseMg: currentDose, customDoseRaw: customDose, drug: currentDrug, site })
+  const bodyNow = buildInjectionBody({ date, mode, currentDoseMg: currentDose, customDoseRaw: customDose, drug: currentDrug, site })
 
   const invalidateGlp1Queries = () =>
     Promise.all([
@@ -412,7 +415,7 @@ function DosePane({ enter }: { enter: boolean }) {
   const conflict = useConflictMutation({
     mutationFn: async ({ override }) => {
       const body = buildInjectionBody({
-        date: todayIso,
+        date,
         mode,
         currentDoseMg: currentDose,
         customDoseRaw: customDose,
@@ -429,6 +432,7 @@ function DosePane({ enter }: { enter: boolean }) {
             .then(() => invalidateGlp1Queries()),
       })
       await invalidateGlp1Queries()
+      setPickedDate(null)
       return data
     },
     fallbackErrorMessage: t('app.save_failed'),
@@ -437,7 +441,8 @@ function DosePane({ enter }: { enter: boolean }) {
     },
   })
 
-  const alertInfo = view?.cycle.nextIso ? selectDoseAlert(view.cycle) : null
+  // The overdue/early hint is about an injection made now, not one being entered for a past day.
+  const alertInfo = view?.cycle.nextIso && date === todayIso ? selectDoseAlert(view.cycle) : null
 
   return (
     <div className={enter ? 'sheet-pane enter' : 'sheet-pane'} data-pane="dose">
@@ -491,6 +496,20 @@ function DosePane({ enter }: { enter: boolean }) {
           }))}
         />
       </div>
+      <label className="field">
+        <span className="flabel">{t('common.date')}</span>
+        <input
+          className="input"
+          type="date"
+          name="date"
+          value={date}
+          max={todayIso}
+          onChange={(e) => {
+            setPickedDate(e.target.value)
+            conflict.clearConflict()
+          }}
+        />
+      </label>
       {alertInfo !== null && (
         <Alert
           tone={alertInfo.tone}

@@ -15,7 +15,7 @@ export function TopBar({ title, right }: { title: string; right?: ReactNode }) {
   const { back } = useScreen()
   const goBack = useBack()
   return (
-    <div className="topbar">
+    <div className={back === null && right === undefined ? 'topbar bare' : 'topbar'}>
       <div className="topbar-l">
         {back !== null && (
           <button type="button" className="back" onClick={() => goBack()}>
