@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Badge, Delta, TextButton } from '@/components/controls/Marks'
+import { DomainAlerts } from '@/components/controls/DomainAlerts'
+import { Delta, TextButton } from '@/components/controls/Marks'
 import { Odometer } from '@/components/controls/Odometer'
 import { Segmented } from '@/components/controls/Segmented'
 import { Section } from '@/components/controls/Section'
@@ -11,14 +12,12 @@ import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
-import { longDate, parseIsoDate, relativeDay } from '@/lib/dates'
+import { longDate, parseIsoDate } from '@/lib/dates'
 import { formatCompact, formatNumber, formatPercent, formatSigned } from '@/lib/format'
 import { doseLabel, drugName } from '@/features/glp1/doseLabel'
-import type { WeightSource } from './types'
 import { useWeightView } from './useWeightView'
+import { WeightHistory } from './WeightHistory'
 import './weight.css'
-
-const SOURCE_TONE: Record<WeightSource, 'good' | 'violet' | 'cool'> = { manual: 'good', bia: 'violet', garmin: 'cool' }
 
 export default function WeightScreen() {
   const { t, tOr, lang, plural } = useT()
@@ -41,7 +40,6 @@ export default function WeightScreen() {
     }),
     [view, today, lang, t, tOr],
   )
-  const labels = { today: t('app.today_word'), yesterday: t('app.yesterday_word') }
   const drop = view.weekDeltaKg !== null && view.weekDeltaKg <= 0
   const visibleHistory = view.history.slice(0, historyLimit)
   const remainingHistory = view.history.length - historyLimit
@@ -83,6 +81,7 @@ export default function WeightScreen() {
           </div>
         </div>
       </Headline>
+      <DomainAlerts domain="weight" />
 
       <Section>
         <div className="panel bare">
@@ -127,31 +126,7 @@ export default function WeightScreen() {
         <div className="c7">
           <Section title={t('app.weight.history_title')} meta={t('app.weight.history_meta')}>
             <div className="rows">
-              {visibleHistory.map((h, i) => (
-                <div key={i} className={cx('row', 'r-hist', h.superseded && 'dim')}>
-                  <div>
-                    <div className="t">
-                      {relativeDay(parseIsoDate(h.date), today, lang, labels)} <span className="m num time-gap">{h.time}</span>
-                    </div>
-                    {h.superseded ? (
-                      <div className="m">
-                        {h.supersededBy === 'body_scan'
-                          ? t('app.weight.superseded_by_scan')
-                          : h.supersededBy === 'manual'
-                            ? t('app.weight.superseded_by_manual')
-                            : t('app.weight.superseded')}
-                      </div>
-                    ) : h.note !== undefined ? (
-                      <div className="m">{h.note}</div>
-                    ) : null}
-                  </div>
-                  <Badge tone={SOURCE_TONE[h.source]}>{t(`app.source.${h.source}`)}</Badge>
-                  <div className="v">
-                    {formatNumber(h.kg, lang)}
-                    <span className="u">{t('app.unit.kg')}</span>
-                  </div>
-                </div>
-              ))}
+              <WeightHistory rows={visibleHistory} />
               {remainingHistory > 0 && (
                 <button type="button" className="ghost more-btn" onClick={() => setHistoryLimit((n) => n + 50)}>
                   {t('app.show_more_n', { n: Math.min(50, remainingHistory) })}

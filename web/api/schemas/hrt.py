@@ -24,6 +24,8 @@ class HrtCyclePlanItem(CamelModel):
     every: Optional[float] = None
     from_: int = Field(alias="from")
     duration_days: Optional[int] = None
+    # False for a ramp or a multi-segment schedule: only its start week is editable.
+    flat: bool = True
     note: Optional[str] = None
 
 

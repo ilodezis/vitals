@@ -5,10 +5,32 @@ export type SiteId =
   | 'thigh_left' | 'thigh_right'
 
 export interface Injection {
+  /** The record's id: what an edit or a delete names. */
+  id?: number
   dateIso: string
   /** Null for an entry that was logged without a site. */
   site: SiteId | null
   doseMg: number
+  drug?: string
+  note?: string
+}
+
+/** One step of the dose. `toIso` of the running phase is today — the chart needs an end —
+ *  and `open` says that it has none of its own yet. */
+export interface DosePhase {
+  id?: number
+  fromIso: string
+  toIso: string
+  doseMg: number
+  drug?: string
+  open?: boolean
+}
+
+export interface SideEffect {
+  id?: number
+  dateIso: string
+  name: string
+  severity: 1 | 2 | 3 | 4 | 5
 }
 
 /** `GET /api/v1/glp1`. What the server does not have yet — no injection logged — stays `null`:
@@ -30,11 +52,11 @@ export interface Glp1View {
     unscheduled: boolean
   }
   /** Steps of the dose over time, oldest first, and the weight trend under them. */
-  dosePhases: { fromIso: string; toIso: string; doseMg: number }[]
+  dosePhases: DosePhase[]
   trend: { date: string; kg: number }[]
   /** Site names in the user's language. */
   siteLabels: Record<string, string>
   /** Newest first. */
   injections: Injection[]
-  sideEffects: { dateIso: string; name: string; severity: 1 | 2 | 3 | 4 | 5 }[]
+  sideEffects: SideEffect[]
 }

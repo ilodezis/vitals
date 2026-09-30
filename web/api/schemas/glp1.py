@@ -37,6 +37,8 @@ class Glp1DosePhase(CamelModel):
     id: Optional[int] = None
     from_iso: str
     to_iso: str
+    # True for a phase without an end date: ``to_iso`` is then today, for the chart.
+    open: bool = False
     dose_mg: float
     drug: Optional[str] = None
     note: Optional[str] = None
@@ -74,6 +76,17 @@ class Glp1InjectionCreate(CamelModel):
     date: dt.date
     dose_mg: float = Field(default=..., alias="doseMg")
     drug: Optional[str] = None
+    site: Optional[str] = None
+    note: Optional[str] = None
+    override: bool = False
+
+
+class Glp1InjectionPatch(CamelModel):
+    """The whole entry as the edit form holds it: a site or a note left out is cleared."""
+
+    date: dt.date
+    dose_mg: float = Field(default=..., alias="doseMg")
+    drug: str
     site: Optional[str] = None
     note: Optional[str] = None
     override: bool = False

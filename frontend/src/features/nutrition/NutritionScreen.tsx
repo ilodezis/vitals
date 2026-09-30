@@ -7,6 +7,7 @@ import { TextButton } from '@/components/controls/Marks'
 import { Meter } from '@/components/controls/Meters'
 import { Section } from '@/components/controls/Section'
 import { Icon } from '@/components/icons/Icon'
+import { DomainAlerts } from '@/components/controls/DomainAlerts'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { toast } from '@/components/controls/toast'
 import { useT } from '@/i18n/useT'
@@ -207,6 +208,7 @@ export default function NutritionScreen() {
           </div>
         </div>
       </Headline>
+      <DomainAlerts domain="nutrition" />
 
       {/* Meal Form Panel */}
       {formOpen && (

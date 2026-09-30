@@ -45,4 +45,7 @@
 }
 .r-3 { grid-template-columns: 1fr auto auto; }
 .r-3 .t { font-weight: 400; }
+.r-inj { grid-template-columns: 1fr auto auto 80px; }
+.r-inj .t { font-weight: 400; }
+.row .acts .pips { margin-right: var(--s1); }
 .glp1-summary { margin: 12px 0 0; }

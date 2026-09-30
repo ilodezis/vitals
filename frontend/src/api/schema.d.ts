@@ -250,6 +250,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/glp1/cycles/{cycle_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Glp1 Cycle
+         * @description Delete a dose phase. The injections logged during it stay.
+         */
+        delete: operations["delete_glp1_cycle"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/glp1/injections": {
         parameters: {
             query?: never;
@@ -287,7 +307,12 @@ export interface paths {
         delete: operations["delete_glp1_injection"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Glp1 Injection
+         * @description Correct a recorded injection. The body is the whole entry: a site or a note
+         *     it leaves out is cleared.
+         */
+        patch: operations["update_glp1_injection"];
         trace?: never;
     };
     "/api/v1/glp1/side-effects": {
@@ -2185,7 +2210,13 @@ export interface paths {
         delete: operations["delete_body_measurement"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Body Measurement
+         * @description Correct a tape measurement. The body is the whole row: a circumference or the
+         *     note it leaves out is cleared. Moving it to another day answers with the id of
+         *     the row it became.
+         */
+        patch: operations["update_body_measurement"];
         trace?: never;
     };
     "/api/v1/weight/noise-markers": {
@@ -2491,6 +2522,30 @@ export interface components {
             source: string;
             /** Source Label */
             source_label: string;
+            /** Waist Cm */
+            waist_cm?: number | null;
+        };
+        /**
+         * BodyMeasurementPatch
+         * @description The whole row as the edit form holds it: a field left out is cleared, not kept.
+         */
+        BodyMeasurementPatch: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Hips Cm */
+            hips_cm?: number | null;
+            /** Neck Cm */
+            neck_cm?: number | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
             /** Waist Cm */
             waist_cm?: number | null;
         };
@@ -2977,6 +3032,11 @@ export interface components {
              * @default []
              */
             imported_dates: string[];
+            /**
+             * Imported Days
+             * @default 0
+             */
+            imported_days: number;
             /** Message */
             message?: string | null;
             /** Ok */
@@ -3184,6 +3244,11 @@ export interface components {
             id?: number | null;
             /** Note */
             note?: string | null;
+            /**
+             * Open
+             * @default false
+             */
+            open: boolean;
             /** Toiso */
             toIso: string;
         };
@@ -3227,6 +3292,30 @@ export interface components {
         Glp1InjectionCreated: {
             /** Id */
             id: number;
+        };
+        /**
+         * Glp1InjectionPatch
+         * @description The whole entry as the edit form holds it: a site or a note left out is cleared.
+         */
+        Glp1InjectionPatch: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Dosemg */
+            doseMg: number;
+            /** Drug */
+            drug: string;
+            /** Note */
+            note?: string | null;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Site */
+            site?: string | null;
         };
         /** Glp1SideEffect */
         Glp1SideEffect: {
@@ -3525,6 +3614,11 @@ export interface components {
             durationDays?: number | null;
             /** Every */
             every?: number | null;
+            /**
+             * Flat
+             * @default true
+             */
+            flat: boolean;
             /** From */
             from: number;
             /** Id */
@@ -5685,6 +5779,11 @@ export interface components {
             id: number;
             /** Message */
             message: string;
+            /**
+             * Overridden
+             * @default false
+             */
+            overridden: boolean;
             /** Resolvedat */
             resolvedAt?: string | null;
             /** Severity */
@@ -6828,6 +6927,53 @@ export interface operations {
             };
         };
     };
+    delete_glp1_cycle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cycle_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_glp1_injection: {
         parameters: {
             query?: never;
@@ -6931,6 +7077,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_glp1_injection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                injection_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Glp1InjectionPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Glp1InjectionCreated"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
                 };
             };
             /** @description Validation Error */
@@ -12470,6 +12687,77 @@ export interface operations {
             };
         };
     };
+    update_body_measurement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                measurement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BodyMeasurementPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodyMeasurementRef"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_noise_marker: {
         parameters: {
             query?: never;
@@ -12780,4 +13068,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: f19f70e2a4406905e60eaebf5908acdb06cfbcf90f0329b07fa0281b00a45806
+// openapi.json sha256: 335764a798f22da7608d56b4696a7626455ab9e0c7a7cb8e3d9bf91d0dcd3a00

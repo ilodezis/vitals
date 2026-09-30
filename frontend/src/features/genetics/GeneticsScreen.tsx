@@ -6,6 +6,7 @@ import { Badge, Dot, TextButton } from '@/components/controls/Marks'
 import { PrimaryButton } from '@/components/controls/PrimaryButton'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
+import { DomainAlerts } from '@/components/controls/DomainAlerts'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { useGeneticsView } from './useGeneticsView'
@@ -147,6 +148,7 @@ export default function GeneticsScreen() {
           </div>
         </div>
       </Headline>
+      <DomainAlerts domain="genetics" />
 
       {view.empty ? (
         <div className="gen-empty-box">

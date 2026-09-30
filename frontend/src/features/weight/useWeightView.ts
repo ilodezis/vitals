@@ -27,6 +27,7 @@ export function toWeightView(data: RawWeightView): WeightView {
       doseMg: p.dose_mg,
     })),
     history: (data.history ?? []).map((h) => ({
+      id: h.id,
       date: h.date,
       time: h.time ?? '',
       kg: h.weight_kg,

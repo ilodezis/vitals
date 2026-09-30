@@ -7,6 +7,7 @@ import { SectionTabs } from '@/components/controls/SectionTabs'
 import { TextButton } from '@/components/controls/Marks'
 import { toast } from '@/components/controls/toast'
 import { hrefOf, useGo } from '@/components/shell/navigation'
+import { DomainAlerts } from '@/components/controls/DomainAlerts'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { preloadScreen } from '@/components/shell/screens'
 import { type ScreenId } from '@/components/shell/nav'
@@ -119,6 +120,7 @@ export default function RecoveryScreen() {
           </div>
         </div>
       </Headline>
+      <DomainAlerts domain="garmin" scope="recovery" />
 
       <div className="grid recovery-grid">
         {night !== null && (

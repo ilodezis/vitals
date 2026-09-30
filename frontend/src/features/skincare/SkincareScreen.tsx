@@ -7,6 +7,7 @@ import { Badge } from '@/components/controls/Marks'
 import { PrimaryButton, type PrimaryButtonHandle } from '@/components/controls/PrimaryButton'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
+import { DomainAlerts } from '@/components/controls/DomainAlerts'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { longDate, parseIsoDate, shortDate } from '@/lib/dates'
@@ -316,6 +317,7 @@ export default function SkincareScreen() {
           </div>
         </div>
       </Headline>
+      <DomainAlerts domain="skincare" />
 
       {/* Product Form Modal */}
       {formOpen && (

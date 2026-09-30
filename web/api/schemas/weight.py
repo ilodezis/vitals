@@ -126,6 +126,10 @@ class BodyMeasurementCreate(BaseModel):
     override: bool = False
 
 
+class BodyMeasurementPatch(BodyMeasurementCreate):
+    """The whole row as the edit form holds it: a field left out is cleared, not kept."""
+
+
 class BodyMeasurementRef(BaseModel):
     id: int
     body_fat_pct: Optional[float] = None

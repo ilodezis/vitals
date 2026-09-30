@@ -305,3 +305,111 @@ def test_web_api_routers_respect_service_boundary():
                     f"{py_file.name}:{node.lineno} has bare except Exception: pass"
                 )
 
+
+# ── PATCH /api/v1/weight/measures/{id} ────────────────────────────────────────
+
+
+async def _measure(auth_client, **fields):
+    payload = {"date": today_local().isoformat(), "neck_cm": 38.5, "waist_cm": 84.0, **fields}
+    r = await auth_client.post(f"{WEIGHT}/measures", json=payload)
+    assert r.status_code == 201
+    return r.json()["id"]
+
+
+async def _block_every_measurement(db_session):
+    from vitals.models.conflict_rule import ConflictRule
+
+    db_session.add(
+        ConflictRule(
+            domain_a="weight", domain_b="weight", condition_a={}, condition_b={},
+            rule_type="hard_block", severity="block", message="Simulated block", active=True,
+        )
+    )
+    await db_session.commit()
+
+
+async def test_editing_a_measurement_is_guarded(client):
+    r = await client.patch(f"{WEIGHT}/measures/1", json={"date": today_local().isoformat()})
+    assert r.status_code == 401
+    assert r.json() == {"error": "unauthenticated"}
+
+
+async def test_a_measurement_is_edited_in_place(auth_client):
+    m_id = await _measure(auth_client, note="Tape test")
+
+    r = await auth_client.patch(
+        f"{WEIGHT}/measures/{m_id}",
+        json={"date": today_local().isoformat(), "neck_cm": 39.0, "waist_cm": 82.5, "note": "Retaken"},
+    )
+
+    assert r.status_code == 200
+    assert r.json()["id"] == m_id
+    assert r.json()["body_fat_pct"] is not None
+    (row,) = (await auth_client.get(MEASURES)).json()["measurements"]
+    assert (row["neck_cm"], row["waist_cm"], row["note"]) == (39.0, 82.5, "Retaken")
+
+
+async def test_an_emptied_field_of_a_measurement_is_cleared(auth_client):
+    """The form sends the whole row, so what it leaves empty is deleted — the same
+    as the edit form of the server-rendered page."""
+    m_id = await _measure(auth_client, note="Tape test")
+
+    r = await auth_client.patch(
+        f"{WEIGHT}/measures/{m_id}", json={"date": today_local().isoformat(), "neck_cm": 39.0}
+    )
+
+    assert r.status_code == 200
+    (row,) = (await auth_client.get(MEASURES)).json()["measurements"]
+    assert (row["neck_cm"], row["waist_cm"], row["note"]) == (39.0, None, None)
+    assert row["body_fat_pct"] is None
+
+
+async def test_a_measurement_moves_to_another_day(auth_client):
+    m_id = await _measure(auth_client)
+    yesterday = today_local() - dt.timedelta(days=1)
+
+    r = await auth_client.patch(
+        f"{WEIGHT}/measures/{m_id}",
+        json={"date": yesterday.isoformat(), "neck_cm": 38.5, "waist_cm": 84.0},
+    )
+
+    assert r.status_code == 200
+    rows = (await auth_client.get(MEASURES)).json()["measurements"]
+    assert [(m["date"], m["id"]) for m in rows] == [(yesterday.isoformat(), r.json()["id"])]
+
+
+async def test_editing_a_measurement_that_is_not_there_is_a_404(auth_client):
+    r = await auth_client.patch(
+        f"{WEIGHT}/measures/9999", json={"date": today_local().isoformat(), "neck_cm": 39.0}
+    )
+    assert r.status_code == 404
+    assert r.json() == {"error": "not_found"}
+
+
+async def test_an_implausible_measurement_edit_is_a_400(auth_client):
+    m_id = await _measure(auth_client)
+    r = await auth_client.patch(
+        f"{WEIGHT}/measures/{m_id}", json={"date": today_local().isoformat(), "neck_cm": 900}
+    )
+    assert r.status_code == 400
+    assert r.json()["error"] == "invalid"
+
+
+async def test_a_blocked_measurement_edit_is_a_409_until_overridden(auth_client, db_session):
+    m_id = await _measure(auth_client)
+    await _block_every_measurement(db_session)
+    body = {"date": today_local().isoformat(), "neck_cm": 40.0, "waist_cm": 84.0}
+
+    blocked = await auth_client.patch(f"{WEIGHT}/measures/{m_id}", json=body)
+
+    assert blocked.status_code == 409
+    assert blocked.json()["violations"][0]["message"] == "Simulated block"
+    (row,) = (await auth_client.get(MEASURES)).json()["measurements"]
+    assert row["neck_cm"] == 38.5
+
+    kept = await auth_client.patch(f"{WEIGHT}/measures/{m_id}", json={**body, "override": True})
+
+    assert kept.status_code == 200
+    (row,) = (await auth_client.get(MEASURES)).json()["measurements"]
+    assert row["neck_cm"] == 40.0
+

@@ -410,8 +410,12 @@ async def import_garmin_data(
     result = await garmin_service.ingest_health_auto_export(db, payload)
     await db.commit()
 
+    # The service answers with how many days it wrote, not with the days themselves.
+    written = result.get("dates", 0)
+    dates = [] if isinstance(written, int) else [str(d) for d in written]
     return GarminImportResponse(
         ok=True,
-        imported_dates=[str(d) for d in result.get("dates", [])],
+        imported_days=written if isinstance(written, int) else len(dates),
+        imported_dates=dates,
         message="Imported successfully",
     )

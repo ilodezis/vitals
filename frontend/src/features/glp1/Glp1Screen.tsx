@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, failText, ok } from '@/api/client'
 import { DoseChart } from '@/components/charts/DoseChart'
+import { ConfirmButton } from '@/components/controls/ConfirmButton'
+import { DomainAlerts } from '@/components/controls/DomainAlerts'
 import { Badge, TextButton } from '@/components/controls/Marks'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
@@ -10,10 +12,11 @@ import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
-import { addDays, daysBetween, longDate, parseIsoDate, relativeDay, shortDate, toIsoDate, weekdayLongDate, weekdayShort } from '@/lib/dates'
+import { addDays, daysBetween, longDate, parseIsoDate, shortDate, toIsoDate, weekdayLongDate, weekdayShort } from '@/lib/dates'
 import { formatCompact, formatSigned } from '@/lib/format'
 import { BodyMap } from './BodyMap'
 import { drugName } from './doseLabel'
+import { DosePhases, InjectionHistory, refetchAfterGlp1, useGlp1Delete } from './Glp1Records'
 import { siteUsage } from './sites'
 import type { SiteId } from './types'
 import { useGlp1View } from './useGlp1View'
@@ -45,7 +48,7 @@ export default function Glp1Screen() {
         }),
       ),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['glp1'] })
+      void refetchAfterGlp1(queryClient)
       setShowSeForm(false)
       setSeName('')
       setSeSeverity(1)
@@ -56,10 +59,11 @@ export default function Glp1Screen() {
     },
   })
 
+  const removeSideEffect = useGlp1Delete((id) => ok(api.DELETE('/api/v1/glp1/side-effects/{effect_id}', { params: { path: { effect_id: id } } })))
+
   const usage = useMemo(() => siteUsage(view.injections, today, parseIsoDate), [view.injections, today])
   const phases = useMemo(() => view.dosePhases.map((p) => ({ from: parseIsoDate(p.fromIso), doseMg: p.doseMg })), [view.dosePhases])
   const trend = useMemo(() => view.trend.map((p) => ({ date: parseIsoDate(p.date), kg: p.kg })), [view.trend])
-  const labels = { today: t('app.today_word'), yesterday: t('app.yesterday_word') }
   const siteName = (site: SiteId | null): string => (site === null ? '—' : tOr(`app.site.${site}`, view.siteLabels[site] ?? site))
 
   // Only what the weight really did on this dose; with a single weigh-in there is no phrase.
@@ -134,6 +138,7 @@ export default function Glp1Screen() {
           </div>
         </div>
       </Headline>
+      <DomainAlerts domain="glp1" />
 
       <div className="grid">
         <div className="c7">
@@ -176,6 +181,8 @@ export default function Glp1Screen() {
               {summaryText !== null && <p className="sub glp1-summary">{summaryText}</p>}
             </div>
           </Section>
+
+          <DosePhases phases={view.dosePhases} drug={view.drug} />
         </div>
 
         <div className="c5">
@@ -195,7 +202,16 @@ export default function Glp1Screen() {
             </div>
           </Section>
 
-          <Section title={t('app.glp1.side_effects_title')}>
+          <Section
+            title={t('app.glp1.side_effects_title')}
+            meta={
+              view.sideEffects.length > 0 && !showSeForm ? (
+                <TextButton icon="plus" onClick={() => setShowSeForm(true)}>
+                  {t('common.add')}
+                </TextButton>
+              ) : undefined
+            }
+          >
             <div className="rows">
               {view.sideEffects.length === 0 && !showSeForm && (
                 <div className="row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -210,16 +226,19 @@ export default function Glp1Screen() {
                 </div>
               )}
               {view.sideEffects.map((e) => (
-                <div key={e.dateIso + e.name} className="row r-kv">
+                <div key={e.id ?? e.dateIso + e.name} className="row r-kv">
                   <div>
                     <div className="t">{e.name}</div>
                     <div className="m">{longDate(parseIsoDate(e.dateIso), lang)}</div>
                   </div>
-                  <span className={cx('pips', e.severity < 3 && 'l2')} title={t('app.glp1.severity', { n: e.severity })}>
-                    {[1, 2, 3, 4, 5].map((k) => (
-                      <i key={k} className={k <= e.severity ? 'on' : undefined} />
-                    ))}
-                  </span>
+                  <div className="acts">
+                    <span className={cx('pips', e.severity < 3 && 'l2')} title={t('app.glp1.severity', { n: e.severity })}>
+                      {[1, 2, 3, 4, 5].map((k) => (
+                        <i key={k} className={k <= e.severity ? 'on' : undefined} />
+                      ))}
+                    </span>
+                    {e.id !== undefined ? <ConfirmButton label={t('common.delete')} onConfirm={() => removeSideEffect.mutate(e.id as number)} /> : null}
+                  </div>
                 </div>
               ))}
             </div>
@@ -289,18 +308,7 @@ export default function Glp1Screen() {
             title={t('app.glp1.history_title')}
             meta={plural(view.injections.length, t('app.glp1.injections.one', { n: view.injections.length }), t('app.glp1.injections.few', { n: view.injections.length }), t('app.glp1.injections.many', { n: view.injections.length }))}
           >
-            <div className="rows">
-              {(showAllInjections ? view.injections : view.injections.slice(0, 5)).map((j, i) => (
-                <div key={`${j.dateIso}-${i}`} className="row r-3">
-                  <div className="t">{relativeDay(parseIsoDate(j.dateIso), today, lang, labels)}</div>
-                  <span className="m">{siteName(j.site)}</span>
-                  <div className="v">
-                    {formatCompact(j.doseMg, lang, 3)}
-                    <span className="u">{t('app.unit.mg')}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <InjectionHistory injections={showAllInjections ? view.injections : view.injections.slice(0, 5)} siteName={siteName} />
             {view.injections.length > 5 && !showAllInjections && (
               <button
                 type="button"

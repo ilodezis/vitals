@@ -11,6 +11,7 @@ import { FigureBody } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { useLayout } from '@/components/shell/layout'
+import { DomainAlerts } from '@/components/controls/DomainAlerts'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
@@ -294,6 +295,7 @@ export default function LabsScreen() {
           </div>
         </div>
       </Headline>
+      <DomainAlerts domain="labs" />
 
       {/* Upload Drop Zone */}
       <button

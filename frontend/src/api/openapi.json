@@ -539,6 +539,70 @@
         "title": "BodyMeasurementItem",
         "type": "object"
       },
+      "BodyMeasurementPatch": {
+        "description": "The whole row as the edit form holds it: a field left out is cleared, not kept.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "hips_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hips Cm"
+          },
+          "neck_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neck Cm"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "override": {
+            "default": false,
+            "title": "Override",
+            "type": "boolean"
+          },
+          "waist_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waist Cm"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "BodyMeasurementPatch",
+        "type": "object"
+      },
       "BodyMeasurementRef": {
         "properties": {
           "body_fat_pct": {
@@ -1847,6 +1911,11 @@
             "title": "Imported Dates",
             "type": "array"
           },
+          "imported_days": {
+            "default": 0,
+            "title": "Imported Days",
+            "type": "integer"
+          },
           "message": {
             "anyOf": [
               {
@@ -2500,6 +2569,11 @@
             ],
             "title": "Note"
           },
+          "open": {
+            "default": false,
+            "title": "Open",
+            "type": "boolean"
+          },
           "toIso": {
             "title": "Toiso",
             "type": "string"
@@ -2643,6 +2717,58 @@
           "id"
         ],
         "title": "Glp1InjectionCreated",
+        "type": "object"
+      },
+      "Glp1InjectionPatch": {
+        "description": "The whole entry as the edit form holds it: a site or a note left out is cleared.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "doseMg": {
+            "title": "Dosemg",
+            "type": "number"
+          },
+          "drug": {
+            "title": "Drug",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "override": {
+            "default": false,
+            "title": "Override",
+            "type": "boolean"
+          },
+          "site": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site"
+          }
+        },
+        "required": [
+          "date",
+          "doseMg",
+          "drug"
+        ],
+        "title": "Glp1InjectionPatch",
         "type": "object"
       },
       "Glp1SideEffect": {
@@ -3612,6 +3738,11 @@
               }
             ],
             "title": "Every"
+          },
+          "flat": {
+            "default": true,
+            "title": "Flat",
+            "type": "boolean"
           },
           "from": {
             "title": "From",
@@ -9531,6 +9662,11 @@
             "title": "Message",
             "type": "string"
           },
+          "overridden": {
+            "default": false,
+            "title": "Overridden",
+            "type": "boolean"
+          },
           "resolvedAt": {
             "anyOf": [
               {
@@ -11563,6 +11699,59 @@
         "summary": "Create Or Close Glp1 Cycle"
       }
     },
+    "/api/v1/glp1/cycles/{cycle_id}": {
+      "delete": {
+        "description": "Delete a dose phase. The injections logged during it stay.",
+        "operationId": "delete_glp1_cycle",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cycle_id",
+            "required": true,
+            "schema": {
+              "title": "Cycle Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Glp1 Cycle"
+      }
+    },
     "/api/v1/glp1/injections": {
       "post": {
         "description": "Log a GLP-1 injection shot.",
@@ -11693,6 +11882,94 @@
           }
         },
         "summary": "Delete Glp1 Injection"
+      },
+      "patch": {
+        "description": "Correct a recorded injection. The body is the whole entry: a site or a note\nit leaves out is cleared.",
+        "operationId": "update_glp1_injection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "injection_id",
+            "required": true,
+            "schema": {
+              "title": "Injection Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Glp1InjectionPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Glp1InjectionCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Glp1 Injection"
       }
     },
     "/api/v1/glp1/side-effects": {
@@ -18193,6 +18470,94 @@
           }
         },
         "summary": "Delete Body Measurement"
+      },
+      "patch": {
+        "description": "Correct a tape measurement. The body is the whole row: a circumference or the\nnote it leaves out is cleared. Moving it to another day answers with the id of\nthe row it became.",
+        "operationId": "update_body_measurement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "measurement_id",
+            "required": true,
+            "schema": {
+              "title": "Measurement Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BodyMeasurementPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodyMeasurementRef"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Body Measurement"
       }
     },
     "/api/v1/weight/noise-markers": {

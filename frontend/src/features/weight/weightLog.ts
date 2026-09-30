@@ -30,7 +30,7 @@ interface Context {
 }
 
 /** Everything a weigh-in changes on the server: the day, and the rail's weight card. */
-const refetchAfterWeight = (queryClient: QueryClient) =>
+export const refetchAfterWeight = (queryClient: QueryClient) =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: todayQuery.queryKey }),
     queryClient.invalidateQueries({ queryKey: ['weight'] }),

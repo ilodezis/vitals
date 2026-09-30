@@ -32,7 +32,7 @@ export function DataSection() {
   const handleExportFull = async () => {
     try {
       toast(t('settings.export_started'))
-      const res = await fetch('/api/v1/settings/export/full', { credentials: 'same-origin' })
+      const res = await fetch('/api/v1/settings/export', { credentials: 'same-origin' })
       if (!res.ok) throw new RequestError(res.status)
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
@@ -52,7 +52,7 @@ export function DataSection() {
   const handleExportLlm = async () => {
     try {
       toast(t('settings.export_started'))
-      const res = await fetch('/api/v1/settings/export/llm', { credentials: 'same-origin' })
+      const res = await fetch('/api/v1/settings/export-llm', { credentials: 'same-origin' })
       if (!res.ok) throw new RequestError(res.status)
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)

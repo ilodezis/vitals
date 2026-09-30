@@ -514,6 +514,8 @@ async def collect(
                 "every": it.schedule[0].get("interval_days") if it.schedule else None,
                 "from": (it.start_offset_days // 7) + 1 if it.start_offset_days else 1,
                 "durationDays": it.schedule[0].get("duration_days") if it.schedule else None,
+                # One segment with a fixed dose; a ramp or several segments are not.
+                "flat": len(it.schedule or []) == 1 and it.schedule[0].get("dose") is not None,
                 "note": it.note,
             })
         active_cycle_dict = {
@@ -565,9 +567,9 @@ async def collect(
     for t in all_templates:
         tpl_items = []
         for it in (t.items or []):
-            comp_key = it.get("compound_key", "")
+            comp_key = it.compound_key
             comp_name = compound_names.get(comp_key, comp_key)
-            start_week = (it.get("start_offset_days", 0) // 7)
+            start_week = (it.start_offset_days or 0) // 7
             tpl_items.append([comp_name, start_week])
         tpl_list.append({
             "id": t.id,

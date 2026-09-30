@@ -19,6 +19,7 @@ from vitals.utils.timeutils import today_local
 from web.api.errors import MUTATION_ERRORS, ApiRouter, not_found
 from web.api.schemas.weight import (
     BodyMeasurementCreate,
+    BodyMeasurementPatch,
     BodyMeasurementRef,
     BodyScanConfirm,
     BodyScanConfirmResponse,
@@ -105,6 +106,34 @@ async def create_body_measurement(
         note=body.note,
         override=body.override,
     )
+    await db.commit()
+    return BodyMeasurementRef(id=row.id, body_fat_pct=row.body_fat_pct, lbm_kg=row.lbm_kg)
+
+
+@router.patch(
+    "/measures/{measurement_id}",
+    response_model=BodyMeasurementRef,
+    responses=MUTATION_ERRORS,
+)
+async def update_body_measurement(
+    measurement_id: int, body: BodyMeasurementPatch, db: AsyncSession = Depends(get_session)
+):
+    """Correct a tape measurement. The body is the whole row: a circumference or the
+    note it leaves out is cleared. Moving it to another day answers with the id of
+    the row it became."""
+    row = await weight_service.update_body_measurement(
+        db,
+        measurement_id,
+        on_date=body.date,
+        neck_cm=body.neck_cm,
+        waist_cm=body.waist_cm,
+        hips_cm=body.hips_cm,
+        note=body.note,
+        override=body.override,
+        partial=False,
+    )
+    if row is None:
+        return not_found()
     await db.commit()
     return BodyMeasurementRef(id=row.id, body_fat_pct=row.body_fat_pct, lbm_kg=row.lbm_kg)
 

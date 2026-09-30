@@ -23,6 +23,8 @@ class SystemAlertItem(CamelModel):
     message: str
     created_at: Optional[str] = None
     resolved_at: Optional[str] = None
+    # A block the owner saved past ("Save anyway"): still shown, marked as such.
+    overridden: bool = False
 
 
 class AlertsListView(CamelModel):

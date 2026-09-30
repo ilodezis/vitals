@@ -12,6 +12,7 @@ from web.api.schemas.glp1 import (
     Glp1CycleResponse,
     Glp1InjectionCreate,
     Glp1InjectionCreated,
+    Glp1InjectionPatch,
     Glp1SideEffectCreate,
     Glp1SideEffectCreated,
     Glp1View,
@@ -59,6 +60,32 @@ async def create_glp1_injection(
         note=body.note,
         override=body.override,
     )
+    await db.commit()
+    return Glp1InjectionCreated(id=row.id)
+
+
+@router.patch(
+    "/injections/{injection_id}",
+    response_model=Glp1InjectionCreated,
+    responses=MUTATION_ERRORS,
+)
+async def update_glp1_injection(
+    injection_id: int, body: Glp1InjectionPatch, db: AsyncSession = Depends(get_session)
+):
+    """Correct a recorded injection. The body is the whole entry: a site or a note
+    it leaves out is cleared."""
+    row = await glp1_service.update_injection(
+        db,
+        injection_id,
+        on_date=body.date,
+        drug=body.drug,
+        dose_mg=body.dose_mg,
+        site=body.site,
+        note=body.note,
+        override=body.override,
+    )
+    if row is None:
+        return not_found()
     await db.commit()
     return Glp1InjectionCreated(id=row.id)
 
@@ -114,6 +141,15 @@ async def create_or_close_glp1_cycle(
     )
     await db.commit()
     return Glp1CycleResponse(id=row.id, ok=True)
+
+
+@router.delete("/cycles/{cycle_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_glp1_cycle(cycle_id: int, db: AsyncSession = Depends(get_session)):
+    """Delete a dose phase. The injections logged during it stay."""
+    if not await glp1_service.delete_dose_phase(db, cycle_id):
+        return not_found()
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(

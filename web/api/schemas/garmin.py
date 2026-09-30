@@ -162,5 +162,7 @@ class GarminSyncResponse(BaseModel):
 
 class GarminImportResponse(BaseModel):
     ok: bool
+    # How many days the file filled in.
+    imported_days: int = 0
     imported_dates: list[str] = []
     message: Optional[str] = None

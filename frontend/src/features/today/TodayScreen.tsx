@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useState, type CSSProperties } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useSession } from '@/app/session'
 import { Alert } from '@/components/controls/Alert'
+import { alertIdOf, alertsQuery, useHideAlerts } from '@/components/controls/alerts'
 import { Dot, Delta } from '@/components/controls/Marks'
 import { Meter, RangeBar } from '@/components/controls/Meters'
 import { Odometer } from '@/components/controls/Odometer'
@@ -98,6 +100,9 @@ export default function TodayScreen() {
   // Only a weigh-in that was not there when the screen opened plays the entrance.
   const [hadWeighIn] = useState(() => view.feed.some((row) => row.kind === 'weight'))
   const [expandedAttention, setExpandedAttention] = useState(false)
+  // The alerts behind the attention list, by id: what the cross on a line hides.
+  const alerts = useQuery(alertsQuery('today')).data ?? []
+  const { hide: hideAlert } = useHideAlerts('today')
 
   const today = parseIsoDate(view.date)
   const labels = { today: t('app.today_word'), yesterday: t('app.yesterday_word') }
@@ -316,6 +321,21 @@ export default function TodayScreen() {
                       {item.message}
                     </>
                   )
+                  // A line that is an alert can be hidden from here; its text still opens the domain.
+                  const alertId = alertIdOf(item, alerts)
+                  if (alertId !== undefined) {
+                    return (
+                      <Alert key={`${item.severity}:${item.message}`} tone={item.severity} onDismiss={() => hideAlert(alertId)} dismissLabel={t('alert.hide')}>
+                        {screen === undefined ? (
+                          body
+                        ) : (
+                          <ScreenLink screen={screen} className="alert-link">
+                            {body}
+                          </ScreenLink>
+                        )}
+                      </Alert>
+                    )
+                  }
                   return screen === undefined ? (
                     <Alert key={`${item.severity}:${item.message}`} tone={item.severity}>
                       {body}

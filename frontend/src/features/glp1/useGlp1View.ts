@@ -22,11 +22,18 @@ export function toGlp1View(data: RawGlp1View): Glp1View {
       overdue: data.cycle.overdue,
       unscheduled: data.cycle.unscheduled,
     },
-    dosePhases: data.dosePhases.map((p) => ({ fromIso: p.fromIso, toIso: p.toIso, doseMg: p.doseMg })),
+    dosePhases: data.dosePhases.map((p) => ({ id: p.id ?? undefined, fromIso: p.fromIso, toIso: p.toIso, doseMg: p.doseMg, drug: p.drug ?? undefined, open: p.open })),
     trend: data.trend,
     siteLabels: data.siteLabels,
-    injections: data.injections.map((i) => ({ dateIso: i.dateIso, site: (i.site ?? null) as SiteId | null, doseMg: i.doseMg })),
-    sideEffects: data.sideEffects.map((e) => ({ dateIso: e.dateIso, name: e.name, severity: clampSeverity(e.severity) })),
+    injections: data.injections.map((i) => ({
+      id: i.id ?? undefined,
+      dateIso: i.dateIso,
+      site: (i.site ?? null) as SiteId | null,
+      doseMg: i.doseMg,
+      drug: i.drug ?? undefined,
+      note: i.note ?? undefined,
+    })),
+    sideEffects: data.sideEffects.map((e) => ({ id: e.id ?? undefined, dateIso: e.dateIso, name: e.name, severity: clampSeverity(e.severity) })),
   }
 }
 

@@ -241,6 +241,45 @@ async def test_import_garmin_json(auth_client):
         assert len(r.json()["imported_dates"]) == 2
 
 
+async def test_a_health_auto_export_file_is_imported(auth_client, db_session):
+    """The real service, not a stand-in: an uploaded file ends up as daily rows and
+    the answer says how many days it wrote."""
+    import json
+
+    from sqlalchemy import select
+
+    export = {
+        "data": {
+            "metrics": [
+                {"name": "step_count", "data": [
+                    {"date": "2026-03-14 00:00:00 +0000", "qty": 9100},
+                    {"date": "2026-03-15 00:00:00 +0000", "qty": 7400},
+                ]},
+                {"name": "resting_heart_rate", "data": [{"date": "2026-03-14 00:00:00 +0000", "qty": 52}]},
+            ]
+        }
+    }
+
+    r = await auth_client.post(
+        f"{RECOVERY}/import",
+        files=[("file", ("export.json", json.dumps(export).encode(), "application/json"))],
+    )
+
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+    assert r.json()["imported_days"] == 2
+    rows = (await db_session.execute(select(GarminDaily).order_by(GarminDaily.date))).scalars().all()
+    assert [(row.date, row.steps) for row in rows] == [(dt.date(2026, 3, 14), 9100), (dt.date(2026, 3, 15), 7400)]
+
+
+async def test_a_file_that_is_not_json_is_a_400(auth_client):
+    r = await auth_client.post(
+        f"{RECOVERY}/import", files=[("file", ("export.json", b"not json", "application/json"))]
+    )
+    assert r.status_code == 400
+    assert r.json()["error"] == "invalid"
+
+
 # ── Personal corridors ────────────────────────────────────────────────────────
 
 

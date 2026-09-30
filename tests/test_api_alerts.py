@@ -48,3 +48,35 @@ async def test_alerts_read_and_resolve(auth_client, db_session):
     # 5. Verify resolved
     r = await auth_client.get(URL)
     assert not any(a["id"] == alert.id for a in r.json()["alerts"])
+
+
+async def test_an_alert_says_when_it_was_overridden(auth_client, db_session):
+    """The banner marks a block the owner chose to save past."""
+    kept = await alerts_service.raise_alert(
+        db_session, domain="weight", severity=Severity.BLOCK, alert_key="kept", message="Kept"
+    )
+    plain = await alerts_service.raise_alert(
+        db_session, domain="weight", severity=Severity.WARN, alert_key="plain", message="Plain"
+    )
+    await db_session.commit()
+    await auth_client.post(f"{URL}/{kept.id}/override")
+
+    alerts = {a["id"]: a for a in (await auth_client.get(f"{URL}?domain=weight")).json()["alerts"]}
+
+    assert alerts[kept.id]["overridden"] is True
+    assert alerts[plain.id]["overridden"] is False
+
+
+async def test_hide_all_clears_one_domain_only(auth_client, db_session):
+    for domain in ("weight", "weight", "labs"):
+        await alerts_service.raise_alert(
+            db_session, domain=domain, severity=Severity.WARN,
+            alert_key=f"k{domain}", entity_ref=str(id(object())), message=domain,
+        )
+    await db_session.commit()
+
+    r = await auth_client.post(f"{URL}/resolve-all?domain=weight")
+
+    assert r.status_code == 200
+    left = (await auth_client.get(URL)).json()["alerts"]
+    assert [a["domain"] for a in left] == ["labs"]

@@ -1,7 +1,10 @@
 import { useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api, failText, InvalidError, ok } from '@/api/client'
+import { ConfirmButton } from '@/components/controls/ConfirmButton'
 import { ConflictAlert } from '@/components/controls/ConflictAlert'
+import { Disclosure } from '@/components/controls/Disclosure'
+import { DomainAlerts } from '@/components/controls/DomainAlerts'
 import { Badge, Delta, TextButton } from '@/components/controls/Marks'
 import { PrimaryButton, type PrimaryButtonHandle } from '@/components/controls/PrimaryButton'
 import { Section } from '@/components/controls/Section'
@@ -12,7 +15,8 @@ import { useT } from '@/i18n/useT'
 import { parseIsoDate, shortDate, toIsoDate } from '@/lib/dates'
 import { formatCompact } from '@/lib/format'
 import { useConflictMutation } from '@/lib/useConflictMutation'
-import { buildDoseBody, buildItemBody } from './hrtBody'
+import { buildDoseBody, buildItemBody, buildItemPatch, templateFileName } from './hrtBody'
+import type { HrtCyclePlanItem, HrtDoseItem, HrtTemplateItem } from './types'
 import { useHrtView } from './useHrtView'
 import './hrt.css'
 
@@ -26,6 +30,11 @@ export default function HrtScreen() {
   const [itemModalOpen, setItemModalOpen] = useState(false)
   const [sideEffectModalOpen, setSideEffectModalOpen] = useState(false)
   const [templateName, setTemplateName] = useState('')
+  // What the dose and the plan forms are correcting; `null` while they add a new entry.
+  const [editingDoseId, setEditingDoseId] = useState<number | null>(null)
+  const [editingItem, setEditingItem] = useState<HrtCyclePlanItem | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importPayload, setImportPayload] = useState('')
   const doseButtonRef = useRef<PrimaryButtonHandle>(null)
 
   // Form states
@@ -49,6 +58,7 @@ export default function HrtScreen() {
   const [itemDose, setItemDose] = useState('')
   const [itemInterval, setItemInterval] = useState('')
   const [itemStartWeek, setItemStartWeek] = useState('')
+  const [itemDuration, setItemDuration] = useState('')
 
   // Side effect form states
   const [seDate, setSeDate] = useState(todayStr)
@@ -58,33 +68,66 @@ export default function HrtScreen() {
 
   const activeC = view.cycle
   const doseBody = buildDoseBody({ dose: doseVal })
-  const itemBody = buildItemBody({ dose: itemDose, interval: itemInterval, startWeek: itemStartWeek })
+  const itemFields = { dose: itemDose, interval: itemInterval, startWeek: itemStartWeek, duration: itemDuration }
+  const itemFlat = editingItem === null || editingItem.flat !== false
+  const itemBody = buildItemBody(itemFields)
+  const itemPatch = buildItemPatch({ ...itemFields, flat: itemFlat })
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['hrt'] })
     void queryClient.invalidateQueries({ queryKey: ['today'] })
   }
 
+  const openDoseAdd = () => {
+    setEditingDoseId(null)
+    setDoseModalOpen(true)
+  }
+
+  const openDoseEdit = (d: HrtDoseItem) => {
+    setEditingDoseId(d.id)
+    setDoseDate(d.date)
+    setDoseCompound(d.compoundKey)
+    setDoseVal(String(d.doseVal))
+    setDoseUnit(d.unit)
+    setDoseSite(d.site ?? '')
+    setDoseBrand(d.brand ?? '')
+    setDoseNote(d.note ?? '')
+    setDoseModalOpen(true)
+  }
+
+  // A corrected entry must not become the starting point of the next new one.
+  const closeDoseModal = () => {
+    if (editingDoseId !== null) {
+      setDoseDate(todayStr)
+      setDoseVal('')
+      setDoseBrand('')
+      setDoseNote('')
+    }
+    setEditingDoseId(null)
+    setDoseModalOpen(false)
+    doseConflict.clearConflict()
+  }
+
   // Dose submission
   const doseConflict = useConflictMutation({
     mutationFn: async ({ override }) => {
       if (doseBody === null) throw new InvalidError('')
-      const data = await ok(
-        api.POST('/api/v1/hrt/doses', {
-          body: {
-            date: doseDate,
-            compoundKey: doseCompound,
-            ...doseBody,
-            unit: doseUnit,
-            site: doseSite || null,
-            brand: doseBrand || null,
-            note: doseNote || null,
-            override,
-          },
-        }),
-      )
+      const body = {
+        date: doseDate,
+        compoundKey: doseCompound,
+        ...doseBody,
+        unit: doseUnit,
+        site: doseSite || null,
+        brand: doseBrand || null,
+        note: doseNote || null,
+        override,
+      }
+      const data =
+        editingDoseId === null
+          ? await ok(api.POST('/api/v1/hrt/doses', { body }))
+          : await ok(api.PATCH('/api/v1/hrt/doses/{dose_id}', { params: { path: { dose_id: editingDoseId } }, body }))
       toast(t('common.saved'))
-      setDoseModalOpen(false)
+      closeDoseModal()
       refresh()
       return data
     },
@@ -143,21 +186,65 @@ export default function HrtScreen() {
     }
   }
 
-  // Add compound item to cycle
-  const handleAddItem = async (): Promise<boolean> => {
-    if (!activeC || itemBody === null) return false
+  // Delete the cycle with its plan; the logged doses stay
+  const handleDeleteCycle = async () => {
+    if (!activeC) return
     try {
-      await ok(
-        api.POST('/api/v1/hrt/cycles/{cycle_id}/items', {
-          params: { path: { cycle_id: activeC.id } },
-          body: {
-            compoundKey: itemCompound,
-            ...itemBody,
-          },
-        }),
-      )
+      await ok(api.DELETE('/api/v1/hrt/cycles/{cycle_id}', { params: { path: { cycle_id: activeC.id } } }))
+      toast(t('common.deleted'))
+      refresh()
+    } catch (err) {
+      toast(failText(err, t('app.delete_failed')), { icon: 'warn' })
+    }
+  }
+
+  const openItemAdd = () => {
+    setEditingItem(null)
+    setItemModalOpen(true)
+  }
+
+  const openItemEdit = (it: HrtCyclePlanItem) => {
+    setEditingItem(it)
+    setItemCompound(it.compoundKey)
+    setItemDose(it.flat === false ? '' : String(it.dose))
+    setItemInterval(it.every == null ? '' : String(it.every))
+    setItemStartWeek(String(it.from))
+    setItemDuration(it.durationDays == null ? '' : String(it.durationDays))
+    setItemModalOpen(true)
+  }
+
+  const closeItemModal = () => {
+    if (editingItem !== null) {
+      setItemDose('')
+      setItemInterval('')
+      setItemStartWeek('')
+      setItemDuration('')
+    }
+    setEditingItem(null)
+    setItemModalOpen(false)
+  }
+
+  // Add a compound to the cycle's plan, or correct one that is in it
+  const handleSaveItem = async (): Promise<boolean> => {
+    if (!activeC) return false
+    try {
+      if (editingItem !== null) {
+        if (itemPatch === null) return false
+        await ok(api.PATCH('/api/v1/hrt/cycle-items/{item_id}', { params: { path: { item_id: editingItem.id } }, body: itemPatch }))
+      } else {
+        if (itemBody === null) return false
+        await ok(
+          api.POST('/api/v1/hrt/cycles/{cycle_id}/items', {
+            params: { path: { cycle_id: activeC.id } },
+            body: {
+              compoundKey: itemCompound,
+              ...itemBody,
+            },
+          }),
+        )
+      }
       toast(t('common.saved'))
-      setItemModalOpen(false)
+      closeItemModal()
       refresh()
       return true
     } catch (err) {
@@ -204,6 +291,48 @@ export default function HrtScreen() {
       refresh()
     } catch (err) {
       toast(failText(err, t('app.action_failed')), { icon: 'warn' })
+    }
+  }
+
+  const handleDeleteTemplate = async (templateId: number) => {
+    try {
+      await ok(api.DELETE('/api/v1/hrt/templates/{template_id}', { params: { path: { template_id: templateId } } }))
+      toast(t('common.deleted'))
+      refresh()
+    } catch (err) {
+      toast(failText(err, t('app.delete_failed')), { icon: 'warn' })
+    }
+  }
+
+  // The share payload goes to the clipboard; where that is not allowed, it is saved as a file.
+  // It is already on the screen's data, so the copy happens inside the tap that asked for it.
+  const handleExportTemplate = async (tpl: HrtTemplateItem) => {
+    try {
+      await navigator.clipboard.writeText(tpl.exportJson)
+      toast(t('hrt.copied'))
+    } catch {
+      const url = URL.createObjectURL(new Blob([tpl.exportJson], { type: 'application/json' }))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = templateFileName(tpl.name)
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast(t('app.hrt.template_downloaded'))
+    }
+  }
+
+  const handleImportTemplate = async () => {
+    try {
+      await ok(api.POST('/api/v1/hrt/templates/import', { body: { payload: importPayload } }))
+      toast(t('app.hrt.template_imported'))
+      setImportPayload('')
+      setImportOpen(false)
+      refresh()
+    } catch (err) {
+      // The service names what is wrong with the payload, in its own words.
+      toast(err instanceof InvalidError ? t('app.hrt.import_invalid', { reason: err.message }) : t('app.save_failed'), { icon: 'warn' })
     }
   }
 
@@ -264,7 +393,7 @@ export default function HrtScreen() {
         screen="hrt"
         actions={
           <div className="hrt-acts">
-            <TextButton icon="syringe" onClick={() => setDoseModalOpen(true)}>
+            <TextButton icon="syringe" onClick={openDoseAdd}>
               {t('hrt.add_dose')}
             </TextButton>
             {!activeC && (
@@ -289,6 +418,7 @@ export default function HrtScreen() {
           </div>
         </div>
       </Headline>
+      <DomainAlerts domain="hrt" />
 
       <div className="grid hrt-grid">
         <div className="c7">
@@ -305,9 +435,12 @@ export default function HrtScreen() {
                       {activeC.end ? ` — ${shortDate(parseIsoDate(activeC.end), lang)}` : ''}
                     </p>
                   </div>
-                  <TextButton onClick={handleCloseCycle}>
-                    {t('hrt.close_cycle')}
-                  </TextButton>
+                  <div className="hrt-acts">
+                    <TextButton onClick={handleCloseCycle}>
+                      {t('hrt.close_cycle')}
+                    </TextButton>
+                    <ConfirmButton text label={t('hrt.delete_cycle')} onConfirm={() => void handleDeleteCycle()} />
+                  </div>
                 </div>
 
                 {/* Progress bar */}
@@ -347,7 +480,7 @@ export default function HrtScreen() {
                 <div style={{ marginTop: '16px' }}>
                   <div className="sec-h" style={{ marginBottom: '8px' }}>
                     <span className="flabel" style={{ fontWeight: 600 }}>{t('hrt.planned_compounds')}</span>
-                    <TextButton icon="plus" onClick={() => setItemModalOpen(true)}>
+                    <TextButton icon="plus" onClick={openItemAdd}>
                       {t('hrt.add_item')}
                     </TextButton>
                   </div>
@@ -362,14 +495,10 @@ export default function HrtScreen() {
                           </span>
                         </div>
                         <div className="hrt-plan-actions">
-                          <button
-                            type="button"
-                            className="ibtn danger"
-                            onClick={() => handleDeleteItem(it.id)}
-                            aria-label={t('common.delete')}
-                          >
-                            <Icon name="x" />
+                          <button type="button" className="ibtn" onClick={() => openItemEdit(it)} aria-label={t('common.edit')} title={t('common.edit')}>
+                            <Icon name="edit" />
                           </button>
+                          <ConfirmButton label={t('common.delete')} onConfirm={() => void handleDeleteItem(it.id)} />
                         </div>
                       </div>
                     ))}
@@ -428,14 +557,10 @@ export default function HrtScreen() {
                       <span className="u">{t('app.unit.mg')}</span>
                     </div>
                     <div className="acts">
-                      <button
-                        type="button"
-                        className="ibtn danger"
-                        onClick={() => handleDeleteDose(d.id)}
-                        aria-label={t('common.delete')}
-                      >
-                        <Icon name="trash" />
+                      <button type="button" className="ibtn" onClick={() => openDoseEdit(d)} aria-label={t('common.edit')} title={t('common.edit')}>
+                        <Icon name="edit" />
                       </button>
+                      <ConfirmButton label={t('common.delete')} onConfirm={() => void handleDeleteDose(d.id)} />
                     </div>
                   </div>
                 ))
@@ -475,14 +600,7 @@ export default function HrtScreen() {
                         <Delta tone={se.sev > 3 ? 'bad' : undefined}>
                           {t('app.hrt.grade_n', { grade: se.sev })}
                         </Delta>
-                        <button
-                          type="button"
-                          className="ibtn danger"
-                          onClick={() => handleDeleteSideEffect(se.id)}
-                          aria-label={t('common.delete')}
-                        >
-                          <Icon name="x" />
-                        </button>
+                        <ConfirmButton label={t('common.delete')} onConfirm={() => void handleDeleteSideEffect(se.id)} />
                       </div>
                     </div>
                   )
@@ -507,12 +625,33 @@ export default function HrtScreen() {
                         {tpl.items.map(([c]) => c).join(', ')}
                       </span>
                     </div>
-                    <TextButton onClick={() => handleApplyTemplate(tpl.id)}>
-                      {t('hrt.apply_template')}
-                    </TextButton>
+                    <div className="acts">
+                      <TextButton onClick={() => handleApplyTemplate(tpl.id)}>
+                        {t('hrt.apply_template')}
+                      </TextButton>
+                      <button type="button" className="ibtn" onClick={() => void handleExportTemplate(tpl)} aria-label={t('hrt.export')} title={t('hrt.export')}>
+                        <Icon name="copy" />
+                      </button>
+                      <ConfirmButton label={t('hrt.delete')} onConfirm={() => void handleDeleteTemplate(tpl.id)} />
+                    </div>
                   </div>
                 ))
               )}
+              <Disclosure open={importOpen} onToggle={() => setImportOpen(!importOpen)} title={t('hrt.import_template')}>
+                <div className="disc-body hrt-import">
+                  <textarea
+                    className="input mono"
+                    rows={6}
+                    aria-label={t('hrt.import_template')}
+                    placeholder={'{"format": "vitals.hrt_cycle_template", …}'}
+                    value={importPayload}
+                    onChange={(e) => setImportPayload(e.target.value)}
+                  />
+                  <TextButton icon="upload" disabled={importPayload.trim() === ''} onClick={() => void handleImportTemplate()}>
+                    {t('hrt.import_btn')}
+                  </TextButton>
+                </div>
+              </Disclosure>
             </div>
           </Section>
         </div>
@@ -523,8 +662,8 @@ export default function HrtScreen() {
         <div className="hrt-form-modal">
           <div className="hrt-form-box">
             <div className="hrt-form-head">
-              <h3 className="lab-modal-title">{t('hrt.add_dose')}</h3>
-              <button type="button" className="ibtn" onClick={() => setDoseModalOpen(false)}>
+              <h3 className="lab-modal-title">{editingDoseId === null ? t('hrt.add_dose') : t('app.hrt.edit_dose')}</h3>
+              <button type="button" className="ibtn" aria-label={t('app.close')} onClick={closeDoseModal}>
                 <Icon name="x" />
               </button>
             </div>
@@ -554,6 +693,7 @@ export default function HrtScreen() {
               <label className="field">
                 <span className="flabel">{t('hrt.site')}</span>
                 <select className="input" value={doseSite} onChange={(e) => setDoseSite(e.target.value)}>
+                  <option value="">—</option>
                   {Object.entries(view.siteLabels).map(([k, lbl]) => (
                     <option key={k} value={k}>{lbl}</option>
                   ))}
@@ -625,35 +765,47 @@ export default function HrtScreen() {
         <div className="hrt-form-modal">
           <div className="hrt-form-box">
             <div className="hrt-form-head">
-              <h3 className="lab-modal-title">{t('hrt.add_item')}</h3>
-              <button type="button" className="ibtn" onClick={() => setItemModalOpen(false)}>
+              <h3 className="lab-modal-title">{editingItem === null ? t('hrt.add_item') : t('app.hrt.edit_item')}</h3>
+              <button type="button" className="ibtn" aria-label={t('app.close')} onClick={closeItemModal}>
                 <Icon name="x" />
               </button>
             </div>
             <div className="hrt-form-body">
               <label className="field">
                 <span className="flabel">{t('hrt.compound')}</span>
-                <select className="input" value={itemCompound} onChange={(e) => setItemCompound(e.target.value)}>
+                <select className="input" value={itemCompound} disabled={editingItem !== null} onChange={(e) => setItemCompound(e.target.value)}>
                   {view.compounds.map((c) => (
                     <option key={c.key} value={c.key}>{c.name}</option>
                   ))}
                 </select>
               </label>
+              {itemFlat ? (
+                <div className="hrt-form-grid2">
+                  <label className="field">
+                    <span className="flabel">{t('hrt.dose')}</span>
+                    <input type="number" step="0.5" className="input" value={itemDose} onChange={(e) => setItemDose(e.target.value)} />
+                  </label>
+                  <label className="field">
+                    <span className="flabel">{t('hrt.interval_days')}</span>
+                    <input type="number" step="0.5" className="input" value={itemInterval} onChange={(e) => setItemInterval(e.target.value)} />
+                  </label>
+                </div>
+              ) : (
+                <p className="sub flush">{t('hrt.item_complex_note')}</p>
+              )}
               <div className="hrt-form-grid2">
                 <label className="field">
-                  <span className="flabel">{t('hrt.dose')}</span>
-                  <input type="number" step="0.5" className="input" value={itemDose} onChange={(e) => setItemDose(e.target.value)} />
+                  <span className="flabel">{t('hrt.start_week')}</span>
+                  <input type="number" min="1" className="input" value={itemStartWeek} onChange={(e) => setItemStartWeek(e.target.value)} />
                 </label>
-                <label className="field">
-                  <span className="flabel">{t('hrt.interval_days')}</span>
-                  <input type="number" step="0.5" className="input" value={itemInterval} onChange={(e) => setItemInterval(e.target.value)} />
-                </label>
+                {itemFlat ? (
+                  <label className="field">
+                    <span className="flabel">{t('hrt.duration_days')}</span>
+                    <input type="number" min="1" step="1" className="input" value={itemDuration} onChange={(e) => setItemDuration(e.target.value)} />
+                  </label>
+                ) : null}
               </div>
-              <label className="field">
-                <span className="flabel">{t('hrt.start_week')}</span>
-                <input type="number" min="1" className="input" value={itemStartWeek} onChange={(e) => setItemStartWeek(e.target.value)} />
-              </label>
-              <PrimaryButton className="btn grow" disabled={itemBody === null} onPress={handleAddItem}>
+              <PrimaryButton className="btn grow" disabled={(editingItem === null ? itemBody : itemPatch) === null} onPress={handleSaveItem}>
                 {t('common.save')}
               </PrimaryButton>
             </div>

@@ -9,6 +9,7 @@ import { useToday } from '@/app/session'
 import { useT } from '@/i18n/useT'
 import { longDate, parseIsoDate, syncedLabel } from '@/lib/dates'
 import { formatCompact } from '@/lib/format'
+import { HealthImport } from './HealthImport'
 import type { SettingsView } from './useSettingsView'
 
 interface ConnectionsSectionProps {
@@ -338,6 +339,8 @@ export function ConnectionsSection({ settings }: ConnectionsSectionProps) {
                 </button>
               </div>
             </div>
+
+            <HealthImport />
           </div>
         </Section>
 

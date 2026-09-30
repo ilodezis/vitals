@@ -27,6 +27,7 @@ export interface WeightView {
 }
 
 export interface WeightHistoryRow {
+  id: number
   date: string
   time: string
   kg: number

@@ -7,6 +7,8 @@ export interface HrtCyclePlanItem {
   every?: number | null
   from: number
   durationDays?: number | null
+  /** False for a ramp or a schedule of several segments: only its start week is edited. */
+  flat?: boolean
   note?: string | null
 }
 

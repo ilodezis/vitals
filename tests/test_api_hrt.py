@@ -200,3 +200,76 @@ async def test_hrt_release_curve(auth_client):
     assert "series" in data
     assert "today" in data
     assert len(data["series"]) == 31  # 10 back + today + 20 forward
+
+
+async def test_the_screen_lists_a_saved_template_with_its_share_payload(auth_client, db_session):
+    """The screen has to survive a template existing: it lists each one with the
+    compounds in it and the payload the copy button hands over."""
+    import json
+
+    await hrt_catalog.sync_catalog(db_session)
+    await db_session.commit()
+    r = await auth_client.post(
+        f"{URL}/cycles", json={"kind": CycleKind.COURSE.value, "startDate": today_local().isoformat()}
+    )
+    cycle_id = r.json()["id"]
+    await auth_client.post(
+        f"{URL}/cycles/{cycle_id}/items",
+        json={"compoundKey": "testosterone_cypionate", "dose": 100.0, "intervalDays": 7.0, "startWeek": 3},
+    )
+    r = await auth_client.post(f"{URL}/cycles/{cycle_id}/save-template", json={"name": "Standard"})
+    tpl_id = r.json()["id"]
+
+    r = await auth_client.get(URL)
+
+    assert r.status_code == 200
+    (tpl,) = r.json()["templates"]
+    assert (tpl["id"], tpl["name"]) == (tpl_id, "Standard")
+    assert len(tpl["items"]) == 1
+    assert json.loads(tpl["exportJson"]) == (await auth_client.get(f"{URL}/templates/{tpl_id}/export")).json()
+
+    # A shared payload comes back in as a template of its own; the very same one
+    # pasted again is a mistake and is refused.
+    shared = json.dumps({**json.loads(tpl["exportJson"]), "name": "From a friend"})
+    r = await auth_client.post(f"{URL}/templates/import", json={"payload": shared})
+    assert r.status_code == 201
+    r = await auth_client.post(f"{URL}/templates/import", json={"payload": tpl["exportJson"]})
+    assert r.status_code == 400
+    assert len((await auth_client.get(URL)).json()["templates"]) == 2
+
+    r = await auth_client.post(f"{URL}/templates/import", json={"payload": "not json"})
+    assert r.status_code == 400
+    assert r.json()["error"] == "invalid"
+
+
+async def test_a_plan_item_says_whether_its_schedule_is_one_flat_dose(auth_client, db_session):
+    """The edit form offers dose and interval only for a single flat segment: saving
+    them over a ramp would replace the whole schedule."""
+    from vitals.services import hrt_cycle_service
+
+    await hrt_catalog.sync_catalog(db_session)
+    await db_session.commit()
+    today = today_local()
+    r = await auth_client.post(
+        f"{URL}/cycles", json={"kind": CycleKind.COURSE.value, "startDate": today.isoformat()}
+    )
+    cycle_id = r.json()["id"]
+    await hrt_cycle_service.add_cycle_item(
+        db_session, cycle_id, compound_key="testosterone_cypionate",
+        schedule=[{"dose": 100.0, "interval_days": 7.0, "duration_days": 28}],
+    )
+    await hrt_cycle_service.add_cycle_item(
+        db_session, cycle_id, compound_key="testosterone_enanthate",
+        schedule=[
+            {"dose": 100.0, "interval_days": 7.0, "duration_days": 28},
+            {"dose": 150.0, "interval_days": 7.0},
+        ],
+    )
+    await db_session.commit()
+
+    items = (await auth_client.get(URL)).json()["cycle"]["items"]
+
+    assert {it["compoundKey"]: it["flat"] for it in items} == {
+        "testosterone_cypionate": True,
+        "testosterone_enanthate": False,
+    }

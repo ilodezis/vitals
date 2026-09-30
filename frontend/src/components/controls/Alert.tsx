@@ -19,6 +19,9 @@ type AlertProps<T extends ElementType> = {
   evidence?: ReactNode
   /** Actions under the message ("Fix it", "Save anyway"). */
   actions?: ReactNode
+  /** Lets the reader put the alert away: a small cross at the right, named by `dismissLabel`. */
+  onDismiss?: () => void
+  dismissLabel?: string
   children: ReactNode
   /** Render as something else, e.g. a link that opens the screen the finding is about. */
   as?: T
@@ -30,6 +33,8 @@ export function Alert<T extends ElementType = 'div'>({
   icon,
   evidence,
   actions,
+  onDismiss,
+  dismissLabel,
   children,
   as,
   className,
@@ -37,13 +42,18 @@ export function Alert<T extends ElementType = 'div'>({
 }: AlertProps<T>) {
   const Tag: ElementType = as ?? 'div'
   return (
-    <Tag className={cx('alert', tone !== 'note' && tone, className)} {...rest}>
+    <Tag className={cx('alert', tone !== 'note' && tone, onDismiss !== undefined && 'has-x', className)} {...rest}>
       <Icon name={icon ?? DEFAULT_ICON[tone]} />
       <div>
         {children}
         {evidence !== undefined && <span className="ev">{evidence}</span>}
         {actions !== undefined && <div className="acts">{actions}</div>}
       </div>
+      {onDismiss !== undefined && (
+        <button type="button" className="alert-x" aria-label={dismissLabel} title={dismissLabel} onClick={onDismiss}>
+          <Icon name="x" />
+        </button>
+      )}
     </Tag>
   )
 }

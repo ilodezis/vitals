@@ -642,3 +642,23 @@ textarea.input { height: auto; min-height: 48px; padding: 12px 14px; line-height
 .row-line { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
 .sub.flush { margin: 0; }
 
+
+/* A destructive action that was pressed once and is asking before it goes through */
+.ibtn.armed, .ibtn.armed:hover { color: var(--bad-strong); background: var(--bad-soft); }
+
+/* A domain's alerts at the top of its screen, and the cross that hides one */
+.sec.alerts-sec { margin-top: var(--s6); }
+.alerts-h { display: flex; justify-content: flex-end; margin: calc(-1 * var(--s2)) -12px var(--s1) 0; }
+.alert.has-x { grid-template-columns: 20px 1fr auto; }
+.alert-x { width: 36px; height: 36px; margin: -8px -8px -8px 0; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--muted); transition: background var(--d1), color var(--d1); }
+.alert .alert-x svg { width: 16px; height: 16px; margin: 0; color: inherit; }
+.alert-x:hover { color: var(--fg); background: rgba(255, 255, 255, .05); }
+.alert-link { display: block; color: inherit; }
+
+/* A row's editor, opened under the row it edits: the sheet's fields, two side by side */
+.row-edit { display: grid; gap: 12px; padding: var(--s4) 0; border-bottom: 1px solid var(--line); }
+.row-edit .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row-edit .edit-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.row-edit .edit-acts .btn { flex: 1 1 auto; }
+.row-edit .collapse:not(.open) { margin-top: -12px; }
+.editing-mark { font-size: var(--t-label); color: var(--accent-2); font-weight: 500; }

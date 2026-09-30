@@ -4,6 +4,7 @@ import { api } from '@/api/client'
 import { Disclosure } from '@/components/controls/Disclosure'
 import { Badge, TextButton } from '@/components/controls/Marks'
 import { FigureBody, Section } from '@/components/controls/Section'
+import { DomainAlerts } from '@/components/controls/DomainAlerts'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
 import { toast } from '@/components/controls/toast'
 import { useT } from '@/i18n/useT'
@@ -80,6 +81,7 @@ export default function WorkoutsScreen() {
           </div>
         </div>
       </Headline>
+      <DomainAlerts domain="workouts" />
 
       <div className="grid">
         {/* Left Column: Workouts List */}

@@ -31,6 +31,7 @@ async def read_alerts(
             message=a.message,
             created_at=a.created_at.isoformat() if a.created_at else None,
             resolved_at=a.resolved_at.isoformat() if a.resolved_at else None,
+            overridden=a.override_at is not None,
         )
         for a in rows
     ]

@@ -452,6 +452,7 @@ async def collect(
             "id": p.id,
             "fromIso": p.start_date.isoformat(),
             "toIso": (p.end_date or today).isoformat(),
+            "open": p.end_date is None,
             "doseMg": p.dose_mg,
             "drug": p.drug,
             "note": p.note,

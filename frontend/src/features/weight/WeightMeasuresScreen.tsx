@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { api, failText, InvalidError, ok, RequestError } from '@/api/client'
 import { useTodayIso } from '@/app/session'
+import { ConfirmButton } from '@/components/controls/ConfirmButton'
 import { ConflictAlert } from '@/components/controls/ConflictAlert'
 import { Disclosure } from '@/components/controls/Disclosure'
+import { DomainAlerts } from '@/components/controls/DomainAlerts'
 import { Delta } from '@/components/controls/Marks'
 import { Odometer } from '@/components/controls/Odometer'
 import { Segmented } from '@/components/controls/Segmented'
@@ -17,11 +19,13 @@ import { formatCompact, formatNumber, formatPercent } from '@/lib/format'
 import { useConflictMutation } from '@/lib/useConflictMutation'
 import { computeNavyFatPct } from './navy'
 import { readScanMetrics, toScanPreview, type ScanPreviewMetric } from './scanMetrics'
+import { buildMeasureBody } from './weightEdit'
 import type { components } from '@/api/schema'
 import './weight.css'
 
 type WeightMeasuresView = components['schemas']['WeightMeasuresView']
 type BodyScanUploadResponse = components['schemas']['BodyScanUploadResponse']
+type Measurement = components['schemas']['BodyMeasurementItem']
 
 export const measuresQuery = {
   queryKey: ['weight', 'measures'],
@@ -48,6 +52,9 @@ export default function WeightMeasuresScreen() {
   const [waistCm, setWaistCm] = useState('')
   const [hipsCm, setHipsCm] = useState('')
   const [mNote, setMNote] = useState('')
+  // The tape measurement the form is correcting; `null` while it is adding a new one.
+  const [editingMeasure, setEditingMeasure] = useState<{ id: number; date: string } | null>(null)
+  const measureForm = useRef<HTMLFormElement>(null)
 
   // Noise form state
   const [nStart, setNStart] = useState(todayStr)
@@ -82,9 +89,30 @@ export default function WeightMeasuresScreen() {
     void queryClient.invalidateQueries({ queryKey: ['weight'] })
   }
 
+  const resetMeasureForm = () => {
+    setEditingMeasure(null)
+    setMDate(todayStr)
+    setNeckCm('')
+    setWaistCm('')
+    setHipsCm('')
+    setMNote('')
+  }
+
   // Save measurement mutation
   const measureMutation = useConflictMutation({
     mutationFn: async ({ override }) => {
+      if (editingMeasure !== null) {
+        // An edit hands over the whole row: a field emptied in the form is removed.
+        const body = buildMeasureBody({ date: mDate, neck: neckCm, waist: waistCm, hips: hipsCm, note: mNote })
+        if (body === null) throw new InvalidError('')
+        await ok(
+          api.PATCH('/api/v1/weight/measures/{measurement_id}', {
+            params: { path: { measurement_id: editingMeasure.id } },
+            body: { ...body, override },
+          }),
+        )
+        return
+      }
       const neck = parseFloat(neckCm)
       const waist = parseFloat(waistCm)
       const hips = hipsCm ? parseFloat(hipsCm) : undefined
@@ -105,13 +133,23 @@ export default function WeightMeasuresScreen() {
     onSuccess: () => {
       invalidateMeasures()
       toast(t('app.weight.measures_saved'))
-      setNeckCm('')
-      setWaistCm('')
-      setHipsCm('')
-      setMNote('')
+      resetMeasureForm()
     },
     onError: (err) => toast(failText(err, t('app.save_failed')), { icon: 'warn' }),
   })
+
+  const startMeasureEdit = (m: Measurement) => {
+    measureMutation.clearConflict()
+    setEditingMeasure({ id: m.id, date: m.date })
+    setMDate(m.date)
+    setNeckCm(m.neck_cm == null ? '' : String(m.neck_cm))
+    setWaistCm(m.waist_cm == null ? '' : String(m.waist_cm))
+    setHipsCm(m.hips_cm == null ? '' : String(m.hips_cm))
+    setMNote(m.note ?? '')
+    setActivePane('measure')
+    // The form can sit a screen away from the row that opened it.
+    measureForm.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
 
   const deleteFailed = () => toast(t('app.delete_failed'), { icon: 'warn' })
   const deleted = () => {
@@ -303,6 +341,7 @@ export default function WeightMeasuresScreen() {
           </div>
         </div>
       </Headline>
+      <DomainAlerts domain="weight" scope="weight" />
 
       <div className="grid rev">
         {/* Left Column: Input Forms & Markers */}
@@ -323,7 +362,12 @@ export default function WeightMeasuresScreen() {
 
               <div className="mt-s4">
                 {activePane === 'measure' && (
-                  <form onSubmit={(e) => { e.preventDefault(); measureMutation.mutate() }}>
+                  <form ref={measureForm} onSubmit={(e) => { e.preventDefault(); measureMutation.mutate() }}>
+                    {editingMeasure !== null ? (
+                      <p className="sub editing-mark">
+                        {t('weight.editing_prefix')} · {longDate(parseIsoDate(editingMeasure.date), lang)}
+                      </p>
+                    ) : null}
                     <div className="fld">
                       <label>{t('common.date')}</label>
                       <input type="date" className="input" value={mDate} onChange={(e) => setMDate(e.target.value)} required />
@@ -386,8 +430,13 @@ export default function WeightMeasuresScreen() {
                     />
                     <div className="form-acts">
                       <button type="submit" className="btn grow" disabled={measureMutation.isPending}>
-                        {t('app.weight.save_measures')}
+                        {editingMeasure !== null ? t('weight.update_measures') : t('app.weight.save_measures')}
                       </button>
+                      {editingMeasure !== null ? (
+                        <button type="button" className="ghost" onClick={resetMeasureForm}>
+                          {t('app.cancel')}
+                        </button>
+                      ) : null}
                     </div>
                   </form>
                 )}
@@ -622,14 +671,7 @@ export default function WeightMeasuresScreen() {
                         {n.reason} · {n.direction === 'up' ? t('app.weight.noise_up') : n.direction === 'down' ? t('app.weight.noise_down') : t('app.weight.noise_flat')}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      className="ibtn danger"
-                      onClick={() => deleteNoiseMutation.mutate(n.id)}
-                      aria-label={t('app.delete')}
-                    >
-                      <Icon name="trash" />
-                    </button>
+                    <ConfirmButton label={t('app.delete')} onConfirm={() => deleteNoiseMutation.mutate(n.id)} />
                   </div>
                 ))
               )}
@@ -648,14 +690,7 @@ export default function WeightMeasuresScreen() {
                       <img src={ph.url} alt={ph.note ?? t('app.weight.tab_photo')} />
                     </div>
                     <span className="m num">{shortDate(parseIsoDate(ph.date), lang)}</span>
-                    <button
-                      type="button"
-                      className="ibtn danger"
-                      onClick={() => deletePhotoMutation.mutate(ph.id)}
-                      aria-label={t('app.delete')}
-                    >
-                      <Icon name="trash" />
-                    </button>
+                    <ConfirmButton label={t('app.delete')} onConfirm={() => deletePhotoMutation.mutate(ph.id)} />
                   </div>
                 ))
               )}
@@ -708,15 +743,17 @@ export default function WeightMeasuresScreen() {
                       {m.lbm_kg != null && <span className="u">{t('app.unit.kg')}</span>}
                     </div>
                     <div className="acts">
+                      {/* Only a tape measurement is edited here; a scan's numbers are the device's. */}
+                      {m.source === 'navy' ? (
+                        <button type="button" className="ibtn" onClick={() => startMeasureEdit(m)} aria-label={t('common.edit')} title={t('common.edit')}>
+                          <Icon name="edit" />
+                        </button>
+                      ) : null}
                       {/* A row that came from a scan is the scan: it is deleted as one, by its own id. */}
-                      <button
-                        type="button"
-                        className="ibtn danger"
-                        onClick={() => (m.source === 'scan' ? deleteScanMutation : deleteMeasureMutation).mutate(m.id)}
-                        aria-label={t('app.delete')}
-                      >
-                        <Icon name="trash" />
-                      </button>
+                      <ConfirmButton
+                        label={t('app.delete')}
+                        onConfirm={() => (m.source === 'scan' ? deleteScanMutation : deleteMeasureMutation).mutate(m.id)}
+                      />
                     </div>
                   </div>
                 ))
@@ -738,9 +775,7 @@ export default function WeightMeasuresScreen() {
                     title={longDate(parseIsoDate(s.date), lang)}
                     sub={[s.device, metricsCount(s.metrics_count)].filter(Boolean).join(' · ')}
                     actions={
-                      <button type="button" className="ibtn danger" onClick={() => deleteScanMutation.mutate(s.id)} aria-label={t('app.delete')}>
-                        <Icon name="trash" />
-                      </button>
+                      <ConfirmButton label={t('app.delete')} onConfirm={() => deleteScanMutation.mutate(s.id)} />
                     }
                   >
                     <div className="disc-body">
