@@ -52,14 +52,15 @@ export async function slide(
 }
 
 /** A tab, a section tab, any change on the desktop: the old screen leaves fast and linear, the new
- *  one rises 10 px into place. */
+ *  one fades in where it stands. It does not move: with its content drawn from the first frame, a
+ *  rise from below reads as the page jumping down and coming back. */
 export async function fade(a: HTMLElement | null, b: HTMLElement): Promise<void> {
   b.style.display = ''
   b.hidden = false
   b.style.zIndex = '2'
   if (a !== null) a.style.zIndex = '1'
   const jobs = [
-    animate(b, [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: 40, easing: EASE_OUT }).finished,
+    animate(b, [{ opacity: 0 }, { opacity: 1 }], { duration: 380, delay: 40, easing: EASE_OUT }).finished,
   ]
   if (a !== null) jobs.push(animate(a, [{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'linear' }).finished)
   await Promise.all(jobs)
