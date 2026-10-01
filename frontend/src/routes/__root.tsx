@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { createRootRouteWithContext, Navigate } from '@tanstack/react-router'
 import { sessionQuery } from '@/app/session'
 import { AppShell } from '@/components/shell/AppShell'
+import { warmScreens } from '@/app/warm'
 import { todayQuery } from '@/features/today/useTodayView'
 import { lastLanguage, loadDictionary, preloadDictionary, rememberLanguage } from '@/i18n/load'
 
@@ -19,6 +20,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     if (guess !== null) preloadDictionary(guess)
     const session = await context.queryClient.ensureQueryData(sessionQuery)
     rememberLanguage(session.lang)
+    warmScreens(context.queryClient)
     return { lang: session.lang, dictionary: await loadDictionary(session.lang) }
   },
   component: Root,
