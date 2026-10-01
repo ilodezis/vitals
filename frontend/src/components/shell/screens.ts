@@ -32,19 +32,29 @@ const loaders: Partial<Record<ScreenId, () => Promise<{ default: ComponentType }
 
 const placeholder = () => import('@/features/placeholder/PlaceholderScreen')
 
+/** The screens whose code has arrived, as components. */
+const loaded = new Map<ScreenId, ComponentType>()
+
 /** Fetch a screen's code without drawing it. Cheap to call again: modules load once. */
 export function preloadScreen(id: ScreenId): Promise<unknown> {
-  return (loaders[id] ?? placeholder)()
+  return (loaders[id] ?? placeholder)().then((mod) => {
+    loaded.set(id, mod.default)
+    return mod
+  })
 }
 
 const components = new Map<ScreenId, ComponentType>()
 
-/** The component that draws a screen; screens not built yet share one placeholder. */
+/** The component that draws a screen; screens not built yet share one placeholder.
+ *
+ *  A screen whose code is already here is drawn as it is. `lazy` would still hold its first render
+ *  back for a tick and show the empty fallback, and the screen's motion would start on that empty
+ *  frame; only a screen asked for before its code arrived (a pasted link, the first paint) goes
+ *  through `lazy`. The choice is made once per screen so a mounted screen never swaps its type. */
 export function screenComponent(id: ScreenId): ComponentType {
   let component = components.get(id)
   if (component === undefined) {
-    const load = loaders[id] ?? placeholder
-    component = lazy(load)
+    component = loaded.get(id) ?? lazy(loaders[id] ?? placeholder)
     components.set(id, component)
   }
   return component
