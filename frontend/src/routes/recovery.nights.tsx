@@ -1,10 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { preloadScreen } from '@/components/shell/screens'
+import { openScreen } from '@/components/shell/screens'
+import { nightsQuery } from '@/features/recovery/listQueries'
 
-// The screen itself is drawn by the stage; the route holds the address and has its code ready
-// before the navigation commits, so the motion never starts on an empty screen.
+// The screen itself is drawn by the stage; the route holds the address and has its code and its data
+// ready before the navigation commits, so the motion never starts on an empty screen.
 export const Route = createFileRoute('/recovery/nights')({
-  loader: async () => {
-    await preloadScreen('nights')
+  loader: async ({ context }) => {
+    await openScreen('nights', context.queryClient.ensureQueryData(nightsQuery))
   },
 })

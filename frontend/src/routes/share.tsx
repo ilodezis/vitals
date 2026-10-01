@@ -1,10 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { preloadScreen } from '@/components/shell/screens'
+import { openScreen } from '@/components/shell/screens'
+import { shareQuery } from '@/features/share/useShareView'
 
-// The screen itself is drawn by the stage; the route holds the address and has its code ready
-// before the navigation commits, so the motion never starts on an empty screen.
+// The screen itself is drawn by the stage; the route holds the address and has its code and its data
+// ready before the navigation commits, so the motion never starts on an empty screen.
 export const Route = createFileRoute('/share')({
-  loader: async () => {
-    await preloadScreen('share')
+  loader: async ({ context }) => {
+    await openScreen('share', context.queryClient.ensureQueryData(shareQuery))
   },
 })

@@ -1,5 +1,6 @@
 import { lazy, type ComponentType } from 'react'
 import type { ScreenId } from './nav'
+import { wait } from '@/lib/motion'
 
 /** Each built screen is its own chunk. The loaders are called ahead of a tap (a hover, a
  *  route's preload) so the screen is already here when the motion starts. */
@@ -47,4 +48,17 @@ export function screenComponent(id: ScreenId): ComponentType {
     components.set(id, component)
   }
   return component
+}
+
+/** How long a tap waits for a screen's data, once its code is here, before the screen opens without it. */
+const DATA_WAIT_MS = 250
+
+/** Everything a screen needs to open filled in: its code and its reads (`ensureQueryData` calls the
+ *  route has already started). Data already on the device, even an old copy, is taken as it is and
+ *  refreshed behind the screen; a slow read does not hold the tap past `DATA_WAIT_MS` — the screen
+ *  opens and fills in when it arrives. */
+export async function openScreen(id: ScreenId, ...reads: Promise<unknown>[]): Promise<void> {
+  const settled = Promise.allSettled(reads)
+  await preloadScreen(id)
+  await Promise.race([settled, wait(DATA_WAIT_MS)])
 }

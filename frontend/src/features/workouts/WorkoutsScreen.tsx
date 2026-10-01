@@ -3,6 +3,7 @@ import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-q
 import { api } from '@/api/client'
 import { Disclosure } from '@/components/controls/Disclosure'
 import { Badge, TextButton } from '@/components/controls/Marks'
+import { Icon } from '@/components/icons/Icon'
 import { FigureBody, Section } from '@/components/controls/Section'
 import { DomainAlerts } from '@/components/controls/DomainAlerts'
 import { Headline, Mast, TopBar } from '@/components/shell/PageHead'
@@ -11,23 +12,14 @@ import { useT } from '@/i18n/useT'
 import { cx } from '@/lib/cx'
 import { longDate, parseIsoDate, shortDate } from '@/lib/dates'
 import { formatCompact } from '@/lib/format'
-import type { components } from '@/api/schema'
+import { workoutsQuery } from './workoutsQuery'
 import './workouts.css'
-
-type WorkoutsView = components['schemas']['WorkoutsView']
 
 export default function WorkoutsScreen() {
   const { t, lang } = useT()
   const queryClient = useQueryClient()
 
-  const { data: view } = useSuspenseQuery({
-    queryKey: ['workouts'],
-    queryFn: async (): Promise<WorkoutsView> => {
-      const { data, error } = await api.GET('/api/v1/workouts')
-      if (error !== undefined || data === undefined) throw new Error('Workouts could not be read')
-      return data
-    },
-  })
+  const { data: view } = useSuspenseQuery(workoutsQuery)
 
   const [openWorkoutId, setOpenWorkoutId] = useState<string | null>(null)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
@@ -54,7 +46,19 @@ export default function WorkoutsScreen() {
 
   return (
     <>
-      <TopBar title={t('nav.hevy')} />
+      <TopBar
+        title={t('nav.hevy')}
+        right={
+          <button
+            type="button"
+            className={cx('ibtn', syncMutation.isPending && 'spin')}
+            onClick={() => !syncMutation.isPending && syncMutation.mutate()}
+            aria-label={t('app.sync')}
+          >
+            <Icon name="sync" />
+          </button>
+        }
+      />
       <Mast
         screen="workouts"
         actions={

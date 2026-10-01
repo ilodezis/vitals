@@ -1,25 +1,19 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { api, ok } from '@/api/client'
 import { Section } from '@/components/controls/Section'
 import { Icon } from '@/components/icons/Icon'
 import { Headline, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { longDate, parseIsoDate } from '@/lib/dates'
 import { formatSigned } from '@/lib/format'
-import type { components } from '@/api/schema'
+import { nightsQuery } from './listQueries'
 import './recovery.css'
-
-type NightsListView = components['schemas']['NightsListView']
 
 export default function NightsListScreen() {
   const { t, lang } = useT()
   const bbText = (change: number | null | undefined) => (change == null ? '—' : t('app.sleep.row_bb', { change: formatSigned(change, lang, 0) }))
 
-  const { data } = useSuspenseQuery({
-    queryKey: ['recovery', 'nights'],
-    queryFn: async (): Promise<NightsListView> => ok(api.GET('/api/v1/recovery/nights', { params: { query: { limit: 60 } } })),
-  })
+  const { data } = useSuspenseQuery(nightsQuery)
 
   const nights = data.nights
   const n0 = nights[0]

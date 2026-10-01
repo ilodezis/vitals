@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { api, ok } from '@/api/client'
 import { Disclosure } from '@/components/controls/Disclosure'
 import { Section } from '@/components/controls/Section'
 import { Headline, TopBar } from '@/components/shell/PageHead'
@@ -8,20 +7,17 @@ import { useT } from '@/i18n/useT'
 import { parseIsoDate, shortDate } from '@/lib/dates'
 import { clockTime, formatInt, formatNumber } from '@/lib/format'
 import type { components } from '@/api/schema'
+import { activitiesQuery } from './listQueries'
 import { hasDetail, lapTime, ZONE_COLOR } from './activity'
 import './recovery.css'
 
-type ActivitiesListView = components['schemas']['ActivitiesListView']
 type ActivityItem = components['schemas']['ActivityItem']
 
 export default function ActivitiesScreen() {
   const { t, tOr, lang } = useT()
   const [open, setOpen] = useState<string | null>(null)
 
-  const { data } = useSuspenseQuery({
-    queryKey: ['recovery', 'activities'],
-    queryFn: async (): Promise<ActivitiesListView> => ok(api.GET('/api/v1/recovery/activities', { params: { query: { limit: 30 } } })),
-  })
+  const { data } = useSuspenseQuery(activitiesQuery)
 
   const activities = data.activities ?? []
 

@@ -8,6 +8,7 @@ import { FigureBody, Section } from '@/components/controls/Section'
 import { RangeBar } from '@/components/controls/Meters'
 import { SectionTabs } from '@/components/controls/SectionTabs'
 import { TextButton } from '@/components/controls/Marks'
+import { Icon } from '@/components/icons/Icon'
 import { toast } from '@/components/controls/toast'
 import { hrefOf, useGo } from '@/components/shell/navigation'
 import { DomainAlerts } from '@/components/controls/DomainAlerts'
@@ -96,7 +97,21 @@ export default function RecoveryScreen() {
 
   return (
     <>
-      <TopBar title={t('nav.garmin')} />
+      <TopBar
+        title={t('nav.garmin')}
+        right={
+          view.isConfigured ? (
+            <button
+              type="button"
+              className={cx('ibtn', syncMutation.isPending && 'spin')}
+              onClick={() => !syncMutation.isPending && syncMutation.mutate()}
+              aria-label={t('app.sync')}
+            >
+              <Icon name="sync" />
+            </button>
+          ) : undefined
+        }
+      />
       <Mast
         screen="recovery"
         actions={
