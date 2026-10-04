@@ -65,6 +65,8 @@ export const ICONS = {
   interactions: '<circle cx="9.2" cy="12" r="5.7"/><circle cx="14.8" cy="12" r="5.7"/><path class="d2" d="M12 7.04A5.7 5.7 0 0 0 12 16.96 5.7 5.7 0 0 0 12 7.04z"/>',
   // signals: what was said to the bot, as a speech bubble with a small wave in it
   signals: '<path class="ds" d="M5.6 5h12.8A1.6 1.6 0 0 1 20 6.6v7.8a1.6 1.6 0 0 1-1.6 1.6H11l-4.4 3.5V16H5.6A1.6 1.6 0 0 1 4 14.4V6.6A1.6 1.6 0 0 1 5.6 5z"/><path d="M8.4 10.6v-1M11 12.2V8.2M13.6 11.2V9.4M16.2 10.6v-1"/>',
+  // environment: wind, the air in a room
+  air: '<path d="M3.5 9h9.2a2.6 2.6 0 1 0-2.6-2.6"/><path d="M3.5 13.5h13.2a2.8 2.8 0 1 1-2.8 2.8"/><path class="d2" d="M3.5 18h5.5"/>',
 } as const satisfies Record<string, string>
 
 export type IconName = keyof typeof ICONS

@@ -22,6 +22,7 @@ const loaders: Partial<Record<ScreenId, () => Promise<{ default: ComponentType }
   skincare: () => import('@/features/skincare/SkincareScreen'),
   interactions: () => import('@/features/interactions/InteractionsScreen'),
   signals: () => import('@/features/signals/SignalsScreen'),
+  environment: () => import('@/features/environment/EnvironmentScreen'),
   timeline: () => import('@/features/timeline/TimelineScreen'),
   reports: () => import('@/features/reports/ReportsScreen'),
   charts: () => import('@/features/charts/ChartsScreen'),

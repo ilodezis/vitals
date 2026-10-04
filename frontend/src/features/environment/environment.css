@@ -1,0 +1,69 @@
+/* Environment: the station's screen, its section on the night page, and its block in Settings. */
+
+/* ---- Now ---- */
+.env-co2 { transition: color var(--d3) var(--ease-out); }
+.env-now[data-zone="good"] .env-co2 { color: var(--good); }
+.env-now[data-zone="ok"] .env-co2 { color: var(--fg); }
+.env-now[data-zone="warn"] .env-co2 { color: var(--warn); }
+.env-now[data-zone="bad"] .env-co2 { color: var(--bad-strong); }
+.env-now[data-zone="none"] .env-co2 { color: var(--faint); }
+.env-now.dim .figs .f-v { color: var(--muted); }
+
+.env-zone { display: inline-flex; align-items: center; gap: 7px; font-size: var(--t-ui); font-weight: 600; color: var(--fg); }
+.env-zone i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.env-zone[data-zone="good"] i { background: var(--good); }
+.env-zone[data-zone="ok"] i { background: var(--fg-2); }
+.env-zone[data-zone="warn"] i { background: var(--warn); }
+.env-zone[data-zone="bad"] i { background: var(--bad); }
+.env-trend { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+.env-trend svg { width: 14px; height: 14px; }
+
+.env-station { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: var(--s4) 0 0; }
+.env .badge.warn::before, .env-set .badge.warn::before { background: var(--warn); }
+.env-alert { margin-top: var(--s3); }
+
+/* ---- Today ---- */
+.env-window { margin-bottom: var(--s3); }
+.env-charts { display: grid; gap: var(--s6); }
+.env-chart-box { min-width: 0; }
+.env-chart .env-rule line { stroke: var(--faint); stroke-width: 1.2; }
+.env-chart .env-rule .ax { fill: var(--faint); }
+.env-chart .env-rule[data-rule="co2_warn"] line { stroke: var(--warn); }
+.env-chart .env-rule[data-rule="co2_warn"] .ax { fill: var(--warn); }
+.env-chart .env-rule[data-rule="co2_bad"] line { stroke: var(--bad); }
+.env-chart .env-rule[data-rule="co2_bad"] .ax { fill: var(--bad); }
+.env-chart .env-rule[data-rule^="temp"] line { stroke: var(--violet); opacity: .55; }
+.env-chart .env-rule[data-rule^="rh"] line { stroke: var(--cool); opacity: .55; }
+.env-chart .env-day { stroke: var(--line); stroke-width: 1; }
+.legend .env-lg-rule { width: 14px; height: 0; border-radius: 0; background: none; border-top: 1.5px dashed var(--faint); }
+.legend [data-rule="co2_warn"] .env-lg-rule { border-top-color: var(--warn); }
+.legend [data-rule="co2_bad"] .env-lg-rule { border-top-color: var(--bad); }
+.legend [data-rule^="temp"] .env-lg-rule { border-top-color: var(--violet); }
+.legend [data-rule^="rh"] .env-lg-rule { border-top-color: var(--cool); }
+.legend .env-lg-band { width: 14px; height: 8px; border-radius: 2px; background: rgba(206, 198, 215, .2); }
+
+.env-none { font-size: var(--t-label); color: var(--muted); padding: var(--s4) 0; margin: 0; }
+.env-wait { height: 120px; border-radius: var(--r); background: var(--surface); opacity: .5; }
+
+/* ---- Last night ---- */
+.env-night-figs { margin-top: var(--s2); }
+.env-ranges { margin-top: var(--s4); border-top: 1px solid var(--line); }
+.env-range { display: flex; justify-content: space-between; gap: var(--s3); padding: 11px 0; border-bottom: 1px solid var(--line); font-size: var(--t-body); color: var(--fg-2); }
+.env-range b { font-family: var(--f-display); font-weight: 500; color: var(--fg); font-variant-numeric: tabular-nums; text-align: right; }
+.env-ranges .fhint { padding-top: 10px; }
+.env-night-link { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; margin-top: var(--s2); font-size: var(--t-label); color: var(--fg-2); }
+.env-night-link svg { width: 16px; height: 16px; }
+
+/* ---- Not connected ---- */
+.env-empty { display: grid; justify-items: start; gap: var(--s3); padding-top: var(--s4); }
+.env-empty > svg { width: 40px; height: 40px; color: var(--faint); }
+.env-empty h2 { margin: 0; font-family: var(--f-display); font-weight: 600; font-size: var(--t-heading); letter-spacing: -.015em; }
+.env-empty p { margin: 0; max-width: 46ch; font-size: var(--t-body); line-height: 1.5; color: var(--muted); text-wrap: pretty; }
+.env-empty .ghost { margin-left: -12px; }
+
+/* ---- Settings ---- */
+.env-set-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 6px 0 0; }
+.env-th { display: grid; gap: 6px; margin-top: var(--s4); }
+.env-th-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); }
+.env-th-grid.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.env-set .tgl:disabled, .env-set .ghost:disabled { opacity: .45; }

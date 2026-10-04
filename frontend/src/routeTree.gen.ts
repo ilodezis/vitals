@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChartsRouteImport } from './routes/charts'
+import { Route as EnvironmentRouteImport } from './routes/environment'
 import { Route as GeneticsRouteImport } from './routes/genetics'
 import { Route as Glp1RouteImport } from './routes/glp1'
 import { Route as HrtRouteImport } from './routes/hrt'
@@ -42,6 +43,11 @@ const IndexRoute = IndexRouteImport.update({
 const ChartsRoute = ChartsRouteImport.update({
   id: '/charts',
   path: '/charts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EnvironmentRoute = EnvironmentRouteImport.update({
+  id: '/environment',
+  path: '/environment',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GeneticsRoute = GeneticsRouteImport.update({
@@ -158,6 +164,7 @@ const RecoverySleepDateRoute = RecoverySleepDateRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/charts': typeof ChartsRoute
+  '/environment': typeof EnvironmentRoute
   '/genetics': typeof GeneticsRoute
   '/glp1': typeof Glp1Route
   '/hrt': typeof HrtRoute
@@ -184,6 +191,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/charts': typeof ChartsRoute
+  '/environment': typeof EnvironmentRoute
   '/genetics': typeof GeneticsRoute
   '/glp1': typeof Glp1Route
   '/hrt': typeof HrtRoute
@@ -211,6 +219,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/charts': typeof ChartsRoute
+  '/environment': typeof EnvironmentRoute
   '/genetics': typeof GeneticsRoute
   '/glp1': typeof Glp1Route
   '/hrt': typeof HrtRoute
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/charts'
+    | '/environment'
     | '/genetics'
     | '/glp1'
     | '/hrt'
@@ -265,6 +275,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/charts'
+    | '/environment'
     | '/genetics'
     | '/glp1'
     | '/hrt'
@@ -291,6 +302,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/charts'
+    | '/environment'
     | '/genetics'
     | '/glp1'
     | '/hrt'
@@ -318,6 +330,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChartsRoute: typeof ChartsRoute
+  EnvironmentRoute: typeof EnvironmentRoute
   GeneticsRoute: typeof GeneticsRoute
   Glp1Route: typeof Glp1Route
   HrtRoute: typeof HrtRoute
@@ -352,6 +365,13 @@ declare module '@tanstack/react-router' {
       path: '/charts'
       fullPath: '/charts'
       preLoaderRoute: typeof ChartsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/environment': {
+      id: '/environment'
+      path: '/environment'
+      fullPath: '/environment'
+      preLoaderRoute: typeof EnvironmentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/genetics': {
@@ -541,6 +561,7 @@ const WeightRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChartsRoute: ChartsRoute,
+  EnvironmentRoute: EnvironmentRoute,
   GeneticsRoute: GeneticsRoute,
   Glp1Route: Glp1Route,
   HrtRoute: HrtRoute,

@@ -51,6 +51,7 @@ SPA_SCREENS: tuple[tuple[str, Optional[str]], ...] = (
     ("/skincare", "skincare"),
     ("/interactions", "interactions"),
     ("/signals", "signals"),
+    ("/environment", "environment"),
     ("/timeline", "timeline"),
     ("/reports", None),
     ("/charts", None),

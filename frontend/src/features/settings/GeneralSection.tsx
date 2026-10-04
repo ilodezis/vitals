@@ -6,6 +6,7 @@ import { OptionGroup } from '@/components/controls/Choices'
 import { PrimaryButton } from '@/components/controls/PrimaryButton'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
+import { EnvironmentSettings } from '@/features/environment/EnvironmentSettings'
 import { useT } from '@/i18n/useT'
 import type { SettingsView } from './useSettingsView'
 
@@ -202,6 +203,11 @@ export function GeneralSection({ settings }: GeneralSectionProps) {
             ))}
           </div>
         </Section>
+
+        {/* The bedroom station: switch, status, thresholds, notifications */}
+        {settings.modules.registry?.some((m) => m.key === 'environment') && (
+          <EnvironmentSettings enabled={settings.modules.enabled_modules?.environment === true} />
+        )}
       </div>
 
       <div className="c7">

@@ -12,7 +12,7 @@ export type NavItem = components['schemas']['NavItem']
 export type ScreenId =
   | 'today' | 'weight' | 'measures' | 'recovery' | 'sleep' | 'nights' | 'activities'
   | 'workouts' | 'nutrition' | 'glp1' | 'hrt' | 'labs' | 'genetics'
-  | 'supplements' | 'skincare' | 'interactions' | 'signals'
+  | 'supplements' | 'skincare' | 'interactions' | 'signals' | 'environment'
   | 'timeline' | 'reports' | 'charts' | 'share' | 'more' | 'settings'
 
 /** Where each screen lives. A screen with a `$param` is matched by prefix. */
@@ -34,6 +34,7 @@ export const SCREEN_PATH: Record<ScreenId, string> = {
   skincare: '/skincare',
   interactions: '/interactions',
   signals: '/signals',
+  environment: '/environment',
   timeline: '/timeline',
   reports: '/reports',
   charts: '/charts',
@@ -61,6 +62,7 @@ export const SCREEN_TITLE_KEY: Record<ScreenId, string> = {
   skincare: 'nav.skincare',
   interactions: 'nav.interactions',
   signals: 'nav.signals',
+  environment: 'nav.environment',
   timeline: 'nav.timeline',
   reports: 'nav.reports',
   charts: 'nav.charts',
@@ -91,6 +93,7 @@ export const MODULE_SCREEN: Record<string, { screen: ScreenId; icon: IconName }>
   skincare: { screen: 'skincare', icon: 'skincare' },
   interactions: { screen: 'interactions', icon: 'interactions' },
   signals: { screen: 'signals', icon: 'signals' },
+  environment: { screen: 'environment', icon: 'air' },
   timeline: { screen: 'timeline', icon: 'timeline' },
   reports: { screen: 'reports', icon: 'doc' },
   charts: { screen: 'charts', icon: 'chart' },
@@ -100,7 +103,7 @@ export const MODULE_SCREEN: Record<string, { screen: ScreenId; icon: IconName }>
 export const BUILT_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>([
   'today', 'weight', 'measures', 'recovery', 'sleep', 'nights', 'activities',
   'workouts', 'nutrition', 'glp1', 'hrt', 'labs', 'genetics',
-  'supplements', 'skincare', 'interactions', 'signals',
+  'supplements', 'skincare', 'interactions', 'signals', 'environment',
   'timeline', 'reports', 'charts', 'share',
   'more', 'settings',
 ])

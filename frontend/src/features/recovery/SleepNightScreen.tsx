@@ -9,6 +9,7 @@ import { Section } from '@/components/controls/Section'
 import { Hypnogram } from '@/components/charts/Hypnogram'
 import { TimeCurves, type TimeCurveSeries } from '@/components/charts/TimeCurves'
 import { Icon } from '@/components/icons/Icon'
+import { NightEnvironment } from '@/features/environment/NightEnvironment'
 import { Headline, TopBar } from '@/components/shell/PageHead'
 import { useT } from '@/i18n/useT'
 import { longDate, parseIsoDate } from '@/lib/dates'
@@ -202,6 +203,9 @@ export default function SleepNightScreen() {
           )}
         </div>
       </Section>
+
+      {/* The bedroom's air, on the hypnogram's clock (nothing when the module is off) */}
+      <NightEnvironment date={night.date} startMinutes={startMinutes} blocks={stagesArray.length} />
 
       {/* Overnight Curves Section */}
       <Section title={t('app.sleep.metrics_title')}>
