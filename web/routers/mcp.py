@@ -41,6 +41,8 @@ from vitals.models import (
     BodyScan,
     DayContext,
     DosePhase,
+    EnvironmentHourly,
+    EnvironmentSample,
     GarminActivity,
     GarminDaily,
     GarminIntraday,
@@ -1844,7 +1846,9 @@ async def export_everything(
     """Returns the health history as one compact, secret-free, LLM-ready export
     grouped by domain (weight, measurements, body scans, GLP-1, HRT, labs, Garmin,
     workouts, nutrition, skincare, supplements, genetics, signals, day context,
-    milestones, timeline). This is the way to read long-term history in a single
+    milestones, timeline, and the bedroom's air as ``environment_nights`` —
+    one summary per night — and ``environment_hours``, the hourly means as
+    parallel arrays per day). This is the way to read long-term history in a single
     call rather than paging each domain's newest-100 read tool. Read-only.
 
     Defaults to the **last 90 days**: the whole lake is years of daily Garmin rows
@@ -1898,6 +1902,8 @@ async def get_data_overview() -> dict:
         ("hrt_doses", HrtDose, HrtDose.date),
         ("hrt_side_effects", HrtSideEffect, HrtSideEffect.date),
         ("hrt_cycles", HrtCycle, HrtCycle.start_date),
+        ("environment_samples", EnvironmentSample, EnvironmentSample.date),
+        ("environment_hourly", EnvironmentHourly, EnvironmentHourly.date),
     ]
     # Config/catalog tables have no per-day date — report count only.
     count_only = [
@@ -2702,6 +2708,92 @@ async def sync_hevy() -> dict:
     if summary is None:
         return {"error": "Hevy is not configured — no API key in settings"}
     return summary
+
+
+# ── Environment tools (the bedroom's air — optional module) ───────────────────
+# Reads only, from a CO2 / temperature / humidity station that measures around the
+# clock. Gated like the optional domains' writes: with the module off they refuse
+# and are not listed. The shaping (local times, rounding, honest truncation) lives in
+# ``environment_context`` so the weekly report and the exports read the same numbers.
+@mcp.tool()
+@gated("environment")
+async def get_environment_live() -> dict:
+    """Returns what the bedroom station reads right now: CO2 (ppm), temperature,
+    humidity, the CO2 zone (good/ok/warn/bad), the CO2 trend in ppm per hour, and
+    whether the station is online, stale, offline or has never reported — plus the
+    owner's thresholds. Times are local. Read-only."""
+    from vitals.services import environment_context
+
+    try:
+        redis = get_redis_client()
+    except Exception:
+        redis = None  # the cache only accelerates; the database still answers
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        return await environment_context.live_view(session, redis)
+
+
+@mcp.tool()
+@gated("environment")
+async def get_environment(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    granularity: str = "hour",
+    limit: int = 800,
+) -> dict:
+    """Retrieves the bedroom's air — CO2 (ppm), temperature (°C), humidity (%) —
+    over whole local days (YYYY-MM-DD, both ends inclusive), as ``columns`` plus
+    ``rows``. ``granularity`` is ``hour`` (up to 31 days; default the last 7; each
+    hour also carries its CO2 min and max) or ``minute`` (up to 2 days; default
+    today). A longer window or more than ``limit`` points (default 800, max 3000)
+    is cut to its FIRST part and flagged with ``truncated`` and a ``hint`` — narrow
+    the dates to see the rest. Raw 10-second samples are not exposed. Includes
+    ``coverage_pct`` (how much of the window the station was actually reporting)
+    and the owner's thresholds. For the night's summary use
+    ``get_environment_night``. Times are local. Read-only."""
+    from vitals.services import environment_context
+
+    start = _parse_date(start_date, field="start_date")
+    end = _parse_date(end_date, field="end_date")
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        return await environment_context.history_view(
+            session, start=start, end=end, granularity=granularity, limit=limit
+        )
+
+
+@mcp.tool()
+@gated("environment")
+async def get_environment_night(on_date: Optional[str] = None) -> dict:
+    """Returns one night of the bedroom's air: the window 00:00–12:00 local of
+    ``on_date`` (default today — which is *last night*, the one that ended this
+    morning), with CO2 median / p90 / max, the minutes spent at or above the warn
+    and bad lines, temperature and humidity ranges, and ``coverage_pct`` — how much
+    of the window the station reported; a low value is a gap in the data, not a
+    clean night. Includes the owner's sleeping thresholds. A night with no station
+    data comes back with ``samples: 0`` and a note. Read-only."""
+    from vitals.services import environment_context
+    from vitals.utils.timeutils import today_local
+
+    parsed = _parse_date(on_date, today_local(), field="on_date")
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        return await environment_context.night_view(session, parsed)
+
+
+@mcp.tool()
+@gated("environment")
+async def get_environment_alerts(hours: int = 24) -> dict:
+    """Returns the bedroom-air alerts that fired in the last ``hours`` (default 24,
+    max 168) — too stuffy, too hot or cold, too dry or humid, station silent — each
+    with its key, when it started and ended (``ongoing`` if still open), how long it
+    lasted, and the peak the reading reached. Newest first; ``active`` counts the
+    ones still open. Read-only."""
+    from vitals.services import environment_context
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        return await environment_context.alerts_view(session, hours=hours)
 
 
 # ── Resources & prompts ───────────────────────────────────────────────────────

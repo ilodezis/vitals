@@ -148,3 +148,66 @@ async def test_gated_write_tool_works_once_the_module_is_on():
     await mcp_router.set_module("nutrition", True)
     row = await mcp_router.log_meal(name="Обед", calories=500, on_date="2026-07-01")
     assert row["calories"] == 500
+
+
+# ── Read tools of an optional module ──────────────────────────────────────────
+#
+# The bedroom-air tools only read, but the module is optional and a station may
+# never exist: with it switched off they refuse when called and are not listed, so
+# the owner who doesn't track it carries none of their schemas.
+
+# tool name → the optional module key it belongs to
+GATED_READ_TOOLS: dict[str, str] = {
+    "get_environment_live": "environment",
+    "get_environment": "environment",
+    "get_environment_night": "environment",
+    "get_environment_alerts": "environment",
+}
+
+
+def test_every_environment_read_tool_is_classified():
+    """A fifth ``get_environment_*`` tool has to be gated too, not just the four."""
+    names = {
+        name
+        for name in dir(mcp_router)
+        if name.startswith("get_environment")
+        and inspect.iscoroutinefunction(getattr(mcp_router, name))
+        and getattr(mcp_router, name).__module__ == mcp_router.__name__
+    }
+    assert names == set(GATED_READ_TOOLS)
+
+
+def test_the_environment_tools_are_in_the_visibility_map():
+    for name, module_key in GATED_READ_TOOLS.items():
+        assert mcp_router.TOOL_MODULES[name] == module_key
+
+
+@pytest.mark.parametrize("tool_name,module_key", sorted(GATED_READ_TOOLS.items()))
+async def test_gated_read_tool_refuses_when_module_is_off(tool_name, module_key):
+    tool = getattr(mcp_router, tool_name)
+    assert await tool() == {"error": f"module '{module_key}' is disabled"}
+
+
+async def test_environment_tools_are_listed_only_while_the_module_is_on():
+    listed = {t.name for t in await mcp_router.mcp.list_tools()}
+    assert not set(GATED_READ_TOOLS) & listed
+
+    await mcp_router.set_module("environment", True)
+
+    listed = {t.name for t in await mcp_router.mcp.list_tools()}
+    assert set(GATED_READ_TOOLS) <= listed
+
+    await mcp_router.set_module("environment", False)
+
+    listed = {t.name for t in await mcp_router.mcp.list_tools()}
+    assert not set(GATED_READ_TOOLS) & listed
+
+
+async def test_environment_tools_answer_once_the_module_is_on():
+    await mcp_router.set_module("environment", True)
+
+    live = await mcp_router.get_environment_live()
+    assert live["station"]["status"] == "never"  # no station has reported — an answer, not an error
+    assert "error" not in await mcp_router.get_environment_night(on_date="2026-09-30")
+    assert "error" not in await mcp_router.get_environment_alerts()
+    assert "error" not in await mcp_router.get_environment()

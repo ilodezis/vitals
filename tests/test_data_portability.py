@@ -7,7 +7,7 @@ Postgres sequence-reset behaviour is an ``@pytest.mark.integration`` test (SQLit
 can't exercise it).
 """
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -371,8 +371,7 @@ DOMAIN_EXPORT_KEYS: dict[Domain, tuple[str, ...]] = {
     Domain.MILESTONES: ("milestones", "weekly_digests"),
     Domain.TIMELINE: ("timeline_annotations",),
     Domain.SIGNALS: ("signals", "day_context"),
-    # The bedroom's air reaches the exports once its nights and hours are mapped.
-    Domain.ENVIRONMENT: (),
+    Domain.ENVIRONMENT: ("environment_nights", "environment_hours"),
     # Infra/alert rows — deliberately excluded from a digest meant for a chat
     # window (test_llm_export_is_clean pins that they stay out).
     Domain.SYSTEM: (),
@@ -388,6 +387,7 @@ def test_every_domain_is_mapped_to_export_keys():
 async def _seed_every_domain(session) -> None:
     """One row per domain — the domains _seed/_seed_hrt don't already cover."""
     from vitals.models.body_scan import BodyScan, BodyScanMetric
+    from vitals.models.environment import EnvironmentHourly, EnvironmentSample
     from vitals.models.genetics import GeneticVariant
     from vitals.models.glp1 import DosePhase, SideEffect
     from vitals.models.milestones import Milestone, WeeklyDigest
@@ -445,14 +445,36 @@ async def _seed_every_domain(session) -> None:
             DayContext(
                 date=d, domain="signals", source="manual", answers={"remote": True},
             ),
+            EnvironmentSample(
+                date=d, domain="environment", source="esphome", station_id="bedroom", boot_id="b0",
+                seq=1, ts=datetime(2026, 4, 24, 23, 0, tzinfo=timezone.utc),  # 02:00 local on d
+                received_at=datetime(2026, 4, 24, 23, 0, 2, tzinfo=timezone.utc), co2_ppm=900,
+            ),
+            EnvironmentHourly(
+                date=d, domain="environment", source="esphome", station_id="bedroom",
+                hour_start=datetime(2026, 4, 24, 23, 0, tzinfo=timezone.utc), sample_count=360,
+                coverage_pct=100.0, co2_mean=900.0,
+            ),
         ]
     )
     await session.commit()
 
 
-async def test_llm_export_covers_every_domain(db_session):
+async def test_llm_export_covers_every_domain(db_session, monkeypatch):
     """With one row seeded per domain, every mapped export key must be non-empty —
     the test that fails when a domain is added but never wired into export_llm."""
+    from vitals.services.environment import queries
+    from vitals.services.environment.types import Co2Stats, NightSummary, Window
+
+    # The storage layer's own night summary is tested with it; here it only has to
+    # find the seeded night so the export's wiring is what is being checked.
+    async def one_night(session, on_date, *, station_id="bedroom"):
+        stamp = datetime(on_date.year, on_date.month, on_date.day, tzinfo=timezone.utc)
+        return NightSummary(
+            date=on_date, window=Window(start=stamp, end=stamp), samples=1, co2=Co2Stats(max=900.0)
+        )
+
+    monkeypatch.setattr(queries, "night_summary", one_night)
     await _seed_every_domain(db_session)
     out = await export_llm(db_session)
 

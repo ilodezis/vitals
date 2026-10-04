@@ -410,6 +410,10 @@ def _row_within(row: dict[str, Any], since_iso: str) -> bool:
     return (end or day) >= since_iso
 
 
+# The bedroom-air blocks are built on demand (see ``export_llm``).
+_ENVIRONMENT_BLOCKS = ("environment_nights", "environment_hours")
+
+
 async def export_llm(
     session: AsyncSession,
     *,
@@ -818,14 +822,26 @@ async def export_llm(
         for c in contexts
     ]
 
+    # Environment — the bedroom's air as one summary per night and the hourly means
+    # (the 10-second samples stay out, like garmin_intraday: 8640 rows a day).
+    # Computed only when asked for: unlike the rows above, a night is a query each.
+    wanted_air = [b for b in _ENVIRONMENT_BLOCKS if domains is None or b in domains]
+    if wanted_air:
+        from vitals.services import environment_context
+
+        out.update(await environment_context.export_blocks(session, since=since, blocks=wanted_air))
+
     # Narrowing happens on the assembled digest rather than in each of the twenty
     # queries above: the rows are already flat dicts with their dates, so one pass
     # here filters every block — including ones added later, which a per-query
     # ``where`` would have missed.
     if domains is not None:
-        unknown = [d for d in domains if d not in out]
+        unknown = [d for d in domains if d not in out and d not in _ENVIRONMENT_BLOCKS]
         if unknown:
-            blocks = ", ".join(k for k in out if k != "profile")
+            blocks = ", ".join(
+                [k for k in out if k != "profile"]
+                + [b for b in _ENVIRONMENT_BLOCKS if b not in out]
+            )
             raise ValueError(f"unknown domains {unknown}; available: {blocks}")
         out = {k: v for k, v in out.items() if k == "profile" or k in domains}
     if since is not None:

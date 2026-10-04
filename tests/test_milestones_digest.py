@@ -456,7 +456,7 @@ DIGEST_DOMAIN_PATHS: dict[Domain, tuple[str, ...]] = {
         "coverage.signals",
         "coverage.day_context",
     ),
-    Domain.ENVIRONMENT: ("environment",),
+    Domain.ENVIRONMENT: ("environment", "coverage.environment"),
     # Infra rows reach the digest as the active-alert list, not as their own block.
     Domain.SYSTEM: ("alerts",),
 }

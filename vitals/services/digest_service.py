@@ -383,6 +383,7 @@ DIGEST_SYSTEM = """\
 - timeline: ручные события и только не дублирующие доменные блоки derived lifecycle events. certainty=audit_timestamp означает приблизительную дату изменения справочника.
 - signals: что пользователь сам сказал о своём состоянии, в хронологическом порядке. kind=state (есть всегда, value_num 1-5: «энергии ноль»), symptom (случилось, value_num 1-5: «голова раскалывается»), exposure (сделал/принял, at_time — время суток: «кофе в 22»). note — исходная формулировка. Единственный блок, который объясняет ПОЧЕМУ цифры такие: ищи связи «exposure вечером → метрика Garmin наутро» и «симптом держится N дней подряд → что ещё в эти дни». Это его слова, а не измерение — не считай их точными числами и не строй на одной записи вывод.
 - day_context: planned — догадка шаблона, answers — ручные переопределения, resolved — их итог; source_by_field показывает силу каждого поля. Вывод на одном template-поле не строй.
+- environment: воздух в спальне — по одной сводке на ночь (окно 00:00–12:00 по местному времени) за текущий и предыдущий период, поле period: CO₂ median/p90/max в ppm, minutes_above_warn / minutes_above_bad (сколько минут показания были на пороге и выше; сами пороги — в thresholds), диапазоны температуры и влажности. coverage_pct — какую часть окна станция реально присылала данные: низкое значение — дыра в данных, а не чистая ночь. Это контекст к сну и восстановлению, а не вердикт: не вини комнату за плохую оценку сна, пока нет ночей, где менялось и то и другое. Кривых в блоке нет.
 - milestones: активные цели с прогрессом и дедлайнами
 
 ИНВАРИАНТЫ (нарушение = баг):
@@ -454,6 +455,7 @@ The context has schema_version=2. Any domain may be null, but null alone does NO
 - timeline: manual events plus only derived lifecycle events not duplicated by first-class blocks. certainty=audit_timestamp means an approximate catalog-change date.
 - signals: what the user said about how he felt, in chronological order. kind=state (always present, value_num 1-5), symptom (happened, value_num 1-5), exposure (did/took it, at_time = time of day). note is his original wording. The only block that explains WHY the numbers look like they do: look for "exposure in the evening → Garmin metric next morning" and "symptom running N days straight → what else those days had". These are his words, not measurements — don't treat them as exact figures and don't build a conclusion on a single row.
 - day_context: planned is the template guess, answers are manual overrides, resolved is the effective result, and source_by_field carries the strength of each field. Do not build a conclusion on one template-only field.
+- environment: the bedroom's air — one summary per night (the 00:00-12:00 window, local time) for the current and the previous period, tagged by period: CO2 median/p90/max in ppm, minutes_above_warn / minutes_above_bad (minutes the reading sat at or over the threshold; the thresholds themselves are in thresholds), temperature and humidity ranges. coverage_pct is how much of the window the station actually reported: a low value is a gap in the data, not a clean night. It is context for sleep and recovery, not a verdict on them: don't blame the room for a bad sleep score unless there are nights where both moved. There are no curves in the block.
 - milestones: active goals with progress and deadlines
 
 INVARIANTS (breaking = bug):
@@ -2021,8 +2023,42 @@ async def assemble_context(
         window=window,
     )
 
-    # Placeholder until the bedroom-air nights are summarised into the digest.
-    ctx["environment"] = None
+    # Environment — the bedroom's air, one summary per night of both windows (never
+    # the curves). It is context for the sleep and recovery blocks, not a verdict on
+    # them, and coverage_pct says how much of each night the station was actually
+    # reporting: a night it missed is a gap, not a clean night. The daily brief does
+    # not carry the room yet, so it neither reads nor reports on it.
+    from vitals.services import environment_context
+    from vitals.services.environment import settings as environment_settings
+
+    environment_enabled = module_on("environment")
+    env_nights: list[Any] = []
+    env_truncated = False
+    if environment_enabled and mode == REPORT_MODE_CLOSED:
+        env_nights, env_truncated = await environment_context.nights(
+            session, prev_start, period_end, limit=environment_context.NIGHTS_LIMIT
+        )
+    ctx["environment"] = (
+        {
+            "nights": [
+                {**environment_context.night_dict(n), "period": _period_name(n.date, window)}
+                for n in env_nights
+            ],
+            "thresholds": environment_context.night_thresholds(
+                await environment_settings.get_settings(session)
+            ),
+        }
+        if env_nights
+        else None
+    )
+    ctx["coverage"]["environment"] = _coverage(
+        module="environment",
+        enabled=environment_enabled,
+        dates=[n.date for n in env_nights],
+        window=window,
+        truncated=env_truncated,
+        extra={"night_limit": environment_context.NIGHTS_LIMIT, "night_window": "00:00-12:00 local"},
+    )
 
     # ── The join ──────────────────────────────────────────────────────────────
     # One row per day with every domain on it. The report kept reading as a stack

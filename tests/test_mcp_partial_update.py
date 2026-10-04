@@ -120,8 +120,7 @@ DOMAIN_OVERVIEW_KEYS: dict[Domain, tuple[str, ...]] = {
     Domain.MILESTONES: ("milestones", "weekly_digests"),
     Domain.TIMELINE: ("timeline",),
     Domain.SIGNALS: ("signals", "day_context"),
-    # The bedroom's air joins the overview once its counts are mapped.
-    Domain.ENVIRONMENT: (),
+    Domain.ENVIRONMENT: ("environment_samples", "environment_hourly"),
     # Alerts are infra, not a data domain to orient in — deliberately absent.
     Domain.SYSTEM: (),
 }
