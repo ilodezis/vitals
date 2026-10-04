@@ -76,6 +76,11 @@ def _timezone() -> str:
     return load_config().timezone
 
 
+def _station(station_id: Optional[str] = None) -> str:
+    """The station a read is about: the one asked for, else the configured one."""
+    return station_id or load_config().env_station_id or DEFAULT_STATION
+
+
 def _local_midnight_utc(day: date_type) -> datetime:
     return timeutils.local_naive_to_utc(datetime.combine(day, time_type.min))
 
@@ -166,9 +171,11 @@ async def history_view(
         return {"error": "start_date is after end_date"}
 
     hints: list[str] = []
+    cut = False
     max_days = HISTORY_DAYS[granularity]
     if (end - start).days + 1 > max_days:
         end = start + timedelta(days=max_days - 1)
+        cut = True
         hints.append(
             f"{granularity} granularity covers at most {max_days} days: the window was cut to its "
             f"first {max_days} — call again with a later start_date for the rest."
@@ -177,11 +184,19 @@ async def history_view(
     limit = max(1, min(int(limit), MAX_POINTS))
     start_utc, end_utc = _local_midnight_utc(start), _local_midnight_utc(end + timedelta(days=1))
 
+    # Per-minute data is served for at most 48 hours; two local days are 49 when the
+    # clocks go back. Say what the rows are rather than label hours as minutes.
+    served = queries.effective_resolution(start_utc, end_utc, granularity)
+    if served != granularity:
+        hints.append(f"This window is longer than 48 hours, so hourly means are returned instead of {granularity} values.")
+        granularity = served
+
     prefs = await env_settings.get_settings(session)
     points = list(await queries.series(session, start_utc, end_utc, resolution=granularity))
     available = len(points)
     if available > limit:
         points = points[:limit]
+        cut = True
         hints.append(
             f"Returned the first {limit} of {available} points — narrow start_date/end_date or raise "
             f"limit (max {MAX_POINTS})."
@@ -196,7 +211,7 @@ async def history_view(
         "rows": rows,
         "count": len(rows),
         "coverage_pct": _r1(await queries.coverage_pct(session, start_utc, end_utc)),
-        "truncated": bool(hints),
+        "truncated": cut,
         "thresholds": prefs.thresholds_dict(),
     }
     if available > len(rows):
@@ -247,11 +262,12 @@ async def nights(
     end: Optional[date_type],
     *,
     limit: Optional[int] = NIGHTS_LIMIT,
-    station_id: str = DEFAULT_STATION,
+    station_id: Optional[str] = None,
 ) -> tuple[list[NightSummary], bool]:
     """Summaries of the nights between ``start`` and ``end`` (either may be open)
     that have station data, oldest first. With more than ``limit``, the newest are
     kept and the second element says so."""
+    station_id = _station(station_id)
     stmt = (
         select(EnvironmentSample.date)
         .where(EnvironmentSample.station_id == station_id)
@@ -284,7 +300,7 @@ async def hours_by_day(
     start: Optional[date_type],
     end: Optional[date_type],
     *,
-    station_id: str = DEFAULT_STATION,
+    station_id: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """The hourly rollup as one entry per local day, the hours as parallel arrays.
 
@@ -295,7 +311,7 @@ async def hours_by_day(
     """
     stmt = (
         select(EnvironmentHourly)
-        .where(EnvironmentHourly.station_id == station_id)
+        .where(EnvironmentHourly.station_id == _station(station_id))
         .order_by(EnvironmentHourly.hour_start)
     )
     if start is not None:
@@ -379,12 +395,13 @@ async def alerts_view(
     *,
     hours: int = 24,
     now: Optional[datetime] = None,
-    station_id: str = DEFAULT_STATION,
+    station_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """The environment alerts that were open at any point in the last ``hours``:
     when each started and ended and how far the reading went. The peak is read off
     the samples of the episode, so it does not depend on the wording of a message."""
     hours = max(1, min(int(hours), ALERT_HOURS_MAX))
+    station_id = _station(station_id)
     now = now or timeutils.now_local()
     since = now - timedelta(hours=hours)
 

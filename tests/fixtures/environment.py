@@ -9,6 +9,7 @@ site-packages shadowing the conftest comments warn about.
 * ``sample_row`` / ``flat_rows`` / ``ramp_rows`` / ``night_rows`` — rows shaped like
   ``environment_samples`` (``night_rows`` is the seeded synthetic bedroom).
 * ``insert_samples`` — bulk-write such rows through a session.
+* ``poll_many`` — run the real client and ``poll_once`` against a ``FakeStation``.
 
 The station address in tests is always ``http://station.test``.
 """
@@ -55,10 +56,12 @@ class FakeStation:
     url = STATION_URL
     credentials = STATION_CREDENTIALS
 
-    def __init__(self, scenario: str = "normal", **kw) -> None:
+    def __init__(self, scenario: str = "normal", *, start: Optional[float] = None, **kw) -> None:
+        """``start`` is the epoch second the station boots at (default a fixed one), so a
+        test can put its snapshots on any date it likes."""
         kw.setdefault("seed", 1)
-        self.now = _START
-        self.sim = simulator.StationSim(scenario, started_at=_START, credentials=STATION_CREDENTIALS, **kw)
+        self.now = _START if start is None else start
+        self.sim = simulator.StationSim(scenario, started_at=self.now, credentials=STATION_CREDENTIALS, **kw)
         self.transport = httpx.MockTransport(self._handle)
 
     def advance(self, seconds: float) -> None:
@@ -166,3 +169,20 @@ async def insert_samples(session, rows: list[dict], *, chunk: int = 2000) -> Non
     for i in range(0, len(rows), chunk):
         await session.execute(insert(EnvironmentSample), rows[i : i + chunk])
     await session.commit()
+
+
+async def poll_many(session, station: FakeStation, *, count: int, step: float = 10, real_now: bool = False) -> list[str]:
+    """Poll ``station`` ``count`` times through the real client and ``poll_once``,
+    moving the station's clock ``step`` seconds after each. Snapshots are stored at the
+    station's own time unless ``real_now``. Returns the outcomes (``inserted``,
+    ``duplicate``, ``error``); the caller commits."""
+    from vitals.integrations.esphome_client import StationClient
+    from vitals.services.environment.ingest import poll_once
+
+    client = StationClient(station.url, *station.credentials, transport=station.transport)
+    outcomes = []
+    for _ in range(count):
+        now = None if real_now else datetime.fromtimestamp(station.now, tz=timezone.utc)
+        outcomes.append((await poll_once(session, client, now=now)).value)
+        station.advance(step)
+    return outcomes

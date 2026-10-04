@@ -239,6 +239,36 @@ async def test_minute_history_is_capped_at_two_days(db_session, fake_series):
     assert out["truncated"] is True and "2" in out["hint"]
 
 
+async def test_two_days_across_a_clock_change_come_back_as_hours_and_say_so(db_session, fake_series):
+    """Chisinau 24-25 October is 49 hours long, past what per-minute data serves: the
+    answer is the hourly means, labelled as such — not minutes by name only."""
+    fake_series["points"] = [hour_point(date(2026, 10, 24), 5, 650.0)]
+
+    out = await ctx.history_view(db_session, start=date(2026, 10, 24), end=date(2026, 10, 25), granularity="minute", limit=800)
+
+    assert fake_series["calls"][0][2] == "hour"
+    assert out["granularity"] == "hour" and "co2_max" in out["columns"]
+    assert "hourly" in out["hint"]
+    assert out["truncated"] is False
+
+
+async def test_a_station_other_than_the_default_is_the_configured_one(db_session, monkeypatch):
+    """The station id comes from the configuration, not from a constant."""
+    monkeypatch.setenv("VITALS_ENV_STATION_ID", "study")
+    asked = []
+
+    async def fake(session, on_date, *, station_id=None):
+        asked.append(station_id)
+        return NightSummary(date=on_date, window=Window(start=local(on_date), end=local(on_date, 12)))
+
+    monkeypatch.setattr(queries, "night_summary", fake)
+    await insert_samples(db_session, [sample_row(local(date(2026, 9, 30), 2), co2=700, station_id="study")])
+
+    found, _ = await ctx.nights(db_session, None, None)
+
+    assert asked == ["study"] and found == []  # the study's night was looked up, not the bedroom's
+
+
 async def test_a_point_limit_truncates_to_the_first_points_and_reports_the_rest(db_session, fake_series):
     fake_series["points"] = [hour_point(date(2026, 10, 5), h, 600.0 + h) for h in range(10)]
 
