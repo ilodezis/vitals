@@ -1,0 +1,53 @@
+# Bring-up firmware for the bedroom climate station: proves the I2C bus and the
+# light sensor before the full station config exists. Wi-Fi credentials are not
+# stored here; the board keeps the ones it was provisioned with. If it cannot
+# join that network it opens the fallback access point defined below.
+esphome:
+  name: environment-station
+  friendly_name: Environment station
+
+esp32:
+  board: esp32-c3-devkitm-1
+  variant: esp32c3
+  framework:
+    type: esp-idf
+
+logger:
+  level: INFO
+
+api:
+
+ota:
+  - platform: esphome
+
+wifi:
+  ap:
+    ssid: "Environment Station Fallback"
+    password: !secret ap_password
+
+captive_portal:
+
+web_server:
+  port: 80
+
+i2c:
+  sda: GPIO4
+  scl: GPIO3
+  scan: true
+  frequency: 100kHz
+
+sensor:
+  - platform: bh1750
+    name: "Illuminance"
+    address: 0x23
+    update_interval: 10s
+
+  - platform: scd4x
+    address: 0x62
+    co2:
+      name: "CO2"
+    temperature:
+      name: "Temperature"
+    humidity:
+      name: "Humidity"
+    update_interval: 15s

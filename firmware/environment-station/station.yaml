@@ -1,0 +1,287 @@
+# Bedroom climate station firmware (ESP32-C3 SuperMini Plus + SCD41).
+#
+# What it does
+#   * Measures CO2, temperature and humidity with an SCD41 (periodic mode, one
+#     reading every 5 s).
+#   * Every 10 s it builds ONE JSON snapshot of the latest values and serves it at
+#         GET /text_sensor/env_snapshot
+#     The snapshot is the only interface Vitals reads (contract v1, see
+#     docs/ENVIRONMENT_V1_SPRINT.md). The station never calls out to anything but
+#     NTP: Vitals polls it.
+#   * Serves a small local status page (web_server v3, assets built into the
+#     firmware, no CDN). There is NO authentication on it by decision of the
+#     owner: the station lives on the home LAN only and its port must never be
+#     forwarded outside. Anyone on the LAN can read it and press its restart
+#     button. Firmware upload (OTA) stays password-protected.
+#
+# Network
+#   Wi-Fi credentials are deliberately NOT in this file. The board keeps the
+#   network it was provisioned with (captive portal or the web.esphome.io
+#   installer). If it cannot join that network it opens the fallback access
+#   point below. See README.md.
+#
+# Secrets (secrets.yaml, git-ignored; template in secrets.example.yaml):
+#   ap_password, ota_password, api_key
+
+substitutions:
+  device_name: environment-station
+  friendly_name: Станция среды
+  # Version string reported in the snapshot as "fw". Bump on every change that
+  # alters the snapshot or the measurement behaviour.
+  firmware_version: env-1.1.0
+
+  # --- SCD41 tuning: PRELIMINARY values, to be settled during acceptance ---
+  # Temperature offset in degrees C. Factory default is 4. The board and the
+  # enclosure heat the sensor, so the real value is found by comparing against a
+  # reference thermometer after ~2 hours of warm-up. The sign is inverted:
+  # a LARGER offset gives a LOWER reported temperature.
+  scd41_temperature_offset: "4.0"
+  # Automatic self-calibration assumes the sensor sees fresh air (~420 ppm)
+  # about once a week. In a bedroom that is not ventilated daily it drags the
+  # baseline up and under-reports CO2, so it starts disabled. Calibrate by hand
+  # (forced recalibration next to an open window) instead.
+  scd41_asc: "false"
+  # Altitude above sea level in metres, used for pressure compensation (there
+  # is no barometer on the board). Moscow is roughly 150 to 200 m.
+  scd41_altitude: "150"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32-c3-devkitm-1
+  variant: esp32c3
+  framework:
+    type: esp-idf
+
+logger:
+  level: INFO
+
+# Native API is kept only so `esphome logs` works over Wi-Fi. It is encrypted
+# and nothing in Vitals uses it. reboot_timeout 0 matters: the default reboots
+# the board every 15 minutes when no API client is connected.
+api:
+  reboot_timeout: 0s
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# No station credentials here on purpose, see the header. If the stored network
+# is unreachable the board opens this access point and the captive portal.
+wifi:
+  ap:
+    ssid: "Environment Station Fallback"
+    password: !secret ap_password
+
+captive_portal:
+
+mdns:
+
+time:
+  - platform: sntp
+    id: sntp_time
+    # The snapshot reports epoch seconds, which do not depend on the zone.
+    timezone: UTC
+    servers:
+      - pool.ntp.org
+      - time.cloudflare.com
+      - time.google.com
+
+i2c:
+  id: bus_main
+  sda: GPIO4
+  scl: GPIO3
+  scan: true
+  frequency: 100kHz
+
+globals:
+  # Number of snapshots built since boot. Starts at 1, resets on reboot.
+  - id: snapshot_seq
+    type: uint32_t
+    initial_value: "0"
+  # Random id of this boot, drawn on the first snapshot a few seconds after boot
+  # (that first snapshot can precede the Wi-Fi link, so its rssi may read -127).
+  # 0 means "not drawn yet".
+  - id: boot_id
+    type: uint32_t
+    initial_value: "0"
+  # Last illuminance in lux; NAN while there is no light sensor. Written by the
+  # BH1750 block below once it is enabled.
+  - id: lux_last
+    type: float
+    initial_value: "NAN"
+
+web_server:
+  port: 80
+  version: 3
+  # Serve the UI assets from the firmware itself, no external CDN.
+  local: true
+  sorting_groups:
+    - id: grp_air
+      name: "Воздух"
+      sorting_weight: 10
+    # BH1750: uncomment together with the sensor block below.
+    # - id: grp_light
+    #   name: "Свет"
+    #   sorting_weight: 20
+    - id: grp_station
+      name: "Станция"
+      sorting_weight: 30
+
+sensor:
+  - platform: scd4x
+    i2c_id: bus_main
+    address: 0x62
+    measurement_mode: periodic
+    # The SCD41 itself produces a value every 5 s in periodic mode; polling at
+    # the same rate picks each one up. A rare "Data not ready" warning is
+    # harmless: the snapshot just keeps the previous value for one more cycle.
+    update_interval: 5s
+    automatic_self_calibration: ${scd41_asc}
+    altitude_compensation: ${scd41_altitude}m
+    temperature_offset: ${scd41_temperature_offset}°C
+    co2:
+      id: scd41_co2
+      name: "Углекислый газ"
+      web_server:
+        sorting_group_id: grp_air
+        sorting_weight: 10
+    temperature:
+      id: scd41_temperature
+      name: "Температура"
+      web_server:
+        sorting_group_id: grp_air
+        sorting_weight: 20
+    humidity:
+      id: scd41_humidity
+      name: "Влажность"
+      web_server:
+        sorting_group_id: grp_air
+        sorting_weight: 30
+
+  # --- BH1750 illuminance sensor (optional, not fitted in v1) ---
+  # To enable it:
+  #   1. Wire it to the same I2C bus as the SCD41 (SDA GPIO4, SCL GPIO3, 3V3,
+  #      GND). The default address is 0x23 (ADDR pin low); 0x5C if ADDR is high.
+  #   2. Uncomment this block and the grp_light sorting group in web_server.
+  #   3. Build and upload. The snapshot picks the value up on its own: the "lux"
+  #      field changes from null to a number, nothing else needs editing.
+  # - platform: bh1750
+  #   i2c_id: bus_main
+  #   address: 0x23
+  #   name: "Освещённость"
+  #   update_interval: 10s
+  #   on_value:
+  #     then:
+  #       - lambda: id(lux_last) = x;
+  #   web_server:
+  #     sorting_group_id: grp_light
+  #     sorting_weight: 10
+
+  - platform: wifi_signal
+    name: "Сигнал Wi-Fi"
+    update_interval: 30s
+    entity_category: diagnostic
+    web_server:
+      sorting_group_id: grp_station
+      sorting_weight: 20
+
+  - platform: uptime
+    name: "Время работы"
+    update_interval: 60s
+    entity_category: diagnostic
+    web_server:
+      sorting_group_id: grp_station
+      sorting_weight: 30
+
+  - platform: debug
+    free:
+      name: "Свободная память"
+      web_server:
+        sorting_group_id: grp_station
+        sorting_weight: 40
+
+debug:
+  update_interval: 60s
+
+text_sensor:
+  # The name is part of the contract: Vitals requests /text_sensor/env_snapshot.
+  # Do not translate or rename it. Newer ESPHome matches web_server URLs by
+  # entity name, older ones by the derived object id; this name satisfies both.
+  # Keep the entity visible (not internal), or the URL answers 404.
+  - platform: template
+    id: env_snapshot
+    name: "env_snapshot"
+    update_interval: 10s
+    entity_category: diagnostic
+    web_server:
+      sorting_group_id: grp_station
+      sorting_weight: 50
+    lambda: |-
+      const uint32_t seq = ++id(snapshot_seq);
+      if (id(boot_id) == 0) id(boot_id) = esphome::random_uint32() | 1u;
+
+      // Epoch seconds from SNTP, 0 until the first sync.
+      auto now = id(sntp_time).now();
+      const long long t = now.is_valid() ? (long long) now.timestamp : 0;
+      const unsigned up = (unsigned) (esp_timer_get_time() / 1000000LL);
+
+      // A sensor that has not reported yet (or reports NaN) becomes JSON null.
+      char co2[12] = "null", temp[12] = "null", rh[12] = "null", lux[16] = "null";
+      float v = id(scd41_co2).state;
+      if (!std::isnan(v)) snprintf(co2, sizeof(co2), "%d", (int) lroundf(v));
+      v = id(scd41_temperature).state;
+      if (!std::isnan(v)) snprintf(temp, sizeof(temp), "%.1f", v);
+      v = id(scd41_humidity).state;
+      if (!std::isnan(v)) snprintf(rh, sizeof(rh), "%.1f", v);
+      v = id(lux_last);
+      if (!std::isnan(v)) snprintf(lux, sizeof(lux), "%.1f", v);
+
+      char buf[256];
+      int n = snprintf(buf, sizeof(buf),
+          "{\"v\":1,\"boot\":\"%08x\",\"seq\":%u,\"t\":%lld,\"up\":%u,"
+          "\"co2\":%s,\"temp\":%s,\"rh\":%s,\"lux\":%s,"
+          "\"rssi\":%d,\"heap\":%u,\"fw\":\"${firmware_version}\"}",
+          (unsigned) id(boot_id), (unsigned) seq, t, up,
+          co2, temp, rh, lux,
+          (int) wifi::global_wifi_component->wifi_rssi(),
+          (unsigned) esp_get_free_heap_size());
+      // Never publish a truncated (invalid) document; the worst case is ~170 bytes.
+      if (n < 0 || n >= (int) sizeof(buf)) return {};
+      return std::string(buf);
+
+  - platform: debug
+    reset_reason:
+      name: "Причина перезагрузки"
+      web_server:
+        sorting_group_id: grp_station
+        sorting_weight: 10
+
+button:
+  - platform: restart
+    name: "Перезагрузить станцию"
+    web_server:
+      sorting_group_id: grp_station
+      sorting_weight: 60
+
+# The board has a WS2812 RGB LED on GPIO8 (the Plus variant also shares that pin
+# with a plain status LED on some batches). Writing "off" at boot blanks the RGB
+# LED; nothing else in this file drives the pin. The red power LED is wired to
+# 3V3 and cannot be switched off in software.
+light:
+  - platform: esp32_rmt_led_strip
+    id: board_rgb_led
+    name: "Светодиод платы"
+    internal: true
+    pin:
+      number: GPIO8
+      ignore_strapping_warning: true
+    num_leds: 1
+    chipset: WS2812
+    rgb_order: GRB
+    restore_mode: ALWAYS_OFF
+    default_transition_length: 0s
