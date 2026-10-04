@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from vitals.config import load_config
 from vitals.scheduler.scheduler import clear_jobs, register_job
 from vitals.services.proactive import prefs
 
@@ -36,6 +37,8 @@ def register_all_jobs(settings: Optional[dict[str, Any]] = None) -> None:
         export_job as garmin_weight_export_job,
     )
     from vitals.services.digest_service import digest_job
+    from vitals.services.environment.ingest import environment_poll_job
+    from vitals.services.environment.rollup import environment_rollup_job
     from vitals.services.nutrition_service import day_end_job as nutrition_day_end_job
     from vitals.services.hrt_reminders import reminders_job as hrt_reminders_job
     from vitals.services.garmin_service import pulse_job as garmin_pulse_job
@@ -188,6 +191,32 @@ def register_all_jobs(settings: Optional[dict[str, Any]] = None) -> None:
         trigger="cron",
         minute=5,
     )
+
+    # Environment station — polled by Vitals, never pushing. Registered only when
+    # a station address is configured (it lives in the environment, so changing it
+    # restarts the app anyway): an install without the hardware pays no tick every
+    # ten seconds for nothing. The job itself also returns on its first line when
+    # the module is off. The lock outlives one poll (3 s connect + 5 s read) with
+    # room to spare; a poll that is still running makes the next tick skip rather
+    # than pile up behind a stuck station.
+    config = load_config()
+    if config.env_station_url:
+        register_job(
+            "environment_poll",
+            environment_poll_job,
+            trigger="interval",
+            seconds=config.env_poll_seconds,
+            lock_ttl=30,
+        )
+        # Hourly rollup of the samples — cheap and idempotent, recomputes only the
+        # hours touched since the last pass.
+        register_job(
+            "environment_rollup",
+            environment_rollup_job,
+            trigger="interval",
+            minutes=5,
+            lock_ttl=240,
+        )
 
     # Weekly AI digest — Mondays at 08:00 local. No-ops when no OpenRouter key.
     register_job(

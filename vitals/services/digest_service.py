@@ -87,6 +87,7 @@ _DOMAIN_MODULE = {
     "hrt": "hrt",
     "timeline": "timeline",
     "signals": "signals",
+    "environment": "environment",
     "milestones": "reports",
     "system": "reports",
 }
@@ -2019,6 +2020,9 @@ async def assemble_context(
         dates=[row.date for row in day_rows],
         window=window,
     )
+
+    # Placeholder until the bedroom-air nights are summarised into the digest.
+    ctx["environment"] = None
 
     # ── The join ──────────────────────────────────────────────────────────────
     # One row per day with every domain on it. The report kept reading as a stack

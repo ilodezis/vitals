@@ -25,6 +25,7 @@ from fastapi import Depends
 from web.api import (
     alerts,
     charts,
+    environment,
     garmin,
     genetics,
     glp1,
@@ -58,6 +59,7 @@ api_router.include_router(session.router)
 api_router.include_router(today.router)
 api_router.include_router(weight.router)
 api_router.include_router(garmin.router)
+api_router.include_router(environment.router, dependencies=[Depends(require_module("environment"))])
 api_router.include_router(hevy.router, dependencies=[Depends(require_module("hevy"))])
 api_router.include_router(nutrition.router, dependencies=[Depends(require_module("nutrition"))])
 api_router.include_router(glp1.router, dependencies=[Depends(require_module("glp1"))])

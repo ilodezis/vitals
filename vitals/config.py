@@ -29,6 +29,13 @@ DEFAULT_HEVY_BASE_URL = "https://api.hevyapp.com"
 # a captcha/MFA challenge and a temporary block).
 DEFAULT_GARMIN_TOKEN_DIR = "/data/garmin_session"
 
+# The environment station is polled by Vitals, not the other way round. The poll
+# cadence is bounded: under 5 s the SCD41 (one reading per 5 s) has nothing new,
+# over 60 s the live screen stops feeling live.
+DEFAULT_ENV_STATION_ID = "bedroom"
+DEFAULT_ENV_POLL_SECONDS = 10
+ENV_POLL_SECONDS_RANGE = (5, 60)
+
 
 def _pos_int(env_name: str, default: int) -> int:
     raw = (os.getenv(env_name) or "").strip()
@@ -129,6 +136,15 @@ class Config:
     telegram_webhook_path: str = ""
     telegram_webhook_secret: str = ""
 
+    # ── Environment station (ESPHome sensor box on the LAN) ─────────────────────
+    # Empty URL = no station connected: the poll job returns on its first line and
+    # the API serves the empty state. The address lives only here, never in code.
+    env_station_url: str = ""
+    env_station_user: str = ""
+    env_station_password: str = ""
+    env_station_id: str = DEFAULT_ENV_STATION_ID
+    env_poll_seconds: int = DEFAULT_ENV_POLL_SECONDS
+
     db_statement_timeout_ms: int = DEFAULT_DB_STATEMENT_TIMEOUT_MS
     db_pool_size: int = DEFAULT_DB_POOL_SIZE
     db_max_overflow: int = DEFAULT_DB_MAX_OVERFLOW
@@ -204,6 +220,19 @@ def load_config() -> Config:
         telegram_chat_id=os.getenv("VITALS_TELEGRAM_CHAT_ID", "").strip(),
         telegram_webhook_path=os.getenv("VITALS_TELEGRAM_WEBHOOK_PATH", "").strip(),
         telegram_webhook_secret=os.getenv("VITALS_TELEGRAM_WEBHOOK_SECRET", "").strip(),
+        env_station_url=os.getenv("VITALS_ENV_STATION_URL", "").strip(),
+        env_station_user=os.getenv("VITALS_ENV_STATION_USER", ""),
+        env_station_password=os.getenv("VITALS_ENV_STATION_PASSWORD", ""),
+        env_station_id=(
+            os.getenv("VITALS_ENV_STATION_ID") or DEFAULT_ENV_STATION_ID
+        ).strip()[:16],
+        env_poll_seconds=max(
+            ENV_POLL_SECONDS_RANGE[0],
+            min(
+                ENV_POLL_SECONDS_RANGE[1],
+                _env_int("VITALS_ENV_POLL_SECONDS", DEFAULT_ENV_POLL_SECONDS),
+            ),
+        ),
         db_statement_timeout_ms=_pos_int(
             "VITALS_DB_STATEMENT_TIMEOUT_MS", DEFAULT_DB_STATEMENT_TIMEOUT_MS
         ),

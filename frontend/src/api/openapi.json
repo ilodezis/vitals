@@ -1444,6 +1444,55 @@
         "title": "ChartsView",
         "type": "object"
       },
+      "Co2Stats": {
+        "properties": {
+          "max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median"
+          },
+          "minutes_above_bad": {
+            "default": 0.0,
+            "title": "Minutes Above Bad",
+            "type": "number"
+          },
+          "minutes_above_warn": {
+            "default": 0.0,
+            "title": "Minutes Above Warn",
+            "type": "number"
+          },
+          "p90": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P90"
+          }
+        },
+        "title": "Co2Stats",
+        "type": "object"
+      },
       "ConflictBody": {
         "description": "409 — a ``block`` rule fired; repeat the write with ``override`` to keep it.",
         "properties": {
@@ -1858,6 +1907,243 @@
           "dose_mg"
         ],
         "title": "DosePhase",
+        "type": "object"
+      },
+      "EnvSettings": {
+        "properties": {
+          "alert_telegram": {
+            "title": "Alert Telegram",
+            "type": "boolean"
+          },
+          "alerts_enabled": {
+            "title": "Alerts Enabled",
+            "type": "boolean"
+          },
+          "co2_bad": {
+            "title": "Co2 Bad",
+            "type": "integer"
+          },
+          "co2_ok_max": {
+            "title": "Co2 Ok Max",
+            "type": "integer"
+          },
+          "co2_warn": {
+            "title": "Co2 Warn",
+            "type": "integer"
+          },
+          "night_window": {
+            "$ref": "#/components/schemas/NightWindow"
+          },
+          "rh_alert_high": {
+            "title": "Rh Alert High",
+            "type": "number"
+          },
+          "rh_alert_low": {
+            "title": "Rh Alert Low",
+            "type": "number"
+          },
+          "rh_max": {
+            "title": "Rh Max",
+            "type": "number"
+          },
+          "rh_min": {
+            "title": "Rh Min",
+            "type": "number"
+          },
+          "temp_day_max": {
+            "title": "Temp Day Max",
+            "type": "number"
+          },
+          "temp_day_min": {
+            "title": "Temp Day Min",
+            "type": "number"
+          },
+          "temp_sleep_max": {
+            "title": "Temp Sleep Max",
+            "type": "number"
+          },
+          "temp_sleep_min": {
+            "title": "Temp Sleep Min",
+            "type": "number"
+          }
+        },
+        "required": [
+          "co2_ok_max",
+          "co2_warn",
+          "co2_bad",
+          "temp_day_min",
+          "temp_day_max",
+          "temp_sleep_min",
+          "temp_sleep_max",
+          "rh_min",
+          "rh_max",
+          "rh_alert_low",
+          "rh_alert_high",
+          "night_window",
+          "alerts_enabled",
+          "alert_telegram"
+        ],
+        "title": "EnvSettings",
+        "type": "object"
+      },
+      "EnvSettingsPatch": {
+        "description": "A partial update: omitted fields keep their stored value. Out-of-range\nnumbers are clamped, not rejected — the settings card shows the bounds.",
+        "properties": {
+          "alert_telegram": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alert Telegram"
+          },
+          "alerts_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alerts Enabled"
+          },
+          "co2_bad": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Co2 Bad"
+          },
+          "co2_ok_max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Co2 Ok Max"
+          },
+          "co2_warn": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Co2 Warn"
+          },
+          "night_window": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NightWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rh_alert_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rh Alert High"
+          },
+          "rh_alert_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rh Alert Low"
+          },
+          "rh_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rh Max"
+          },
+          "rh_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rh Min"
+          },
+          "temp_day_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temp Day Max"
+          },
+          "temp_day_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temp Day Min"
+          },
+          "temp_sleep_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temp Sleep Max"
+          },
+          "temp_sleep_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temp Sleep Min"
+          }
+        },
+        "title": "EnvSettingsPatch",
         "type": "object"
       },
       "ExerciseCatalogItem": {
@@ -5633,6 +5919,168 @@
         "title": "LatestWeight",
         "type": "object"
       },
+      "LiveNow": {
+        "properties": {
+          "co2_ppm": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Co2 Ppm"
+          },
+          "co2_trend_ppm_per_h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Co2 Trend Ppm Per H"
+          },
+          "co2_zone": {
+            "default": "none",
+            "enum": [
+              "good",
+              "ok",
+              "warn",
+              "bad",
+              "none"
+            ],
+            "title": "Co2 Zone",
+            "type": "string"
+          },
+          "humidity_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Humidity Pct"
+          },
+          "lux": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lux"
+          },
+          "temperature_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature C"
+          }
+        },
+        "title": "LiveNow",
+        "type": "object"
+      },
+      "LiveStation": {
+        "properties": {
+          "age_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age S"
+          },
+          "fw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fw"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "rssi": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rssi"
+          },
+          "status": {
+            "enum": [
+              "online",
+              "stale",
+              "offline",
+              "never"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "LiveStation",
+        "type": "object"
+      },
+      "LiveView": {
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "now": {
+            "$ref": "#/components/schemas/LiveNow"
+          },
+          "station": {
+            "$ref": "#/components/schemas/LiveStation"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/Thresholds"
+          }
+        },
+        "required": [
+          "configured",
+          "station",
+          "now",
+          "thresholds"
+        ],
+        "title": "LiveView",
+        "type": "object"
+      },
       "MacroSplit": {
         "properties": {
           "carbs_pct": {
@@ -6567,6 +7015,23 @@
         "title": "NightListItem",
         "type": "object"
       },
+      "NightWindow": {
+        "description": "What \"the night\" means as a summary window (local wall-clock ``HH:MM``).",
+        "properties": {
+          "end": {
+            "default": "12:00",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "default": "00:00",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "title": "NightWindow",
+        "type": "object"
+      },
       "NightsListView": {
         "properties": {
           "nights": {
@@ -6926,6 +7391,151 @@
           "new_password_confirm"
         ],
         "title": "PasswordChangeUpdate",
+        "type": "object"
+      },
+      "PeriodSummary": {
+        "description": "A night window or a calendar day, summarised.",
+        "properties": {
+          "co2": {
+            "$ref": "#/components/schemas/Co2Stats"
+          },
+          "coverage_pct": {
+            "default": 0.0,
+            "title": "Coverage Pct",
+            "type": "number"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "humidity": {
+            "$ref": "#/components/schemas/RangeStats"
+          },
+          "samples": {
+            "default": 0,
+            "title": "Samples",
+            "type": "integer"
+          },
+          "temperature": {
+            "$ref": "#/components/schemas/RangeStats"
+          },
+          "window": {
+            "$ref": "#/components/schemas/Window"
+          }
+        },
+        "required": [
+          "date",
+          "window",
+          "co2",
+          "temperature",
+          "humidity"
+        ],
+        "title": "PeriodSummary",
+        "type": "object"
+      },
+      "PeriodView": {
+        "description": "``GET /day/{date}`` and ``GET /night/{date}``: the summary plus the\nminute-resolution curve of the same window.",
+        "properties": {
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/Point"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/PeriodSummary"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/Thresholds"
+          }
+        },
+        "required": [
+          "summary",
+          "thresholds"
+        ],
+        "title": "PeriodView",
+        "type": "object"
+      },
+      "Point": {
+        "properties": {
+          "co2_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Co2 Max"
+          },
+          "co2_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Co2 Min"
+          },
+          "co2_ppm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Co2 Ppm"
+          },
+          "humidity_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Humidity Pct"
+          },
+          "lux": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lux"
+          },
+          "temperature_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature C"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ts"
+        ],
+        "title": "Point",
         "type": "object"
       },
       "ProactiveSettings": {
@@ -7435,6 +8045,45 @@
           "days_since"
         ],
         "title": "RailStat",
+        "type": "object"
+      },
+      "RangeStats": {
+        "properties": {
+          "max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min"
+          }
+        },
+        "title": "RangeStats",
         "type": "object"
       },
       "RecoveryActivity": {
@@ -8099,6 +8748,44 @@
           }
         },
         "title": "SecuritySettings",
+        "type": "object"
+      },
+      "SeriesView": {
+        "properties": {
+          "coverage_pct": {
+            "default": 0.0,
+            "title": "Coverage Pct",
+            "type": "number"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/Point"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "resolution": {
+            "enum": [
+              "raw",
+              "minute",
+              "hour"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/Thresholds"
+          },
+          "window": {
+            "$ref": "#/components/schemas/Window"
+          }
+        },
+        "required": [
+          "resolution",
+          "thresholds",
+          "window"
+        ],
+        "title": "SeriesView",
         "type": "object"
       },
       "SessionView": {
@@ -9585,6 +10272,42 @@
         "title": "SleepStageSegment",
         "type": "object"
       },
+      "StationCheck": {
+        "description": "The answer to \"check the connection\": a poll made right now.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "online",
+              "stale",
+              "offline",
+              "never"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "status"
+        ],
+        "title": "StationCheck",
+        "type": "object"
+      },
       "StatusResponse": {
         "properties": {
           "status": {
@@ -10152,6 +10875,70 @@
           "message"
         ],
         "title": "SystemAlertItem",
+        "type": "object"
+      },
+      "Thresholds": {
+        "description": "The numbers a chart draws as lines.",
+        "properties": {
+          "co2_bad": {
+            "title": "Co2 Bad",
+            "type": "integer"
+          },
+          "co2_ok_max": {
+            "title": "Co2 Ok Max",
+            "type": "integer"
+          },
+          "co2_warn": {
+            "title": "Co2 Warn",
+            "type": "integer"
+          },
+          "rh_alert_high": {
+            "title": "Rh Alert High",
+            "type": "number"
+          },
+          "rh_alert_low": {
+            "title": "Rh Alert Low",
+            "type": "number"
+          },
+          "rh_max": {
+            "title": "Rh Max",
+            "type": "number"
+          },
+          "rh_min": {
+            "title": "Rh Min",
+            "type": "number"
+          },
+          "temp_day_max": {
+            "title": "Temp Day Max",
+            "type": "number"
+          },
+          "temp_day_min": {
+            "title": "Temp Day Min",
+            "type": "number"
+          },
+          "temp_sleep_max": {
+            "title": "Temp Sleep Max",
+            "type": "number"
+          },
+          "temp_sleep_min": {
+            "title": "Temp Sleep Min",
+            "type": "number"
+          }
+        },
+        "required": [
+          "co2_ok_max",
+          "co2_warn",
+          "co2_bad",
+          "temp_day_min",
+          "temp_day_max",
+          "temp_sleep_min",
+          "temp_sleep_max",
+          "rh_min",
+          "rh_max",
+          "rh_alert_low",
+          "rh_alert_high"
+        ],
+        "title": "Thresholds",
         "type": "object"
       },
       "TimelineEventItem": {
@@ -11278,6 +12065,26 @@
         "title": "WeightView",
         "type": "object"
       },
+      "Window": {
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "Window",
+        "type": "object"
+      },
       "WorkingWeightPoint": {
         "properties": {
           "date": {
@@ -11778,6 +12585,379 @@
           }
         },
         "summary": "Delete Chart"
+      }
+    },
+    "/api/v1/environment/day/{on_date}": {
+      "get": {
+        "description": "A calendar day (local time): its summary and minute curve.",
+        "operationId": "read_environment_day",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "on_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "On Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeriodView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Environment Day"
+      }
+    },
+    "/api/v1/environment/live": {
+      "get": {
+        "description": "The latest reading with its zone and trend, the station's liveness and the\nthresholds the screen draws against.",
+        "operationId": "read_environment_live",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Read Environment Live"
+      }
+    },
+    "/api/v1/environment/night/{on_date}": {
+      "get": {
+        "description": "The night that ended on ``on_date`` (the date you woke up): its summary and\nminute curve.",
+        "operationId": "read_environment_night",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "on_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "On Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeriodView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Environment Night"
+      }
+    },
+    "/api/v1/environment/series": {
+      "get": {
+        "description": "The last ``hours`` hours as points. The resolution actually returned can be\ncoarser than asked (a week of minutes is 10 000 points): ``resolution`` in the\nresponse says which one it is.",
+        "operationId": "read_environment_series",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "hours",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "maximum": 168,
+              "minimum": 1,
+              "title": "Hours",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "resolution",
+            "required": false,
+            "schema": {
+              "default": "minute",
+              "enum": [
+                "raw",
+                "minute",
+                "hour"
+              ],
+              "title": "Resolution",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Environment Series"
+      }
+    },
+    "/api/v1/environment/settings": {
+      "get": {
+        "operationId": "read_environment_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Read Environment Settings"
+      },
+      "put": {
+        "description": "Partial update; out-of-range values are clamped and the saved result is\nreturned.",
+        "operationId": "write_environment_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnvSettingsPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Write Environment Settings"
+      }
+    },
+    "/api/v1/environment/station/check": {
+      "post": {
+        "description": "Ask the station for a snapshot right now and report how it went.",
+        "operationId": "check_environment_station",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationCheck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "summary": "Check Environment Station"
       }
     },
     "/api/v1/genetics": {

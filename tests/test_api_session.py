@@ -42,7 +42,7 @@ async def test_the_nav_is_the_registry_in_rail_order(auth_client):
     nav = (await auth_client.get(SESSION)).json()["nav"]
 
     assert [i["key"] for i in nav["items"]] == [
-        "weight", "garmin", "hevy", "nutrition",
+        "weight", "garmin", "environment", "hevy", "nutrition",
         "glp1", "hrt", "labs", "genetics",
         "supplements", "skincare", "interactions", "signals",
         "timeline", "reports", "charts",

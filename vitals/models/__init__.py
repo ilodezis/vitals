@@ -43,6 +43,9 @@ from vitals.models.garmin import (
     GarminWeightExport,
 )
 
+# Environment — the bedroom's air, from a sensor station on the LAN.
+from vitals.models.environment import EnvironmentHourly, EnvironmentSample
+
 # Module 7 — Lab results & parser.
 from vitals.models.labs import LabResult, LabMarker
 
@@ -106,6 +109,8 @@ __all__ = [
     "GarminActivity",
     "GarminIntraday",
     "GarminWeightExport",
+    "EnvironmentSample",
+    "EnvironmentHourly",
     "LabResult",
     "LabMarker",
     "MealLog",

@@ -64,3 +64,26 @@ def to_local_naive(dt: Optional[datetime]) -> Optional[datetime]:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(_zone()).replace(tzinfo=None)
+
+
+def now_utc() -> datetime:
+    """Current instant as an aware UTC datetime — for the columns that store a
+    real instant (``timestamptz``) rather than a local wall-clock reading."""
+    return datetime.now(timezone.utc)
+
+
+def as_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """Aware UTC for any datetime. A naive value is taken to already be UTC —
+    SQLite hands ``timestamptz`` columns back naive, so reads go through this."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def local_naive_to_utc(dt: datetime) -> datetime:
+    """A naive local wall-clock time → aware UTC. In the repeated hour when the
+    clocks go back the first occurrence wins; in the skipped hour the clock is
+    read as if it had not jumped."""
+    return dt.replace(tzinfo=_zone(), fold=0).astimezone(timezone.utc)

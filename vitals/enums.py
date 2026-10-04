@@ -63,6 +63,7 @@ class Domain(StrEnum):
     MILESTONES = "milestones"
     TIMELINE = "timeline"  # global annotations shown across every domain's chart
     SIGNALS = "signals"  # free-text capture: how the day actually felt (+ day context)
+    ENVIRONMENT = "environment"  # the bedroom's air: CO2, temperature, humidity (a sensor station)
     SYSTEM = "system"
 
 
@@ -237,6 +238,7 @@ class Source(StrEnum):
     BODY_SCAN = "body_scan"  # InBody / МедАсс body-composition scan (vision-parsed or manual)
     VCF_IMPORT = "vcf_import"
     TELEGRAM = "telegram"  # free-text captured by the bot, parsed into `signals`
+    ESPHOME = "esphome"  # the home sensor station (polled over the LAN)
     # The week template *guessed* this day's context (vs. MANUAL — the owner
     # actually answered). Deliberately reusing MANUAL for "user" rather than
     # adding a second word for the same provenance.

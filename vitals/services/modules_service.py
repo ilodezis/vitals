@@ -62,6 +62,9 @@ MODULE_REGISTRY: dict[str, ModuleSpec] = {
         # ── Health ───────────────────────────────────────────────────────────
         ModuleSpec("weight", "core", "/weight", "health"),
         ModuleSpec("garmin", "core", "/garmin", "health"),
+        # The bedroom's air (a sensor station polled over the LAN). Optional: it
+        # needs hardware, so it stays off until the owner has one.
+        ModuleSpec("environment", "optional", "/environment", "health"),
         ModuleSpec("hevy", "optional", "/hevy", "health"),
         ModuleSpec("nutrition", "optional", "/nutrition", "health"),
         # ── Markers ──────────────────────────────────────────────────────────

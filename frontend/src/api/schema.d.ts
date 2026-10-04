@@ -128,6 +128,132 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/environment/day/{on_date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Environment Day
+         * @description A calendar day (local time): its summary and minute curve.
+         */
+        get: operations["read_environment_day"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/environment/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Environment Live
+         * @description The latest reading with its zone and trend, the station's liveness and the
+         *     thresholds the screen draws against.
+         */
+        get: operations["read_environment_live"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/environment/night/{on_date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Environment Night
+         * @description The night that ended on ``on_date`` (the date you woke up): its summary and
+         *     minute curve.
+         */
+        get: operations["read_environment_night"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/environment/series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Environment Series
+         * @description The last ``hours`` hours as points. The resolution actually returned can be
+         *     coarser than asked (a week of minutes is 10 000 points): ``resolution`` in the
+         *     response says which one it is.
+         */
+        get: operations["read_environment_series"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/environment/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Environment Settings */
+        get: operations["read_environment_settings"];
+        /**
+         * Write Environment Settings
+         * @description Partial update; out-of-range values are clamped and the saved result is
+         *     returned.
+         */
+        put: operations["write_environment_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/environment/station/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Environment Station
+         * @description Ask the station for a snapshot right now and report how it went.
+         */
+        post: operations["check_environment_station"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/genetics": {
         parameters: {
             query?: never;
@@ -2817,6 +2943,25 @@ export interface components {
              */
             empty: boolean;
         };
+        /** Co2Stats */
+        Co2Stats: {
+            /** Max */
+            max?: number | null;
+            /** Median */
+            median?: number | null;
+            /**
+             * Minutes Above Bad
+             * @default 0
+             */
+            minutes_above_bad: number;
+            /**
+             * Minutes Above Warn
+             * @default 0
+             */
+            minutes_above_warn: number;
+            /** P90 */
+            p90?: number | null;
+        };
         /**
          * ConflictBody
          * @description 409 — a ``block`` rule fired; repeat the write with ``override`` to keep it.
@@ -2983,6 +3128,70 @@ export interface components {
             from_date: string;
             /** To Date */
             to_date?: string | null;
+        };
+        /** EnvSettings */
+        EnvSettings: {
+            /** Alert Telegram */
+            alert_telegram: boolean;
+            /** Alerts Enabled */
+            alerts_enabled: boolean;
+            /** Co2 Bad */
+            co2_bad: number;
+            /** Co2 Ok Max */
+            co2_ok_max: number;
+            /** Co2 Warn */
+            co2_warn: number;
+            night_window: components["schemas"]["NightWindow"];
+            /** Rh Alert High */
+            rh_alert_high: number;
+            /** Rh Alert Low */
+            rh_alert_low: number;
+            /** Rh Max */
+            rh_max: number;
+            /** Rh Min */
+            rh_min: number;
+            /** Temp Day Max */
+            temp_day_max: number;
+            /** Temp Day Min */
+            temp_day_min: number;
+            /** Temp Sleep Max */
+            temp_sleep_max: number;
+            /** Temp Sleep Min */
+            temp_sleep_min: number;
+        };
+        /**
+         * EnvSettingsPatch
+         * @description A partial update: omitted fields keep their stored value. Out-of-range
+         *     numbers are clamped, not rejected — the settings card shows the bounds.
+         */
+        EnvSettingsPatch: {
+            /** Alert Telegram */
+            alert_telegram?: boolean | null;
+            /** Alerts Enabled */
+            alerts_enabled?: boolean | null;
+            /** Co2 Bad */
+            co2_bad?: number | null;
+            /** Co2 Ok Max */
+            co2_ok_max?: number | null;
+            /** Co2 Warn */
+            co2_warn?: number | null;
+            night_window?: components["schemas"]["NightWindow"] | null;
+            /** Rh Alert High */
+            rh_alert_high?: number | null;
+            /** Rh Alert Low */
+            rh_alert_low?: number | null;
+            /** Rh Max */
+            rh_max?: number | null;
+            /** Rh Min */
+            rh_min?: number | null;
+            /** Temp Day Max */
+            temp_day_max?: number | null;
+            /** Temp Day Min */
+            temp_day_min?: number | null;
+            /** Temp Sleep Max */
+            temp_sleep_max?: number | null;
+            /** Temp Sleep Min */
+            temp_sleep_min?: number | null;
         };
         /** ExerciseCatalogItem */
         ExerciseCatalogItem: {
@@ -4254,6 +4463,49 @@ export interface components {
             /** Kg */
             kg: number;
         };
+        /** LiveNow */
+        LiveNow: {
+            /** Co2 Ppm */
+            co2_ppm?: number | null;
+            /** Co2 Trend Ppm Per H */
+            co2_trend_ppm_per_h?: number | null;
+            /**
+             * Co2 Zone
+             * @default none
+             * @enum {string}
+             */
+            co2_zone: "good" | "ok" | "warn" | "bad" | "none";
+            /** Humidity Pct */
+            humidity_pct?: number | null;
+            /** Lux */
+            lux?: number | null;
+            /** Temperature C */
+            temperature_c?: number | null;
+        };
+        /** LiveStation */
+        LiveStation: {
+            /** Age S */
+            age_s?: number | null;
+            /** Fw */
+            fw?: string | null;
+            /** Last Seen At */
+            last_seen_at?: string | null;
+            /** Rssi */
+            rssi?: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "online" | "stale" | "offline" | "never";
+        };
+        /** LiveView */
+        LiveView: {
+            /** Configured */
+            configured: boolean;
+            now: components["schemas"]["LiveNow"];
+            station: components["schemas"]["LiveStation"];
+            thresholds: components["schemas"]["Thresholds"];
+        };
         /** MacroSplit */
         MacroSplit: {
             /** Carbs Pct */
@@ -4542,6 +4794,22 @@ export interface components {
             /** Start Time */
             start_time?: string | null;
         };
+        /**
+         * NightWindow
+         * @description What "the night" means as a summary window (local wall-clock ``HH:MM``).
+         */
+        NightWindow: {
+            /**
+             * End
+             * @default 12:00
+             */
+            end: string;
+            /**
+             * Start
+             * @default 00:00
+             */
+            start: string;
+        };
         /** NightsListView */
         NightsListView: {
             /** Nights */
@@ -4699,6 +4967,62 @@ export interface components {
             new_password_confirm: string;
             /** Old Password */
             old_password: string;
+        };
+        /**
+         * PeriodSummary
+         * @description A night window or a calendar day, summarised.
+         */
+        PeriodSummary: {
+            co2: components["schemas"]["Co2Stats"];
+            /**
+             * Coverage Pct
+             * @default 0
+             */
+            coverage_pct: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            humidity: components["schemas"]["RangeStats"];
+            /**
+             * Samples
+             * @default 0
+             */
+            samples: number;
+            temperature: components["schemas"]["RangeStats"];
+            window: components["schemas"]["Window"];
+        };
+        /**
+         * PeriodView
+         * @description ``GET /day/{date}`` and ``GET /night/{date}``: the summary plus the
+         *     minute-resolution curve of the same window.
+         */
+        PeriodView: {
+            /** Series */
+            series?: components["schemas"]["Point"][];
+            summary: components["schemas"]["PeriodSummary"];
+            thresholds: components["schemas"]["Thresholds"];
+        };
+        /** Point */
+        Point: {
+            /** Co2 Max */
+            co2_max?: number | null;
+            /** Co2 Min */
+            co2_min?: number | null;
+            /** Co2 Ppm */
+            co2_ppm?: number | null;
+            /** Humidity Pct */
+            humidity_pct?: number | null;
+            /** Lux */
+            lux?: number | null;
+            /** Temperature C */
+            temperature_c?: number | null;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
         };
         /** ProactiveSettings */
         ProactiveSettings: {
@@ -4864,6 +5188,15 @@ export interface components {
             tone: "" | "good" | "bad" | "warn";
             /** Weight Kg */
             weight_kg: number | null;
+        };
+        /** RangeStats */
+        RangeStats: {
+            /** Max */
+            max?: number | null;
+            /** Mean */
+            mean?: number | null;
+            /** Min */
+            min?: number | null;
         };
         /**
          * RecoveryActivity
@@ -5145,6 +5478,23 @@ export interface components {
              * @default false
              */
             twofa_pending: boolean;
+        };
+        /** SeriesView */
+        SeriesView: {
+            /**
+             * Coverage Pct
+             * @default 0
+             */
+            coverage_pct: number;
+            /** Points */
+            points?: components["schemas"]["Point"][];
+            /**
+             * Resolution
+             * @enum {string}
+             */
+            resolution: "raw" | "minute" | "hour";
+            thresholds: components["schemas"]["Thresholds"];
+            window: components["schemas"]["Window"];
         };
         /** SessionView */
         SessionView: {
@@ -5755,6 +6105,21 @@ export interface components {
             /** Start Min */
             start_min: number;
         };
+        /**
+         * StationCheck
+         * @description The answer to "check the connection": a poll made right now.
+         */
+        StationCheck: {
+            /** Error */
+            error?: string | null;
+            /** Ok */
+            ok: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "online" | "stale" | "offline" | "never";
+        };
         /** StatusResponse */
         StatusResponse: {
             /** Status */
@@ -5953,6 +6318,34 @@ export interface components {
             resolvedAt?: string | null;
             /** Severity */
             severity: string;
+        };
+        /**
+         * Thresholds
+         * @description The numbers a chart draws as lines.
+         */
+        Thresholds: {
+            /** Co2 Bad */
+            co2_bad: number;
+            /** Co2 Ok Max */
+            co2_ok_max: number;
+            /** Co2 Warn */
+            co2_warn: number;
+            /** Rh Alert High */
+            rh_alert_high: number;
+            /** Rh Alert Low */
+            rh_alert_low: number;
+            /** Rh Max */
+            rh_max: number;
+            /** Rh Min */
+            rh_min: number;
+            /** Temp Day Max */
+            temp_day_max: number;
+            /** Temp Day Min */
+            temp_day_min: number;
+            /** Temp Sleep Max */
+            temp_sleep_max: number;
+            /** Temp Sleep Min */
+            temp_sleep_min: number;
         };
         /** TimelineEventItem */
         TimelineEventItem: {
@@ -6379,6 +6772,19 @@ export interface components {
              */
             weighings: components["schemas"]["WeightPoint"][];
         };
+        /** Window */
+        Window: {
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+        };
         /** WorkingWeightPoint */
         WorkingWeightPoint: {
             /**
@@ -6756,6 +7162,319 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_environment_day: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                on_date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeriodView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_environment_live: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    read_environment_night: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                on_date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeriodView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_environment_series: {
+        parameters: {
+            query?: {
+                hours?: number;
+                resolution?: "raw" | "minute" | "hour";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeriesView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_environment_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvSettings"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+        };
+    };
+    write_environment_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnvSettingsPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvSettings"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_environment_station: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StationCheck"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
                 };
             };
         };
@@ -13195,4 +13914,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: 7282f74a452128fad25740c69156f970f76da31722ec652d0a17cf292ae55dda
+// openapi.json sha256: 9e821e26f7051d8b5ea36072d8819c0385feef81616d540d260eb44b0def658e

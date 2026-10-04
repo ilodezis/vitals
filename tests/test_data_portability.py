@@ -371,6 +371,8 @@ DOMAIN_EXPORT_KEYS: dict[Domain, tuple[str, ...]] = {
     Domain.MILESTONES: ("milestones", "weekly_digests"),
     Domain.TIMELINE: ("timeline_annotations",),
     Domain.SIGNALS: ("signals", "day_context"),
+    # The bedroom's air reaches the exports once its nights and hours are mapped.
+    Domain.ENVIRONMENT: (),
     # Infra/alert rows — deliberately excluded from a digest meant for a chat
     # window (test_llm_export_is_clean pins that they stay out).
     Domain.SYSTEM: (),
