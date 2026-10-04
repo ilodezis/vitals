@@ -44,7 +44,14 @@ MODULE_KEY = "signals"
 CATEGORY_ACTIVITY = "activity"
 CATEGORY_NUTRITION = "nutrition"
 CATEGORY_DATA = "data"
-NUDGE_CATEGORIES: tuple[str, ...] = (CATEGORY_ACTIVITY, CATEGORY_NUTRITION, CATEGORY_DATA)
+# The bedroom-air station's alerts (stuffy, hot, dry, station silent).
+CATEGORY_ENVIRONMENT = "environment"
+NUDGE_CATEGORIES: tuple[str, ...] = (
+    CATEGORY_ACTIVITY,
+    CATEGORY_NUTRITION,
+    CATEGORY_DATA,
+    CATEGORY_ENVIRONMENT,
+)
 
 # ── Hard bounds (the UI shows them, the sanitizer enforces them) ─────────────
 BUDGET_RANGE = (1, 12)

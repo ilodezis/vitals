@@ -108,7 +108,7 @@ def test_sanitize_clamps_whatever_arrives():
     assert clean["garmin_weight_max_age_days"] == prefs.WEIGHT_MAX_AGE_DAYS_RANGE[1]
     assert clean["pulse_seconds"] == prefs.PULSE_SECONDS_RANGE[0]
     assert clean["pulse_end_hour"] > clean["pulse_start_hour"]
-    assert clean["nudges"] == {"activity": False, "nutrition": True, "data": True}
+    assert clean["nudges"] == {"activity": False, "nutrition": True, "data": True, "environment": True}
     # 0 means off and must survive the clamp that pulls 5 up to 60.
     assert prefs.sanitize({"pulse_seconds": 0})["pulse_seconds"] == 0
 
@@ -190,7 +190,10 @@ async def test_saving_reschedules_without_a_restart(auth_client, db_session):
         assert stored["daily_budget"] == 6
         assert stored["garmin_weight_export_minutes"] == 20
         assert stored["garmin_weight_max_age_days"] == 14
-        assert stored["nudges"] == {"activity": True, "nutrition": False, "data": False}
+        # A category missing from the saved list is switched off — environment included.
+        assert stored["nudges"] == {
+            "activity": True, "nutrition": False, "data": False, "environment": False,
+        }
 
         from vitals.services.proactive import day_plan
 

@@ -37,6 +37,7 @@ def register_all_jobs(settings: Optional[dict[str, Any]] = None) -> None:
         export_job as garmin_weight_export_job,
     )
     from vitals.services.digest_service import digest_job
+    from vitals.services.environment.alerts import environment_alerts_job
     from vitals.services.environment.ingest import environment_poll_job
     from vitals.services.environment.rollup import environment_rollup_job
     from vitals.services.nutrition_service import day_end_job as nutrition_day_end_job
@@ -216,6 +217,16 @@ def register_all_jobs(settings: Optional[dict[str, Any]] = None) -> None:
             trigger="interval",
             minutes=5,
             lock_ttl=240,
+        )
+        # Air-quality alerts — every 30 s, so a stuffy room is noticed within the
+        # minute. Evaluates stored samples only (no station request), and still
+        # raises its badges when no Telegram channel is configured.
+        register_job(
+            "environment_alerts",
+            environment_alerts_job,
+            trigger="interval",
+            seconds=30,
+            lock_ttl=60,
         )
 
     # Weekly AI digest — Mondays at 08:00 local. No-ops when no OpenRouter key.

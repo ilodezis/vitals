@@ -7,15 +7,17 @@ Five rules, in the order they're checked:
    is the emergency switch, and it has to silence the bot without a deploy.
 3. **Dedupe.** A ``dedupe_key`` that's already in the journal means this exact
    message went out; a re-run of the job is a no-op, not a second ping.
-4. **Quiet hours** hold back *nudges* — the bot's own idea of a good moment. The
-   brief and the evening block go out at a time the owner typed by hand into the
-   same settings card, so silencing them by quiet hours is one field quietly
-   cancelling another with no way to see which won.
+4. **Quiet hours** hold back *nudges* and *environment* alerts — the bot's own idea
+   of a good moment. The brief and the evening block go out at a time the owner
+   typed by hand into the same settings card, so silencing them by quiet hours is
+   one field quietly cancelling another with no way to see which won.
 5. **The daily budget** (also from the settings card) covers all three
    self-initiated categories — the brief, the evening block, nudges.
 
-   Answers to the owner (``reply``, ``echo``) are deliberately exempt. Counting
-   them would mean that after the fourth thing you logged, the bot stops replying
+   Environment alerts are exempt from it too (see ``CATEGORY_ENVIRONMENT``).
+
+   Answers to the owner (``reply``, ``echo``) are deliberately exempt as well.
+   Counting them would mean that after the fourth thing you logged, the bot stops replying
    to you — which reads as a broken bot, not as a budget. This is the single
    easiest rule in the whole feature to get wrong, so it lives in one ``frozenset``
    right here rather than at each call site.
@@ -51,8 +53,16 @@ CATEGORY_ECHO = "echo"
 # catch broken formatting, so it must go out even when today's brief already did,
 # and it is not the bot talking first — hence off-budget and outside quiet hours.
 CATEGORY_TEST = "test"
+# The bedroom-air station telling the owner something is wrong with the room. It is
+# the bot speaking first, but about a condition that is *happening*, not a good
+# moment of its own choosing — so it neither spends nor is blocked by the daily
+# budget (a stuffy room is not less stuffy because three other messages went
+# out), yet it still stays quiet at night.
+CATEGORY_ENVIRONMENT = "environment"
 
 INITIATIVE_CATEGORIES = frozenset({CATEGORY_BRIEF, CATEGORY_EVENING, CATEGORY_NUDGE})
+# Held back by quiet hours. Wider than the budget set on purpose.
+QUIET_HOURS_CATEGORIES = frozenset({CATEGORY_NUDGE, CATEGORY_ENVIRONMENT})
 
 # Fallbacks only — the live values come from ``prefs`` (the settings card), which
 # is why they are read per send rather than captured at import.
@@ -151,20 +161,23 @@ async def send(
         return None
 
     now = now or now_local()
-    if category in INITIATIVE_CATEGORIES:
+    if category in INITIATIVE_CATEGORIES or category in QUIET_HOURS_CATEGORIES:
         settings = await prefs.get_prefs(session)
-        budget = settings["daily_budget"]
-        # Nudges only: a brief scheduled for 09:00 inside a 02:00-10:00 quiet
-        # window must still arrive. Both times came from the same card, and the
-        # one he set for the brief is the more specific instruction.
-        if category == CATEGORY_NUDGE and in_quiet_hours(
+        # Quiet hours hold back nudges and environment alerts, never the brief: one
+        # scheduled for 09:00 inside a 02:00-10:00 quiet window must still arrive.
+        # Both times came from the same card, and the one he set for the brief is
+        # the more specific instruction.
+        if category in QUIET_HOURS_CATEGORIES and in_quiet_hours(
             now.time(),
             start=prefs.as_time(settings["quiet_start"]),
             end=prefs.as_time(settings["quiet_end"]),
         ):
             logger.info("skipping %s: quiet hours (%s)", category, now.time())
             return None
-        if await sent_today(session, on_date=now.date()) >= budget:
+        budget = settings["daily_budget"]
+        if category in INITIATIVE_CATEGORIES and await sent_today(
+            session, on_date=now.date()
+        ) >= budget:
             logger.info("skipping %s: daily budget of %s used", category, budget)
             return None
 
