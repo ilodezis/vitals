@@ -65,7 +65,7 @@ from vitals.models.nutrition import MealLog
 from vitals.models.skincare import SkincareLog, SkincareProduct
 from vitals.models.supplements import Supplement
 from vitals.models.weight import BodyMeasurement, NoiseMarker, ProgressPhoto, WeightLog
-from vitals.utils.timeutils import today_local
+from vitals.utils.timeutils import now_local, today_local
 
 random.seed(42)
 
@@ -1016,10 +1016,49 @@ async def seed_app_settings(session):
                 "signals": True,
                 "body_comp": True,
                 "timeline": True,
+                "environment": True,
             },
         ),
         AppSetting(key="ui_language", value="ru"),
     ])
+
+
+async def seed_environment(session, days: int = 7) -> int:
+    """``days`` of bedroom-air snapshots, so the environment screens have something to
+    draw without waiting for a station. Mixed nights (stuffy, fresh, warm) from the
+    seeded generator the tests share; ``scripts/simulate_station.py`` carries it on
+    live from here. Returns the number of rows written."""
+    from zoneinfo import ZoneInfo
+
+    from sqlalchemy import insert
+
+    import simulate_station
+
+    try:
+        from vitals.models.environment import EnvironmentSample
+    except ImportError:  # a checkout from before the environment domain
+        return 0
+
+    await session.execute(delete(EnvironmentSample))
+    end = now_local().replace(second=0, microsecond=0, tzinfo=ZoneInfo(load_config().timezone))
+    rows = list(simulate_station.generate_samples(
+        end - timedelta(days=days), end, seed=42, interval_s=10, night="mixed",
+    ))
+    for i in range(0, len(rows), 2000):
+        await session.execute(insert(EnvironmentSample), rows[i:i + 2000])
+    return len(rows)
+
+
+async def roll_up_environment(factory) -> None:
+    """Fill the hourly table the week-long charts read. The app's own rollup job does
+    this every few minutes, so a failure here only means a short wait."""
+    try:
+        from vitals.services.environment import rollup
+
+        await rollup.environment_rollup_job(factory)
+        print("  + Environment hours rolled up")
+    except Exception as exc:  # the job lands with the storage layer
+        print(f"  ! Environment hours not rolled up ({exc}); the app's rollup job fills them")
 
 
 # ---------------------------------------------------------------------------
@@ -1105,7 +1144,13 @@ async def main():
         await seed_charts_and_share(session)
         print("  + Custom charts (2) + doctor share link (1)")
 
+        count = await seed_environment(session)
+        if count:
+            print(f"  + Environment snapshots ({count}, 7 days at 10 s)")
+
         await session.commit()
+        if count:
+            await roll_up_environment(factory)
         print("\nDone! Start the server: python run_local.py")
 
 
