@@ -843,6 +843,28 @@ async def test_quiet_hours_hold_nudges_but_not_the_times_he_set_himself(db_sessi
     assert len(fake.sent) == 2
 
 
+async def test_quiet_hours_hold_environment_alerts(db_session):
+    fake = FakeNotifier()
+    assert await delivery.send(db_session, fake, text="душно в спальне",
+                               category=delivery.CATEGORY_ENVIRONMENT, now=NIGHT) is None
+    assert await delivery.send(db_session, fake, text="душно в спальне",
+                               category=delivery.CATEGORY_ENVIRONMENT, now=NOON) is not None
+    assert len(fake.sent) == 1
+
+
+async def test_the_budget_never_gags_an_environment_alert(db_session):
+    fake = FakeNotifier()
+    for i in range(delivery.DAILY_BUDGET):
+        await delivery.send(db_session, fake, text=f"нудж {i}",
+                            category=delivery.CATEGORY_NUDGE, now=NOON)
+
+    assert await delivery.send(db_session, fake, text="пятый",
+                               category=delivery.CATEGORY_NUDGE, now=NOON) is None
+    assert await delivery.send(db_session, fake, text="душно в спальне",
+                               category=delivery.CATEGORY_ENVIRONMENT, now=NOON) is not None
+    assert len(fake.sent) == delivery.DAILY_BUDGET + 1
+
+
 def test_quiet_window_can_wrap_past_midnight():
     """Settings let the owner set the window; 23:00–07:00 must not mean "never"."""
     from datetime import time

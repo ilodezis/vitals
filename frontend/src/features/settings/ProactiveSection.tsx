@@ -46,6 +46,7 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
   const [nudgeActivity, setNudgeActivity] = useState(Boolean(settings.proactive.nudges?.a ?? settings.proactive.nudges?.activity))
   const [nudgeNutrition, setNudgeNutrition] = useState(Boolean(settings.proactive.nudges?.n ?? settings.proactive.nudges?.nutrition ?? true))
   const [nudgeData, setNudgeData] = useState(Boolean(settings.proactive.nudges?.d ?? settings.proactive.nudges?.data ?? true))
+  const [nudgeEnvironment, setNudgeEnvironment] = useState(Boolean(settings.proactive.nudges?.e ?? settings.proactive.nudges?.environment ?? true))
 
   // Week template
   interface DaySchedule {
@@ -109,6 +110,7 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
       if (nudgeActivity) nudgesList.push('activity')
       if (nudgeNutrition) nudgesList.push('nutrition')
       if (nudgeData) nudgesList.push('data')
+      if (nudgeEnvironment) nudgesList.push('environment')
 
       await ok(api.POST('/api/v1/settings/proactive', {
         body: {
@@ -218,6 +220,13 @@ export function ProactiveSection({ settings }: ProactiveSectionProps) {
               onClick={() => setNudgeData(!nudgeData)}
             >
               {t('settings.nudge.data')}
+            </button>
+            <button
+              type="button"
+              className={`opt ${nudgeEnvironment ? 'on' : ''}`}
+              onClick={() => setNudgeEnvironment(!nudgeEnvironment)}
+            >
+              {t('settings.nudge.environment')}
             </button>
           </div>
           <p className="fhint set-mt1">{t('settings.nudges_hint')}</p>

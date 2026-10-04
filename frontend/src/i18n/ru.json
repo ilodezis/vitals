@@ -2093,6 +2093,7 @@
   "settings.new_password_placeholder": "мин. 8 символов",
   "settings.nudge.activity": "Активность — к вечеру мало шагов",
   "settings.nudge.data": "Данные — Garmin замолчал",
+  "settings.nudge.environment": "Среда — воздух в спальне или молчащая станция",
   "settings.nudge.nutrition": "Питание — белок не добит, а день ещё открыт",
   "settings.nudges_hint": "Приходят только когда условие реально выполнилось. Про уколы, добавки и протокол — ничего.",
   "settings.nudges_label": "Нуджи",

@@ -2093,6 +2093,7 @@
   "settings.new_password_placeholder": "min. 8 characters",
   "settings.nudge.activity": "Activity — steps still short by evening",
   "settings.nudge.data": "Data — Garmin has gone quiet",
+  "settings.nudge.environment": "Environment — bedroom air or silent station",
   "settings.nudge.nutrition": "Nutrition — protein behind with the day still open",
   "settings.nudges_hint": "Only fire when the condition actually holds. Nothing about injections, supplements or the protocol.",
   "settings.nudges_label": "Nudges",

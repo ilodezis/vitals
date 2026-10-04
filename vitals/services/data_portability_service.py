@@ -83,8 +83,10 @@ _SECRET_KEY_MARKERS = ("token", "secret", "password", "api_key", "apikey", "cred
 
 # Tables the generic walk must not touch, in either direction (see module
 # docstring). Published doctor reports are outward-facing artifacts with their
-# own lifecycle, not data to round-trip.
-_EXCLUDED_TABLES = frozenset({"shared_reports"})
+# own lifecycle, not data to round-trip. Raw 10-second environment sensor readings
+# produce millions of rows a year; the hourly summaries (environment_hourly) are
+# kept, while the raw samples stream is omitted from memory dumps.
+_EXCLUDED_TABLES = frozenset({"shared_reports", "environment_samples"})
 
 _LABELED_TABLES = (
     "weight_logs", "body_measurements", "progress_photos", "hevy_workouts",
