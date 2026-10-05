@@ -36,6 +36,10 @@ DEFAULT_ENV_STATION_ID = "bedroom"
 DEFAULT_ENV_POLL_SECONDS = 10
 ENV_POLL_SECONDS_RANGE = (5, 60)
 
+# HelloCubic-Lite display broadcast
+DEFAULT_ENV_CUBIC_INTERVAL_SECONDS = 30
+ENV_CUBIC_INTERVAL_RANGE = (10, 300)
+
 
 def _pos_int(env_name: str, default: int) -> int:
     raw = (os.getenv(env_name) or "").strip()
@@ -145,6 +149,10 @@ class Config:
     env_station_id: str = DEFAULT_ENV_STATION_ID
     env_poll_seconds: int = DEFAULT_ENV_POLL_SECONDS
 
+    # ── HelloCubic-Lite display ─────────────────────────────────────────────────
+    env_cubic_url: str = ""
+    env_cubic_interval_seconds: int = DEFAULT_ENV_CUBIC_INTERVAL_SECONDS
+
     db_statement_timeout_ms: int = DEFAULT_DB_STATEMENT_TIMEOUT_MS
     db_pool_size: int = DEFAULT_DB_POOL_SIZE
     db_max_overflow: int = DEFAULT_DB_MAX_OVERFLOW
@@ -231,6 +239,14 @@ def load_config() -> Config:
             min(
                 ENV_POLL_SECONDS_RANGE[1],
                 _env_int("VITALS_ENV_POLL_SECONDS", DEFAULT_ENV_POLL_SECONDS),
+            ),
+        ),
+        env_cubic_url=(os.getenv("VITALS_ENV_CUBIC_URL") or os.getenv("VITALS_CUBIC_URL") or "").strip(),
+        env_cubic_interval_seconds=max(
+            ENV_CUBIC_INTERVAL_RANGE[0],
+            min(
+                ENV_CUBIC_INTERVAL_RANGE[1],
+                _env_int("VITALS_ENV_CUBIC_INTERVAL_SECONDS", DEFAULT_ENV_CUBIC_INTERVAL_SECONDS),
             ),
         ),
         db_statement_timeout_ms=_pos_int(

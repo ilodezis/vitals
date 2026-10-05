@@ -85,7 +85,12 @@ async def test_live_shows_the_latest_reading(auth_client, db_session, monkeypatc
                       temp=22.5, rh=41.0)
     await db_session.commit()
 
-    body = (await auth_client.get(URL + "/live")).json()
+    from web.auth import create_session
+    from web.config import SESSION_COOKIE
+
+    auth_client.cookies.set(SESSION_COOKIE, create_session("tester"))
+    resp = await auth_client.get(URL + "/live")
+    body = resp.json()
     assert body["configured"] is True
     assert body["station"]["status"] == "online"
     assert body["now"]["co2_ppm"] == 1078 and body["now"]["co2_zone"] == "warn"
@@ -99,6 +104,10 @@ async def test_series_serves_the_resolution_the_range_allows(auth_client, db_ses
     await add_samples(db_session, NOW - dt.timedelta(hours=60), count=60 * 6, step_s=600, co2=700)
     await db_session.commit()
 
+    from web.auth import create_session
+    from web.config import SESSION_COOKIE
+
+    auth_client.cookies.set(SESSION_COOKIE, create_session("tester"))
     day = (await auth_client.get(URL + "/series", params={"hours": 24})).json()
     assert day["resolution"] == "minute" and day["window"]["end"].startswith("2026-10-05T12:00:00")
     assert day["thresholds"]["co2_warn"] == 1000 and 0 < day["coverage_pct"] <= 100

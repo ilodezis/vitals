@@ -11,7 +11,26 @@ import os
 
 import pytest
 from fastapi import HTTPException
-from fastapi.routing import APIRoute, iter_route_contexts
+from fastapi.routing import APIRoute
+
+try:
+    from fastapi.routing import iter_route_contexts
+except ImportError:
+    from dataclasses import dataclass
+    from typing import Any
+
+    @dataclass
+    class RouteContext:
+        route: Any
+        path: str
+
+    def iter_route_contexts(routes, prefix=""):
+        for route in routes:
+            path = prefix + getattr(route, "path", "")
+            if hasattr(route, "routes"):
+                yield from iter_route_contexts(route.routes, prefix=path)
+            else:
+                yield RouteContext(route=route, path=getattr(route, "path", path))
 
 from web.deps import require_auth
 from web.main import UPLOADS_DIR, app, serve_upload

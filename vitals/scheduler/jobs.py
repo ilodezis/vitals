@@ -38,6 +38,7 @@ def register_all_jobs(settings: Optional[dict[str, Any]] = None) -> None:
     )
     from vitals.services.digest_service import digest_job
     from vitals.services.environment.alerts import environment_alerts_job
+    from vitals.services.environment.cubic import environment_cubic_job
     from vitals.services.environment.ingest import environment_poll_job
     from vitals.services.environment.rollup import environment_rollup_job
     from vitals.services.nutrition_service import day_end_job as nutrition_day_end_job
@@ -226,6 +227,17 @@ def register_all_jobs(settings: Optional[dict[str, Any]] = None) -> None:
             environment_alerts_job,
             trigger="interval",
             seconds=30,
+            lock_ttl=60,
+        )
+
+    # HelloCubic display broadcast — only registered when an address is configured.
+    # Non-blocking: pushes current air frame, skips when offline without delaying ingest.
+    if config.env_cubic_url:
+        register_job(
+            "environment_cubic",
+            environment_cubic_job,
+            trigger="interval",
+            seconds=config.env_cubic_interval_seconds,
             lock_ttl=60,
         )
 
