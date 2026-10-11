@@ -307,7 +307,8 @@ a.row:hover { background: rgba(255, 255, 255, .02); }
 .sheet-grab i { width: 38px; height: 5px; border-radius: 3px; background: var(--line-2); }
 .sheet-head { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 6px 20px 12px; touch-action: none; }
 .sheet-head h3 { margin: 0; font-family: var(--f-display); font-size: var(--t-lead); font-weight: 600; letter-spacing: -.02em; }
-.sheet-body { overflow-y: auto; padding: 0 20px; overscroll-behavior: contain; }
+/* Scrolls down only: anything wider must not let the sheet be dragged sideways. */
+.sheet-body { overflow-x: hidden; overflow-y: auto; padding: 0 20px; overscroll-behavior: contain; }
 .sheet-pane { padding-top: 18px; display: grid; gap: 16px; }
 .sheet-pane[hidden] { display: none; }
 .sheet-pane.enter { animation: paneIn var(--d3) var(--ease-out) both; }
@@ -327,10 +328,11 @@ a.row:hover { background: rgba(255, 255, 255, .02); }
 .fhint { margin: 0; font-size: var(--t-micro); line-height: 1.45; color: var(--muted); }
 .input { height: 48px; padding: 0 14px; border-radius: var(--r); background: var(--bg-deep); border: 1px solid var(--line); color: var(--fg); font: inherit; font-size: 16px; transition: border-color var(--d2), box-shadow var(--d2); width: 100%; }
 .input:focus { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
-/* Mobile browsers draw a native date control with its own width and margins: it overflows its
-   column and centres the value. Plain appearance makes it a field like the rest. */
-.input[type="date"] { -webkit-appearance: none; appearance: none; min-width: 0; display: flex; align-items: center; overflow: hidden; text-align: left; }
-.input[type="date"]::-webkit-date-and-time-value { margin: 0; text-align: left; }
+/* DateField: the box is an ordinary input; the native one sits inside it, clipped and unseen. */
+.datef { position: relative; display: flex; align-items: center; overflow: hidden; cursor: pointer; }
+.datef:focus-within { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+.datef-v { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.datef-i { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; font-size: 16px; cursor: pointer; -webkit-appearance: none; appearance: none; }
 .meta-line { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* Toast */

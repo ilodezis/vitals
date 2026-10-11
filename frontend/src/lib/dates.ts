@@ -86,6 +86,12 @@ export function weekdayLongDate(d: Date, lang: Lang): string {
   return `${weekdayShort(d, lang)}, ${longDate(d, lang)}`
 }
 
+/** "Sun, October 4", with the year when it is not this one: what a date field shows. */
+export function fieldDate(d: Date, today: Date, lang: Lang): string {
+  const text = weekdayLongDate(d, lang)
+  return d.getFullYear() === today.getFullYear() ? text : `${text} ${d.getFullYear()}`
+}
+
 /** "Tuesday, September 29" — the Today kicker. */
 export function fullDate(d: Date, lang: Lang): string {
   return `${weekdayLong(d, lang)}, ${longDate(d, lang)}`

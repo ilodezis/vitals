@@ -5,6 +5,7 @@ import { useToday, useTodayIso } from '@/app/session'
 import { Alert } from '@/components/controls/Alert'
 import { OptionGroup } from '@/components/controls/Choices'
 import { ConflictAlert } from '@/components/controls/ConflictAlert'
+import { DateField } from '@/components/controls/DateField'
 import { PrimaryButton, type PrimaryButtonHandle } from '@/components/controls/PrimaryButton'
 import { Segmented } from '@/components/controls/Segmented'
 import { toast } from '@/components/controls/toast'
@@ -498,14 +499,12 @@ function DosePane({ enter }: { enter: boolean }) {
       </div>
       <label className="field">
         <span className="flabel">{t('common.date')}</span>
-        <input
-          className="input"
-          type="date"
+        <DateField
           name="date"
           value={date}
           max={todayIso}
-          onChange={(e) => {
-            setPickedDate(e.target.value)
+          onChange={(iso) => {
+            setPickedDate(iso)
             conflict.clearConflict()
           }}
         />
