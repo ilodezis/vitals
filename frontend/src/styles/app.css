@@ -327,10 +327,10 @@ a.row:hover { background: rgba(255, 255, 255, .02); }
 .fhint { margin: 0; font-size: var(--t-micro); line-height: 1.45; color: var(--muted); }
 .input { height: 48px; padding: 0 14px; border-radius: var(--r); background: var(--bg-deep); border: 1px solid var(--line); color: var(--fg); font: inherit; font-size: 16px; transition: border-color var(--d2), box-shadow var(--d2); width: 100%; }
 .input:focus { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
-/* iOS Safari draws a native date control with its own minimum width: it ignores width:100%,
-   overflows its column and centres the value. Plain appearance makes it a field like the rest. */
-.input[type="date"] { -webkit-appearance: none; appearance: none; min-width: 0; display: block; text-align: left; }
-.input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+/* Mobile browsers draw a native date control with its own width and margins: it overflows its
+   column and centres the value. Plain appearance makes it a field like the rest. */
+.input[type="date"] { -webkit-appearance: none; appearance: none; min-width: 0; display: flex; align-items: center; overflow: hidden; text-align: left; }
+.input[type="date"]::-webkit-date-and-time-value { margin: 0; text-align: left; }
 .meta-line { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* Toast */
