@@ -780,11 +780,20 @@ async def test_a_question_without_a_reply_still_sees_what_the_bot_just_said(
 
 
 # ── Budget & quiet hours ──────────────────────────────────────────────────────
+async def _spend_the_budget(db_session, fake, at=NOON):
+    """A full day: the evening block's two messages, then nudges for the rest —
+    nudges alone may not touch the slots the evening block still needs."""
+    for i in range(delivery.EVENING_BLOCK_MESSAGES):
+        assert await delivery.send(db_session, fake, text=f"вечер {i}",
+                                   category=delivery.CATEGORY_EVENING, now=at) is not None
+    for i in range(delivery.DAILY_BUDGET - delivery.EVENING_BLOCK_MESSAGES):
+        assert await delivery.send(db_session, fake, text=f"нудж {i}",
+                                   category=delivery.CATEGORY_NUDGE, now=at) is not None
+
+
 async def test_budget_cuts_the_fifth_self_initiated_message(db_session):
     fake = FakeNotifier()
-    for i in range(delivery.DAILY_BUDGET):
-        assert await delivery.send(db_session, fake, text=f"нудж {i}",
-                                   category=delivery.CATEGORY_NUDGE, now=NOON) is not None
+    await _spend_the_budget(db_session, fake)
 
     assert await delivery.send(db_session, fake, text="пятый",
                                category=delivery.CATEGORY_NUDGE, now=NOON) is None
@@ -795,9 +804,7 @@ async def test_the_budget_never_gags_a_reply(db_session):
     """The rule that is easiest to get wrong: after four nudges the bot must still
     answer you, or a spent budget reads as a broken bot."""
     fake = FakeNotifier()
-    for i in range(delivery.DAILY_BUDGET):
-        await delivery.send(db_session, fake, text=f"нудж {i}",
-                            category=delivery.CATEGORY_NUDGE, now=NOON)
+    await _spend_the_budget(db_session, fake)
 
     assert await delivery.send(db_session, fake, text="ответ",
                                category=delivery.CATEGORY_REPLY, now=NOON) is not None
@@ -809,13 +816,28 @@ async def test_the_budget_never_gags_a_reply(db_session):
 
 async def test_budget_is_per_calendar_day(db_session):
     fake = FakeNotifier()
-    for i in range(delivery.DAILY_BUDGET):
-        await delivery.send(db_session, fake, text=f"нудж {i}",
-                            category=delivery.CATEGORY_NUDGE, now=NOON)
+    await _spend_the_budget(db_session, fake)
 
     tomorrow_noon = NOON.replace(day=NOON.day + 1)
     assert await delivery.send(db_session, fake, text="завтрашний",
                                category=delivery.CATEGORY_NUDGE, now=tomorrow_noon) is not None
+
+
+async def test_nudges_leave_room_for_the_evening_block(db_session):
+    """Until the evening block has gone out, its two slots are not the nudges' to
+    spend: with the brief out, one nudge fits a budget of four, not three."""
+    fake = FakeNotifier()
+    assert await delivery.send(db_session, fake, text="бриф",
+                               category=delivery.CATEGORY_BRIEF, now=NOON) is not None
+    assert await delivery.send(db_session, fake, text="белок",
+                               category=delivery.CATEGORY_NUDGE, now=NOON) is not None
+    assert await delivery.send(db_session, fake, text="шаги",
+                               category=delivery.CATEGORY_NUDGE, now=NOON) is None
+
+    for text in ("итог дня", "завтра"):
+        assert await delivery.send(db_session, fake, text=text,
+                                   category=delivery.CATEGORY_EVENING, now=NOON) is not None
+    assert len(fake.sent) == delivery.DAILY_BUDGET
 
 
 async def test_quiet_hours_hold_initiative_but_not_answers(db_session):
@@ -854,9 +876,7 @@ async def test_quiet_hours_hold_environment_alerts(db_session):
 
 async def test_the_budget_never_gags_an_environment_alert(db_session):
     fake = FakeNotifier()
-    for i in range(delivery.DAILY_BUDGET):
-        await delivery.send(db_session, fake, text=f"нудж {i}",
-                            category=delivery.CATEGORY_NUDGE, now=NOON)
+    await _spend_the_budget(db_session, fake)
 
     assert await delivery.send(db_session, fake, text="пятый",
                                category=delivery.CATEGORY_NUDGE, now=NOON) is None

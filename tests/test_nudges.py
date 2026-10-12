@@ -181,27 +181,80 @@ async def test_cooldown_holds_the_second_run(db_session):
 # ── The budget ────────────────────────────────────────────────────────────────
 async def test_budget_cuts_the_nudge_that_does_not_fit(db_session):
     """Two conditions hold, one slot is left — so exactly one goes out. The brief
-    and the evening block spend two of the four every day, which is why a nudge
-    is never the message that matters most."""
+    spends one of the four and the evening block still needs two, which is why a
+    nudge is never the message that matters most."""
     await _seed_steps(db_session, 3000)  # steps: short
     await nutrition_service.log_meal(
         db_session, on_date=TODAY, name="Творог", protein_g=40.0
     )  # protein: behind
-    for i in range(delivery.DAILY_BUDGET - 1):  # brief, evening, one earlier nudge
-        db_session.add(
-            Notification(
-                sent_at=EVENING,
-                category=delivery.CATEGORY_BRIEF,
-                channel="telegram",
-                dedupe_key=f"spent:{i}",
-            )
+    db_session.add(
+        Notification(
+            sent_at=EVENING.replace(hour=11),
+            category=delivery.CATEGORY_BRIEF,
+            channel="telegram",
+            dedupe_key="spent:brief",
         )
+    )
     await db_session.commit()
 
     notifier = FakeNotifier()
     sent = await nudges.run(db_session, notifier, now=EVENING)
     assert len(sent) == 1
     assert len(notifier.sent) == 1
+
+
+async def test_nudges_cannot_spend_the_evening_blocks_slots(
+    db_session, session_factory, monkeypatch
+):
+    """Brief + protein + steps + recap used to fill the budget of four, so the
+    tomorrow-plan message — the one with the buttons the next brief plans from —
+    was silently dropped. The evening block's two slots are reserved: the second
+    nudge is what the budget cuts, and both evening messages go out."""
+    from vitals.services.proactive import channels, day_plan
+
+    await _seed_steps(db_session, 3000)  # steps: short
+    await nutrition_service.log_meal(
+        db_session, on_date=TODAY, name="Творог", protein_g=40.0
+    )  # protein: behind
+    notifier = FakeNotifier()
+    assert await delivery.send(
+        db_session, notifier, text="бриф", category=delivery.CATEGORY_BRIEF,
+        now=EVENING.replace(hour=11),
+    ) is not None
+    await nudges.run(db_session, notifier, now=EVENING)
+    await db_session.commit()
+    assert len(notifier.sent) == 2  # the brief and one of the two nudges
+
+    monkeypatch.setattr(channels, "build_notifier", lambda *a, **kw: notifier)
+    monkeypatch.setattr(day_plan, "today_local", lambda: TODAY)
+    late = EVENING.replace(hour=23, minute=45)
+    monkeypatch.setattr(delivery, "now_local", lambda: late)
+    await day_plan.evening_job(session_factory)
+
+    assert len(notifier.sent) == 4
+    plan = notifier.sent[3]
+    assert plan.startswith(day_plan.LINE_TOMORROW)
+    assert await delivery.sent_today(db_session, on_date=TODAY) == delivery.DAILY_BUDGET
+
+
+async def test_a_started_evening_block_is_never_cut_in_half(db_session):
+    """At the smallest budgets the brief and the recap fill the day; the plan still
+    follows the recap it belongs to rather than leaving a question with no buttons."""
+    from vitals.services.proactive import prefs
+
+    await prefs.set_prefs(db_session, {**prefs.DEFAULTS, "daily_budget": 2})
+    notifier = FakeNotifier()
+    late = EVENING.replace(hour=23, minute=45)
+    for text, category in (
+        ("бриф", delivery.CATEGORY_BRIEF),
+        ("итог дня", delivery.CATEGORY_EVENING),
+        ("завтра", delivery.CATEGORY_EVENING),
+    ):
+        assert await delivery.send(db_session, notifier, text=text, category=category, now=late)
+    # …but nothing new starts once the budget is spent.
+    assert await delivery.send(
+        db_session, notifier, text="нудж", category=delivery.CATEGORY_NUDGE, now=late
+    ) is None
 
 
 async def test_a_broken_condition_does_not_take_the_others_down(db_session, monkeypatch):

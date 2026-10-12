@@ -14,6 +14,14 @@ Five rules, in the order they're checked:
 5. **The daily budget** (also from the settings card) covers all three
    self-initiated categories — the brief, the evening block, nudges.
 
+   The evening block is two messages (the recap, then tomorrow's plan with its
+   one-tap buttons) and it comes last, at a fixed hour. Without help it is what a
+   busy day cuts: brief + two nudges + recap fills a budget of four and the plan
+   is dropped, so the next brief plans from the week template's guess. So the
+   block's slots are *reserved*: a nudge may only use what is left after the
+   evening messages still due today, and once the block has started its second
+   half is not re-checked — a recap without its plan is the worst of both.
+
    Environment alerts are exempt from it too (see ``CATEGORY_ENVIRONMENT``).
 
    Answers to the owner (``reply``, ``echo``) are deliberately exempt as well.
@@ -61,6 +69,9 @@ CATEGORY_TEST = "test"
 CATEGORY_ENVIRONMENT = "environment"
 
 INITIATIVE_CATEGORIES = frozenset({CATEGORY_BRIEF, CATEGORY_EVENING, CATEGORY_NUDGE})
+# Messages the evening block sends (recap + tomorrow's plan, see
+# ``day_plan.evening_job``) — what nudges must leave room for.
+EVENING_BLOCK_MESSAGES = 2
 # Held back by quiet hours. Wider than the budget set on purpose.
 QUIET_HOURS_CATEGORIES = frozenset({CATEGORY_NUDGE, CATEGORY_ENVIRONMENT})
 
@@ -84,19 +95,39 @@ def in_quiet_hours(
 
 
 async def sent_today(
-    session: AsyncSession, *, on_date: Optional[date_type] = None
+    session: AsyncSession,
+    *,
+    on_date: Optional[date_type] = None,
+    categories: frozenset[str] = INITIATIVE_CATEGORIES,
 ) -> int:
-    """How much of today's budget is spent (self-initiated messages only)."""
+    """How much of today's budget is spent (self-initiated messages only), or how
+    many of ``categories`` went out today."""
     on_date = on_date or now_local().date()
     result = await session.execute(
         select(func.count())
         .select_from(Notification)
         .where(
-            Notification.category.in_(INITIATIVE_CATEGORIES),
+            Notification.category.in_(categories),
             func.date(Notification.sent_at) == on_date,
         )
     )
     return result.scalar() or 0
+
+
+async def _within_budget(
+    session: AsyncSession, category: str, *, on_date: date_type, budget: int
+) -> bool:
+    """May one more ``category`` message go out today? See rule 5 above."""
+    evening_sent = await sent_today(
+        session, on_date=on_date, categories=frozenset({CATEGORY_EVENING})
+    )
+    if category == CATEGORY_EVENING and evening_sent:
+        # The block was admitted with its first message; its second half rides on it.
+        return True
+    spent = await sent_today(session, on_date=on_date)
+    if category == CATEGORY_NUDGE:
+        spent += max(0, EVENING_BLOCK_MESSAGES - evening_sent)
+    return spent < budget
 
 
 async def find_sent(session: AsyncSession, external_id: str) -> Optional[Notification]:
@@ -175,9 +206,9 @@ async def send(
             logger.info("skipping %s: quiet hours (%s)", category, now.time())
             return None
         budget = settings["daily_budget"]
-        if category in INITIATIVE_CATEGORIES and await sent_today(
-            session, on_date=now.date()
-        ) >= budget:
+        if category in INITIATIVE_CATEGORIES and not await _within_budget(
+            session, category, on_date=now.date(), budget=budget
+        ):
             logger.info("skipping %s: daily budget of %s used", category, budget)
             return None
 
