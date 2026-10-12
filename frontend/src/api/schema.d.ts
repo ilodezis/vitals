@@ -952,6 +952,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/labs/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject Lab Upload
+         * @description The owner discarded an upload's preview (Cancel / Skip): close its raw
+         *     row so the extraction is kept on record but never becomes results.
+         */
+        post: operations["reject_lab_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/labs/results": {
         parameters: {
             query?: never;
@@ -2189,6 +2210,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/weight/body-scans/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject Body Scan
+         * @description The owner cancelled a scan preview: close its raw row so the extraction
+         *     is kept on record but never becomes a scan (or a weight entry).
+         */
+        post: operations["reject_body_scan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/weight/body-scans/upload": {
         parameters: {
             query?: never;
@@ -2795,6 +2837,16 @@ export interface components {
             metrics: components["schemas"]["BodyScanMetricItem"][];
             /** Raw Payload Id */
             raw_payload_id: number;
+        };
+        /** BodyScanReject */
+        BodyScanReject: {
+            /** Raw Payload Id */
+            raw_payload_id: number;
+        };
+        /** BodyScanRejectResponse */
+        BodyScanRejectResponse: {
+            /** Ok */
+            ok: boolean;
         };
         /** BodyScanUploadResponse */
         BodyScanUploadResponse: {
@@ -4389,6 +4441,16 @@ export interface components {
         LabResultCreated: {
             /** Id */
             id: number;
+        };
+        /** LabUploadReject */
+        LabUploadReject: {
+            /** Rawpayloadid */
+            rawPayloadId: number;
+        };
+        /** LabUploadRejectResponse */
+        LabUploadRejectResponse: {
+            /** Ok */
+            ok: boolean;
         };
         /** LabUploadResponse */
         LabUploadResponse: {
@@ -9640,6 +9702,57 @@ export interface operations {
             };
         };
     };
+    reject_lab_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabUploadReject"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabUploadRejectResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_lab_result: {
         parameters: {
             query?: never;
@@ -13080,6 +13193,57 @@ export interface operations {
             };
         };
     };
+    reject_body_scan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BodyScanReject"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodyScanRejectResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     upload_body_scan: {
         parameters: {
             query?: never;
@@ -13918,4 +14082,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: e462d183cd2110c7ef7f60b5d622ea3f91706a36a56010cc9d9de6d22367c239
+// openapi.json sha256: a524e2eecbe40502abb6420256f26270b81d67ad8b2a606bf478802678b687ff

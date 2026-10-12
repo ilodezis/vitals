@@ -82,6 +82,29 @@ async def upsert_raw_payload(
     return row
 
 
+# Stamped into an upload's raw payload when the owner throws its preview away.
+REJECTED_KEY = "_rejected_at"
+
+
+async def reject_upload(session: AsyncSession, raw_payload_id: int, *, domain: str) -> bool:
+    """Record that the owner discarded an upload's preview (Cancel / Skip).
+
+    The raw row stays — the lake keeps every extraction — but is closed:
+    ``processed_at`` is stamped so nothing treats it as pending work, and the
+    payload carries :data:`REJECTED_KEY` so the reason stays readable. A row of
+    another domain, or one already confirmed, is left alone (``False``).
+    Flushes; the caller owns the commit."""
+    row = await session.get(RawPayload, raw_payload_id)
+    if row is None or row.domain != domain or row.processed_at is not None:
+        return False
+    stamp = now_local()
+    payload = row.payload if isinstance(row.payload, dict) else {"_unparsed": row.payload}
+    row.payload = {**payload, REJECTED_KEY: stamp.isoformat(timespec="seconds")}
+    row.processed_at = stamp
+    await session.flush()
+    return True
+
+
 async def sweep_domain(
     session: AsyncSession,
     *,
@@ -145,26 +168,27 @@ async def sweep_domain(
 
 
 async def sweep_pending_job(session_factory, redis=None) -> None:
-    """Nightly sweep for garmin/hevy/labs/body_comp raw payloads still pending a
-    normalized row (registered in vitals/scheduler/jobs.py).
+    """Nightly sweep for garmin/hevy raw payloads still pending a normalized row
+    (registered in vitals/scheduler/jobs.py).
 
     Signals' own reparse instead piggybacks on the morning brief (see
     proactive/inbound.py, called from brief.py) because it has to finish before
-    that message goes out. These four domains have no such deadline — they're
-    fed by a periodic poll (garmin/hevy) or an owner upload (labs/body_comp),
-    not a message that's about to be sent — so one shared nightly pass covers
-    all of them instead of four separate jobs. Each domain commits (and rolls
-    back on failure) on its own so one domain's trouble can't lose or block
-    another's completed work.
+    that message goes out. These domains have no such deadline — they're fed by
+    a periodic poll, not a message that's about to be sent — so one shared
+    nightly pass covers both. Each domain commits (and rolls back on failure)
+    on its own so one domain's trouble can't lose or block another's work.
+
+    Lab and body-scan uploads are deliberately not swept: their pending raw row
+    is an extraction the owner has not confirmed. Ingesting it would turn a
+    preview the owner closed — or skipped as wrong — into real results (and, for a
+    scan, an active weight that outranks Garmin).
     """
-    from vitals.services import body_scan_service, garmin_service, hevy_service, labs_service
+    from vitals.services import garmin_service, hevy_service
 
     async with session_factory() as session:
         for name, sweep in (
             ("garmin", garmin_service.reparse_pending),
             ("hevy", hevy_service.reparse_pending),
-            ("labs", labs_service.reparse_pending),
-            ("body_comp", body_scan_service.reparse_pending),
         ):
             try:
                 await sweep(session)

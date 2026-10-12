@@ -62,6 +62,25 @@ async def test_extract_from_multipage_pdf():
     assert all(u.startswith("data:image/png;base64,") for u in llm.image_urls)
 
 
+async def test_extract_rasterises_off_the_event_loop(monkeypatch):
+    import threading
+
+    from vitals.integrations import vision
+
+    loop_thread = threading.get_ident()
+    seen = []
+
+    def fake_pages(file_bytes, max_pages=10):
+        seen.append(threading.get_ident())
+        return [b"page"]
+
+    monkeypatch.setattr(vision, "pdf_pages_png", fake_pages)
+    llm = FakeLLM({"metrics": []})
+    await body_scan_service.extract_from_file(b"%PDF-1.4", llm=llm, filename="scan.pdf")
+    assert seen and seen[0] != loop_thread
+    assert len(llm.image_urls) == 1
+
+
 async def test_extract_propagates_not_configured():
     class RaisingLLM:
         async def extract_json(self, *a, **k):

@@ -3,9 +3,12 @@
 Both modules turn an uploaded photo/PDF into base64 data URLs for an OpenRouter
 vision model. PDFs are rasterised page-by-page (lazy PyMuPDF, no system deps).
 Keeping this in one place means the rendering/encoding is identical everywhere.
+Upload handlers call :func:`file_to_image_urls_async`: rasterising up to ten
+pages at 150 dpi is seconds of CPU, which must not run on the event loop.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 from typing import Optional
 
@@ -54,3 +57,21 @@ def file_to_image_urls(
             urls.append(f"data:image/png;base64,{b64}")
         return urls
     return [image_data_url(content_type, file_bytes)]
+
+
+async def file_to_image_urls_async(
+    file_bytes: bytes,
+    *,
+    content_type: str = "image/jpeg",
+    filename: Optional[str] = None,
+    max_pages: int = 10,
+) -> list[str]:
+    """:func:`file_to_image_urls` on a worker thread, so a long PDF does not
+    stall every other request while it renders."""
+    return await asyncio.to_thread(
+        file_to_image_urls,
+        file_bytes,
+        content_type=content_type,
+        filename=filename,
+        max_pages=max_pages,
+    )

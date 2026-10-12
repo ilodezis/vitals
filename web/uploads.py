@@ -9,10 +9,12 @@ Two independent risks the routers used to share:
     with no ceiling (no reverse proxy in front). We read in chunks and abort once
     the cap is exceeded.
 
-Routers pass their own allowlist (images, docs, json, vcf) and size cap.
+Routers pass their own allowlist (images, docs, json, vcf) and size cap, and
+store the accepted bytes with :func:`write_upload`.
 """
 from __future__ import annotations
 
+import asyncio
 import codecs
 import os
 from typing import AsyncIterator
@@ -71,6 +73,18 @@ async def read_capped(file: UploadFile, *, max_bytes: int = DEFAULT_MAX_BYTES) -
             raise HTTPException(status_code=413, detail=f"File too large (max {max_bytes // (1024 * 1024)} MB)")
         chunks.append(chunk)
     return b"".join(chunks)
+
+
+def _write_file(path: str, data: bytes) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "wb") as fh:
+        fh.write(data)
+
+
+async def write_upload(path: str, data: bytes) -> None:
+    """Write an upload to ``path`` (creating its directory) on a worker thread —
+    a 25 MB write on the event loop stalls every other request meanwhile."""
+    await asyncio.to_thread(_write_file, path, data)
 
 
 async def iter_lines_capped(

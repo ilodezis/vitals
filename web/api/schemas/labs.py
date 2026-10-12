@@ -74,6 +74,14 @@ class LabUploadResponse(CamelModel):
     lab: Optional[LabExtractedPreview] = None
 
 
+class LabUploadReject(CamelModel):
+    raw_payload_id: int
+
+
+class LabUploadRejectResponse(CamelModel):
+    ok: bool
+
+
 class LabConfirm(CamelModel):
     date: str
     lab_name: Optional[str] = None

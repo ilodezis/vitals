@@ -216,6 +216,14 @@ class BodyScanUploadResponse(BaseModel):
     scan: Optional[BodyScanPreview] = None
 
 
+class BodyScanReject(BaseModel):
+    raw_payload_id: int
+
+
+class BodyScanRejectResponse(BaseModel):
+    ok: bool
+
+
 class BodyScanConfirm(BaseModel):
     date: dt.date
     device: Optional[str] = None

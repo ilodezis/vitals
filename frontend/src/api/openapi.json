@@ -1060,6 +1060,32 @@
         "title": "BodyScanPreview",
         "type": "object"
       },
+      "BodyScanReject": {
+        "properties": {
+          "raw_payload_id": {
+            "title": "Raw Payload Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "raw_payload_id"
+        ],
+        "title": "BodyScanReject",
+        "type": "object"
+      },
+      "BodyScanRejectResponse": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "BodyScanRejectResponse",
+        "type": "object"
+      },
       "BodyScanUploadResponse": {
         "properties": {
           "message": {
@@ -5728,6 +5754,32 @@
           "id"
         ],
         "title": "LabResultCreated",
+        "type": "object"
+      },
+      "LabUploadReject": {
+        "properties": {
+          "rawPayloadId": {
+            "title": "Rawpayloadid",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rawPayloadId"
+        ],
+        "title": "LabUploadReject",
+        "type": "object"
+      },
+      "LabUploadRejectResponse": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "LabUploadRejectResponse",
         "type": "object"
       },
       "LabUploadResponse": {
@@ -15563,6 +15615,65 @@
         "summary": "Defer Lab Marker"
       }
     },
+    "/api/v1/labs/reject": {
+      "post": {
+        "description": "The owner discarded an upload's preview (Cancel / Skip): close its raw\nrow so the extraction is kept on record but never becomes results.",
+        "operationId": "reject_lab_upload",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabUploadReject"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabUploadRejectResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Lab Upload"
+      }
+    },
     "/api/v1/labs/results": {
       "post": {
         "description": "Record a single biomarker measurement manually.",
@@ -19575,6 +19686,65 @@
           }
         },
         "summary": "Confirm Body Scan"
+      }
+    },
+    "/api/v1/weight/body-scans/reject": {
+      "post": {
+        "description": "The owner cancelled a scan preview: close its raw row so the extraction\nis kept on record but never becomes a scan (or a weight entry).",
+        "operationId": "reject_body_scan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BodyScanReject"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BodyScanRejectResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Body Scan"
       }
     },
     "/api/v1/weight/body-scans/upload": {

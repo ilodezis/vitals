@@ -398,7 +398,7 @@ graph TD
 | `glp1_plateau` | 06:00 | Проверка плато на GLP-1, пассивный алерт |
 | `hrt_reminders` | 07:00 | Анализы на курсе + пропущенные инъекции |
 | `nutrition_day_end` | 23:00 | Итог по КБЖУ за день (предупреждения не считаются с половины дня) |
-| `raw_payload_sweep` | 03:30 | Перепарс всего, что помечено «нужен перепарс» (Garmin, Hevy, анализы, BIA) |
+| `raw_payload_sweep` | 03:30 | Перепарс всего, что помечено «нужен перепарс» (Garmin, Hevy); неподтверждённые анализы и BIA-бланки не трогает |
 | `hevy_sync` | каждые 6 ч | Синк тренировок |
 | `garmin_sync` | каждые N ч (настройка, по умолчанию 6) | Полный синк Garmin |
 | `garmin_pulse` | интервал в активные часы (настройка) | Лёгкий пульс: шаги за сегодня, один запрос без логина |
@@ -1229,7 +1229,7 @@ Every job runs under a Redis lock (one runner across workers) and stamps a heart
 | `glp1_plateau` | 06:00 | GLP-1 plateau check, passive alert |
 | `hrt_reminders` | 07:00 | Bloodwork due on cycle + missed injections |
 | `nutrition_day_end` | 23:00 | End-of-day macro totals (warnings never fire off a partial day) |
-| `raw_payload_sweep` | 03:30 | Re-parse everything flagged pending (Garmin, Hevy, labs, BIA) |
+| `raw_payload_sweep` | 03:30 | Re-parse everything flagged pending (Garmin, Hevy); unconfirmed lab and BIA uploads are left alone |
 | `hevy_sync` | every 6h | Workout sync |
 | `garmin_sync` | every N hours (setting, default 6) | Full Garmin sync |
 | `garmin_pulse` | interval, active hours (setting) | Light pulse: today's steps, one request, no login |

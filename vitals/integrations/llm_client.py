@@ -137,7 +137,10 @@ class LLMClient:
         """Structured extraction → parsed JSON dict. Pass ``image_url`` (a data: or
         https: URL) or ``image_urls`` (a list of data: or https: URLs) to send lab
         scans to a vision-capable model. If the model returns non-JSON, the raw
-        text comes back under ``_unparsed`` (caller decides how to handle)."""
+        text comes back under ``_unparsed`` (caller decides how to handle). So
+        does a reply cut off by the token limit — flagged ``_truncated`` — even
+        when the cut happens to leave valid JSON: a list that stops halfway
+        would otherwise pass for the whole document."""
         client = self._ensure_client()
 
         user_content: Any
@@ -164,7 +167,21 @@ class LLMClient:
             temperature=temperature,
             response_format={"type": "json_object"},
         )
-        raw = (resp.choices[0].message.content or "").strip()
+        choice = resp.choices[0]
+        raw = (choice.message.content or "").strip()
+        finish_reason = getattr(choice, "finish_reason", None)
+        if not raw:
+            logger.warning(
+                "LLM extract_json returned empty content (model=%s, finish_reason=%s)",
+                model or self.parser_model, finish_reason,
+            )
+            return {"_unparsed": ""}
+        if finish_reason == "length":
+            logger.warning(
+                "LLM extract_json truncated by the token limit (model=%s, %d chars)",
+                model or self.parser_model, len(raw),
+            )
+            return {"_unparsed": raw, "_truncated": True}
         try:
             parsed = json.loads(raw)
         except (ValueError, TypeError):

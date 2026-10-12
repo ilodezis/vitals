@@ -194,8 +194,16 @@ export default function LabsScreen() {
     void advanceQueue()
   }
 
+  // A discarded preview is closed on the server too: the extraction stays on record but never
+  // becomes results. Best effort — the screen moves on either way.
+  const rejectPreview = () => {
+    const rawPayloadId = preview?.rawPayloadId
+    if (rawPayloadId) void api.POST('/api/v1/labs/reject', { body: { rawPayloadId } }).catch(() => undefined)
+  }
+
   // This file's markers are not saved; the next file comes up.
   const skipPreview = () => {
+    rejectPreview()
     setPreview(null)
     confirmConflict.clearConflict()
     void advanceQueue()
@@ -204,6 +212,7 @@ export default function LabsScreen() {
   // Closing the review stops the queue; what was saved stays saved.
   const stopQueue = () => {
     queueRef.current = []
+    rejectPreview()
     setPreview(null)
     confirmConflict.clearConflict()
     finishQueue()

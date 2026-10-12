@@ -42,7 +42,7 @@ from vitals.services.analytics.body_metrics import (
     normalize_metric,
     weight_from_scan,
 )
-from vitals.integrations.vision import file_to_image_urls
+from vitals.integrations.vision import file_to_image_urls_async
 from vitals.utils.timeutils import now_local, today_local
 
 logger = logging.getLogger(__name__)
@@ -75,9 +75,10 @@ async def extract_from_file(
     filename: Optional[str] = None,
 ) -> dict:
     """Send the sheet to the vision model and return the parsed structured dict.
-    PDFs are rendered to images first. Raises whatever the LLM client raises
-    (e.g. ``LLMNotConfigured``) so the router can surface a clear message."""
-    image_urls = file_to_image_urls(
+    PDFs are rendered to images first (off the event loop). Raises whatever the
+    LLM client raises (e.g. ``LLMNotConfigured``) so the router can surface a
+    clear message."""
+    image_urls = await file_to_image_urls_async(
         file_bytes, content_type=content_type, filename=filename
     )
     return await llm.extract_json(
@@ -224,43 +225,6 @@ async def ingest_extracted(
         file_key=file_key,
         raw_payload_id=raw_row.id,
         metrics=rows,
-    )
-
-
-async def reparse_from_raw(session: AsyncSession, raw_row: RawPayload) -> None:
-    """Re-run extraction ingest against a scan payload already on disk — no new
-    upload. Covers uploads the owner never confirmed (extracted but abandoned at
-    the preview step). Reuses :func:`ingest_extracted`, which calls
-    :func:`save_scan` with ``override=False`` — a still-active hard-block
-    conflict rule raises ``ConflictBlocked``, which the sweep's generic
-    try/except logs and skips, leaving the row pending for the next pass rather
-    than forcing it through. Preserves ``fetched_at``: this is a reparse, not a
-    new upload. Used by :func:`reparse_pending` (the nightly sweep —
-    raw_payload_service.sweep_pending_job)."""
-    extracted = raw_row.payload if isinstance(raw_row.payload, dict) else {}
-    original_fetched_at = raw_row.fetched_at
-    await ingest_extracted(session, extracted, file_key=raw_row.external_id)
-    raw_row.fetched_at = original_fetched_at
-
-
-async def reparse_pending(
-    session: AsyncSession,
-    *,
-    limit: int = raw_payload_service.REPARSE_BATCH,
-    since_days: int = raw_payload_service.REPARSE_WINDOW_DAYS,
-) -> int:
-    """Sweep body-comp raw payloads (extractions never confirmed by the owner)
-    still pending a normalized row. Does not commit."""
-    has_normalized = (
-        select(BodyScan.id).where(BodyScan.raw_payload_id == RawPayload.id).exists()
-    )
-    return await raw_payload_service.sweep_domain(
-        session,
-        domain=DOMAIN,
-        reparse=reparse_from_raw,
-        has_normalized=has_normalized,
-        limit=limit,
-        since_days=since_days,
     )
 
 

@@ -245,7 +245,7 @@ export default function WeightMeasuresScreen() {
       const json = (await res.json()) as BodyScanUploadResponse
       const scan = json.scan
       if (!json.ok || scan === undefined || scan === null) {
-        toast(t(json.reason === 'not_configured' ? 'app.weight.scan_no_llm' : 'body.upload.error'), { icon: 'warn' })
+        toast(json.message || t(json.reason === 'not_configured' ? 'app.weight.scan_no_llm' : 'body.upload.error'), { icon: 'warn' })
         return
       }
       setPreviewFileKey(scan.file_key)
@@ -258,6 +258,17 @@ export default function WeightMeasuresScreen() {
     } finally {
       setIsScanning(false)
     }
+  }
+
+  // Cancel closes the preview on the server too: the extraction stays on record but never becomes
+  // a scan. Best effort — the form clears either way.
+  const cancelScanPreview = () => {
+    if (previewRawId !== null) {
+      void api.POST('/api/v1/weight/body-scans/reject', { body: { raw_payload_id: previewRawId } }).catch(() => undefined)
+    }
+    setPreviewFileKey('')
+    setPreviewRawId(null)
+    setPreviewMetrics([])
   }
 
   // Confirm BIA scan
@@ -637,7 +648,7 @@ export default function WeightMeasuresScreen() {
                           <button type="submit" className="btn grow" disabled={confirmScanMutation.isPending}>
                             {t('app.weight.save_scan')}
                           </button>
-                          <button type="button" className="ghost" onClick={() => setPreviewFileKey('')}>
+                          <button type="button" className="ghost" onClick={cancelScanPreview}>
                             {t('app.cancel')}
                           </button>
                         </div>

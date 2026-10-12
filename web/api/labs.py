@@ -29,13 +29,15 @@ from web.api.schemas.labs import (
     LabMarkerResponse,
     LabResultCreate,
     LabResultCreated,
+    LabUploadReject,
+    LabUploadRejectResponse,
     LabUploadResponse,
     LabsView,
 )
 from web.deps import get_session, require_auth
 from web.ratelimit import rate_limit
 from web.templating import STATIC_DIR
-from web.uploads import DOC_EXTS, file_ext, read_capped, validate_extension
+from web.uploads import DOC_EXTS, file_ext, read_capped, validate_extension, write_upload
 
 logger = logging.getLogger(__name__)
 
@@ -135,9 +137,7 @@ async def upload_lab_document(
 
     ext = file_ext(file.filename) or ".bin"
     file_key = f"labs/{uuid.uuid4().hex}{ext}"
-    os.makedirs(os.path.join(STATIC_DIR, "uploads", "labs"), exist_ok=True)
-    with open(os.path.join(STATIC_DIR, "uploads", file_key), "wb") as fh:
-        fh.write(contents)
+    await write_upload(os.path.join(STATIC_DIR, "uploads", file_key), contents)
 
     raw_row = await raw_payload_service.upsert_raw_payload(
         db,
@@ -147,6 +147,16 @@ async def upload_lab_document(
         payload=extracted,
     )
     await db.commit()
+
+    # A reply the model never finished (or that isn't JSON) is not an empty
+    # report: say so instead of offering a zero-marker preview. The file and the
+    # raw text stay in the lake for a later look.
+    if "_unparsed" in extracted:
+        return LabUploadResponse(
+            ok=False,
+            reason="unreadable",
+            message=t("labs.upload_unreadable"),
+        )
 
     rows = labs_service.normalize_extracted(extracted)
     try:
@@ -164,6 +174,19 @@ async def upload_lab_document(
             "markers": rows,
         },
     )
+
+
+@router.post("/reject", response_model=LabUploadRejectResponse)
+async def reject_lab_upload(
+    body: LabUploadReject, db: AsyncSession = Depends(get_session)
+) -> LabUploadRejectResponse:
+    """The owner discarded an upload's preview (Cancel / Skip): close its raw
+    row so the extraction is kept on record but never becomes results."""
+    ok = await raw_payload_service.reject_upload(
+        db, body.raw_payload_id, domain=Domain.LABS.value
+    )
+    await db.commit()
+    return LabUploadRejectResponse(ok=ok)
 
 
 @router.post(

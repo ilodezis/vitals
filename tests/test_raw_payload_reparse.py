@@ -2,13 +2,15 @@
 
 ``upsert_raw_payload`` leaves ``processed_at = None`` whenever it refreshes an
 existing row ("re-parse pending"). ``raw_payload_service.sweep_domain`` is the
-generic sweep that picks those rows back up; garmin/hevy/labs/body_comp each
-wire it in with their own ``reparse`` callback + ``has_normalized`` clause.
+generic sweep that picks those rows back up; garmin and hevy each wire it in
+with their own ``reparse`` callback + ``has_normalized`` clause.
 
 The first group tests ``sweep_domain`` itself, once, generically (using the
 Hevy domain/model as the vehicle — any domain would do). The second group is
-one smoke test per real domain, proving its own wiring actually reparses a
-payload end to end.
+one smoke test per swept domain, proving its own wiring actually reparses a
+payload end to end. The last group pins what the sweep must NOT touch: a lab or
+body-scan upload whose preview the owner never confirmed, and the
+``reject_upload`` call that closes such a row on Cancel / Skip.
 """
 from __future__ import annotations
 
@@ -22,6 +24,8 @@ from vitals.models.garmin import GarminActivity, GarminDaily
 from vitals.models.hevy import HevyWorkout
 from vitals.models.labs import LabResult
 from vitals.models.raw_payload import RawPayload
+from vitals.models.weight import WeightLog
+from vitals.utils.timeutils import now_local
 from vitals.services import (
     body_scan_service,
     garmin_service,
@@ -150,36 +154,94 @@ async def test_hevy_reparse_pending_recovers_pending_workout(db_session):
     assert workout is not None and workout.raw_payload_id == raw.id
 
 
-async def test_labs_reparse_pending_recovers_an_unconfirmed_extraction(db_session):
-    """The owner uploaded a lab photo, extraction ran, but the preview was never
-    confirmed — the raw row is the only trace. The sweep must finish the job."""
-    raw = await _seed_raw(
+# ── Unconfirmed uploads are not swept ─────────────────────────────────────────
+_HEVY_PAYLOAD = {
+    "id": "w-nightly", "title": "Pull", "start_time": "2026-06-10T10:00:00Z",
+    "updated_at": "2026-06-10T11:00:00Z", "exercises": [],
+}
+
+
+async def test_nightly_sweep_leaves_unconfirmed_lab_and_scan_uploads_alone(
+    db_session, session_factory
+):
+    """An upload's raw row is an extraction the owner has not confirmed — a
+    preview they cancelled, skipped as misread, or simply closed. The nightly
+    sweep used to ingest it anyway: lab values dated today by fallback, and a
+    scan weight that outranks Garmin. It must still run for the polled domains."""
+    lab_raw = await _seed_raw(
         db_session, domain=labs_service.DOMAIN, source=Source.LAB_PARSER.value,
-        external_id="lab-doc-1",
+        external_id="labs/abandoned.png",
         payload={"date": "2026-06-10", "results": [{"marker": "Ferritin", "value": 95}]},
     )
-    done = await labs_service.reparse_pending(db_session)
-    assert done == 1
-
-    result = (await db_session.execute(
-        select(LabResult).where(LabResult.raw_payload_id == raw.id)
-    )).scalars().first()
-    assert result is not None and result.marker == "Ferritin" and result.value == 95
-
-
-async def test_body_scan_reparse_pending_recovers_an_unconfirmed_extraction(db_session):
-    raw = await _seed_raw(
+    scan_raw = await _seed_raw(
         db_session, domain=body_scan_service.DOMAIN, source=Source.BODY_SCAN.value,
-        external_id="scan-1",
+        external_id="body/abandoned.png",
         payload={
             "date": "2026-06-10", "device": "МедАсс",
-            "metrics": [{"label": "Белок", "value": 10.2, "unit": "кг"}],
+            "metrics": [{"label": "Вес", "metric_key": "weight", "value": 84.0, "unit": "кг"}],
         },
     )
-    done = await body_scan_service.reparse_pending(db_session)
-    assert done == 1
+    await _seed_raw(
+        db_session, domain=hevy_service.DOMAIN, source=Source.HEVY_API.value,
+        external_id="w-nightly", payload=_HEVY_PAYLOAD,
+    )
+    await db_session.commit()
 
-    scan = (await db_session.execute(
-        select(BodyScan).where(BodyScan.raw_payload_id == raw.id)
+    await raw_payload_service.sweep_pending_job(session_factory)
+
+    assert (await db_session.execute(select(LabResult))).scalars().all() == []
+    assert (await db_session.execute(select(BodyScan))).scalars().all() == []
+    assert (await db_session.execute(select(WeightLog))).scalars().all() == []
+    await db_session.refresh(lab_raw)
+    await db_session.refresh(scan_raw)
+    assert lab_raw.processed_at is None and scan_raw.processed_at is None
+    # The sweep itself did run.
+    workout = (await db_session.execute(
+        select(HevyWorkout).where(HevyWorkout.external_id == "w-nightly")
     )).scalars().first()
-    assert scan is not None and scan.device == "МедАсс"
+    assert workout is not None
+
+
+async def test_reject_upload_closes_the_row_and_keeps_the_extraction(db_session):
+    raw = await _seed_raw(
+        db_session, domain=labs_service.DOMAIN, source=Source.LAB_PARSER.value,
+        external_id="labs/cancelled.png",
+        payload={"date": "2026-06-10", "results": [{"marker": "TSH", "value": 2.1}]},
+    )
+
+    ok = await raw_payload_service.reject_upload(db_session, raw.id, domain=labs_service.DOMAIN)
+
+    assert ok is True
+    kept = await db_session.get(RawPayload, raw.id)
+    assert kept is not None and kept.processed_at is not None
+    assert kept.payload["results"] == [{"marker": "TSH", "value": 2.1}]
+    assert raw_payload_service.REJECTED_KEY in kept.payload
+
+
+async def test_reject_upload_refuses_another_domains_row(db_session):
+    raw = await _seed_raw(
+        db_session, domain=body_scan_service.DOMAIN, source=Source.BODY_SCAN.value,
+        external_id="body/scan.png", payload={"metrics": []},
+    )
+    ok = await raw_payload_service.reject_upload(db_session, raw.id, domain=labs_service.DOMAIN)
+    assert ok is False
+    assert raw.processed_at is None
+    assert raw_payload_service.REJECTED_KEY not in raw.payload
+
+
+async def test_reject_upload_leaves_a_confirmed_row_alone(db_session):
+    raw = await _seed_raw(
+        db_session, domain=labs_service.DOMAIN, source=Source.LAB_PARSER.value,
+        external_id="labs/confirmed.png", payload={"results": []},
+    )
+    stamped = raw.processed_at = now_local()  # what confirming the preview does
+    await db_session.flush()
+
+    ok = await raw_payload_service.reject_upload(db_session, raw.id, domain=labs_service.DOMAIN)
+    assert ok is False
+    assert raw.processed_at == stamped
+    assert raw_payload_service.REJECTED_KEY not in raw.payload
+
+
+async def test_reject_upload_unknown_id_is_false(db_session):
+    assert await raw_payload_service.reject_upload(db_session, 987654, domain=labs_service.DOMAIN) is False

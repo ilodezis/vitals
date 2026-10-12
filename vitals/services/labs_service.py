@@ -25,7 +25,6 @@ caller decides — the web form and the MCP tools both offer "save anyway".
 """
 from __future__ import annotations
 
-import base64
 import logging
 import math
 from datetime import date as date_type, timedelta
@@ -36,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.enums import Domain, LabFlag, Severity, Source
 from vitals.i18n import decimal, t
+from vitals.integrations.vision import file_to_image_urls_async
 from vitals.models.labs import DOMAIN, LabMarker, LabResult
 from vitals.models.raw_payload import RawPayload
 from vitals.services import alerts_service, conflict_engine, raw_payload_service
@@ -523,10 +523,6 @@ _EXTRACT_SYSTEM = (
 )
 
 
-# Shared PDF→PNG rasteriser (kept under this name for the call below).
-from vitals.integrations.vision import pdf_pages_png as _pdf_pages_png
-
-
 async def extract_from_file(
     file_bytes: bytes,
     *,
@@ -535,35 +531,17 @@ async def extract_from_file(
     filename: Optional[str] = None,
 ) -> dict:
     """Send the document to a vision model and return the parsed structured dict.
-    PDFs are rendered to images first (all pages up to a limit). Raises whatever
-    the LLM client raises (e.g. ``LLMNotConfigured``) so the router can surface
-    a clear message."""
-    is_pdf = (content_type or "").lower() == "application/pdf" or (
-        filename or ""
-    ).lower().endswith(".pdf")
-
-    if is_pdf:
-        pages_png = _pdf_pages_png(file_bytes)
-        image_urls = []
-        for png_bytes in pages_png:
-            b64 = base64.b64encode(png_bytes).decode("ascii")
-            image_urls.append(f"data:image/png;base64,{b64}")
-
-        return await llm.extract_json(
-            "Extract all lab markers from this report.",
-            system=_EXTRACT_SYSTEM,
-            image_urls=image_urls,
-        )
-    else:
-        if not (content_type or "").startswith("image/"):
-            content_type = "image/jpeg"
-        b64 = base64.b64encode(file_bytes).decode("ascii")
-        image_url = f"data:{content_type};base64,{b64}"
-        return await llm.extract_json(
-            "Extract all lab markers from this report image.",
-            system=_EXTRACT_SYSTEM,
-            image_url=image_url,
-        )
+    PDFs are rendered to images first (all pages up to a limit, off the event
+    loop). Raises whatever the LLM client raises (e.g. ``LLMNotConfigured``) so
+    the router can surface a clear message."""
+    image_urls = await file_to_image_urls_async(
+        file_bytes, content_type=content_type, filename=filename
+    )
+    return await llm.extract_json(
+        "Extract all lab markers from this report.",
+        system=_EXTRACT_SYSTEM,
+        image_urls=image_urls,
+    )
 
 
 def normalize_extracted(extracted: dict) -> list[dict]:
@@ -690,42 +668,6 @@ async def ingest_extracted(
 
     raw_row.processed_at = now_local()
     return summary
-
-
-async def reparse_from_raw(session: AsyncSession, raw_row: RawPayload) -> None:
-    """Re-run extraction ingest against a lab payload already on disk — no new
-    upload. Covers uploads the owner never confirmed (extracted but abandoned
-    at the preview step), so those markers aren't lost. Reuses
-    :func:`ingest_extracted` (dedupes by date+marker+value, so this is safe even
-    if some rows were confirmed by hand before the sweep got to it). Preserves
-    ``fetched_at``: this is a reparse, not a new upload. Used by
-    :func:`reparse_pending` (the nightly sweep — raw_payload_service.
-    sweep_pending_job)."""
-    extracted = raw_row.payload if isinstance(raw_row.payload, dict) else {}
-    original_fetched_at = raw_row.fetched_at
-    await ingest_extracted(session, extracted, file_key=raw_row.external_id)
-    raw_row.fetched_at = original_fetched_at
-
-
-async def reparse_pending(
-    session: AsyncSession,
-    *,
-    limit: int = raw_payload_service.REPARSE_BATCH,
-    since_days: int = raw_payload_service.REPARSE_WINDOW_DAYS,
-) -> int:
-    """Sweep lab raw payloads (extractions never confirmed by the owner) still
-    pending a normalized row. Does not commit."""
-    has_normalized = (
-        select(LabResult.id).where(LabResult.raw_payload_id == RawPayload.id).exists()
-    )
-    return await raw_payload_service.sweep_domain(
-        session,
-        domain=DOMAIN,
-        reparse=reparse_from_raw,
-        has_normalized=has_normalized,
-        limit=limit,
-        since_days=since_days,
-    )
 
 
 async def _result_exists(

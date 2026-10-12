@@ -456,6 +456,70 @@ async def test_labs_upload_returns_preview_without_persisting_results(auth_clien
     assert raw is not None and raw.processed_at is None
 
 
+async def test_labs_upload_unfinished_reply_is_unreadable_not_empty(auth_client, db_session, monkeypatch):
+    """A cut-off or non-JSON model reply used to come back as ok with zero
+    markers — indistinguishable from a blank report. It must say it couldn't
+    read the document, while the file and the raw text stay in the lake."""
+    from vitals.i18n import STRINGS
+    from vitals.services import labs_service
+
+    async def fake_extract(contents, *, llm, content_type, filename=None):
+        return {"_unparsed": '{"results": [{"marker": "TSH"', "_truncated": True}
+
+    monkeypatch.setattr("web.api.labs.LLMClient", _FakeLLM)
+    monkeypatch.setattr(labs_service, "extract_from_file", fake_extract)
+
+    r = await auth_client.post(f"{API}/labs/upload", files={"file": ("long.pdf", b"%PDF-1.4", "application/pdf")})
+
+    data = r.json()
+    assert data["ok"] is False
+    assert data["reason"] == "unreadable"
+    assert data["message"] in {s["labs.upload_unreadable"] for s in STRINGS.values()}
+    assert data.get("lab") is None
+    raws = (await db_session.execute(select(RawPayload).where(RawPayload.domain == "labs"))).scalars().all()
+    assert len(raws) == 1 and raws[0].payload["_truncated"] is True and raws[0].processed_at is None
+    assert (await db_session.execute(select(LabResult))).scalars().all() == []
+
+
+async def test_labs_reject_closes_a_cancelled_preview(auth_client, db_session, monkeypatch):
+    """Cancel / Skip in the preview closes the upload's raw row, so nothing can
+    later turn the discarded extraction into results."""
+    from vitals.services import labs_service
+
+    async def fake_extract(contents, *, llm, content_type, filename=None):
+        return _extracted_ferritin()
+
+    monkeypatch.setattr("web.api.labs.LLMClient", _FakeLLM)
+    monkeypatch.setattr(labs_service, "extract_from_file", fake_extract)
+    lab = (await auth_client.post(
+        f"{API}/labs/upload", files={"file": ("panel.png", _PNG, "image/png")},
+    )).json()["lab"]
+
+    r = await auth_client.post(f"{API}/labs/reject", json={"rawPayloadId": lab["rawPayloadId"]})
+    assert r.status_code == 200
+    assert r.json() == {"ok": True}
+
+    raw = await db_session.get(RawPayload, lab["rawPayloadId"])
+    await db_session.refresh(raw)
+    assert raw.processed_at is not None
+    assert (await db_session.execute(select(LabResult))).scalars().all() == []
+
+    # A second reject (double click, retry) is a harmless no-op.
+    again = await auth_client.post(f"{API}/labs/reject", json={"rawPayloadId": lab["rawPayloadId"]})
+    assert again.json() == {"ok": False}
+
+
+async def test_labs_reject_ignores_a_body_scan_row(auth_client, db_session):
+    raw = RawPayload(domain="body_composition", source="body_scan", external_id="body/x.png", payload={})
+    db_session.add(raw)
+    await db_session.commit()
+
+    r = await auth_client.post(f"{API}/labs/reject", json={"rawPayloadId": raw.id})
+    assert r.json() == {"ok": False}
+    await db_session.refresh(raw)
+    assert raw.processed_at is None
+
+
 async def test_labs_confirm_persists_edited_markers(auth_client, db_session, monkeypatch):
     """Confirm must save the owner's edits, not the raw OCR values — proves the
     edit-before-save step actually takes effect."""

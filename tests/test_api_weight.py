@@ -6,8 +6,11 @@ from io import BytesIO
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy import select
 
 from vitals.enums import Source
+from vitals.i18n import STRINGS
+from vitals.models.raw_payload import RawPayload
 from vitals.models.body_scan import BodyScan, BodyScanMetric
 from vitals.models.weight import DOMAIN as WEIGHT_DOMAIN, WeightLog
 from vitals.services import body_scan_service, modules_service, weight_service
@@ -185,6 +188,94 @@ async def test_body_scans_gated_when_module_disabled(auth_client, db_session, re
     )
     assert r.status_code == 404
     assert r.json() == {"error": "module_disabled"}
+
+
+class _FakeLLM:
+    """Stands in for the vision client so the upload route gets past its key check."""
+
+
+def _localized(key: str) -> set[str]:
+    return {strings[key] for strings in STRINGS.values() if key in strings}
+
+
+async def _upload_scan(auth_client):
+    return await auth_client.post(
+        f"{WEIGHT}/body-scans/upload",
+        files=[("file", ("scan.jpg", b"jpeg-bytes", "image/jpeg"))],
+    )
+
+
+async def test_body_scan_upload_error_is_human_not_the_exception(auth_client, db_session, redis, monkeypatch):
+    """The upload used to hand the raw exception text to the screen — provider
+    errors, parser internals. The owner gets the localized message; the log
+    gets the exception."""
+    await _set_module(db_session, redis, "body_comp", True)
+
+    async def fake_extract(contents, *, llm, content_type, filename=None):
+        raise RuntimeError("upstream 502: provider internals")
+
+    monkeypatch.setattr("web.api.weight.LLMClient", _FakeLLM)
+    monkeypatch.setattr(body_scan_service, "extract_from_file", fake_extract)
+
+    data = (await _upload_scan(auth_client)).json()
+    assert data["ok"] is False and data["reason"] == "error"
+    assert "upstream" not in data["message"]
+    assert data["message"] in _localized("body.upload.error")
+
+
+async def test_body_scan_upload_without_llm_is_localized(auth_client, db_session, redis):
+    await _set_module(db_session, redis, "body_comp", True)
+    data = (await _upload_scan(auth_client)).json()
+    assert data["ok"] is False and data["reason"] == "not_configured"
+    assert data["message"] in _localized("app.weight.scan_no_llm")
+
+
+async def test_body_scan_upload_unfinished_reply_is_unreadable(auth_client, db_session, redis, monkeypatch):
+    await _set_module(db_session, redis, "body_comp", True)
+
+    async def fake_extract(contents, *, llm, content_type, filename=None):
+        return {"_unparsed": ""}
+
+    monkeypatch.setattr("web.api.weight.LLMClient", _FakeLLM)
+    monkeypatch.setattr(body_scan_service, "extract_from_file", fake_extract)
+
+    data = (await _upload_scan(auth_client)).json()
+    assert data["ok"] is False and data["reason"] == "unreadable"
+    assert data["message"] in _localized("body.upload.unreadable")
+    assert data.get("scan") is None
+    raws = (await db_session.execute(
+        select(RawPayload).where(RawPayload.domain == body_scan_service.DOMAIN)
+    )).scalars().all()
+    assert len(raws) == 1 and raws[0].processed_at is None
+
+
+async def test_body_scan_reject_closes_a_cancelled_preview(auth_client, db_session, redis, monkeypatch):
+    """Cancel in the scan preview closes the raw row: the extraction is kept on
+    record but never becomes a scan or a weight entry."""
+    await _set_module(db_session, redis, "body_comp", True)
+
+    async def fake_extract(contents, *, llm, content_type, filename=None):
+        return {"device": "InBody 770", "metrics": [{"label": "Вес", "value": 84.0, "unit": "кг"}]}
+
+    monkeypatch.setattr("web.api.weight.LLMClient", _FakeLLM)
+    monkeypatch.setattr(body_scan_service, "extract_from_file", fake_extract)
+    scan = (await _upload_scan(auth_client)).json()["scan"]
+
+    r = await auth_client.post(f"{WEIGHT}/body-scans/reject", json={"raw_payload_id": scan["raw_payload_id"]})
+    assert r.status_code == 200
+    assert r.json() == {"ok": True}
+
+    raw = await db_session.get(RawPayload, scan["raw_payload_id"])
+    await db_session.refresh(raw)
+    assert raw.processed_at is not None
+    assert (await db_session.execute(select(BodyScan))).scalars().all() == []
+    assert (await db_session.execute(select(WeightLog))).scalars().all() == []
+
+
+async def test_body_scan_reject_gated_when_module_disabled(auth_client, db_session, redis):
+    await _set_module(db_session, redis, "body_comp", False)
+    r = await auth_client.post(f"{WEIGHT}/body-scans/reject", json={"raw_payload_id": 1})
+    assert r.status_code == 404
 
 
 async def test_body_scans_confirm_and_delete(auth_client, db_session, redis):

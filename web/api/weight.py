@@ -13,6 +13,7 @@ from fastapi import Depends, File, Form, HTTPException, Request, Response, Uploa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.enums import Domain, Source
+from vitals.i18n import t
 from vitals.integrations.llm_client import LLMClient, LLMNotConfigured
 from vitals.services import body_scan_service, raw_payload_service, weight_service
 from vitals.utils.timeutils import today_local
@@ -25,6 +26,8 @@ from web.api.schemas.weight import (
     BodyScanConfirmResponse,
     BodyScanMetricItem,
     BodyScanPreview,
+    BodyScanReject,
+    BodyScanRejectResponse,
     BodyScanUploadResponse,
     NoiseMarkerCreate,
     NoiseMarkerRef,
@@ -38,7 +41,14 @@ from web.api.schemas.weight import (
 )
 from web.deps import get_session, require_auth, require_module
 from web.templating import STATIC_DIR
-from web.uploads import DOC_EXTS, IMAGE_EXTS, file_ext, read_capped, validate_extension
+from web.uploads import (
+    DOC_EXTS,
+    IMAGE_EXTS,
+    file_ext,
+    read_capped,
+    validate_extension,
+    write_upload,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -214,16 +224,13 @@ async def upload_progress_photos(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Too many files (max 5)")
 
     uploads_dir = os.path.join(STATIC_DIR, "uploads")
-    os.makedirs(uploads_dir, exist_ok=True)
 
     saved_items: list[ProgressPhotoItem] = []
     for f in uploaded_files:
         ext = validate_extension(f.filename, IMAGE_EXTS)
         contents = await read_capped(f)
         unique_name = f"{uuid.uuid4().hex}{ext}"
-        file_path = os.path.join(uploads_dir, unique_name)
-        with open(file_path, "wb") as fh:
-            fh.write(contents)
+        await write_upload(os.path.join(uploads_dir, unique_name), contents)
 
         file_key = f"uploads/{unique_name}"
         photo = await weight_service.add_progress_photo(
@@ -282,7 +289,9 @@ async def upload_body_scan(
     try:
         llm = LLMClient()
     except LLMNotConfigured:
-        return BodyScanUploadResponse(ok=False, reason="not_configured", message="LLM not configured")
+        return BodyScanUploadResponse(
+            ok=False, reason="not_configured", message=t("app.weight.scan_no_llm")
+        )
 
     try:
         extracted = await body_scan_service.extract_from_file(
@@ -292,16 +301,18 @@ async def upload_body_scan(
             filename=file.filename,
         )
     except LLMNotConfigured:
-        return BodyScanUploadResponse(ok=False, reason="not_configured", message="LLM not configured")
-    except Exception as e:
-        logger.warning("Body-scan extraction failed for %s: %s", file.filename, e)
-        return BodyScanUploadResponse(ok=False, reason="error", message=str(e))
+        return BodyScanUploadResponse(
+            ok=False, reason="not_configured", message=t("app.weight.scan_no_llm")
+        )
+    except Exception:
+        # The exception text (provider errors, parser internals) is for the log,
+        # never for the screen.
+        logger.warning("Body-scan extraction failed for %s", file.filename, exc_info=True)
+        return BodyScanUploadResponse(ok=False, reason="error", message=t("body.upload.error"))
 
     ext = file_ext(file.filename) or ".bin"
     file_key = f"body/{uuid.uuid4().hex}{ext}"
-    os.makedirs(os.path.join(STATIC_DIR, "uploads", "body"), exist_ok=True)
-    with open(os.path.join(STATIC_DIR, "uploads", file_key), "wb") as fh:
-        fh.write(contents)
+    await write_upload(os.path.join(STATIC_DIR, "uploads", file_key), contents)
 
     raw_row = await raw_payload_service.upsert_raw_payload(
         db,
@@ -311,6 +322,13 @@ async def upload_body_scan(
         payload=extracted,
     )
     await db.commit()
+
+    # Unfinished or non-JSON reply: not an empty sheet. Kept in the lake, not
+    # offered as a preview.
+    if "_unparsed" in extracted:
+        return BodyScanUploadResponse(
+            ok=False, reason="unreadable", message=t("body.upload.unreadable")
+        )
 
     rows = body_scan_service.normalize_extracted(extracted)
     raw_date = date or extracted.get("date")
@@ -341,6 +359,23 @@ async def upload_body_scan(
             ],
         ),
     )
+
+
+@router.post(
+    "/body-scans/reject",
+    response_model=BodyScanRejectResponse,
+    dependencies=[Depends(require_module("body_comp"))],
+)
+async def reject_body_scan(
+    body: BodyScanReject, db: AsyncSession = Depends(get_session)
+) -> BodyScanRejectResponse:
+    """The owner cancelled a scan preview: close its raw row so the extraction
+    is kept on record but never becomes a scan (or a weight entry)."""
+    ok = await raw_payload_service.reject_upload(
+        db, body.raw_payload_id, domain=Domain.BODY_COMPOSITION.value
+    )
+    await db.commit()
+    return BodyScanRejectResponse(ok=ok)
 
 
 @router.post(

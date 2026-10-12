@@ -443,6 +443,74 @@ async def test_unparsed_llm_reply_is_kept_verbatim():
     assert labs_service.normalize_extracted(out) == []
 
 
+def _client_replying(content, finish_reason="stop"):
+    """An ``LLMClient`` whose upstream answers with one fixed completion."""
+    from vitals.integrations.llm_client import LLMClient
+
+    choice = type("C", (), {
+        "message": type("M", (), {"content": content})(),
+        "finish_reason": finish_reason,
+    })()
+
+    class _Completions:
+        async def create(self, **kw):
+            return type("R", (), {"choices": [choice]})()
+
+    client = LLMClient()
+    client._client = type(
+        "FakeClient", (), {"chat": type("Chat", (), {"completions": _Completions()})()}
+    )()
+    return client
+
+
+async def test_extract_json_cut_by_the_token_limit_is_unusable_even_if_it_parses():
+    """A reply stopped by the token limit can still be valid JSON — the model
+    closed the list early — and then a 40-marker report reads as a 3-marker one.
+    It must come back flagged, not as a normal payload."""
+    raw = '{"date": "2026-06-10", "results": [{"marker": "TSH", "value": 2.1}]}'
+    client = _client_replying(raw, finish_reason="length")
+
+    out = await client.extract_json("extract", image_urls=["data:image/png;base64,x"])
+
+    assert out == {"_unparsed": raw, "_truncated": True}
+    assert labs_service.normalize_extracted(out) == []
+
+
+async def test_extract_json_empty_reply_is_unparsed():
+    client = _client_replying("   ", finish_reason="stop")
+    out = await client.extract_json("extract", image_urls=["data:image/png;base64,x"])
+    assert out == {"_unparsed": ""}
+
+
+async def test_extract_json_complete_reply_parses():
+    client = _client_replying('{"results": []}', finish_reason="stop")
+    assert await client.extract_json("extract") == {"results": []}
+
+
+async def test_pdf_rasterising_runs_off_the_event_loop(monkeypatch):
+    """Rendering up to ten PDF pages is seconds of CPU; done inline it froze
+    every other request for the duration of an upload."""
+    import threading
+
+    from vitals.integrations import vision
+
+    loop_thread = threading.get_ident()
+    seen = []
+
+    def fake_pages(file_bytes, max_pages=10):
+        seen.append(threading.get_ident())
+        return [b"page-1", b"page-2"]
+
+    monkeypatch.setattr(vision, "pdf_pages_png", fake_pages)
+    llm = FakeLLM({"results": []})
+
+    await labs_service.extract_from_file(b"%PDF-1.4", llm=llm, content_type="application/pdf")
+
+    assert seen and seen[0] != loop_thread
+    assert len(llm.image_urls) == 2
+    assert all(u.startswith("data:image/png;base64,") for u in llm.image_urls)
+
+
 async def test_refresh_alerts_comma_in_ru(db_session):
     from vitals.i18n import current_lang
 
