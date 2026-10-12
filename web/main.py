@@ -252,6 +252,21 @@ async def module_disabled_handler(request: Request, exc: ModuleDisabled):
 # ── Health check ─────────────────────────────────────────────────────────────
 
 
+def _backup_state() -> str | None:
+    """The backup sidecar's verdict, read from the marker it leaves on failure.
+
+    The sidecar has no Python and no app code, so it cannot raise a system alert;
+    it drops ``backup_failed`` into a status directory mounted read-only here, and
+    /health — what external monitoring already watches — turns red until the next
+    good dump removes it. No status directory (a dev box without the sidecar) →
+    ``None``: nothing to report rather than a guess.
+    """
+    status_dir = os.environ.get("VITALS_BACKUP_STATUS_DIR", "/backup_status")
+    if not os.path.isdir(status_dir):
+        return None
+    return "failed" if os.path.exists(os.path.join(status_dir, "backup_failed")) else "ok"
+
+
 @app.get("/health")
 async def health(
     request: Request,
@@ -290,7 +305,9 @@ async def health(
         logger.error("Healthcheck Redis check failed: %s", e)
 
     scheduler_ok = stale_jobs is not None and not stale_jobs
-    status_str = "ok" if (db_ok and redis_ok and scheduler_ok) else "error"
+    backup_state = _backup_state()
+    backup_ok = backup_state != "failed"
+    status_str = "ok" if (db_ok and redis_ok and scheduler_ok and backup_ok) else "error"
 
     body = {
         "status": status_str,
@@ -298,6 +315,8 @@ async def health(
         "redis": "ok" if redis_ok else "down",
         "scheduler": "ok" if scheduler_ok else "stale",
     }
+    if backup_state is not None:
+        body["backup"] = backup_state
 
     # Job ids name the modules this install runs (``hrt_reminders``,
     # ``glp1_plateau``, ...), so a stranger must not read them. The endpoint still

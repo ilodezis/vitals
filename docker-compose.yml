@@ -47,6 +47,9 @@ services:
       - vitals_garmin_session:/data/garmin_session
       # Persist progress photos and lab document uploads across rebuilds/restarts
       - ./web/static/uploads:/app/web/static/uploads
+      # The backup sidecar's status marker, read-only: /health turns red while the
+      # last database dump failed. Only the status subdirectory, not the dumps.
+      - ./backups/status:/backup_status:ro
 
     ports:
       # Loopback-only: health/genetic data must not sit open on the public
