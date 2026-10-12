@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useTodayIso } from '@/app/session'
 import { useQueryClient } from '@tanstack/react-query'
 import { api, failText, InvalidError, ok } from '@/api/client'
 import { ConflictAlert } from '@/components/controls/ConflictAlert'
@@ -13,11 +14,13 @@ import { useT } from '@/i18n/useT'
 import { useConflictMutation } from '@/lib/useConflictMutation'
 import type { SupplementItem } from './types'
 import { useSupplementsView } from './useSupplementsView'
+import { switchDate } from './since'
 import { CUSTOM, joinTiming, splitTiming, TIMING_CHOICES, timingWorthShowing } from './timing'
 import './supplements.css'
 
 export default function SupplementsScreen() {
-  const { t, tOr } = useT()
+  const { t, tOr, lang } = useT()
+  const todayIso = useTodayIso()
   const view = useSupplementsView()
   const queryClient = useQueryClient()
 
@@ -160,6 +163,12 @@ export default function SupplementsScreen() {
           )}
           {timingWorthShowing(s.timing) && !archived && <div className="m">{tOr(`app.supplements.timing.${(s.timing ?? '').trim().toLowerCase()}`, s.timing ?? '')}</div>}
           {s.note && !archived && <div className="m">{s.note}</div>}
+          {!archived && s.since && (
+            <div className="m">{t('app.supplements.since', { date: switchDate(s.since, todayIso, lang) })}</div>
+          )}
+          {archived && s.stoppedOn && (
+            <div className="m">{t('app.supplements.stopped_on', { date: switchDate(s.stoppedOn, todayIso, lang) })}</div>
+          )}
         </div>
         <span className="v">{s.dose || '—'}</span>
         {s.evidence ? (

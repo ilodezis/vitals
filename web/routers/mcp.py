@@ -459,12 +459,25 @@ async def get_hevy_workouts(
 
 @mcp.tool()
 async def get_supplements_catalog() -> list[dict]:
-    """Retrieves the active supplement catalog, including dosages and evidence tiers."""
+    """Retrieves the supplement catalog (taken and paused) with dosages and evidence
+    tiers. ``periods`` is each one's start/stop history, oldest first: ``start``,
+    ``end`` once stopped, ``inferred`` when the start was backfilled (may be later
+    than the real one)."""
+    from vitals.services import supplements_service
+
     session_factory = get_session_factory()
     async with session_factory() as session:
         stmt = select(Supplement).order_by(Supplement.name)
         supps = (await session.execute(stmt)).scalars().all()
-        return [serialize_row(s) for s in supps]
+        history = await supplements_service.periods_by_supplement(session)
+        out = []
+        for s in supps:
+            row = serialize_row(s)
+            periods = supplements_service.periods_view(history.get(s.id, []))
+            if periods:
+                row["periods"] = periods
+            out.append(row)
+        return out
 
 
 @mcp.tool()
@@ -2166,6 +2179,7 @@ async def add_supplement(
                 session, name=name, key=key, dose=dose, timing=timing,
                 evidence=evidence, active=active,
                 contraindications=contraindications, note=note, override=override,
+                source=Source.MCP.value,
             )
         except ConflictBlocked as e:
             return _conflict_payload(e)
@@ -2207,7 +2221,8 @@ async def update_supplement(
             # ``key`` stays as passed: left out, the service re-derives the
             # conflict-matching slug from the (possibly new) name, same as add.
             row = await supplements_service.update_supplement(
-                session, supplement_id, key=key, override=override, **merged,
+                session, supplement_id, key=key, override=override,
+                source=Source.MCP.value, **merged,
             )
         except ConflictBlocked as e:
             return _conflict_payload(e)
@@ -2228,7 +2243,8 @@ async def set_supplement_active(
     async with session_factory() as session:
         try:
             row = await supplements_service.set_active(
-                session, supplement_id, active, override=override
+                session, supplement_id, active, override=override,
+                source=Source.MCP.value,
             )
         except ConflictBlocked as e:
             return _conflict_payload(e)

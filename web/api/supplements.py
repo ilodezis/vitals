@@ -87,21 +87,9 @@ async def update_supplement(
         note=body.note if body.note is not None else existing.note,
         override=body.override,
     )
+    item = await supplements_service.item_view(db, row)
     await db.commit()
-    return SupplementItem(
-        id=row.id,
-        name=row.name,
-        key=row.key,
-        dose=row.dose,
-        timing=row.timing,
-        timing_slot=supplements_service._parse_slot(row.timing),
-        timing_bucket=supplements_service.timing_bucket(row.timing),
-        evidence=row.evidence,
-        active=row.active,
-        contraindications=row.contraindications,
-        contra=row.contraindications,
-        note=row.note,
-    )
+    return SupplementItem.model_validate(item)
 
 
 @router.post(
@@ -120,21 +108,9 @@ async def toggle_supplement(
     )
     if row is None:
         return not_found()
+    item = await supplements_service.item_view(db, row)
     await db.commit()
-    return SupplementItem(
-        id=row.id,
-        name=row.name,
-        key=row.key,
-        dose=row.dose,
-        timing=row.timing,
-        timing_slot=supplements_service._parse_slot(row.timing),
-        timing_bucket=supplements_service.timing_bucket(row.timing),
-        evidence=row.evidence,
-        active=row.active,
-        contraindications=row.contraindications,
-        contra=row.contraindications,
-        note=row.note,
-    )
+    return SupplementItem.model_validate(item)
 
 
 @router.delete("/{supplement_id}", status_code=status.HTTP_204_NO_CONTENT)

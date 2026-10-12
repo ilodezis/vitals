@@ -11,6 +11,10 @@ export interface SupplementItem {
   contraindications?: string | null
   contra?: string | null
   note?: string | null
+  /** Start of the current stretch of taking it; null when not taken now. */
+  since?: string | null
+  /** When the last stretch ended; null while one is running. */
+  stoppedOn?: string | null
 }
 
 export interface SupplementGroup {

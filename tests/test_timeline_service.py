@@ -12,7 +12,7 @@ from vitals.models.glp1 import DOMAIN as GLP1_DOMAIN, DosePhase, SideEffect
 from vitals.models.labs import LabResult
 from vitals.models.milestones import Milestone
 from vitals.models.skincare import DOMAIN as SKINCARE_DOMAIN, SkincareProduct
-from vitals.models.supplements import DOMAIN as SUPP_DOMAIN, Supplement
+from vitals.models.supplements import DOMAIN as SUPP_DOMAIN, Supplement, SupplementPeriod
 from vitals.models.weight import DOMAIN as WEIGHT_DOMAIN, NoiseMarker, ProgressPhoto
 from vitals.services import timeline_service
 
@@ -165,14 +165,16 @@ async def test_overlays_for_domain_includes_own_and_global_only(db_session):
 
 
 async def test_derived_events_supplements_started_and_stopped(db_session):
-    db_session.add(Supplement(
-        name="Creatine", key="creatine", domain=SUPP_DOMAIN, source="manual",
-        active=True, created_at=datetime(2026, 5, 1),
-    ))
-    db_session.add(Supplement(
-        name="Iron", key="iron", domain=SUPP_DOMAIN, source="manual",
-        active=False, created_at=datetime(2026, 4, 1), updated_at=datetime(2026, 6, 1),
-    ))
+    creatine = Supplement(name="Creatine", key="creatine", domain=SUPP_DOMAIN, source="manual",
+                          active=True)
+    iron = Supplement(name="Iron", key="iron", domain=SUPP_DOMAIN, source="manual", active=False)
+    db_session.add_all([creatine, iron])
+    await db_session.flush()
+    db_session.add_all([
+        SupplementPeriod(supplement_id=creatine.id, date=date(2026, 5, 1), domain=SUPP_DOMAIN),
+        SupplementPeriod(supplement_id=iron.id, date=date(2026, 4, 1), end_date=date(2026, 6, 1),
+                         domain=SUPP_DOMAIN),
+    ])
     await db_session.commit()
 
     events = await timeline_service.list_events(db_session)

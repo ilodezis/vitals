@@ -6217,6 +6217,10 @@ export interface components {
             name: string;
             /** Note */
             note?: string | null;
+            /** Since */
+            since?: string | null;
+            /** Stoppedon */
+            stoppedOn?: string | null;
             /** Timing */
             timing?: string | null;
             /** Timingbucket */
@@ -13914,4 +13918,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: 9e821e26f7051d8b5ea36072d8819c0385feef81616d540d260eb44b0def658e
+// openapi.json sha256: e462d183cd2110c7ef7f60b5d622ea3f91706a36a56010cc9d9de6d22367c239

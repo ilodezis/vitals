@@ -1,6 +1,7 @@
 """Pydantic schemas for the Supplements API (/api/v1/supplements)."""
 from __future__ import annotations
 
+from datetime import date
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -27,6 +28,10 @@ class SupplementItem(CamelModel):
     contraindications: Optional[str] = None
     contra: Optional[str] = None
     note: Optional[str] = None
+    # Start of the current stretch of taking it (null when not taken now), and
+    # when the last stretch ended (null while one is running).
+    since: Optional[date] = None
+    stopped_on: Optional[date] = None
 
 
 class SupplementGroup(CamelModel):

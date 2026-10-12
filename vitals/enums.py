@@ -243,5 +243,8 @@ class Source(StrEnum):
     # actually answered). Deliberately reusing MANUAL for "user" rather than
     # adding a second word for the same provenance.
     TEMPLATE = "template"
+    # Reconstructed after the fact rather than recorded when it happened — e.g. a
+    # supplement period backfilled from the catalog row's creation date.
+    INFERRED = "inferred"
     SCHEDULER = "scheduler"
     SYSTEM = "system"

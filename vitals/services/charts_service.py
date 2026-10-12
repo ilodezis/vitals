@@ -10,10 +10,11 @@ from vitals.services import chart_data_service, custom_charts_service
 
 
 async def _overlays_by_chart(
-    session: AsyncSession, charts: list[dict]
+    session: AsyncSession, charts: list[dict], *, with_supplements: bool = False
 ) -> dict[str, list[dict]]:
     """Manual Timeline flags for each saved chart — the union of its series'
-    domains, deduped (a global flag would otherwise repeat once per domain)."""
+    domains, deduped (a global flag would otherwise repeat once per domain) —
+    plus supplement starts and stops when that module is on."""
     from vitals.services import timeline_service
 
     result: dict[str, list[dict]] = {}
@@ -22,7 +23,9 @@ async def _overlays_by_chart(
         seen: set[tuple] = set()
         merged: list[dict] = []
         for d in domains:
-            for o in await timeline_service.overlays_for(session, domain=d):
+            for o in await timeline_service.overlays_for(
+                session, domain=d, with_supplements=with_supplements
+            ):
                 key = (o["start"], o["end"], o["label"])
                 if key in seen:
                     continue
@@ -46,7 +49,9 @@ async def collect(
 
     chart_items: list[dict[str, Any]] = []
     overlays_map = (
-        await _overlays_by_chart(session, saved_charts)
+        await _overlays_by_chart(
+            session, saved_charts, with_supplements=bool(enabled.get("supplements"))
+        )
         if enabled.get("timeline", True)
         else {}
     )

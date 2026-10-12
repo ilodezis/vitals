@@ -379,8 +379,8 @@ DIGEST_SYSTEM = """\
   ЗНАМЕНАТЕЛИ, прежде чем делать вывод о пропусках: days — длина окна (все дни закрытые), garmin_days / nutrition_days_logged — на скольких из них реально стоят цифры. Разница, построенная на двух днях против семи, — это разница в покрытии данных, а не в организме, и назвать её надо именно так. Про покрытие пиши, только если оно реально мешает выводу: «данные есть за все дни» — не наблюдение, а отчёт о самом себе.
 - nutrition: средние калории/белок/жиры/углеводы, покрытие и поздние приёмы пищи
 - hrt: cycle.items и schedule — назначенный протокол, planned_administrations — план, doses — факт текущего окна, comparison_doses — факт прошлого; side_effects тоже разделены. Связывай вмешательство со сном/HRV, анализами, кожей и настроением, но не давай назначения доз.
-- supplements: текущий справочник, а не дневной adherence-log; skincare: продукты, реальные daily logs и observations; genetics: только курированные impact/interpretation/action_notes; alerts: активные предупреждения as-of среза.
-- timeline: ручные события и только не дублирующие доменные блоки derived lifecycle events. certainty=audit_timestamp означает приблизительную дату изменения справочника.
+- supplements: принимаемые сейчас и прекращённые в окне; periods — история приёма (start/end), inferred=true — начало восстановлено по дате добавления в справочник и могло быть раньше. Это не дневной adherence-log; skincare: продукты, реальные daily logs и observations; genetics: только курированные impact/interpretation/action_notes; alerts: активные предупреждения as-of среза.
+- timeline: ручные события и только не дублирующие доменные блоки derived lifecycle events. certainty=audit_timestamp означает приблизительную дату изменения справочника, certainty=inferred — восстановленную дату начала приёма.
 - signals: что пользователь сам сказал о своём состоянии, в хронологическом порядке. kind=state (есть всегда, value_num 1-5: «энергии ноль»), symptom (случилось, value_num 1-5: «голова раскалывается»), exposure (сделал/принял, at_time — время суток: «кофе в 22»). note — исходная формулировка. Единственный блок, который объясняет ПОЧЕМУ цифры такие: ищи связи «exposure вечером → метрика Garmin наутро» и «симптом держится N дней подряд → что ещё в эти дни». Это его слова, а не измерение — не считай их точными числами и не строй на одной записи вывод.
 - day_context: planned — догадка шаблона, answers — ручные переопределения, resolved — их итог; source_by_field показывает силу каждого поля. Вывод на одном template-поле не строй.
 - environment: воздух в спальне — по одной сводке на ночь (окно 00:00–12:00 по местному времени) за текущий и предыдущий период, поле period: CO₂ median/p90/max в ppm, minutes_above_warn / minutes_above_bad (сколько минут показания были на пороге и выше; сами пороги — в thresholds), диапазоны температуры и влажности. coverage_pct — какую часть окна станция реально присылала данные: низкое значение — дыра в данных, а не чистая ночь. Это контекст к сну и восстановлению, а не вердикт: не вини комнату за плохую оценку сна, пока нет ночей, где менялось и то и другое. Кривых в блоке нет.
@@ -451,8 +451,8 @@ The context has schema_version=2. Any domain may be null, but null alone does NO
   DENOMINATORS, before concluding anything about missed days: days is the window length (every day in it is closed), garmin_days / nutrition_days_logged is how many of them actually carry numbers. A difference built on two days against seven is a difference in coverage, not in the body, and must be called that. Only mention coverage when it actually limits a conclusion — "data is present for every day" is not an observation, it's a status report about yourself.
 - nutrition: average calories/protein/fat/carbs, coverage and late meals
 - hrt: cycle.items/schedule are the prescribed plan; planned_administrations are planned; doses are current-window facts and comparison_doses are previous-window facts; side effects are split likewise. Relate the intervention to sleep/HRV, labs, skin and mood, but do not prescribe doses.
-- supplements is a current catalog, not a daily adherence log; skincare has products, actual daily logs and observations; genetics contains curated impact/interpretation/action_notes only; alerts are active warnings as of the slice.
-- timeline: manual events plus only derived lifecycle events not duplicated by first-class blocks. certainty=audit_timestamp means an approximate catalog-change date.
+- supplements: taken now plus those stopped within the window; periods is the intake history (start/end), inferred=true means the start was reconstructed from when it was added to the catalog and may have been earlier. Not a daily adherence log; skincare has products, actual daily logs and observations; genetics contains curated impact/interpretation/action_notes only; alerts are active warnings as of the slice.
+- timeline: manual events plus only derived lifecycle events not duplicated by first-class blocks. certainty=audit_timestamp means an approximate catalog-change date, certainty=inferred a reconstructed intake start.
 - signals: what the user said about how he felt, in chronological order. kind=state (always present, value_num 1-5), symptom (happened, value_num 1-5), exposure (did/took it, at_time = time of day). note is his original wording. The only block that explains WHY the numbers look like they do: look for "exposure in the evening → Garmin metric next morning" and "symptom running N days straight → what else those days had". These are his words, not measurements — don't treat them as exact figures and don't build a conclusion on a single row.
 - day_context: planned is the template guess, answers are manual overrides, resolved is the effective result, and source_by_field carries the strength of each field. Do not build a conclusion on one template-only field.
 - environment: the bedroom's air — one summary per night (the 00:00-12:00 window, local time) for the current and the previous period, tagged by period: CO2 median/p90/max in ppm, minutes_above_warn / minutes_above_bad (minutes the reading sat at or over the threshold; the thresholds themselves are in thresholds), temperature and humidity ranges. coverage_pct is how much of the window the station actually reported: a low value is a gap in the data, not a clean night. It is context for sleep and recovery, not a verdict on them: don't blame the room for a bad sleep score unless there are nights where both moved. There are no curves in the block.
@@ -1341,26 +1341,41 @@ async def assemble_context(
     all_supps = list(
         await supplements_service.list_supplements(session, active_only=False)
     ) if supplements_enabled else []
-    active_supps = [row for row in all_supps if row.active]
-    ctx["supplements"] = (
-        [
-            {
-                "key": s.key,
-                "name": s.name,
-                "dose": s.dose,
-                "timing": s.timing,
-                "evidence": s.evidence,
-                "contraindications": s.contraindications,
-                "note": s.note,
-                "source": s.source,
-                # The table is a current catalog, not a dated adherence log.
-                "state_is_current_catalog": True,
-            }
-            for s in active_supps
-        ]
-        if active_supps
-        else None
+    supp_history = (
+        await supplements_service.periods_by_supplement(session)
+        if supplements_enabled else {}
     )
+    active_supps = [row for row in all_supps if row.active]
+    # Taken now, plus anything stopped inside the window — a supplement dropped
+    # mid-period is exactly the change the narrative should be able to see.
+    shown_supps = [
+        row for row in all_supps
+        if row.active
+        or (
+            (stopped := supplements_service.last_stopped(supp_history.get(row.id, [])))
+            is not None
+            and period_start <= stopped <= period_end
+        )
+    ]
+
+    def _supplement_row(s) -> dict[str, Any]:
+        periods = supp_history.get(s.id, [])
+        return {
+            "key": s.key,
+            "name": s.name,
+            "dose": s.dose,
+            "timing": s.timing,
+            "evidence": s.evidence,
+            "contraindications": s.contraindications,
+            "note": s.note,
+            "source": s.source,
+            "active": s.active,
+            # Start/stop history, oldest first; ``inferred`` marks a start that was
+            # backfilled from when the row was added and may be later than the real one.
+            "periods": supplements_service.periods_view(periods) or None,
+        }
+
+    ctx["supplements"] = [_supplement_row(s) for s in shown_supps] or None
     ctx["coverage"]["supplements"] = _coverage(
         module="supplements",
         enabled=supplements_enabled,
@@ -1368,7 +1383,7 @@ async def assemble_context(
         rows=len(all_supps),
         extra={
             "active_rows": len(active_supps),
-            "historical_state_reliable": False,
+            "historical_state_reliable": True,
         },
     )
 
@@ -1754,37 +1769,23 @@ async def assemble_context(
         # Only lifecycle facts not already represented by a first-class context
         # block are added here. ``updated_at`` is explicitly labelled as an audit
         # timestamp, because these catalogs do not have a true stop-history table.
-        for row in all_supps:
-            started = row.created_at.date()
-            if since <= started <= period_end:
-                timeline_entries.append(
-                    {
-                        "date": started.isoformat(),
-                        "end_date": None,
-                        "kind": "supplement_started",
-                        "domain": "supplements",
-                        "title": row.name,
-                        "note": None,
-                        "source": "derived",
-                        "ref": f"supplement_started:{row.id}",
-                        "certainty": "audit_timestamp",
-                    }
-                )
-            stopped = row.updated_at.date()
-            if not row.active and since <= stopped <= period_end:
-                timeline_entries.append(
-                    {
-                        "date": stopped.isoformat(),
-                        "end_date": None,
-                        "kind": "supplement_stopped",
-                        "domain": "supplements",
-                        "title": row.name,
-                        "note": None,
-                        "source": "derived",
-                        "ref": f"supplement_stopped:{row.id}",
-                        "certainty": "audit_timestamp",
-                    }
-                )
+        for ev in (
+            await supplements_service.switch_events(session, start=since, end=period_end)
+            if supplements_enabled else []
+        ):
+            timeline_entries.append(
+                {
+                    "date": ev["date"].isoformat(),
+                    "end_date": None,
+                    "kind": f"supplement_{ev['kind']}",
+                    "domain": "supplements",
+                    "title": ev["name"],
+                    "note": None,
+                    "source": "derived",
+                    "ref": f"supplement_{ev['kind']}:{ev['period_id']}",
+                    "certainty": "inferred" if ev["inferred"] else "exact",
+                }
+            )
         for row in all_products:
             added = row.created_at.date()
             if since <= added <= period_end:

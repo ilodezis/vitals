@@ -310,29 +310,25 @@ async def _derived_events(
             detail=None, tone="warn", source="derived", ref=f"noise_marker:{n.id}",
         ))
 
-    # Supplements — started (created_at) and stopped (active flips false,
-    # updated_at stands in for "stopped on"; same limitation as milestones
-    # above — no dedicated history table, so an unrelated edit after stopping
-    # would also move this date).
-    from vitals.models.supplements import DOMAIN as SUPP_DOMAIN, Supplement
+    # Supplements — started and stopped, from the period history the catalog
+    # keeps (``supplements_service``). A start backfilled from the catalog row's
+    # creation date says so: the real start may be earlier.
+    from vitals.models.supplements import DOMAIN as SUPP_DOMAIN
+    from vitals.services import supplements_service
 
-    sup_stmt = select(Supplement).where(Supplement.domain == SUPP_DOMAIN)
-    for s in (await session.execute(sup_stmt)).scalars().all():
-        started = s.created_at.date()
-        if (start is None or started >= start) and (end is None or started <= end):
-            events.append(TimelineEvent(
-                date=started, end_date=None, domain=SUPP_DOMAIN, kind="protocol_change",
-                title=t("timeline.derived.supplement_started", name=s.name),
-                detail=None, tone="", source="derived", ref=f"supplement_started:{s.id}",
-            ))
-        if not s.active:
-            stopped = s.updated_at.date()
-            if (start is None or stopped >= start) and (end is None or stopped <= end):
-                events.append(TimelineEvent(
-                    date=stopped, end_date=None, domain=SUPP_DOMAIN, kind="protocol_change",
-                    title=t("timeline.derived.supplement_stopped", name=s.name),
-                    detail=None, tone="", source="derived", ref=f"supplement_stopped:{s.id}",
-                ))
+    for ev in await supplements_service.switch_events(session, start=start, end=end):
+        started = ev["kind"] == "started"
+        events.append(TimelineEvent(
+            date=ev["date"], end_date=None, domain=SUPP_DOMAIN, kind="protocol_change",
+            title=t(
+                "timeline.derived.supplement_started" if started
+                else "timeline.derived.supplement_stopped",
+                name=ev["name"],
+            ),
+            detail=t("timeline.derived.supplement_inferred") if ev["inferred"] else None,
+            tone="", source="derived",
+            ref=f"supplement_{ev['kind']}:{ev['period_id']}",
+        ))
 
     # Skincare products — added/removed from the active routine. No domain/
     # source column on this table (unlike Supplement/GeneticVariant), so no
@@ -415,11 +411,17 @@ async def overlays_for(
     domain: str,
     start: Optional[date_type] = None,
     end: Optional[date_type] = None,
+    with_supplements: bool = False,
 ) -> list[dict]:
     """Manual-annotation overlays for one domain's chart: the domain's own flags
     plus global ones (``Domain.TIMELINE``). Shape matches the existing noise/
     phase overlay dicts (``{start, end?, label, tone, kind}``) so the same
-    Chart.js annotation plugin renders them."""
+    Chart.js annotation plugin renders them.
+
+    ``with_supplements`` (the supplements module is on) adds a marker for each
+    supplement started or stopped — the question a cross-domain chart exists to
+    answer is "did this change after I started X". Backfilled starts are left
+    out: their date is a guess, and a line on a chart reads as a fact."""
     own = await list_annotations(session, domain=domain, start=start, end=end)
     glob = (
         await list_annotations(session, domain=DOMAIN, start=start, end=end)
@@ -435,6 +437,23 @@ async def overlays_for(
             "tone": _TONE_BY_KIND.get(a.kind, ""),
             "kind": a.kind,
         })
+    if with_supplements:
+        from vitals.services import supplements_service
+
+        for ev in await supplements_service.switch_events(session, start=start, end=end):
+            if ev["inferred"]:
+                continue
+            overlays.append({
+                "start": ev["date"].isoformat(),
+                "end": None,
+                "label": t(
+                    "timeline.derived.supplement_started" if ev["kind"] == "started"
+                    else "timeline.derived.supplement_stopped",
+                    name=ev["name"],
+                ),
+                "tone": "",
+                "kind": AnnotationKind.PROTOCOL_CHANGE.value,
+            })
     return overlays
 
 

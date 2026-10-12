@@ -28,7 +28,7 @@ from vitals.models.glp1 import (
 )
 
 # Phase 3 — Supplements / Genetics / Skincare.
-from vitals.models.supplements import Supplement
+from vitals.models.supplements import Supplement, SupplementPeriod
 from vitals.models.genetics import GeneticVariant
 from vitals.models.skincare import SkincareLog, SkincareObservation, SkincareProduct
 
@@ -98,6 +98,7 @@ __all__ = [
     "DosePhase",
     "SideEffect",
     "Supplement",
+    "SupplementPeriod",
     "GeneticVariant",
     "SkincareLog",
     "SkincareObservation",

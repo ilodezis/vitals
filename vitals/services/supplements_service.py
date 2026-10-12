@@ -7,19 +7,26 @@ exists raises a ``block`` (overridable).
 
 Mutating fns run ``conflict_engine.enforce`` so the override flow is wired: the
 router turns ``ConflictBlocked`` into a 409 + violations payload.
+
+This service also owns the start/stop history (``SupplementPeriod``): every path
+that switches a supplement on or off — create, edit, toggle, from the web or the
+connector — goes through :func:`_record_switch`, so the history cannot drift from
+the flag.
 """
 from __future__ import annotations
 
 import re
+from datetime import date as date_type
 from typing import Any, Optional, Sequence
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.enums import Domain, Source
 from vitals.i18n import t
-from vitals.models.supplements import DOMAIN, Supplement
+from vitals.models.supplements import DOMAIN, Supplement, SupplementPeriod
 from vitals.services import conflict_engine
+from vitals.utils.timeutils import today_local
 
 
 _TRANSLIT = {
@@ -104,6 +111,119 @@ def _proposed(key: str, active: bool, timing_slot: Optional[str] = None) -> dict
     return {"key": key, "active": active, "timing_slot": timing_slot}
 
 
+# ── Start/stop history ────────────────────────────────────────────────────────
+async def _latest_period(session: AsyncSession, supplement_id: int) -> Optional[SupplementPeriod]:
+    result = await session.execute(
+        select(SupplementPeriod)
+        .where(SupplementPeriod.supplement_id == supplement_id)
+        .order_by(SupplementPeriod.date.desc(), SupplementPeriod.id.desc())
+        .limit(1)
+    )
+    return result.scalars().first()
+
+
+async def _record_switch(
+    session: AsyncSession,
+    row: Supplement,
+    active: bool,
+    *,
+    source: str,
+    on_date: Optional[date_type] = None,
+) -> None:
+    """Open or close the supplement's current period to match ``active``.
+
+    Idempotent: switching on what is already running (or off what is already
+    stopped) changes nothing. Switched off and back on the same day reopens that
+    period rather than leaving a zero-length gap — a mis-tap is not a break.
+    """
+    on_date = on_date or today_local()
+    latest = await _latest_period(session, row.id)
+    if active:
+        if latest is not None and latest.end_date is None:
+            return
+        if latest is not None and latest.end_date == on_date:
+            latest.end_date = None
+        else:
+            session.add(SupplementPeriod(
+                supplement_id=row.id, date=on_date, domain=DOMAIN, source=source,
+            ))
+    elif latest is not None and latest.end_date is None:
+        latest.end_date = max(on_date, latest.date)
+    await session.flush()
+
+
+async def periods_by_supplement(
+    session: AsyncSession, supplement_ids: Optional[Sequence[int]] = None
+) -> dict[int, list[SupplementPeriod]]:
+    """Every period, oldest first, keyed by supplement id."""
+    stmt = select(SupplementPeriod).order_by(SupplementPeriod.date, SupplementPeriod.id)
+    if supplement_ids is not None:
+        stmt = stmt.where(SupplementPeriod.supplement_id.in_(list(supplement_ids)))
+    out: dict[int, list[SupplementPeriod]] = {}
+    for period in (await session.execute(stmt)).scalars().all():
+        out.setdefault(period.supplement_id, []).append(period)
+    return out
+
+
+def current_since(periods: Sequence[SupplementPeriod]) -> Optional[date_type]:
+    """Start of the open period (taken since), or ``None`` when not being taken."""
+    if periods and periods[-1].end_date is None:
+        return periods[-1].date
+    return None
+
+
+def last_stopped(periods: Sequence[SupplementPeriod]) -> Optional[date_type]:
+    """When the last period ended, or ``None`` when one is still open or none exist."""
+    if periods and periods[-1].end_date is not None:
+        return periods[-1].end_date
+    return None
+
+
+def periods_view(periods: Sequence[SupplementPeriod]) -> list[dict[str, Any]]:
+    """Compact history for a model or an export: ``start``, ``end`` when stopped,
+    ``inferred`` when the start was reconstructed rather than recorded."""
+    out = []
+    for p in periods:
+        item: dict[str, Any] = {"start": p.date.isoformat()}
+        if p.end_date is not None:
+            item["end"] = p.end_date.isoformat()
+        if p.source == Source.INFERRED.value:
+            item["inferred"] = True
+        out.append(item)
+    return out
+
+
+async def switch_events(
+    session: AsyncSession,
+    *,
+    start: Optional[date_type] = None,
+    end: Optional[date_type] = None,
+) -> list[dict[str, Any]]:
+    """Start and stop events inside ``[start, end]``, oldest first: ``{date, kind
+    ('started'|'stopped'), supplement_id, name, inferred}``. A start that was
+    backfilled is still an event — flagged, so a reader can discount it."""
+    supplements = {s.id: s for s in await list_supplements(session)}
+    events: list[dict[str, Any]] = []
+
+    def _within(day: date_type) -> bool:
+        return (start is None or day >= start) and (end is None or day <= end)
+
+    for supplement_id, periods in (await periods_by_supplement(session)).items():
+        supp = supplements.get(supplement_id)
+        if supp is None:
+            continue
+        for p in periods:
+            inferred = p.source == Source.INFERRED.value
+            if _within(p.date):
+                events.append({"date": p.date, "kind": "started", "supplement_id": supp.id,
+                               "name": supp.name, "inferred": inferred, "period_id": p.id})
+            if p.end_date is not None and _within(p.end_date):
+                events.append({"date": p.end_date, "kind": "stopped", "supplement_id": supp.id,
+                               "name": supp.name, "inferred": False, "period_id": p.id})
+    events.sort(key=lambda e: (e["date"], e["name"]))
+    return events
+
+
 async def list_supplements(
     session: AsyncSession, *, active_only: bool = False
 ) -> Sequence[Supplement]:
@@ -127,6 +247,7 @@ async def add_supplement(
     contraindications: Optional[str] = None,
     note: Optional[str] = None,
     override: bool = False,
+    source: str = Source.MANUAL.value,
 ) -> Supplement:
     if key:
         resolved_key = key
@@ -146,7 +267,7 @@ async def add_supplement(
     )
     row = Supplement(
         domain=DOMAIN,
-        source=Source.MANUAL.value,
+        source=source,
         name=name,
         key=resolved_key,
         dose=dose,
@@ -158,6 +279,8 @@ async def add_supplement(
     )
     session.add(row)
     await session.flush()
+    if active:
+        await _record_switch(session, row, True, source=source)
     return row
 
 
@@ -174,6 +297,7 @@ async def update_supplement(
     contraindications: Optional[str] = None,
     note: Optional[str] = None,
     override: bool = False,
+    source: str = Source.MANUAL.value,
 ) -> Optional[Supplement]:
     row = await session.get(Supplement, supplement_id)
     if row is None:
@@ -199,15 +323,23 @@ async def update_supplement(
     row.dose = dose
     row.timing = timing
     row.evidence = evidence
+    switched = row.active != active
     row.active = active
     row.contraindications = contraindications
     row.note = note
     await session.flush()
+    if switched:
+        await _record_switch(session, row, active, source=source)
     return row
 
 
 async def set_active(
-    session: AsyncSession, supplement_id: int, active: bool, *, override: bool = False
+    session: AsyncSession,
+    supplement_id: int,
+    active: bool,
+    *,
+    override: bool = False,
+    source: str = Source.MANUAL.value,
 ) -> Optional[Supplement]:
     """Toggle a catalog row's active flag — runs the conflict check so activating
     a contraindicated supplement surfaces the block/override flow."""
@@ -222,8 +354,11 @@ async def set_active(
             override=override,
             entity_ref=f"supplement:{row.key}",
         )
+    switched = row.active != active
     row.active = active
     await session.flush()
+    if switched:
+        await _record_switch(session, row, active, source=source)
     return row
 
 
@@ -231,6 +366,10 @@ async def delete_supplement(session: AsyncSession, supplement_id: int) -> bool:
     row = await session.get(Supplement, supplement_id)
     if row is None:
         return False
+    # The FK cascades on Postgres; deleting explicitly keeps it true everywhere.
+    await session.execute(
+        delete(SupplementPeriod).where(SupplementPeriod.supplement_id == supplement_id)
+    )
     await session.delete(row)
     await session.flush()
     return True
@@ -252,34 +391,44 @@ async def resolve_active(session: AsyncSession) -> list[dict]:
 
 
 # ── Full view collection for API / UI ─────────────────────────────────────────
+def _item(s: Supplement, periods: Sequence[SupplementPeriod]) -> dict[str, Any]:
+    return {
+        "id": s.id,
+        "name": s.name,
+        "key": s.key,
+        "dose": s.dose,
+        "timing": s.timing,
+        "timing_slot": _parse_slot(s.timing),
+        "timing_bucket": timing_bucket(s.timing),
+        "evidence": s.evidence,
+        "active": s.active,
+        "contraindications": s.contraindications,
+        "contra": s.contraindications,
+        "note": s.note,
+        "since": current_since(periods),
+        "stopped_on": last_stopped(periods),
+    }
+
+
+async def item_view(session: AsyncSession, row: Supplement) -> dict[str, Any]:
+    """One catalog row as the dashboard shows it — what an edit or toggle returns."""
+    history = await periods_by_supplement(session, [row.id])
+    return _item(row, history.get(row.id, []))
+
+
 async def collect(session: AsyncSession) -> dict[str, Any]:
     """Collect everything needed by the Supplements dashboard in one round-trip."""
     from vitals.services import alerts_service
 
     all_supps = await list_supplements(session)
     active_alerts = await alerts_service.list_active(session, domain=Domain.SUPPLEMENTS.value)
+    history = await periods_by_supplement(session)
 
     active_items: list[dict[str, Any]] = []
     archived_items: list[dict[str, Any]] = []
 
-    def _to_item(s: Supplement) -> dict[str, Any]:
-        return {
-            "id": s.id,
-            "name": s.name,
-            "key": s.key,
-            "dose": s.dose,
-            "timing": s.timing,
-            "timing_slot": _parse_slot(s.timing),
-            "timing_bucket": timing_bucket(s.timing),
-            "evidence": s.evidence,
-            "active": s.active,
-            "contraindications": s.contraindications,
-            "contra": s.contraindications,
-            "note": s.note,
-        }
-
     for s in all_supps:
-        item = _to_item(s)
+        item = _item(s, history.get(s.id, []))
         if s.active:
             active_items.append(item)
         else:

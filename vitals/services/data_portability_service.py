@@ -91,7 +91,7 @@ _EXCLUDED_TABLES = frozenset({"shared_reports", "environment_samples"})
 _LABELED_TABLES = (
     "weight_logs", "body_measurements", "progress_photos", "hevy_workouts",
     "garmin_daily", "garmin_activities", "lab_results", "glp1_injections",
-    "glp1_side_effects", "meal_logs", "supplements", "genetic_variants",
+    "glp1_side_effects", "meal_logs", "supplements", "supplement_periods", "genetic_variants",
     "skincare_logs", "weekly_digests", "annotations",
     "hrt_doses", "hrt_cycles", "hrt_side_effects",
     "signals", "day_context", "body_scans", "milestones", "noise_markers",
@@ -683,9 +683,12 @@ async def export_llm(
     ]
 
     # Reference catalogs.
+    from vitals.services import supplements_service
+
     supplements = (
         await session.execute(select(Supplement).order_by(Supplement.name))
     ).scalars().all()
+    supplement_history = await supplements_service.periods_by_supplement(session)
     out["supplements"] = [
         _compact(
             {
@@ -695,6 +698,10 @@ async def export_llm(
                 "evidence": s.evidence,
                 "active": s.active,
                 "contraindications": s.contraindications,
+                # When it was started and stopped — the catalog row alone is only
+                # today's state.
+                "periods": supplements_service.periods_view(supplement_history.get(s.id, []))
+                or None,
             }
         )
         for s in supplements
