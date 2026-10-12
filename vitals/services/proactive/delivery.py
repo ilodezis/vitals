@@ -30,10 +30,11 @@ Five rules, in the order they're checked:
    easiest rule in the whole feature to get wrong, so it lives in one ``frozenset``
    right here rather than at each call site.
 
-A send that fails at the transport is logged and swallowed: the caller's DB work
-(the signals it just parsed, the digest it just stored) must not be rolled back
+A send that fails at the transport is swallowed: the caller's DB work (the
+signals it just parsed, the digest it just stored) must not be rolled back
 because Telegram had a bad minute, and an un-sent message writes no journal row,
-so it costs nothing from the budget either.
+so it costs nothing from the budget either. It is not silent, though: it raises a
+``warn`` alert per channel, which the next message that does go out clears.
 """
 from __future__ import annotations
 
@@ -74,6 +75,9 @@ INITIATIVE_CATEGORIES = frozenset({CATEGORY_BRIEF, CATEGORY_EVENING, CATEGORY_NU
 EVENING_BLOCK_MESSAGES = 2
 # Held back by quiet hours. Wider than the budget set on purpose.
 QUIET_HOURS_CATEGORIES = frozenset({CATEGORY_NUDGE, CATEGORY_ENVIRONMENT})
+
+# One alert per channel while its sends fail (entity = the channel name).
+DELIVERY_ALERT_KEY = "proactive.delivery_failed"
 
 # Fallbacks only — the live values come from ``prefs`` (the settings card), which
 # is why they are read per send rather than captured at import.
@@ -212,11 +216,26 @@ async def send(
             logger.info("skipping %s: daily budget of %s used", category, budget)
             return None
 
+    from vitals.enums import Domain, Severity
+    from vitals.i18n import t
+    from vitals.services import alerts_service
+
     try:
         external_id = await notifier.send(text, buttons=buttons, reply_to=reply_to)
     except Exception:
         logger.warning("delivery failed for %s; message dropped", category, exc_info=True)
+        await alerts_service.raise_alert(
+            session,
+            domain=Domain.SYSTEM.value,
+            severity=Severity.WARN.value,
+            message=t("alert.delivery_failed", channel=notifier.channel),
+            alert_key=DELIVERY_ALERT_KEY,
+            entity_ref=notifier.channel,
+        )
         return None
+    await alerts_service.resolve_by_key(
+        session, alert_key=DELIVERY_ALERT_KEY, entity_ref=notifier.channel
+    )
 
     row = Notification(
         sent_at=now,

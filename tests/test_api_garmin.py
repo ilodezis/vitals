@@ -239,6 +239,21 @@ async def test_sync_unconfigured_or_mocked(auth_client):
         assert r.json() == {"ok": True, "synced_days": 3, "error": None}
 
 
+async def test_sync_button_says_so_while_another_pull_runs(auth_client, redis):
+    """The web button shares the one Garmin pull lock with the poll, the brief
+    and MCP — a second pull at the same minute only doubles the 429s."""
+    await redis.set("scheduler:lock:garmin", "scheduled-poll")
+    with patch("web.api.garmin.GarminClient.from_config") as mock_client,          patch("web.api.garmin.garmin_service.sync", new_callable=AsyncMock) as mock_sync:
+        mock_instance = AsyncMock()
+        mock_instance.is_configured = True
+        mock_client.return_value = mock_instance
+
+        r = await auth_client.post(f"{RECOVERY}/sync")
+
+    assert r.json() == {"ok": False, "synced_days": 0, "error": "busy"}
+    mock_sync.assert_not_called()
+
+
 async def test_import_garmin_json(auth_client):
     with patch("web.api.garmin.garmin_service.ingest_health_auto_export", new_callable=AsyncMock) as mock_ingest:
         mock_ingest.return_value = {"dates": [dt.date(2026, 3, 14), dt.date(2026, 3, 15)]}

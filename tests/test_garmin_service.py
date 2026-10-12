@@ -21,6 +21,7 @@ from vitals.integrations.garmin_client import (
     GarminLoginThrottled,
     GarminMFARequired,
 )
+from vitals.integrations.garmin_client import FAILED_KEY
 from vitals.models.garmin import (
     SERIES_BODY_BATTERY,
     SERIES_HEART_RATE,
@@ -38,6 +39,7 @@ from vitals.models.garmin import (
     GarminIntraday,
 )
 from vitals.models.raw_payload import RawPayload
+from vitals.models.system_alert import SystemAlert
 from vitals.models.weight import WeightLog
 from vitals.services import garmin_service, weight_service
 from vitals.utils.timeutils import to_local_naive
@@ -626,6 +628,128 @@ async def test_intraday_empty_series_keeps_existing_rows(db_session):
         )
     )).scalar()
     assert n == 6  # 2 stress + 4 body battery, still there
+
+
+async def _stored_daily_raw(db_session) -> RawPayload:
+    return (await db_session.execute(
+        select(RawPayload).where(RawPayload.external_id == f"daily:{DAY.isoformat()}")
+    )).scalar_one()
+
+
+async def test_a_failed_sub_metric_never_erases_a_stored_day(db_session):
+    """A 429 on sleep after a good sync used to blank the column *and* the raw
+    copy; with a two-day window, a hiccup on the last poll before midnight lost
+    the night for good."""
+    await garmin_service.sync(db_session, FakeGarminClient(), days=1, on_date=DAY)
+    await db_session.commit()
+
+    hiccup = dict(RAW_DAY, sleep=None, hrv=None, _failed=["sleep", "hrv"])
+    await garmin_service.sync(
+        db_session, FakeGarminClient(daily={DAY: hiccup}), days=1, on_date=DAY
+    )
+    await db_session.commit()
+
+    row = await garmin_service.get_daily(db_session, DAY)
+    assert row.sleep_seconds == 27000
+    assert row.hrv_avg == 45.0
+    raw = await _stored_daily_raw(db_session)
+    assert raw.payload["sleep"] == RAW_DAY["sleep"]
+    assert raw.payload["hrv"] == RAW_DAY["hrv"]
+    assert "_failed" not in raw.payload
+
+
+async def test_a_none_sub_metric_keeps_the_stored_one(db_session):
+    await garmin_service.sync(db_session, FakeGarminClient(), days=1, on_date=DAY)
+    await db_session.commit()
+
+    await garmin_service.ingest_daily(db_session, DAY, dict(RAW_DAY, sleep=None))
+    await db_session.commit()
+
+    row = await garmin_service.get_daily(db_session, DAY)
+    assert row.sleep_seconds == 27000
+    assert (await _stored_daily_raw(db_session)).payload["sleep"] == RAW_DAY["sleep"]
+
+
+async def test_a_fresh_sub_metric_still_replaces_the_stored_one(db_session):
+    await garmin_service.sync(db_session, FakeGarminClient(), days=1, on_date=DAY)
+    await db_session.commit()
+
+    fresher = dict(RAW_DAY, summary={**RAW_DAY["summary"], "totalSteps": 9100})
+    await garmin_service.ingest_daily(db_session, DAY, fresher)
+    await db_session.commit()
+
+    assert (await garmin_service.get_daily(db_session, DAY)).steps == 9100
+
+
+async def test_a_sub_metric_failing_poll_after_poll_raises_an_alert_that_clears(db_session):
+    """Keeping the stored day makes a persistent failure silent — the night just
+    never fills in. Past a streak of failed polls it becomes a warn alert."""
+    async def _sync(client):
+        await garmin_service.sync(db_session, client, days=1, on_date=DAY)
+        await db_session.commit()
+
+    async def _active():
+        return (await db_session.execute(
+            select(SystemAlert).where(
+                SystemAlert.alert_key == garmin_service.METRIC_ALERT_KEY,
+                SystemAlert.resolved_at.is_(None),
+            )
+        )).scalars().all()
+
+    failing = FakeGarminClient(daily={DAY: dict(RAW_DAY, sleep=None, _failed=["sleep"])})
+    for _ in range(garmin_service.METRIC_FAILURE_STREAK - 1):
+        await _sync(failing)
+    assert await _active() == []
+
+    await _sync(failing)
+    assert [a.entity_ref for a in await _active()] == ["sleep"]
+
+    await _sync(FakeGarminClient())
+    assert await _active() == []
+
+
+async def test_client_lists_the_sub_metrics_that_failed():
+    class _Flaky:
+        def __getattr__(self, name):
+            if name == "get_sleep_data":
+                def _boom(*a):
+                    raise RuntimeError("429 Too Many Requests")
+                return _boom
+            return lambda *a: {"ok": name}
+
+    client = GarminClient(Config(database_url="", redis_url=""))
+    client._garmin = _Flaky()
+
+    bundle = await client.fetch_daily(DAY)
+
+    assert bundle["sleep"] is None
+    assert bundle[FAILED_KEY] == ["sleep"]
+    assert bundle["hrv"] == {"ok": "get_hrv_data"}
+
+
+async def test_every_garmin_pull_shares_one_lock(session_factory, redis, monkeypatch):
+    """The brief, the MCP tool, the web button and the poll used to pull at the
+    same minute — double the requests, double the 429s."""
+    calls = []
+
+    class _Counting(FakeGarminClient):
+        async def fetch_daily(self, on_date):
+            calls.append(on_date)
+            return await super().fetch_daily(on_date)
+
+    monkeypatch.setattr(GarminClient, "from_config", classmethod(lambda cls, *a, **kw: _Counting()))
+
+    # Held by another pull (fakeredis has no Lua, so the key is set by hand).
+    lock_key = f"scheduler:lock:{garmin_service.PULL_LOCK_ID}"
+    await redis.set(lock_key, "other-pull")
+    busy = await garmin_service.sync_job(session_factory, redis, days=1)
+    await redis.delete(lock_key)
+    assert busy == {"days": 0, "activities": 0, "error": garmin_service.SYNC_BUSY}
+    assert calls == []
+
+    done = await garmin_service.sync_job(session_factory, redis, days=1)
+    assert done["error"] is None
+    assert len(calls) == 1
 
 
 async def test_intraday_series_map_groups_by_type(db_session):

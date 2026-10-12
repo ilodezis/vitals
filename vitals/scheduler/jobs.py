@@ -106,12 +106,16 @@ def register_all_jobs(settings: Optional[dict[str, Any]] = None) -> None:
         minute=0,
     )
 
-    # Hevy sync — every 6h. No-ops when Hevy isn't configured.
+    # Hevy sync — every 6h on the clock (00:30/06:30/12:30/18:30). A cron, like the
+    # Garmin poll below and for the same reason: an interval re-phases off boot, so
+    # deploys more often than every six hours meant it never ran at all. Half past,
+    # so it never lands on the Garmin poll. No-ops when Hevy isn't configured.
     register_job(
         "hevy_sync",
         hevy_sync_job,
-        trigger="interval",
-        hours=6,
+        trigger="cron",
+        hour="*/6",
+        minute=30,
     )
 
     # Garmin poll — every N hours on the clock (default 6 → 00/06/12/18, the same

@@ -14,7 +14,8 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from typing import Any, Awaitable, Callable, Optional
+from contextlib import asynccontextmanager
+from typing import Any, AsyncIterator, Awaitable, Callable, Optional
 
 from redis.asyncio import Redis
 
@@ -65,6 +66,31 @@ end
 """
 
 
+@asynccontextmanager
+async def scheduler_lock(redis: Redis, job_id: str, ttl_seconds: int) -> AsyncIterator[bool]:
+    """Hold ``scheduler:lock:{job_id}`` for the body of the ``async with``.
+
+    Yields True when this caller owns the lock, False when someone else holds it
+    (the body still runs and decides what "busy" means for it). The lock value is
+    a per-acquire random token; release is compare-and-delete."""
+    lock_key = f"scheduler:lock:{job_id}"
+    token = uuid.uuid4().hex
+    acquired = await redis.set(lock_key, token, nx=True, ex=ttl_seconds)
+    if not acquired:
+        logger.info("Scheduler lock busy: %s — another worker holds it", job_id)
+        yield False
+        return
+
+    logger.info("Acquired scheduler lock: %s (ttl=%ds)", job_id, ttl_seconds)
+    try:
+        yield True
+    finally:
+        try:
+            await redis.eval(_RELEASE_SCRIPT, 1, lock_key, token)
+        except Exception:
+            logger.warning("Could not release scheduler lock %s — relying on TTL", job_id)
+
+
 async def with_scheduler_lock(
     redis: Redis,
     job_id: str,
@@ -76,21 +102,9 @@ async def with_scheduler_lock(
     """Acquire ``scheduler:lock:{job_id}``, run ``fn``, release.
 
     Returns the function result, or None if the lock could not be acquired
-    (another worker is running the same job). The lock value is a per-acquire
-    random token; release is compare-and-delete.
+    (another worker is running the same job).
     """
-    lock_key = f"scheduler:lock:{job_id}"
-    token = uuid.uuid4().hex
-    acquired = await redis.set(lock_key, token, nx=True, ex=ttl_seconds)
-    if not acquired:
-        logger.info("Scheduler lock busy: %s — another worker holds it", job_id)
-        return None
-
-    logger.info("Acquired scheduler lock: %s (ttl=%ds)", job_id, ttl_seconds)
-    try:
+    async with scheduler_lock(redis, job_id, ttl_seconds) as acquired:
+        if not acquired:
+            return None
         return await fn(*args, **kwargs)
-    finally:
-        try:
-            await redis.eval(_RELEASE_SCRIPT, 1, lock_key, token)
-        except Exception:
-            logger.warning("Could not release scheduler lock %s — relying on TTL", job_id)

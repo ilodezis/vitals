@@ -619,6 +619,51 @@ async def test_job_sends_the_brief_even_when_garmin_sync_explodes(
     assert len(notifier.sent) == 1
 
 
+class FlakyNotifier(FakeNotifier):
+    """Telegram has a bad minute: the first send fails at the transport."""
+
+    def __init__(self, failures=1):
+        super().__init__()
+        self._failures = failures
+
+    async def send(self, text, *, buttons=None, reply_to=None) -> str:
+        if self._failures:
+            self._failures -= 1
+            raise RuntimeError("telegram is down")
+        return await super().send(text, buttons=buttons, reply_to=reply_to)
+
+
+async def test_a_dropped_brief_alerts_and_the_next_fire_resends_it_without_the_model(
+    db_session, session_factory, monkeypatch
+):
+    """A failed send used to be a log line, and every later fire in the window
+    paid the model again and stored another brief for the same day."""
+    notifier = FlakyNotifier()
+    llm = FakeLLM()
+    _patch_job(monkeypatch, notifier, llm)
+    monkeypatch.setattr(brief, "today_local", lambda: DAY)
+    await _seed_day(db_session)
+
+    await brief.brief_job(session_factory)
+
+    assert notifier.sent == []
+    alert = (await db_session.execute(
+        select(SystemAlert).where(SystemAlert.alert_key == delivery.DELIVERY_ALERT_KEY)
+    )).scalars().one()
+    assert alert.resolved_at is None
+    assert alert.entity_ref == "telegram"
+
+    await brief.brief_job(session_factory)
+
+    assert len(notifier.sent) == 1
+    assert len(llm.calls) == 1
+    briefs = (await db_session.execute(select(WeeklyDigest))).scalars().all()
+    assert len(briefs) == 1
+    assert notifier.sent[0]["text"].startswith(briefs[0].content)
+    await db_session.refresh(alert)
+    assert alert.resolved_at is not None
+
+
 def _patch_job(monkeypatch, notifier, llm):
     """Wire brief_job to a fake channel, a fake model and a no-op Garmin sync."""
     from vitals.integrations import llm_client

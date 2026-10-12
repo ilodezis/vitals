@@ -37,6 +37,20 @@ REPARSE_WINDOW_DAYS = 14
 REPARSE_BATCH = 20
 
 
+async def find_raw_payload(
+    session: AsyncSession, *, domain: str, source: str, external_id: str
+) -> Optional[RawPayload]:
+    """The stored raw payload for ``(domain, source, external_id)``, if any."""
+    result = await session.execute(
+        select(RawPayload).where(
+            RawPayload.domain == domain,
+            RawPayload.source == source,
+            RawPayload.external_id == external_id,
+        )
+    )
+    return result.scalars().first()
+
+
 async def upsert_raw_payload(
     session: AsyncSession,
     *,
@@ -50,14 +64,7 @@ async def upsert_raw_payload(
     Flushes so the returned row has an ``id`` the normalized row can link to.
     Does not commit — the caller owns the transaction.
     """
-    result = await session.execute(
-        select(RawPayload).where(
-            RawPayload.domain == domain,
-            RawPayload.source == source,
-            RawPayload.external_id == external_id,
-        )
-    )
-    row: Optional[RawPayload] = result.scalars().first()
+    row = await find_raw_payload(session, domain=domain, source=source, external_id=external_id)
     if row is None:
         row = RawPayload(
             domain=domain,

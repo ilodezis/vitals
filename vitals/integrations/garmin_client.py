@@ -74,6 +74,11 @@ _DAILY_METHODS = (
     ("training_status", "get_training_status"),
 )
 
+# Key under which :meth:`GarminClient.fetch_daily` lists the sub-metrics whose
+# call raised. A ``None`` next to it means "Garmin did not answer", not "the day
+# has no such data" — the service must not let it overwrite a stored value.
+FAILED_KEY = "_failed"
+
 
 class GarminNotConfigured(RuntimeError):
     """Raised when a fetch is attempted without Garmin credentials."""
@@ -277,12 +282,14 @@ class GarminClient:
     # ── Fetches ─────────────────────────────────────────────────────────────────
     async def fetch_daily(self, on_date: date_type) -> dict:
         """All daily sub-metrics for ``on_date`` as a dict of raw payloads. Each
-        missing/failed sub-metric is ``None`` rather than aborting the day."""
+        missing/failed sub-metric is ``None`` rather than aborting the day; the
+        ones that failed are also listed under :data:`FAILED_KEY`."""
         garmin = await self._ensure_login()
         ds = on_date.isoformat()
 
         def _blocking() -> dict:
             out: dict = {}
+            failed: list[str] = []
             for key, method_name in _DAILY_METHODS:
                 try:
                     method = getattr(garmin, method_name)
@@ -290,6 +297,7 @@ class GarminClient:
                 except Exception as e:  # noqa: BLE001
                     logger.warning("Garmin %s(%s) failed: %s", method_name, ds, e)
                     out[key] = None
+                    failed.append(key)
             # body battery + body composition use a (start, end) range signature.
             for key, method_name in (
                 ("body_battery", "get_body_battery"),
@@ -300,6 +308,9 @@ class GarminClient:
                 except Exception as e:  # noqa: BLE001
                     logger.warning("Garmin %s(%s) failed: %s", method_name, ds, e)
                     out[key] = None
+                    failed.append(key)
+            if failed:
+                out[FAILED_KEY] = failed
             return out
 
         return await asyncio.to_thread(_blocking)

@@ -99,6 +99,38 @@ async def test_keepalive_job_actually_records_its_heartbeat(redis):
     assert await scheduler_heartbeat_age(redis, scheduler_mod.KEEPALIVE_JOB_ID) is not None
 
 
+# ── Misfires ─────────────────────────────────────────────────────────────────
+async def test_jobs_tolerate_a_stalled_loop_instead_of_dropping_the_run():
+    """APScheduler's default grace is one second: a loop busy for a second at
+    08:00 on a Monday dropped the weekly digest with nothing but a log line."""
+    async def noop(_factory, _redis):
+        return None
+
+    scheduler_mod.register_job("weekly_digest", noop, trigger="cron", day_of_week="mon", hour=8)
+    scheduler = scheduler_mod.setup_scheduler(lambda: None, None)
+    scheduler.start(paused=True)
+    try:
+        for job_id in ("weekly_digest", scheduler_mod.KEEPALIVE_JOB_ID):
+            job = scheduler.get_job(job_id)
+            assert job.misfire_grace_time >= 3600
+            assert job.coalesce is True
+    finally:
+        scheduler.shutdown(wait=False)
+
+
+def test_hevy_sync_runs_on_the_clock_not_off_boot():
+    """An interval re-phases from container start, so deploys more often than
+    every six hours meant the Hevy sync never ran at all."""
+    from vitals.scheduler.jobs import register_all_jobs
+
+    register_all_jobs()
+    specs = {spec.id: spec for spec in scheduler_mod._registry.values()}
+    hevy, garmin = specs["hevy_sync"], specs["garmin_sync"]
+    assert hevy.trigger == "cron"
+    assert hevy.trigger_kwargs["hour"] == "*/6"
+    assert hevy.trigger_kwargs["minute"] != garmin.trigger_kwargs["minute"]
+
+
 # ── Per-job heartbeat budgets ────────────────────────────────────────────────
 async def test_budget_matches_each_job_schedule():
     async def noop(_factory, _redis):

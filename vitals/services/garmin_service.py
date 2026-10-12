@@ -27,8 +27,9 @@ from __future__ import annotations
 
 import logging
 import statistics
+from contextlib import asynccontextmanager
 from datetime import date as date_type, datetime, timedelta, timezone
-from typing import Any, Optional, Sequence
+from typing import Any, AsyncIterator, Optional, Sequence
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,6 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from vitals.enums import Severity, Source
 from vitals.i18n import t
 from vitals.integrations.garmin_client import (
+    FAILED_KEY,
     GarminAuthError,
     GarminLoginThrottled,
     GarminMFARequired,
@@ -56,7 +58,9 @@ from vitals.models.garmin import (
     GarminDaily,
     GarminIntraday,
 )
+from vitals.models.app_settings import AppSetting
 from vitals.models.raw_payload import RawPayload
+from vitals.scheduler.scheduler_lock import scheduler_lock
 from vitals.services import alerts_service, raw_payload_service, weight_service
 from vitals.utils.timeutils import now_local, to_local_naive
 
@@ -64,6 +68,21 @@ logger = logging.getLogger(__name__)
 
 AUTH_ALERT_KEY = "garmin.auth"
 TOKEN_ALERT_KEY = "garmin.token_cache"
+# One alert per sub-metric that keeps failing upstream (entity = the bundle key).
+METRIC_ALERT_KEY = "garmin.metric_failing"
+# Consecutive full syncs a sub-metric may fail before it is surfaced. One 429 is
+# noise; the same metric missing from three polls in a row is a day at risk.
+METRIC_FAILURE_STREAK = 3
+METRIC_FAILURES_SETTING = "garmin.metric_failures"
+
+# Every Garmin pull — the scheduled poll, the brief's own pull, the MCP tool, the
+# web button and the light pulse — shares this one lock, so two of them never hit
+# the account at the same minute (doubling the request volume is what earns the
+# 429s that leave sub-metrics empty). Long enough for a 30-day MCP backfill.
+PULL_LOCK_ID = "garmin"
+PULL_LOCK_TTL = 1800
+# What a pull reports when another one already holds the lock.
+SYNC_BUSY = "busy"
 
 SLEEP_SCORE_FLOOR = 60
 BODY_BATTERY_FLOOR = 40
@@ -496,6 +515,26 @@ async def get_daily(session: AsyncSession, on_date: date_type) -> Optional[Garmi
     return result.scalars().first()
 
 
+def merge_daily_bundle(stored: Any, fresh: dict) -> dict:
+    """The day's bundle after a fetch: ``fresh`` over what is already stored.
+
+    A sub-metric that failed upstream (listed under ``FAILED_KEY``) or came back
+    ``None`` never replaces a stored value — a 429 on the last poll before
+    midnight would otherwise erase last night's sleep for good, raw copy
+    included, since the next polls no longer cover that day. Keys the fresh
+    bundle does not carry are kept as stored, the same contract :func:`pulse`
+    relies on. The failure list itself is not stored."""
+    failed = set(fresh.get(FAILED_KEY) or ())
+    merged = {k: v for k, v in stored.items() if k != FAILED_KEY} if isinstance(stored, dict) else {}
+    for key, value in fresh.items():
+        if key == FAILED_KEY:
+            continue
+        if (value is None or key in failed) and merged.get(key) is not None:
+            continue
+        merged[key] = value
+    return merged
+
+
 async def ingest_daily(
     session: AsyncSession,
     on_date: date_type,
@@ -513,11 +552,17 @@ async def ingest_daily(
     from vitals.services import garmin_weight_service
 
     await garmin_weight_service.lock_active_weight_change(session)
+    external_id = f"daily:{on_date.isoformat()}"
+    stored = await raw_payload_service.find_raw_payload(
+        session, domain=DOMAIN, source=source, external_id=external_id
+    )
+    fresh = raw
+    raw = merge_daily_bundle(stored.payload if stored is not None else None, fresh)
     raw_row = await raw_payload_service.upsert_raw_payload(
         session,
         domain=DOMAIN,
         source=source,
-        external_id=f"daily:{on_date.isoformat()}",
+        external_id=external_id,
         payload=raw,
     )
     fields = _normalize_daily(raw)
@@ -533,7 +578,10 @@ async def ingest_daily(
     await session.flush()
     raw_row.processed_at = now_local()
 
-    for series_type, points in _intraday_series(raw).items():
+    # Series from this fetch only: a merged-in stored payload would rebuild a
+    # curve already on disk, and a stale ``body_battery`` fallback would replace
+    # the full-resolution stress-payload curve with its few inflection points.
+    for series_type, points in _intraday_series(fresh).items():
         await ingest_intraday(
             session, on_date, series_type, points,
             raw_payload_id=raw_row.id, source=source,
@@ -738,6 +786,17 @@ def _parse_activity_start(raw: dict) -> Optional[datetime]:
 
 
 # ── Sync orchestration ────────────────────────────────────────────────────────
+@asynccontextmanager
+async def pull_lock(redis: Any) -> AsyncIterator[bool]:
+    """Hold the shared Garmin pull lock; yields False when another pull has it.
+    Without Redis (tests, scripts) there is nobody to collide with."""
+    if redis is None:
+        yield True
+        return
+    async with scheduler_lock(redis, PULL_LOCK_ID, PULL_LOCK_TTL) as acquired:
+        yield acquired
+
+
 async def refresh_token_cache_alert(
     session: AsyncSession,
     client: Any,
@@ -756,6 +815,47 @@ async def refresh_token_cache_alert(
         )
     elif resolve_if_clear:
         await alerts_service.resolve_by_key(session, alert_key=TOKEN_ALERT_KEY)
+
+
+async def _track_metric_failures(session: AsyncSession, bundles: Sequence[dict]) -> None:
+    """Count, per sub-metric, the full syncs in a row it failed in; alert past
+    :data:`METRIC_FAILURE_STREAK`, clear the alert once it answers again.
+
+    A failed sub-metric no longer erases a stored day (see
+    :func:`merge_daily_bundle`), which also makes a persistent failure silent —
+    the day simply never fills in. The streak lives in ``app_settings`` so it
+    survives restarts."""
+    failed: set[str] = set()
+    answered: set[str] = set()
+    for bundle in bundles:
+        bad = set(bundle.get(FAILED_KEY) or ())
+        failed |= bad
+        answered |= {k for k in bundle if k != FAILED_KEY and k not in bad}
+    answered -= failed
+
+    setting = await session.get(AppSetting, METRIC_FAILURES_SETTING)
+    streaks: dict[str, int] = dict(setting.value) if setting is not None and isinstance(setting.value, dict) else {}
+    for metric in failed:
+        streaks[metric] = int(streaks.get(metric, 0)) + 1
+        if streaks[metric] >= METRIC_FAILURE_STREAK:
+            await alerts_service.raise_alert(
+                session,
+                domain=DOMAIN,
+                severity=Severity.WARN.value,
+                message=t("alert.garmin_metric_failing", metric=metric, count=streaks[metric]),
+                alert_key=METRIC_ALERT_KEY,
+                entity_ref=metric,
+            )
+    for metric in answered:
+        streaks.pop(metric, None)
+        await alerts_service.resolve_by_key(
+            session, alert_key=METRIC_ALERT_KEY, entity_ref=metric
+        )
+    if setting is None:
+        session.add(AppSetting(key=METRIC_FAILURES_SETTING, value=streaks))
+    else:
+        setting.value = streaks
+    await session.flush()
 
 
 async def sync(
@@ -797,6 +897,8 @@ async def sync(
     for day, raw in daily_payloads:
         await ingest_daily(session, day, raw)
         summary["days"] += 1
+    if daily_payloads:
+        await _track_metric_failures(session, [raw for _, raw in daily_payloads])
     if activities is not None:
         summary["activities"] = await ingest_activities(session, activities)
 
@@ -837,10 +939,9 @@ async def pulse(
 ) -> dict:
     """Today's summary only — one upstream call, merged into the day's bundle.
 
-    The merge is the whole trick: the fresh summary replaces exactly that key of
-    the stored raw payload and the *whole* bundle is re-ingested, so last night's
-    sleep and HRV survive a mid-day poll. Normalising a bare ``{"summary": …}``
-    over an existing day would blank every column the summary doesn't carry.
+    The merge is the whole trick: :func:`ingest_daily` lays the fresh summary over
+    the stored raw bundle and re-ingests the *whole* bundle, so last night's
+    sleep and HRV survive a mid-day poll.
 
     An empty response is treated as no data rather than as "the day has no
     summary" — same reason. Auth failures are caught and logged, never alerted:
@@ -859,15 +960,7 @@ async def pulse(
         out["error"] = "empty"
         return out
 
-    raw: dict = {}
-    existing = await get_daily(session, day)
-    if existing is not None and existing.raw_payload_id is not None:
-        stored = await session.get(RawPayload, existing.raw_payload_id)
-        if stored is not None and isinstance(stored.payload, dict):
-            raw = dict(stored.payload)
-    raw["summary"] = fresh
-
-    row = await ingest_daily(session, day, raw)
+    row = await ingest_daily(session, day, {"summary": fresh})
     out["steps"] = row.steps
     return out
 
@@ -895,8 +988,12 @@ async def pulse_job(session_factory, redis=None) -> None:
         client = GarminClient.from_config(redis=redis)
         if not client.is_configured:
             return
-        await pulse(session, client)
-        await session.commit()
+        async with pull_lock(redis) as acquired:
+            if not acquired:
+                logger.info("Garmin pulse skipped: another pull is running")
+                return
+            await pulse(session, client)
+            await session.commit()
 
 
 # ── Health Auto Export (backup channel) ───────────────────────────────────────
@@ -1215,21 +1312,27 @@ async def daily_count(session: AsyncSession) -> int:
 async def sync_job(session_factory, redis=None, *, days: int = 2) -> Optional[dict]:
     """Garmin poll (registered in vitals/scheduler/jobs.py). No-ops cleanly when
     Garmin isn't configured — returns None in that case, else the sync summary
-    (the MCP ``sync_garmin`` tool reports it back to the model)."""
+    (the MCP ``sync_garmin`` tool reports it back to the model). Runs under the
+    shared pull lock; while another pull holds it the summary's ``error`` is
+    :data:`SYNC_BUSY` and nothing is fetched."""
     from vitals.integrations.garmin_client import GarminClient
 
     client = GarminClient.from_config(redis=redis)
     if not client.is_configured:
         return None
-    async with session_factory() as session:
-        from vitals.services.language_service import get_language
-        from vitals.i18n import current_lang
-        lang = await get_language(session, redis)
-        current_lang.set(lang)
+    async with pull_lock(redis) as acquired:
+        if not acquired:
+            logger.info("Garmin sync skipped: another pull is running")
+            return {"days": 0, "activities": 0, "error": SYNC_BUSY}
+        async with session_factory() as session:
+            from vitals.services.language_service import get_language
+            from vitals.i18n import current_lang
+            lang = await get_language(session, redis)
+            current_lang.set(lang)
 
-        summary = await sync(session, client, days=days)
-        await session.commit()
-        if redis is not None and summary.get("error") is None:
-            import time
-            await redis.set("sync:last_success:garmin", str(int(time.time())))
-        return summary
+            summary = await sync(session, client, days=days)
+            await session.commit()
+            if redis is not None and summary.get("error") is None:
+                import time
+                await redis.set("sync:last_success:garmin", str(int(time.time())))
+            return summary

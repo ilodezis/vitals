@@ -54,6 +54,10 @@ export default function RecoveryScreen() {
     mutationFn: () => ok(api.POST('/api/v1/recovery/sync')),
     onSuccess: (result) => {
       if (!result.ok) {
+        if (result.error === 'busy') {
+          toast(t('app.recovery.sync_busy'))
+          return
+        }
         toast(result.error === 'not_configured' ? t('app.recovery.sync_not_configured') : t('app.recovery.sync_failed'), { icon: 'warn' })
         return
       }

@@ -32,6 +32,13 @@ JobFunc = Callable[[async_sessionmaker[AsyncSession], Optional[Redis]], Awaitabl
 
 KEEPALIVE_JOB_ID = "keepalive"
 
+# APScheduler's own default grace is one second: an event loop busy for a second
+# at the fire time (a PDF being rasterised, a slow query) silently dropped the
+# run — the Monday digest, the nightly sweep — with nothing but a log line. An
+# hour of grace still runs a late tick; ``coalesce`` folds a backlog of missed
+# ticks (an interval job after a long stall) into one run instead of a burst.
+JOB_DEFAULTS = {"misfire_grace_time": 3600, "coalesce": True}
+
 # One active alert per failing job — the id is part of the key (never a timestamp,
 # which would defeat the dedupe index and pile up a row per failed tick).
 JOB_FAILED_KEY_PREFIX = "scheduler.job_failed"
@@ -234,7 +241,7 @@ def setup_scheduler(
     *,
     timezone: str = "Europe/Chisinau",
 ) -> AsyncIOScheduler:
-    scheduler = AsyncIOScheduler(timezone=timezone)
+    scheduler = AsyncIOScheduler(timezone=timezone, job_defaults=JOB_DEFAULTS)
 
     apply_registry(scheduler, session_factory, redis)
 

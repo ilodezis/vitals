@@ -460,8 +460,11 @@ async def sync_garmin_now(
     if not client.is_configured:
         return GarminSyncResponse(ok=False, synced_days=0, error="not_configured")
 
-    summary = await garmin_service.sync(db, client)
-    await db.commit()
+    async with garmin_service.pull_lock(redis) as acquired:
+        if not acquired:
+            return GarminSyncResponse(ok=False, synced_days=0, error=garmin_service.SYNC_BUSY)
+        summary = await garmin_service.sync(db, client)
+        await db.commit()
 
     if summary.get("error"):
         return GarminSyncResponse(ok=False, synced_days=0, error=summary["error"])

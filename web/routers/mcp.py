@@ -2701,6 +2701,8 @@ async def sync_garmin(days: int = 2) -> dict:
     )
     if summary is None:
         return {"error": "Garmin is not configured — no credentials in settings"}
+    if summary.get("error") == garmin_service.SYNC_BUSY:
+        return {"error": "A Garmin sync is already running — try again in a few minutes"}
     return summary
 
 

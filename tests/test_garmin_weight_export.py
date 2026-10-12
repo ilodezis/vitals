@@ -1430,7 +1430,12 @@ async def test_stale_inactive_delete_reloads_row_after_advisory_lock(db_session)
 
 
 @pytest.mark.integration
-async def test_stale_inactive_cache_does_not_break_concurrent_weight_save(db_session):
+async def test_stale_inactive_cache_does_not_break_concurrent_weight_save(
+    db_session, monkeypatch
+):
+    # The save hook reconciles against the wall clock; pin it to the fixture day
+    # or the weight ages past the export window and the outbox turns 'skipped'.
+    monkeypatch.setattr(garmin_weight_service, "now_local", lambda: NOW)
     prior = await _manual_weight(db_session, 85.0)
     current = await _manual_weight(db_session, 84.5)
     await garmin_weight_service.set_enabled(db_session, True, now=NOW)
@@ -1474,7 +1479,10 @@ async def test_stale_inactive_cache_does_not_break_concurrent_weight_save(db_ses
 
 
 @pytest.mark.integration
-async def test_stale_inactive_cache_is_refreshed_before_same_date_edit(db_session):
+async def test_stale_inactive_cache_is_refreshed_before_same_date_edit(
+    db_session, monkeypatch
+):
+    monkeypatch.setattr(garmin_weight_service, "now_local", lambda: NOW)
     prior = await _manual_weight(db_session, 85.0)
     current = await _manual_weight(db_session, 84.5)
     await garmin_weight_service.set_enabled(db_session, True, now=NOW)

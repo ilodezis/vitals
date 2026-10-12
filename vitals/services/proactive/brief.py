@@ -27,6 +27,7 @@ import logging
 from datetime import date as date_type, timedelta
 from typing import Any, Optional, Sequence
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.enums import DigestKind, Domain, Severity, Source
@@ -383,6 +384,22 @@ async def generate_brief(
     return row
 
 
+async def stored_brief(session: AsyncSession, on_date: date_type) -> Optional[WeeklyDigest]:
+    """The brief the scheduled job already built for ``on_date``, if any. Briefs
+    built from the web button are left out: one built at 08:00 may predate last
+    night being scored."""
+    result = await session.execute(
+        select(WeeklyDigest)
+        .where(
+            WeeklyDigest.kind == DigestKind.DAILY_BRIEF.value,
+            WeeklyDigest.date == on_date,
+            WeeklyDigest.source == Source.SCHEDULER.value,
+        )
+        .order_by(WeeklyDigest.id.desc())
+    )
+    return result.scalars().first()
+
+
 def dedupe_key(on_date: date_type) -> str:
     """One brief per day, enforced in the delivery journal rather than hoped for."""
     return f"brief:{on_date.isoformat()}"
@@ -444,6 +461,8 @@ async def brief_job(session_factory, redis=None) -> None:
     out_of_patience = now_local().hour >= last_attempt_hour(brief_hour)
 
     try:
+        # Under the shared pull lock: when the scheduled poll is already pulling,
+        # this one steps aside and the brief reads what that poll stores.
         await garmin_service.sync_job(session_factory, redis)
     except Exception:
         logger.warning("garmin sync before the brief failed; using stored data", exc_info=True)
@@ -464,14 +483,20 @@ async def brief_job(session_factory, redis=None) -> None:
             await session.rollback()
             logger.warning("re-parse sweep before the brief failed", exc_info=True)
 
+        # An earlier fire already built today's brief and its send failed (the
+        # journal said "not sent" above): send that one again. Building a new one
+        # would pay the model again and store a second brief for the same day.
+        row = await stored_brief(session, today)
+        if row is not None:
+            logger.info("brief for %s: re-sending the stored copy", today)
         # Nothing is built, so nothing is stored and no model call is spent: an
         # un-scored night is not an empty day either, so it raises no alert — the
         # next fire is an hour away and this is the normal state of a lie-in.
-        if not out_of_patience and not await night_scored(session, today):
+        elif not out_of_patience and not await night_scored(session, today):
             logger.info("brief for %s postponed: last night is not scored yet", today)
             return
-
-        row = await generate_brief(session, LLMClient(), source=Source.SCHEDULER.value)
+        else:
+            row = await generate_brief(session, LLMClient(), source=Source.SCHEDULER.value)
         if row is None:
             await alerts_service.raise_alert(
                 session,
