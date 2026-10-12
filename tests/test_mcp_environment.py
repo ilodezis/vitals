@@ -6,7 +6,7 @@ layer, parses its arguments like every other tool, and says when a window was cu
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -176,13 +176,15 @@ async def test_night_without_readings_is_a_note_not_zeros(monkeypatch):
 
 
 async def test_alerts_report_an_episode_with_its_peak(db_session):
-    started = datetime(2026, 10, 5, 3, 10)
+    # Relative to today: the tool looks back from now, so a fixed date ages out.
+    day = today_local() - timedelta(days=2)
+    started = datetime(day.year, day.month, day.day, 3, 10)
     db_session.add(SystemAlert(
         domain="environment", severity="warn", message="Душно", alert_key="env_co2_bad",
-        entity_ref="e1", created_at=started, resolved_at=datetime(2026, 10, 5, 3, 40),
+        entity_ref="e1", created_at=started, resolved_at=started.replace(minute=40),
     ))
     await db_session.commit()
-    await insert_samples(db_session, [sample_row(_local(date(2026, 10, 5), 3).replace(minute=20), co2=1610)])
+    await insert_samples(db_session, [sample_row(_local(day, 3).replace(minute=20), co2=1610)])
 
     out = await mcp_router.get_environment_alerts(hours=24 * 7)
 
