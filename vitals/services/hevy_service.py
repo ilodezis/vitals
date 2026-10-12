@@ -2,11 +2,12 @@
 
 Owns the workouts domain:
 
-  * **Sync** — pull workouts from the Hevy API, keep each full payload in
-    ``raw_payloads``, and normalise the exercise→set tree into
+  * **Sync** — read Hevy's workout events since the last good pass, keep each
+    full payload in ``raw_payloads``, and normalise the exercise→set tree into
     ``hevy_workouts`` / ``hevy_exercises`` / ``hevy_sets``. Re-sync is idempotent:
     a workout whose Hevy ``updated_at`` is unchanged is skipped; a changed one is
-    re-normalised in place (children rebuilt). The upsert key is the Hevy id.
+    re-normalised in place (children rebuilt); one deleted in Hevy is removed. The
+    upsert key is the Hevy id.
   * **Program mapping** — tag a workout with the training program it matches
     (title heuristic; overridable as routines/templates land).
   * **Progression** — per exercise, reduce the session history to the engine's
@@ -19,7 +20,7 @@ the network itself, keeping it unit-testable without Hevy.
 """
 from __future__ import annotations
 
-from datetime import date as date_type, datetime
+from datetime import date as date_type, datetime, timedelta, timezone
 from typing import Any, Optional, Sequence
 
 from sqlalchemy import func, select
@@ -27,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from vitals.enums import Source
+from vitals.models.app_settings import AppSetting
 from vitals.models.hevy import DOMAIN, HevyExercise, HevySet, HevyWorkout
 from vitals.models.raw_payload import RawPayload
 from vitals.services import raw_payload_service
@@ -36,7 +38,7 @@ from vitals.services.analytics.progression import (
     SessionResult,
     evaluate_progression,
 )
-from vitals.utils.timeutils import now_local, to_local_naive
+from vitals.utils.timeutils import now_local, now_utc, to_local_naive
 
 # Only these set types are "working sets" that drive progression / top-weight.
 _WORKING_SET_TYPES = {"normal", "failure"}
@@ -84,24 +86,106 @@ def _map_program(raw_workout: dict) -> Optional[str]:
 
 
 # ── Sync ──────────────────────────────────────────────────────────────────────
+# Where the next pass starts reading Hevy's event feed. Written in the same
+# transaction as the workouts it covers, so a failed pass leaves it where it was.
+SYNC_SINCE_KEY = "hevy_events_since"
+_EPOCH = "1970-01-01T00:00:00Z"
+# Each pass re-reads a day behind the last good one: it absorbs clock skew between
+# this host and Hevy, and an unchanged workout read twice is only a skip.
+_SINCE_OVERLAP = timedelta(days=1)
+_AWARE_MIN = datetime.min.replace(tzinfo=timezone.utc)
+
+
+def _event_ts(value: Any) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return _AWARE_MIN
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _latest_per_workout(events: list[dict]) -> tuple[list[tuple[str, str, dict]], int]:
+    """Collapse the feed to one event per workout — the newest by its own
+    timestamp, whatever order the pages came in. Returns ``(kind, id, event)``
+    triples plus the number of events that named no workout."""
+    latest: dict[str, tuple[datetime, str, dict]] = {}
+    unusable = 0
+    for event in events:
+        kind = event.get("type")
+        if kind == "updated":
+            workout = event.get("workout") or {}
+            external_id = str(workout.get("id") or "").strip()
+            ts = _event_ts(workout.get("updated_at"))
+        elif kind == "deleted":
+            external_id = str(event.get("id") or "").strip()
+            ts = _event_ts(event.get("deleted_at"))
+        else:
+            external_id, ts = "", _AWARE_MIN
+        if not external_id:
+            unusable += 1
+            continue
+        held = latest.get(external_id)
+        if held is None or ts >= held[0]:
+            latest[external_id] = (ts, kind, event)
+    return [(kind, wid, event) for wid, (_ts, kind, event) in latest.items()], unusable
+
+
+async def _stored_since(session: AsyncSession) -> Optional[str]:
+    row = await session.get(AppSetting, SYNC_SINCE_KEY)
+    value = row.value if row is not None else None
+    return value if isinstance(value, str) and value else None
+
+
+async def _store_since(session: AsyncSession, since: str) -> None:
+    row = await session.get(AppSetting, SYNC_SINCE_KEY)
+    if row is None:
+        session.add(AppSetting(key=SYNC_SINCE_KEY, value=since))
+    else:
+        row.value = since
+
+
 async def sync(
     session: AsyncSession,
     client: Any,
     *,
-    max_pages: int = 50,
     force: bool = False,
 ) -> dict:
-    """Fetch workouts and normalise them. Returns a summary dict
-    (``fetched`` / ``created`` / ``updated`` / ``skipped``). Does not commit."""
-    raw_workouts = await client.fetch_workouts(max_pages=max_pages)
-    summary = {"fetched": len(raw_workouts), "created": 0, "updated": 0, "skipped": 0}
+    """Apply Hevy's workout events since the last good pass. Does not commit.
 
-    for raw in raw_workouts:
-        external_id = str(raw.get("id") or "").strip()
-        if not external_id:
-            summary["skipped"] += 1
+    The first pass — or ``force`` — reads the feed from the epoch, every page, so
+    the whole history lands however long it is; ``force`` also re-normalises
+    workouts whose ``updated_at`` has not moved. Later passes read from the stored
+    watermark: a page or two. A workout deleted in Hevy loses its rows here; its
+    raw payload stays, stamped processed so the nightly sweep cannot rebuild it.
+
+    Returns ``fetched`` (events read) / ``created`` / ``updated`` / ``deleted`` /
+    ``skipped``, plus ``full`` (read from the epoch) and ``total`` (workouts held
+    after the pass).
+    """
+    stored = None if force else await _stored_since(session)
+    full = stored is None
+    started = now_utc()
+    events = await client.fetch_workout_events(since=stored or _EPOCH)
+
+    latest, unusable = _latest_per_workout(events)
+    summary = {
+        "fetched": len(events),
+        "created": 0,
+        "updated": 0,
+        "deleted": 0,
+        "skipped": unusable,
+        "full": full,
+    }
+
+    for kind, external_id, event in latest:
+        if kind == "deleted":
+            if await _delete_workout(session, external_id):
+                summary["deleted"] += 1
+            else:
+                summary["skipped"] += 1
             continue
 
+        raw = event.get("workout") or {}
         existing = await _get_workout_by_external(session, external_id)
         hevy_updated = _parse_dt(raw.get("updated_at"))
         if existing is not None and not force and existing.hevy_updated_at == hevy_updated:
@@ -119,8 +203,36 @@ async def sync(
         raw_row.processed_at = now_local()
         summary["created" if created else "updated"] += 1
 
+    # Only now, with every event applied: an exception above leaves the old mark.
+    await _store_since(session, (started - _SINCE_OVERLAP).strftime("%Y-%m-%dT%H:%M:%SZ"))
     await session.flush()
+    summary["total"] = await workout_count(session)
     return summary
+
+
+async def _delete_workout(session: AsyncSession, external_id: str) -> bool:
+    """Remove a workout Hevy no longer has, children first (SQLite does not
+    enforce ON DELETE CASCADE). The raw payload is kept — nothing is lost — but
+    stamped processed, or the nightly sweep would find a payload without a
+    workout and rebuild it. Returns whether a workout was removed."""
+    raw_row = await raw_payload_service.find_raw_payload(
+        session, domain=DOMAIN, source=Source.HEVY_API.value, external_id=external_id
+    )
+    if raw_row is not None and raw_row.processed_at is None:
+        raw_row.processed_at = now_local()
+
+    workout = await _get_workout_by_external(session, external_id)
+    if workout is None:
+        return False
+    ex_ids = select(HevyExercise.id).where(HevyExercise.workout_id == workout.id).scalar_subquery()
+    await session.execute(HevySet.__table__.delete().where(HevySet.exercise_id.in_(ex_ids)))
+    await session.execute(HevyExercise.__table__.delete().where(HevyExercise.workout_id == workout.id))
+    # Core delete, then drop the object: an ORM delete would cascade into
+    # exercises the session may still hold from an earlier read, already gone.
+    await session.execute(HevyWorkout.__table__.delete().where(HevyWorkout.id == workout.id))
+    session.expunge(workout)
+    await session.flush()
+    return True
 
 
 async def _get_workout_by_external(

@@ -2711,7 +2711,10 @@ async def sync_garmin(days: int = 2) -> dict:
 async def sync_hevy() -> dict:
     """Pulls the latest Hevy workouts now. Same rules as ``sync_garmin``: for a gap
     in the data, not for routine reads (the scheduler syncs every 6 hours), capped
-    at 3 calls a day. Returns ``{fetched, created, updated, skipped}``."""
+    at 3 calls a day. Reads only what changed in Hevy since the last good sync (the
+    first one reads the whole history). Returns ``{fetched, created, updated,
+    deleted, skipped, full, total}`` — ``deleted`` counts workouts removed here
+    because they were deleted in Hevy, ``total`` the workouts held afterwards."""
     from vitals.integrations.hevy_client import HevyAPIError, HevyNotConfigured
     from vitals.services import hevy_service
 

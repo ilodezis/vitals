@@ -134,7 +134,7 @@ class HrtDose(Base, InsightsMixin, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     # FK for joins; SET NULL so deleting a catalog entry never wipes history.
     compound_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("hrt_compounds.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("hrt_compounds.id", ondelete="SET NULL"), nullable=True, index=True
     )
     # Stable slug snapshot — the durable reference, survives catalog edits.
     compound_key: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -221,7 +221,7 @@ class HrtCycleItem(Base, TimestampMixin):
         ForeignKey("hrt_cycles.id", ondelete="CASCADE"), nullable=False
     )
     compound_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("hrt_compounds.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("hrt_compounds.id", ondelete="SET NULL"), nullable=True, index=True
     )
     compound_key: Mapped[str] = mapped_column(String(64), nullable=False)
     unit: Mapped[str] = mapped_column(String(8), nullable=False, server_default="mg")

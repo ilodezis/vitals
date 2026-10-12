@@ -51,7 +51,7 @@ class LabResult(Base, InsightsMixin, TimestampMixin):
     flag: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     lab_name: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     raw_payload_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("raw_payloads.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("raw_payloads.id", ondelete="SET NULL"), nullable=True, index=True
     )
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 

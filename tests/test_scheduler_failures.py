@@ -167,13 +167,18 @@ async def test_health_red_when_any_job_heartbeat_is_overdue(auth_client, redis):
     # keepalive and stayed green while every module job was dead.
     scheduler_mod.register_job("hevy_sync", noop, trigger="interval", hours=6)
 
-    body = (await auth_client.get("/health")).json()
+    response = await auth_client.get("/health")
+    # Monitors and the container healthcheck read the code, not the body.
+    assert response.status_code == 503
+    body = response.json()
     assert body["status"] == "error"
     assert body["stale_jobs"] == ["hevy_sync"]
 
     # A fresh stamp for that job brings it back.
     await redis.set("scheduler:last_run:hevy_sync", str(now))
-    body = (await auth_client.get("/health")).json()
+    response = await auth_client.get("/health")
+    assert response.status_code == 200
+    body = response.json()
     assert body["status"] == "ok"
     assert body["stale_jobs"] == []
 
@@ -188,6 +193,8 @@ async def test_health_red_when_job_heartbeat_is_older_than_its_budget(auth_clien
     # Last seen 9 hours ago — past the 6h schedule plus slack.
     await redis.set("scheduler:last_run:hevy_sync", str(now - 9 * 3600))
 
-    body = (await auth_client.get("/health")).json()
+    response = await auth_client.get("/health")
+    assert response.status_code == 503
+    body = response.json()
     assert body["status"] == "error"
     assert "hevy_sync" in body["stale_jobs"]

@@ -37,6 +37,32 @@ async def test_health_endpoint(client, redis):
     assert "scheduler_heartbeat_age_seconds" not in res_data
 
 
+async def test_health_answers_503_when_something_is_down(client):
+    """A red verdict must show in the status code: the container healthcheck and
+    external monitors read the code, and a 200 with "error" in the body passed."""
+    # No keepalive stamp: the scheduler reads as stale.
+    response = await client.get("/health")
+    assert response.status_code == 503
+    res_data = response.json()
+    assert res_data["status"] == "error"
+    assert res_data["scheduler"] == "stale"
+    # Still the anonymous shape — the diagnosis stays owner-only.
+    assert "stale_jobs" not in res_data
+
+
+def test_compose_healthcheck_probes_health_without_curl():
+    """The app image is python-slim with no curl; the healthcheck asks Python, and
+    urlopen raises on the 503 above, failing the probe."""
+    import pathlib
+
+    yaml = pytest.importorskip("yaml")
+    compose = yaml.safe_load((pathlib.Path(__file__).parents[1] / "docker-compose.yml").read_text(encoding="utf-8"))
+    test = compose["services"]["vitals_app"]["healthcheck"]["test"]
+    assert test[:3] == ["CMD", "python", "-c"]
+    assert "http://127.0.0.1:8000/health" in test[3]
+    compile(test[3], "<healthcheck>", "exec")
+
+
 async def test_login_page_renders(client):
     """GET /login renders the sign-in form: heading, both fields, submit."""
     response = await client.get("/login", headers={"Accept": "text/html"})
@@ -281,7 +307,10 @@ async def test_hevy_synced_workout_reaches_the_screen(auth_client, db_session):
     class _FakeClient:
         is_configured = True
 
-        async def fetch_workouts(self, *, max_pages=50):
+        async def fetch_workout_events(self, *, since):
+            return [{"type": "updated", "workout": w} for w in await self._workouts()]
+
+        async def _workouts(self):
             return [
                 {
                     "id": "w1",

@@ -65,4 +65,6 @@ class WorkoutsView(BaseModel):
 class HevySyncResponse(BaseModel):
     ok: bool
     synced: int = 0
+    # Workouts removed here because they were deleted in Hevy.
+    deleted: int = 0
     error: Optional[str] = None

@@ -27,7 +27,11 @@ _JSON_TYPE = JSONB().with_variant(JSON(), "sqlite")
 
 class ConflictRule(Base, TimestampMixin):
     __tablename__ = "conflict_rules"
-    __table_args__ = (Index("ix_conflict_rules_code", "code", unique=True),)
+    __table_args__ = (
+        Index("ix_conflict_rules_code", "code", unique=True),
+        # The engine reads only active rules.
+        Index("ix_conflict_rules_active", "active"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 

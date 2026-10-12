@@ -3724,6 +3724,11 @@ export interface components {
         };
         /** HevySyncResponse */
         HevySyncResponse: {
+            /**
+             * Deleted
+             * @default 0
+             */
+            deleted: number;
             /** Error */
             error?: string | null;
             /** Ok */
@@ -14082,4 +14087,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: a524e2eecbe40502abb6420256f26270b81d67ad8b2a606bf478802678b687ff
+// openapi.json sha256: 68014151af043375ed055f4847a86dcb05c62df6912d4642b8ec111f0a260f27

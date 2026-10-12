@@ -134,15 +134,15 @@ async def test_hevy_sync_unconfigured_and_success(auth_client, db_session, redis
 
         r = await auth_client.post(f"{WORKOUTS}/sync")
         assert r.status_code == 200
-        assert r.json() == {"ok": False, "synced": 0, "error": "not_configured"}
+        assert r.json() == {"ok": False, "synced": 0, "deleted": 0, "error": "not_configured"}
 
     with patch("web.api.hevy.HevyClient.from_config") as mock_client, \
          patch("web.api.hevy.hevy_service.sync", new_callable=AsyncMock) as mock_sync:
         inst = AsyncMock()
         inst.is_configured = True
         mock_client.return_value = inst
-        mock_sync.return_value = {"created": 2, "updated": 1}
+        mock_sync.return_value = {"created": 2, "updated": 1, "deleted": 1}
 
         r = await auth_client.post(f"{WORKOUTS}/sync")
         assert r.status_code == 200
-        assert r.json() == {"ok": True, "synced": 3, "error": None}
+        assert r.json() == {"ok": True, "synced": 3, "deleted": 1, "error": None}

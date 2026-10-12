@@ -56,7 +56,11 @@ class WeeklyDigest(Base, InsightsMixin, TimestampMixin):
     """
 
     __tablename__ = "weekly_digests"
-    __table_args__ = (insights_index(__tablename__),)
+    __table_args__ = (
+        insights_index(__tablename__),
+        # Readers always filter on kind, and the table grows a row a day.
+        Index("ix_weekly_digests_kind_date", "kind", "date"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     kind: Mapped[str] = mapped_column(

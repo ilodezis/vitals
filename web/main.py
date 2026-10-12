@@ -330,7 +330,13 @@ async def health(
         body["scheduler_heartbeat_age_seconds"] = heartbeat_age
         body["stale_jobs"] = stale_jobs or []
 
-    return body
+    # The status code carries the verdict too: monitors and the container
+    # healthcheck read the code, not the body, and a 200 with "error" inside
+    # looked healthy to all of them.
+    return JSONResponse(
+        status_code=status.HTTP_200_OK if status_str == "ok" else status.HTTP_503_SERVICE_UNAVAILABLE,
+        content=body,
+    )
 
 
 # ── Base redirection ──────────────────────────────────────────────────────────

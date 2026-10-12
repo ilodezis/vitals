@@ -116,7 +116,9 @@ async def test_health_turns_red_while_the_last_backup_failed(client, redis, tmp_
     assert body["backup"] == "ok"
 
     (status_dir / "backup_failed").write_text("20261008_210516 pg_dump exited with an error\n")
-    body = (await client.get("/health")).json()
+    response = await client.get("/health")
+    assert response.status_code == 503
+    body = response.json()
     assert body["status"] == "error"
     assert body["backup"] == "failed"
 

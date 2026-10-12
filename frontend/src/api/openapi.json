@@ -3600,6 +3600,11 @@
       },
       "HevySyncResponse": {
         "properties": {
+          "deleted": {
+            "default": 0,
+            "title": "Deleted",
+            "type": "integer"
+          },
           "error": {
             "anyOf": [
               {

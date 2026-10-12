@@ -116,7 +116,7 @@ class GarminDaily(Base, InsightsMixin, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     raw_payload_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("raw_payloads.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("raw_payloads.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
     # ── Sleep ───────────────────────────────────────────────────────────────────
@@ -192,7 +192,7 @@ class GarminActivity(Base, InsightsMixin, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     external_id: Mapped[str] = mapped_column(String(64), nullable=False)
     raw_payload_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("raw_payloads.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("raw_payloads.id", ondelete="SET NULL"), nullable=True, index=True
     )
     activity_type: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     name: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
@@ -250,7 +250,7 @@ class GarminIntraday(Base, InsightsMixin, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     raw_payload_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("raw_payloads.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("raw_payloads.id", ondelete="SET NULL"), nullable=True, index=True
     )
     # One of the SERIES_* constants above.
     series_type: Mapped[str] = mapped_column(String(24), nullable=False)

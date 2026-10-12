@@ -55,7 +55,7 @@ class HevyWorkout(Base, InsightsMixin, TimestampMixin):
     # Full upstream payload for this workout (re-parse safety net). Nullable so a
     # manually constructed test/backfill row can exist without one.
     raw_payload_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("raw_payloads.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("raw_payloads.id", ondelete="SET NULL"), nullable=True, index=True
     )
     title: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

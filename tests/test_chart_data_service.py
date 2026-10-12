@@ -110,7 +110,10 @@ async def test_series_for_hevy_exercise_matches_working_weight_series(db_session
     class FakeHevyClient:
         is_configured = True
 
-        async def fetch_workouts(self, *, max_pages=50):
+        async def fetch_workout_events(self, *, since):
+            return [{"type": "updated", "workout": w} for w in await self._workouts()]
+
+        async def _workouts(self):
             return [{
                 "id": "w1",
                 "title": "Day A — Push",

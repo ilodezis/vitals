@@ -150,7 +150,11 @@ async def sync_hevy_now(
         if redis is not None:
             import time
             await redis.set("sync:last_success:hevy", str(int(time.time())))
-        return HevySyncResponse(ok=True, synced=summary["created"] + summary["updated"])
+        return HevySyncResponse(
+            ok=True,
+            synced=summary["created"] + summary["updated"],
+            deleted=summary.get("deleted", 0),
+        )
     except (HevyNotConfigured, HevyAPIError) as e:
         logger.warning("Hevy sync error: %s", e)
         return HevySyncResponse(ok=False, synced=0, error=str(e))

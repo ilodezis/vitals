@@ -9,9 +9,11 @@ The service layer is handed a client instance (so tests pass a fake with the sam
 shape and never hit the network). ``HevyClient.from_config()`` is the production
 factory.
 
-Docs: https://api.hevyapp.com/docs/ — ``GET /v1/workouts`` is paginated
-(``{"page", "page_count", "workouts": [...]}``); each workout is the
-exercise→set tree we normalise downstream.
+Docs: https://api.hevyapp.com/docs/ — ``GET /v1/workouts/events`` is paginated
+(``{"page", "page_count", "events": [...]}``) and lists what changed since a
+moment: ``updated`` carries the full workout (the exercise→set tree we normalise
+downstream), ``deleted`` its id. The sync reads that feed, so a routine run costs a
+page or two and deletions in Hevy reach the local copy.
 """
 from __future__ import annotations
 
@@ -69,28 +71,32 @@ class HevyClient:
         data = await self._get("/v1/workouts/count")
         return int(data.get("workout_count", 0))
 
-    async def fetch_workouts_page(self, page: int = 1, page_size: int = _MAX_PAGE_SIZE) -> dict:
-        """One page of workouts, newest first. Returns the raw Hevy envelope
-        (``page``, ``page_count``, ``workouts``)."""
+    async def fetch_workout_events_page(
+        self, *, since: str, page: int = 1, page_size: int = _MAX_PAGE_SIZE
+    ) -> dict:
+        """One page of workout events since ``since`` (ISO-8601). Returns the raw
+        envelope (``page``, ``page_count``, ``events``)."""
         page_size = min(max(1, page_size), _MAX_PAGE_SIZE)
         return await self._get(
-            "/v1/workouts", params={"page": page, "pageSize": page_size}
+            "/v1/workouts/events",
+            params={"page": page, "pageSize": page_size, "since": since},
         )
 
-    async def fetch_workouts(self, *, max_pages: int = 50) -> list[dict]:
-        """Walk the paginated workout list (newest first) and return the flat list.
+    async def fetch_workout_events(self, *, since: str) -> list[dict]:
+        """Every workout event since ``since``, walking all ``page_count`` pages.
 
-        ``max_pages`` bounds a first-ever full backfill; routine syncs hit far
-        fewer pages because the service stops once it meets already-stored ids.
+        No page cap: a first sync from the epoch has to reach the oldest workout,
+        and a cap silently dropped everything past it. Raises on any failed page,
+        so a caller never mistakes half the history for all of it.
         """
-        workouts: list[dict] = []
+        events: list[dict] = []
         page = 1
-        while page <= max_pages:
-            envelope = await self.fetch_workouts_page(page=page)
-            batch = envelope.get("workouts") or []
-            workouts.extend(batch)
-            page_count = int(envelope.get("page_count", page))
+        while True:
+            envelope = await self.fetch_workout_events_page(since=since, page=page)
+            batch = envelope.get("events") or []
+            events.extend(batch)
+            page_count = int(envelope.get("page_count") or page)
             if page >= page_count or not batch:
                 break
             page += 1
-        return workouts
+        return events
