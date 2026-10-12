@@ -2027,8 +2027,9 @@ async def assemble_context(
     # Environment — the bedroom's air, one summary per night of both windows (never
     # the curves). It is context for the sleep and recovery blocks, not a verdict on
     # them, and coverage_pct says how much of each night the station was actually
-    # reporting: a night it missed is a gap, not a clean night. The daily brief does
-    # not carry the room yet, so it neither reads nor reports on it.
+    # reporting: a night it missed is a gap, not a clean night. The daily brief
+    # reads only last night, beside his recent nights, through its own path
+    # (``environment_context.brief_night``), so this block stays closed-mode only.
     from vitals.services import environment_context
     from vitals.services.environment import settings as environment_settings
 

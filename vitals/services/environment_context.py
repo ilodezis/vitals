@@ -13,6 +13,7 @@ weekly report and in an export.
 from __future__ import annotations
 
 import logging
+import statistics
 from datetime import date as date_type
 from datetime import datetime, time as time_type, timedelta
 from typing import Any, Optional, Sequence
@@ -22,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.config import load_config
 from vitals.enums import Domain
-from vitals.models import SystemAlert
+from vitals.models import GarminDaily, SystemAlert
 from vitals.models.environment import EnvironmentHourly, EnvironmentSample
 from vitals.services.environment import live as env_live
 from vitals.services.environment import queries
@@ -290,6 +291,144 @@ async def nights(
         if summary.samples:
             found.append(summary)
     return found, truncated
+
+
+# Below this share of the window a night's numbers describe the part the station
+# saw, not the night — so no verdict is drawn from it and it is no one's baseline.
+COVERAGE_ADEQUATE_PCT = 80.0
+
+# The owner's own recent nights the brief compares last night with, and the fewest
+# adequately covered ones that still make a norm.
+BRIEF_BASELINE_NIGHTS = 14
+BRIEF_BASELINE_MIN_NIGHTS = 4
+
+
+def _median(values: Sequence[Optional[float]]) -> Optional[float]:
+    present = [v for v in values if v is not None]
+    return statistics.median(present) if present else None
+
+
+async def brief_night(session: AsyncSession, on_date: date_type) -> Optional[dict[str, Any]]:
+    """Last night's air for the morning brief, beside his own recent nights.
+
+    ``None`` when the station saw too little of the night to say anything — no
+    data and a half-covered night both mean "no line", never a reassuring one.
+    ``baseline`` is the median of the adequately covered nights in the fortnight
+    before; it is left out until there are enough of them to be a norm.
+    """
+    summary = await queries.night_summary(session, on_date)
+    if not summary.samples or summary.coverage_pct < COVERAGE_ADEQUATE_PCT:
+        return None
+    prior, _ = await nights(
+        session, on_date - timedelta(days=BRIEF_BASELINE_NIGHTS), on_date - timedelta(days=1),
+        limit=None,
+    )
+    prior = [n for n in prior if n.coverage_pct >= COVERAGE_ADEQUATE_PCT]
+    baseline = None
+    if len(prior) >= BRIEF_BASELINE_MIN_NIGHTS:
+        baseline = {
+            "nights": len(prior),
+            "co2_median": _int(_median([n.co2.median for n in prior])),
+            "minutes_above_warn": _r1(_median([n.co2.minutes_above_warn for n in prior])),
+            "temperature_mean": _r1(_median([n.temperature.mean for n in prior])),
+        }
+    prefs = await env_settings.get_settings(session)
+    return prune({
+        **night_dict(summary),
+        "baseline": baseline,
+        "thresholds": night_thresholds(prefs),
+    })
+
+
+# ── nights × sleep ───────────────────────────────────────────────────────────
+
+SLEEP_NIGHTS_MAX_DAYS = 31
+SLEEP_NIGHTS_DEFAULT_DAYS = 14
+
+# (column in the answer, how to read it off a night summary or a Garmin day).
+_AIR_COLUMNS = (
+    ("coverage_pct", lambda n: _r1(n.coverage_pct)),
+    ("co2_median", lambda n: _int(n.co2.median)),
+    ("co2_p90", lambda n: _int(n.co2.p90)),
+    ("co2_max", lambda n: _int(n.co2.max)),
+    ("co2_min_above_warn", lambda n: _int(n.co2.minutes_above_warn)),
+    ("temp_min", lambda n: _r1(n.temperature.min)),
+    ("temp_max", lambda n: _r1(n.temperature.max)),
+    ("rh_mean", lambda n: _int(n.humidity.mean)),
+)
+
+
+def _minutes(seconds: Optional[int]) -> Optional[int]:
+    return None if seconds is None else int(round(seconds / 60))
+
+
+_SLEEP_COLUMNS = (
+    ("sleep_score", lambda g: g.sleep_score),
+    ("sleep_min", lambda g: _minutes(g.sleep_seconds)),
+    ("deep_min", lambda g: _minutes(g.deep_sleep_seconds)),
+    ("rem_min", lambda g: _minutes(g.rem_sleep_seconds)),
+    ("awake_count", lambda g: g.awake_count),
+    ("hrv", lambda g: _r1(g.hrv_avg)),
+    ("resting_hr", lambda g: g.resting_hr),
+    ("sleep_hr", lambda g: g.avg_sleep_hr),
+    ("respiration", lambda g: _r1(g.avg_respiration)),
+)
+
+
+async def nights_with_sleep(
+    session: AsyncSession,
+    *,
+    start: Optional[date_type],
+    end: Optional[date_type],
+) -> dict[str, Any]:
+    """One row per night: the bedroom's air beside that night's Garmin sleep.
+
+    A night is the date you woke up on both sides, so the row joins on it. Nights
+    with only one side still get a row — the missing half is a gap worth seeing,
+    not a reason to hide the other. Columnar (``columns`` + ``rows``) because a
+    month of named fields is mostly repeated names. A window past the cap is cut to
+    its first part and said so.
+    """
+    end = end or timeutils.today_local()
+    start = start or end - timedelta(days=SLEEP_NIGHTS_DEFAULT_DAYS - 1)
+    if start > end:
+        return {"error": "start_date is after end_date"}
+    out: dict[str, Any] = {}
+    if (end - start).days + 1 > SLEEP_NIGHTS_MAX_DAYS:
+        end = start + timedelta(days=SLEEP_NIGHTS_MAX_DAYS - 1)
+        out["truncated"] = True
+        out["hint"] = (
+            f"At most {SLEEP_NIGHTS_MAX_DAYS} nights per call: the window was cut to its first "
+            f"{SLEEP_NIGHTS_MAX_DAYS} — call again with a later start_date for the rest."
+        )
+
+    air, _ = await nights(session, start, end, limit=None)
+    air_by_date = {n.date: n for n in air}
+    garmin = (
+        await session.execute(
+            select(GarminDaily).where(GarminDaily.date >= start, GarminDaily.date <= end)
+        )
+    ).scalars().all()
+    sleep_by_date = {
+        g.date: g for g in garmin if any(get(g) is not None for _, get in _SLEEP_COLUMNS)
+    }
+
+    rows = []
+    for day in sorted(set(air_by_date) | set(sleep_by_date)):
+        night, sleep = air_by_date.get(day), sleep_by_date.get(day)
+        rows.append(
+            [day.isoformat()]
+            + [get(night) if night else None for _, get in _AIR_COLUMNS]
+            + [get(sleep) if sleep else None for _, get in _SLEEP_COLUMNS]
+        )
+    prefs = await env_settings.get_settings(session)
+    return {
+        "window": {"start": start.isoformat(), "end": end.isoformat()},
+        "columns": ["date"] + [c for c, _ in _AIR_COLUMNS] + [c for c, _ in _SLEEP_COLUMNS],
+        "rows": rows,
+        **out,
+        "thresholds": night_thresholds(prefs),
+    }
 
 
 # ── hours (exports) ──────────────────────────────────────────────────────────

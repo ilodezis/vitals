@@ -106,6 +106,14 @@ state (состояние, 1-5), symptom (симптом, 1-5), exposure (сде
 («кофе в 22») — первое, с чем стоит сверить просевший сон или HRV. Это его слова,
 а не измерение: одна запись — повод связать, а не поставить диагноз.
 
+Блок `environment` — воздух в спальне прошлой ночью (окно 00:00–12:00): CO₂
+(median/p90/max, minutes_above_warn — минуты на пороге warn и выше), температура
+и влажность, `baseline` — его медианы за последние ночи. Он есть, только если
+станция покрыла ночь. Строку про воздух шапка печатает сама, когда ночь была не
+в норме, — не пересказывай её. Связать с ночью можно: «душная ночь и HRV ниже
+нормы совпали» — наблюдение. «Из-за духоты HRV упал» — выдуманная причина: одна
+ночь этого не показывает. Если блока нет — про воздух не пиши.
+
 ОГРАНИЧЕНИЯ (нарушение = баг):
 - Опирайся ТОЛЬКО на JSON. Ничего не выдумывай, новых чисел не вводи.
 - Никаких заголовков, списков и разметки — обычный текст, его читают в мессенджере.
@@ -174,6 +182,12 @@ async def build_context(
         if _nutrition_enabled(ctx)
         else None
     )
+    # Last night's bedroom air, beside his recent nights — the header prints a line
+    # when the night was off, and the model may set it next to sleep and HRV.
+    # Absent when the module is off or the station saw too little of the night.
+    ctx["environment"] = (
+        await _last_night_air(session, today) if _module_enabled(ctx, "environment") else None
+    )
     answers, answered = await day_plan.resolve(session, today)
     # Yesterday's answers, and only the ones he actually gave. How heavy a day was
     # is answered in the evening about the day just spent, so at 11:00 the newest
@@ -237,10 +251,26 @@ async def _signals_since_yesterday(session: AsyncSession, on_date: date_type) ->
 _NUTRITION_TOTAL_FIELDS = ("calories", "protein_g", "fat_g", "carbs_g")
 
 
+def _module_enabled(ctx: dict, key: str) -> bool:
+    """Is a module even on? Read off the coverage block so the answer is the same
+    one ``assemble_context`` already settled."""
+    return bool(((ctx.get("coverage") or {}).get(key) or {}).get("enabled"))
+
+
 def _nutrition_enabled(ctx: dict) -> bool:
-    """Is the food log a module that is even on? Read off the coverage block so
-    the answer is the same one ``assemble_context`` already settled."""
-    return bool(((ctx.get("coverage") or {}).get("nutrition") or {}).get("enabled"))
+    return _module_enabled(ctx, "nutrition")
+
+
+async def _last_night_air(session: AsyncSession, on_date: date_type) -> Optional[dict]:
+    """The night that ended this morning, or ``None``. A station fault must not
+    cost the morning its brief, so a failed read is logged and left out."""
+    from vitals.services import environment_context
+
+    try:
+        return await environment_context.brief_night(session, on_date)
+    except Exception:
+        logger.warning("brief: last night's air unavailable", exc_info=True)
+        return None
 
 
 async def _meals_logged_today(session: AsyncSession, on_date: date_type) -> bool:

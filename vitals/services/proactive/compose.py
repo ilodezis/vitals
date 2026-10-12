@@ -26,6 +26,7 @@ from typing import Iterable, Optional
 
 # Block kinds (also the priority ladder below).
 KIND_GARMIN = "garmin"
+KIND_ENVIRONMENT = "environment"  # last night's bedroom air
 KIND_WEIGHT = "weight"
 KIND_DAY = "day"        # what kind of day it is — see ``day_plan``
 KIND_ASK = "ask"        # a question to the owner, answered in free text
@@ -78,6 +79,16 @@ LINE_NIGHT_PENDING = "Ночь ещё не размечена — цифр во�
 # Relative rather than per-metric: 5% is ~3 bpm of resting HR and ~4 points of
 # sleep score, which is the same size of "actually different" on both.
 _BASELINE_NOTABLE = 0.05
+
+
+# When last night's air earns a header line at all. A line every morning is the
+# same line every morning; it appears only when the night was off — CO2 at or above
+# the warn line for a real stretch, a median well above his own recent nights, or
+# the room outside his sleeping temperature range.
+_CO2_MINUTES_NOTABLE = 30
+_CO2_ABOVE_BASELINE = 0.25
+# Below this the "(обычно …)" next to the median is noise, as with _BASELINE_NOTABLE.
+_CO2_BASELINE_PRINTED = 0.10
 
 
 @dataclass(frozen=True)
@@ -230,6 +241,10 @@ def header_blocks(ctx: dict) -> list[Block]:
         # Otherwise a brief that gave up waiting reads as a brief that broke.
         blocks.append(Block(KIND_GARMIN, LINE_NIGHT_PENDING, 10))
 
+    environment = environment_block(ctx.get("environment"))
+    if environment is not None:
+        blocks.append(environment)
+
     weight = ctx.get("weight") or {}
     wparts = []
     if weight.get("latest_kg") is not None:
@@ -249,6 +264,62 @@ def header_blocks(ctx: dict) -> list[Block]:
         blocks.append(Block(KIND_WEIGHT, line, 20))
 
     return blocks
+
+
+def environment_block(night: Optional[dict]) -> Optional[Block]:
+    """Last night's bedroom air — one line, and only when the night was off.
+
+    ``night`` is :func:`environment_context.brief_night`: present only when the
+    station covered enough of the night, so a missing or half-seen night prints
+    nothing rather than a clean-looking line. The comparison is with his own
+    recent nights (``baseline``), the way the recovery line reads against his norm.
+    """
+    if not night:
+        return None
+    co2 = night.get("co2") or {}
+    temp = night.get("temperature") or {}
+    thresholds = night.get("thresholds") or {}
+    baseline = night.get("baseline") or {}
+
+    parts = []
+    median, usual = co2.get("median"), baseline.get("co2_median")
+    above_warn = co2.get("minutes_above_warn") or 0
+    above_usual = (
+        median is not None and usual and (median - usual) / usual >= _CO2_ABOVE_BASELINE
+    )
+    if above_warn >= _CO2_MINUTES_NOTABLE or above_usual:
+        co2_parts = []
+        if above_warn >= _CO2_MINUTES_NOTABLE and thresholds.get("co2_warn") is not None:
+            co2_parts.append(f"CO₂ выше {_num(thresholds['co2_warn'])} — {_duration(above_warn)}")
+        if median is not None:
+            text = f"медиана {_num(median)}"
+            if usual and abs(median - usual) / usual >= _CO2_BASELINE_PRINTED:
+                text += f" (обычно {_num(usual)})"
+            co2_parts.append(text if co2_parts else f"CO₂ {text}")
+        parts.append(", ".join(co2_parts))
+
+    mean, low, high = temp.get("mean"), thresholds.get("temp_sleep_min"), thresholds.get("temp_sleep_max")
+    if mean is not None and low is not None and high is not None and not low <= mean <= high:
+        side = "выше" if mean > high else "ниже"
+        parts.append(f"{_decimal(mean)} °C — {side} твоих {_num(low)}–{_num(high)}")
+
+    if not parts:
+        return None
+    return Block(KIND_ENVIRONMENT, "Спальня ночью: " + " · ".join(parts), 15)
+
+
+def _duration(minutes) -> str:
+    """``190 → "3 ч 10 мин"``, ``40 → "40 мин"``."""
+    total = int(round(float(minutes)))
+    hours, rest = divmod(total, 60)
+    if not hours:
+        return f"{rest} мин"
+    return f"{hours} ч {rest} мин" if rest else f"{hours} ч"
+
+
+def _decimal(value) -> str:
+    """``23.5 → "23,5"``, ``21.0 → "21"`` — a Russian decimal comma."""
+    return _num(round(float(value), 1)).replace(".", ",")
 
 
 def _vs_baseline(value, mean) -> str:

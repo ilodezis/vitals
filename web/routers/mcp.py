@@ -2799,6 +2799,27 @@ async def get_environment_night(on_date: Optional[str] = None) -> dict:
 
 @mcp.tool()
 @gated("environment")
+async def get_environment_vs_sleep(
+    start_date: Optional[str] = None, end_date: Optional[str] = None
+) -> dict:
+    """One row per night (the date you woke up; YYYY-MM-DD, both ends inclusive,
+    default the last 14, max 31): the bedroom's air — coverage_pct, CO2
+    median/p90/max, minutes at or above the warn line, temperature range, mean
+    humidity — next to that night's Garmin sleep: score, total/deep/REM minutes,
+    awakenings, HRV, resting and sleeping HR, respiration. ``columns`` names the
+    ``rows``; a missing side is null. Below 80% coverage the air numbers describe
+    only part of the night. Same-night co-occurrence, not cause. Read-only."""
+    from vitals.services import environment_context
+
+    start = _parse_date(start_date, field="start_date")
+    end = _parse_date(end_date, field="end_date")
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        return await environment_context.nights_with_sleep(session, start=start, end=end)
+
+
+@mcp.tool()
+@gated("environment")
 async def get_environment_alerts(hours: int = 24) -> dict:
     """Returns the bedroom-air alerts that fired in the last ``hours`` (default 24,
     max 168) — too stuffy, too hot or cold, too dry or humid, station silent — each

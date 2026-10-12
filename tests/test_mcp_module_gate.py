@@ -162,6 +162,7 @@ GATED_READ_TOOLS: dict[str, str] = {
     "get_environment": "environment",
     "get_environment_night": "environment",
     "get_environment_alerts": "environment",
+    "get_environment_vs_sleep": "environment",
 }
 
 
@@ -210,4 +211,5 @@ async def test_environment_tools_answer_once_the_module_is_on():
     assert live["station"]["status"] == "never"  # no station has reported — an answer, not an error
     assert "error" not in await mcp_router.get_environment_night(on_date="2026-09-30")
     assert "error" not in await mcp_router.get_environment_alerts()
+    assert "error" not in await mcp_router.get_environment_vs_sleep()
     assert "error" not in await mcp_router.get_environment()
