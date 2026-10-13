@@ -44,12 +44,25 @@ function readWhole(raw: string): number | null {
 }
 
 export function buildProactiveNumbers(fields: ProactiveNumberFields): ProactiveNumbersResult {
+  const read = readProactiveNumbers(fields)
+  return read.ok ? { ok: true, numbers: read.numbers as ProactiveNumbers } : read
+}
+
+export type PartialNumbersResult =
+  | { ok: true; numbers: Partial<ProactiveNumbers> }
+  | { ok: false; invalid: ProactiveNumberKey[] }
+
+/** The same reading for a part of the form: the Garmin schedule and the bot's own fields are
+ *  saved by different blocks, and each sends only the numbers it shows. */
+export function readProactiveNumbers(fields: Partial<ProactiveNumberFields>): PartialNumbersResult {
   const invalid: ProactiveNumberKey[] = []
   const numbers: Partial<ProactiveNumbers> = {}
   for (const key of Object.keys(FIELD_TO_BODY) as ProactiveNumberKey[]) {
-    const value = readWhole(fields[key])
+    const raw = fields[key]
+    if (raw === undefined) continue
+    const value = readWhole(raw)
     if (value === null) invalid.push(key)
     else numbers[FIELD_TO_BODY[key]] = value
   }
-  return invalid.length > 0 ? { ok: false, invalid } : { ok: true, numbers: numbers as ProactiveNumbers }
+  return invalid.length > 0 ? { ok: false, invalid } : { ok: true, numbers }
 }

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { failText, InvalidError, RequestError } from '@/api/client'
 import type { components } from '@/api/schema'
+import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { useT } from '@/i18n/useT'
@@ -45,9 +46,8 @@ export function HealthImport() {
   }
 
   return (
-    <div className="set-sub-sec">
-      <span className="flabel block strong">{t('garmin.hae_title')}</span>
-      <p className="fhint set-mb3">{t('garmin.hae_description')}</p>
+    <Section title={t('garmin.hae_title')} className="set-sec">
+      <p className="sub set-d">{t('garmin.hae_description')}</p>
       <input ref={input} type="file" accept="application/json,.json" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
       <button type="button" className="data-drop-btn" onClick={() => input.current?.click()}>
         <span className="data-drop-icon">
@@ -66,6 +66,6 @@ export function HealthImport() {
           <span>{busy ? t('app.recovery.importing') : t('garmin.hae_submit')}</span>
         </button>
       </div>
-    </div>
+    </Section>
   )
 }

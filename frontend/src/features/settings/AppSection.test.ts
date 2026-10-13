@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupSettingsModules } from './GeneralSection'
+import { groupSettingsModules, timezoneOptions } from './AppSection'
 
 const registry = [
   { key: 'weight', rubric: 'health', core: true },
@@ -48,5 +48,19 @@ describe('groupSettingsModules', () => {
 
   it('handles an empty registry', () => {
     expect(groupSettingsModules([], {})).toEqual([])
+  })
+})
+
+describe('timezoneOptions', () => {
+  it('offers the zones the browser knows', () => {
+    expect(timezoneOptions('Europe/Berlin', ['Europe/Berlin', 'Europe/Chisinau'])).toEqual(['Europe/Berlin', 'Europe/Chisinau'])
+  })
+
+  it('keeps a saved zone the list lacks, so it is not shown as another one and saved over', () => {
+    expect(timezoneOptions('UTC', ['Europe/Berlin'])).toEqual(['UTC', 'Europe/Berlin'])
+  })
+
+  it('falls back to a short list when the browser has none', () => {
+    expect(timezoneOptions('Europe/Chisinau', [])).toContain('Europe/Moscow')
   })
 })

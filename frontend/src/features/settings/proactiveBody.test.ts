@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildProactiveNumbers, type ProactiveNumberFields } from './proactiveBody'
+import { buildProactiveNumbers, readProactiveNumbers, type ProactiveNumberFields } from './proactiveBody'
 
 const filled: ProactiveNumberFields = {
   dailyBudget: '5',
@@ -50,5 +50,19 @@ describe('buildProactiveNumbers', () => {
   it('refuses text, fractions and negatives', () => {
     const result = buildProactiveNumbers({ ...filled, dailyBudget: 'abc', pulseSeconds: '1.5', pulseEndHour: '-2' })
     expect(result).toEqual({ ok: false, invalid: ['dailyBudget', 'pulseSeconds', 'pulseEndHour'] })
+  })
+})
+
+describe('readProactiveNumbers', () => {
+  it('reads only the fields a block shows, so it never sends the other block\'s numbers', () => {
+    expect(readProactiveNumbers({ dailyBudget: '4' })).toEqual({ ok: true, numbers: { daily_budget: 4 } })
+    expect(readProactiveNumbers({ syncHours: '6', pulseSeconds: '0' })).toEqual({
+      ok: true,
+      numbers: { garmin_sync_hours: 6, pulse_seconds: 0 },
+    })
+  })
+
+  it('still names a bad field of that part and sends nothing', () => {
+    expect(readProactiveNumbers({ syncHours: '6', pulseEndHour: 'x' })).toEqual({ ok: false, invalid: ['pulseEndHour'] })
   })
 })

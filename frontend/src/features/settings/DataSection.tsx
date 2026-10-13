@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api, failText, InvalidError, ok, RequestError } from '@/api/client'
+import { Alert } from '@/components/controls/Alert'
 import { TextButton } from '@/components/controls/Marks'
 import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { useT } from '@/i18n/useT'
 import { formatNumber } from '@/lib/format'
+import { HealthImport } from './HealthImport'
 
 export type RestartPhase = 'idle' | 'confirm' | 'restarting'
 
@@ -131,120 +133,71 @@ export function DataSection() {
     }
   }
 
+  // Out, then in, then what replaces or stops everything — the dangerous end of the tab.
   return (
-    <Section title={t('settings.data_title')} className="set-sec set-data-card">
-      <p className="sub set-d">{t('settings.data_description')}</p>
-
-      <div className="form">
-        {/* Export */}
-        <div>
-          <span className="flabel block">
-            {t('settings.export_label')}
-          </span>
-          <div className="set-row-wrap">
-            <button
-              type="button"
-              className="ghost"
-              onClick={handleExportFull}
-            >
-              <Icon name="download" />
-              <span>{t('settings.export_full')}</span>
-            </button>
-            <button
-              type="button"
-              className="ghost"
-              onClick={handleExportLlm}
-            >
-              <Icon name="download" />
-              <span>{t('settings.export_llm')}</span>
-            </button>
-          </div>
-          <p className="fhint set-mt2">{t('settings.export_hint')}</p>
-        </div>
-
-        {/* Import */}
-        <div className="set-sub-sec">
-          <span className="flabel block">
-            {t('settings.import_label')}
-          </span>
-
-          <div className="alert warn set-mb3">
-            <Icon name="warn" />
-            <div>{t('settings.import_warning')}</div>
-          </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            hidden
-            onChange={handleFileChange}
-          />
-
-          <button
-            type="button"
-            className="data-drop-btn"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <span className="data-drop-icon">
-              <Icon name="upload" />
-            </span>
-            <span>
-              <b className="data-drop-name">
-                {selectedFile ? selectedFile.name : t('settings.import_drop_text')}
-              </b>
-              <small className="data-drop-meta">
-                {selectedFile
-                  ? t('settings.file_size_kb', { size: formatNumber(selectedFile.size / 1024, lang, 1) })
-                  : t('settings.import_drop_hint')}
-              </small>
-            </span>
+    <>
+      <Section title={t('settings.export_label')} className="set-sec">
+        <p className="sub set-d">{t('settings.export_hint')}</p>
+        <div className="set-row-wrap">
+          <button type="button" className="ghost" onClick={handleExportFull}>
+            <Icon name="download" />
+            <span>{t('settings.export_full')}</span>
           </button>
-
-          <div className="set-mt3">
-            <button
-              type="button"
-              className="ghost danger"
-              onClick={handleRestore}
-              disabled={isRestoring || !selectedFile}
-            >
-              <Icon name="sync" />
-              <span>{isRestoring ? t('settings.import_restoring') : t('settings.import_submit')}</span>
-            </button>
-          </div>
-
-          {restoreResult && (
-            <div className="alert info set-mt3">
-              <Icon name="check" />
-              <div>
-                <b>{restoreResult}</b>
-                <p className="set-note">
-                  {t('settings.import_result_hint')}
-                </p>
-              </div>
-            </div>
-          )}
+          <button type="button" className="ghost" onClick={handleExportLlm}>
+            <Icon name="download" />
+            <span>{t('settings.export_llm')}</span>
+          </button>
         </div>
+      </Section>
 
-        {/* Container Restart */}
-        <div className="set-sub-sec">
-          <span className="flabel block">
-            {t('settings.restart_title')}
+      <HealthImport />
+
+      <Section title={t('settings.restore_title')} className="set-sec">
+        <Alert tone="warn" className="set-mb3">
+          {t('settings.import_warning')}
+        </Alert>
+
+        <input ref={fileInputRef} type="file" accept=".json" hidden onChange={handleFileChange} />
+
+        <button type="button" className="data-drop-btn" onClick={() => fileInputRef.current?.click()}>
+          <span className="data-drop-icon">
+            <Icon name="upload" />
           </span>
-          <p className="fhint set-mb3">
-            {restartPhase === 'restarting' ? t('settings.restart_text') : t('settings.restart_hint')}
-          </p>
-          <TextButton
-            icon="sync"
-            danger
-            spinning={restartPhase === 'restarting'}
-            disabled={restartPhase === 'restarting'}
-            onClick={handleRestart}
-          >
-            {restartPhase === 'confirm' ? t('common.confirm_question') : t('settings.restart_btn')}
-          </TextButton>
+          <span>
+            <b className="data-drop-name">{selectedFile ? selectedFile.name : t('settings.import_drop_text')}</b>
+            <small className="data-drop-meta">
+              {selectedFile ? t('settings.file_size_kb', { size: formatNumber(selectedFile.size / 1024, lang, 1) }) : t('settings.import_drop_hint')}
+            </small>
+          </span>
+        </button>
+
+        <div className="set-mt3">
+          <button type="button" className="ghost danger" onClick={handleRestore} disabled={isRestoring || !selectedFile}>
+            <Icon name="sync" />
+            <span>{isRestoring ? t('settings.import_restoring') : t('settings.import_submit')}</span>
+          </button>
         </div>
-      </div>
-    </Section>
+
+        {restoreResult && (
+          <Alert tone="info" icon="check" className="set-mt3">
+            <b>{restoreResult}</b>
+            <span className="set-note">{t('settings.import_result_hint')}</span>
+          </Alert>
+        )}
+      </Section>
+
+      <Section title={t('settings.restart_title')} className="set-sec">
+        <p className="sub set-d">{restartPhase === 'restarting' ? t('settings.restart_text') : t('settings.restart_hint')}</p>
+        <TextButton
+          icon="sync"
+          danger
+          spinning={restartPhase === 'restarting'}
+          disabled={restartPhase === 'restarting'}
+          onClick={handleRestart}
+        >
+          {restartPhase === 'confirm' ? t('common.confirm_question') : t('settings.restart_btn')}
+        </TextButton>
+      </Section>
+    </>
   )
 }
