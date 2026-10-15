@@ -110,8 +110,8 @@ state (состояние, 1-5), symptom (симптом, 1-5), exposure (сде
 Блок `environment` — воздух в спальне прошлой ночью (окно 00:00–12:00): CO₂
 (median/p90/max, minutes_above_warn — минуты на пороге warn и выше), температура
 и влажность, `baseline` — его медианы за последние ночи. Он есть, только если
-станция покрыла ночь. Строку про воздух шапка печатает сама, когда ночь была не
-в норме, — не пересказывай её. Связать с ночью можно: «душная ночь и HRV ниже
+станция покрыла ночь. Строку про воздух шапка печатает сама (и помечает, что было
+не в норме), — не пересказывай её. Связать с ночью можно: «душная ночь и HRV ниже
 нормы совпали» — наблюдение. «Из-за духоты HRV упал» — выдуманная причина: одна
 ночь этого не показывает. Если блока нет — про воздух не пиши.
 
@@ -184,7 +184,7 @@ async def build_context(
         else None
     )
     # Last night's bedroom air, beside his recent nights — the header prints a line
-    # when the night was off, and the model may set it next to sleep and HRV.
+    # (flagging what was off), and the model may set it next to sleep and HRV.
     # Absent when the module is off or the station saw too little of the night.
     ctx["environment"] = (
         await _last_night_air(session, today) if _module_enabled(ctx, "environment") else None

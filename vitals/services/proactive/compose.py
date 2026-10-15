@@ -21,7 +21,7 @@ web UI keeps going through ``i18n``.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date as date_type
+from datetime import date as date_type, datetime
 from typing import Iterable, Optional
 
 # Block kinds (also the priority ladder below).
@@ -81,10 +81,10 @@ LINE_NIGHT_PENDING = "Ночь ещё не размечена — цифр во�
 _BASELINE_NOTABLE = 0.05
 
 
-# When last night's air earns a header line at all. A line every morning is the
-# same line every morning; it appears only when the night was off — CO2 at or above
-# the warn line for a real stretch, a median well above his own recent nights, or
-# the room outside his sleeping temperature range.
+# When last night's air is called off in the header line: CO2 at or above the warn
+# line for a real stretch, a median well above his own recent nights, or the room
+# outside his sleeping temperature range. A night inside all of them still gets
+# its plain numbers — a clean bedroom is worth seeing too.
 _CO2_MINUTES_NOTABLE = 30
 _CO2_ABOVE_BASELINE = 0.25
 # Below this the "(обычно …)" next to the median is noise, as with _BASELINE_NOTABLE.
@@ -235,6 +235,13 @@ def header_blocks(ctx: dict) -> list[Block]:
         )
         if garmin.get(key) is not None
     ]
+    # How long and when he actually slept — the score alone hides a short night.
+    sleep = _sleep_span(garmin)
+    if sleep:
+        if garmin.get("sleep_score") is not None:
+            parts[0] += ", " + sleep
+        else:
+            parts.insert(0, "Сон " + sleep)
     if parts:
         blocks.append(Block(KIND_GARMIN, " · ".join(parts), 10))
     elif garmin.get("night_pending"):
@@ -266,13 +273,34 @@ def header_blocks(ctx: dict) -> list[Block]:
     return blocks
 
 
+def _sleep_span(garmin: dict) -> str:
+    """``"7 ч 42 мин (00:58–08:40)"`` from the night's duration and bed/wake times
+    (local wall clock); either half alone when the other is missing."""
+    seconds = garmin.get("sleep_seconds")
+    text = _duration(seconds / 60) if seconds else ""
+    start, end = _clock(garmin.get("sleep_start")), _clock(garmin.get("sleep_end"))
+    if start and end:
+        window = f"{start}–{end}"
+        text = f"{text} ({window})" if text else window
+    return text
+
+
+def _clock(value) -> Optional[str]:
+    try:
+        return datetime.fromisoformat(str(value)).strftime("%H:%M")
+    except (TypeError, ValueError):
+        return None
+
+
 def environment_block(night: Optional[dict]) -> Optional[Block]:
-    """Last night's bedroom air — one line, and only when the night was off.
+    """Last night's bedroom air — one line whenever the station saw the night.
 
     ``night`` is :func:`environment_context.brief_night`: present only when the
     station covered enough of the night, so a missing or half-seen night prints
-    nothing rather than a clean-looking line. The comparison is with his own
-    recent nights (``baseline``), the way the recovery line reads against his norm.
+    nothing rather than a clean-looking line. An ordinary night prints its plain
+    CO2 median, temperature and humidity; an off one names what was off, against
+    his own recent nights (``baseline``) the way the recovery line reads against
+    his norm.
     """
     if not night:
         return None
@@ -297,11 +325,20 @@ def environment_block(night: Optional[dict]) -> Optional[Block]:
                 text += f" (обычно {_num(usual)})"
             co2_parts.append(text if co2_parts else f"CO₂ {text}")
         parts.append(", ".join(co2_parts))
+    elif median is not None:
+        parts.append(f"CO₂ медиана {_num(median)}")
 
     mean, low, high = temp.get("mean"), thresholds.get("temp_sleep_min"), thresholds.get("temp_sleep_max")
-    if mean is not None and low is not None and high is not None and not low <= mean <= high:
-        side = "выше" if mean > high else "ниже"
-        parts.append(f"{_decimal(mean)} °C — {side} твоих {_num(low)}–{_num(high)}")
+    if mean is not None:
+        if low is not None and high is not None and not low <= mean <= high:
+            side = "выше" if mean > high else "ниже"
+            parts.append(f"{_decimal(mean)} °C — {side} твоих {_num(low)}–{_num(high)}")
+        else:
+            parts.append(f"{_decimal(mean)} °C")
+
+    humidity = (night.get("humidity") or {}).get("mean")
+    if humidity is not None:
+        parts.append(f"влажность {_num(round(float(humidity)))}%")
 
     if not parts:
         return None

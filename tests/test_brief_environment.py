@@ -78,22 +78,29 @@ def test_a_stuffy_night_reads_against_his_own_nights():
         _env(median=1180, above_warn=190, baseline={"co2_median": 850})
     )
     assert block.kind == compose.KIND_ENVIRONMENT
-    assert block.text == "Спальня ночью: CO₂ выше 1000 — 3 ч 10 мин, медиана 1180 (обычно 850)"
+    assert block.text == "Спальня ночью: CO₂ выше 1000 — 3 ч 10 мин, медиана 1180 (обычно 850) · 19 °C"
 
 
 def test_a_median_well_above_his_norm_is_a_line_even_under_the_warn_line():
     block = compose.environment_block(_env(median=900, baseline={"co2_median": 650}))
-    assert block.text == "Спальня ночью: CO₂ медиана 900 (обычно 650)"
+    assert block.text == "Спальня ночью: CO₂ медиана 900 (обычно 650) · 19 °C"
 
 
 def test_a_warm_room_is_named_against_his_sleeping_range():
     block = compose.environment_block(_env(temp_mean=23.5))
-    assert block.text == "Спальня ночью: 23,5 °C — выше твоих 17–20"
+    assert block.text == "Спальня ночью: CO₂ медиана 700 · 23,5 °C — выше твоих 17–20"
 
 
-def test_an_ordinary_night_prints_nothing():
-    assert compose.environment_block(_env(median=720, baseline={"co2_median": 700})) is None
+def test_an_ordinary_night_still_prints_its_plain_numbers():
+    night = _env(median=720, temp_mean=19.4, baseline={"co2_median": 700})
+    night["humidity"] = {"mean": 46.6}
+    block = compose.environment_block(night)
+    assert block.text == "Спальня ночью: CO₂ медиана 720 · 19,4 °C · влажность 47%"
+
+
+def test_no_night_prints_nothing():
     assert compose.environment_block(None) is None
+    assert compose.environment_block({}) is None
 
 
 def test_the_line_sits_between_recovery_and_weight():
@@ -165,7 +172,7 @@ async def test_no_norm_until_there_are_enough_covered_nights(db_session):
 
     assert "baseline" not in night
     block = compose.environment_block(night)
-    assert block.text == "Спальня ночью: CO₂ выше 1000 — 11 ч 59 мин, медиана 1200"
+    assert block.text == "Спальня ночью: CO₂ выше 1000 — 11 ч 59 мин, медиана 1200 · 19 °C · влажность 45%"
 
 
 def test_the_doctor_report_has_no_climate_section():

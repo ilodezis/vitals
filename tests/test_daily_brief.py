@@ -146,6 +146,32 @@ async def test_the_header_carries_his_own_norm_only_when_today_is_off_it(db_sess
     assert "Пульс покоя 52 (" not in text       # on the norm — say nothing
 
 
+async def test_the_header_says_how_long_and_when_he_slept(db_session):
+    """A score of 84 hides a five-hour night; the duration and the bed/wake times
+    sit right beside it, in his own wall clock."""
+    bed = datetime.combine(DAY, datetime.min.time()).replace(minute=58)
+    wake = datetime.combine(DAY, datetime.min.time()).replace(hour=8, minute=40)
+    epoch = datetime(1970, 1, 1)
+    await garmin_service.ingest_daily(db_session, DAY, {
+        "summary": {"restingHeartRate": 52},
+        "sleep": {"dailySleepDTO": {
+            "sleepScores": {"overall": {"value": 84}},
+            "sleepTimeSeconds": 7 * 3600 + 42 * 60,
+            "sleepStartTimestampLocal": (bed - epoch).total_seconds() * 1000,
+            "sleepEndTimestampLocal": (wake - epoch).total_seconds() * 1000,
+        }},
+    })
+
+    ctx = await brief.build_context(db_session, on_date=DAY)
+    text = compose.render(compose.header_blocks(ctx))
+    assert text.startswith("Сон 84, 7 ч 42 мин (00:58–08:40) · Пульс покоя 52")
+
+
+def test_sleep_without_a_score_still_gets_its_hours():
+    blocks = compose.header_blocks({"garmin": {"sleep_seconds": 6 * 3600, "resting_hr": 55}})
+    assert blocks[0].text == "Сон 6 ч · Пульс покоя 55"
+
+
 async def test_no_norm_until_there_is_enough_history(db_session):
     """Two nights is not a baseline. Left unguarded the model gets a "norm" made
     of noise and calls a просадка against it — the invented comparison this whole
