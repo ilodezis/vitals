@@ -422,19 +422,19 @@ async def test_hours_respect_the_lower_bound(db_session):
 
 
 async def test_a_day_with_the_clocks_going_back_keeps_both_repeated_hours(db_session):
-    """25 October 2026: Chisinau goes from 03:00 back to 02:00 at 00:00 UTC, so the
-    local hour "02" happens twice. The labels repeat; the arrays still line up."""
+    """25 October 2026: Chisinau goes from 04:00 back to 03:00 at 01:00 UTC, so the
+    local hour "03" happens twice. The labels repeat; the arrays still line up."""
     d = date(2026, 10, 25)
-    first = datetime(2026, 10, 24, 23, 0, tzinfo=UTC)  # 02:00 EEST
+    first = datetime(2026, 10, 25, 0, 0, tzinfo=UTC)  # 03:00 EEST
     db_session.add_all([
         hourly_row(d, 0, hour_start=first, co2_mean=600.0),
-        hourly_row(d, 0, hour_start=first + timedelta(hours=1), co2_mean=640.0),  # 02:00 EET
+        hourly_row(d, 0, hour_start=first + timedelta(hours=1), co2_mean=640.0),  # 03:00 EET
     ])
     await db_session.commit()
 
     day = (await ctx.hours_by_day(db_session, d, d))[0]
 
-    assert day["hours"] == ["02", "02"] and day["co2_mean"] == [600, 640]
+    assert day["hours"] == ["03", "03"] and day["co2_mean"] == [600, 640]
 
 
 # ── alerts that fired ────────────────────────────────────────────────────────
