@@ -1,43 +1,77 @@
-/* Skincare styles ported from mockup */
-.sched { display: none; }
-.sched-m .opts { margin-top: 0; }
-.opt.today:not(.on) { color: var(--accent-2); }
-.day-pane { margin-top: 12px; border-top: 1px solid var(--line); }
-.day-pane .mi { display: grid; place-items: center; color: var(--muted); }
-.day-pane .mi svg { width: 20px; height: 20px; }
-.prods { border-top: 1px solid var(--line); }
-.prod { border-bottom: 1px solid var(--line); padding-bottom: 14px; }
-.prod .row { border-bottom: 0; padding-bottom: 6px; }
-.prod-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
-.prod-tags .m { font-size: var(--t-micro); color: var(--muted); }
-.prod-d { margin: 8px 0 0; color: var(--fg-2); max-width: 62ch; }
-.use { display: flex; gap: 6px; margin: 6px 0 0; font-size: var(--t-micro); color: var(--muted); }
-.use svg { width: 14px; height: 14px; flex: none; margin-top: 1px; }
-.skinmap { margin: 0 0 14px; color: var(--faint); }
+/* Today: two checklists side by side from a tablet up, one under the other on a phone */
+.sk-today { display: grid; gap: var(--s3); }
+.sk-slot .panel-h h3 { display: flex; align-items: center; gap: var(--s2); }
+.sk-slot .panel-h h3 svg { width: 18px; height: 18px; color: var(--muted); }
+.sk-all { color: var(--good); }
+.sk-checks { display: grid; gap: 2px; margin: 0 calc(-1 * var(--s2)); }
+.sk-check { display: flex; align-items: center; gap: var(--s3); min-height: 48px; padding: 0 var(--s2); border: none; border-radius: var(--r-sm); background: none; color: var(--fg); font: inherit; font-size: var(--t-ui); text-align: left; cursor: pointer; touch-action: manipulation; transition: background var(--d1) var(--ease-out); }
+@media (hover: hover) {
+  .sk-check:hover { background: var(--surface-2); }
+}
+.sk-check:active { background: var(--surface-3); }
+.sk-check:disabled { cursor: default; }
+.sk-check .mk { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line-2); color: var(--bg); transition: background var(--d2) var(--ease-out), border-color var(--d2) var(--ease-out); }
+.sk-check .mk svg { width: 14px; height: 14px; stroke-width: 2.4; }
+.sk-check.on .mk { background: var(--good); border-color: var(--good); }
+.sk-check.on .nm { color: var(--fg-2); }
+.sk-check .nm { flex: 1; min-width: 0; }
+.sk-check .hint { flex: none; font-size: var(--t-micro); color: var(--faint); }
+.sk-all-btn { margin-top: var(--s2); }
+.sk-none { margin: 0; padding: var(--s2) 0; }
 
-/* Semantic layout & catalog classes replacing Tailwind */
+.sk-panes { margin-bottom: 0; }
+
+/* The diary: a day, its progress, and each slot's products — missed ones struck through */
+.sk-day { display: grid; gap: 6px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.sk-day-h { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s3); }
+.sk-day-h .t { font-weight: 500; }
+.sk-day-h .m { font-size: var(--t-micro); color: var(--muted); }
+.sk-day-h .m.sk-all { color: var(--good); }
+.sk-day-slot { display: flex; align-items: flex-start; gap: var(--s2); }
+.sk-day-slot > svg { width: 16px; height: 16px; margin-top: 3px; color: var(--faint); }
+.sk-pills { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--t-label); }
+.sk-pill.on { color: var(--fg-2); }
+.sk-pill.miss { color: var(--faint); text-decoration: line-through; text-decoration-color: var(--bad-line); }
+.sk-row { grid-template-columns: minmax(0, 1fr) auto; }
 .fpanel.mb-s4 { margin-bottom: var(--s4); }
 .sk-form { display: grid; gap: var(--s3); }
-.sk-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s3); }
-.sk-opts { display: flex; gap: var(--s1); flex-wrap: wrap; }
-.sk-opts-gap2 { display: flex; gap: var(--s2); flex-wrap: wrap; }
-.sk-form-acts { display: flex; gap: var(--s2); padding-top: var(--s2); }
-.sk-sec-grid { margin-top: var(--s6); }
-.sk-log-box { display: grid; gap: var(--s2); }
-.sk-no-alerts { padding: var(--s3) 0; color: var(--muted); font-size: var(--t-caption); }
-.sk-rule-row { padding: var(--s2) 0; border-top: 1px solid var(--line); }
-.sk-rule-main { display: flex; flex-direction: column; gap: 2px; }
+
+/* The week: products down, days across; a sun for the morning, a moon for the evening */
+.sk-week { display: grid; gap: 2px; }
+.sk-week-r { display: grid; grid-template-columns: minmax(0, 1fr) repeat(7, 32px); align-items: center; min-height: 40px; border-bottom: 1px solid var(--line); }
+.sk-week-h { min-height: 28px; border-bottom: none; font-size: var(--t-micro); color: var(--muted); }
+.sk-week-h span { text-align: center; }
+.sk-week-h .now { color: var(--accent-2); }
+.sk-week-n { font-size: var(--t-label); color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: var(--s2); }
+/* Morning over evening on a phone, where two marks side by side would not fit a day's column */
+.sk-week-c { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1px; align-self: stretch; }
+.sk-week-c.now { background: var(--surface); }
+.sk-week-c svg { width: 14px; height: 14px; }
+.sk-week-c .am { color: var(--cool); }
+.sk-week-c .pm { color: var(--violet); }
+
+/* The catalog: each product folded to its name and one line */
+.sk-prods { border-top: 1px solid var(--line); }
+.sk-off { opacity: .55; }
+.sk-prod-b { display: grid; gap: 6px; padding: 0 0 14px; }
+.sk-prod-b p { margin: 0; }
+.sk-prod-d { color: var(--fg-2); max-width: 62ch; }
+.sk-use { display: flex; gap: 6px; }
+.sk-use svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+
+.sk-cats { margin-top: var(--s3); }
+.sk-note { margin-top: var(--s4); }
+
+/* The file picker as a quiet button: the browser's own "Choose files" box is not one of ours */
+.sk-file { position: relative; display: inline-flex; align-items: center; gap: var(--s2); }
+.sk-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.sk-file-n { font-size: var(--t-label); color: var(--muted); }
+.sk-rule .t { font-size: var(--t-body); }
 
 @container app (min-width: 768px) {
-  .sched { display: block; }
-  .sched-m { display: none; }
-  .sched table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 3px; }
-  .sched th { padding: 0 0 6px; font-size: var(--t-micro); color: var(--muted); font-weight: 500; text-align: left; padding-left: 8px; }
-  .sched th:first-child { width: 96px; }
-  .sched th.now { color: var(--accent-2); }
-  .sched td { padding: 8px; border-radius: var(--r-xs); background: var(--surface); vertical-align: top; font-size: var(--t-micro); height: 64px; }
-  .sched td.now { background: var(--surface-2); }
-  .sched td.lbl { background: none; padding-left: 0; font-size: var(--t-label); color: var(--fg-2); white-space: nowrap; vertical-align: middle; }
-  .sched td.lbl svg { display: inline-block; width: 16px; height: 16px; margin-right: 6px; vertical-align: -3px; color: var(--muted); }
-  .sched .pn { color: var(--fg-2); line-height: 1.3; margin-bottom: 4px; }
+  .sk-today { grid-template-columns: 1fr 1fr; }
+  .sk-week-r { grid-template-columns: minmax(0, 1fr) repeat(7, 56px); }
+  .sk-week-c { flex-direction: row; gap: 2px; }
+  .sk-week-c svg { width: 15px; height: 15px; }
+  .sk-pills { font-size: var(--t-body); }
 }

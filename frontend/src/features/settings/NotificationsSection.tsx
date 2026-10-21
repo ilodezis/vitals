@@ -24,7 +24,7 @@ type DaySchedule = {
   load: string
 }
 
-const NUDGES = ['activity', 'nutrition', 'data', 'environment'] as const
+const NUDGES = ['activity', 'nutrition', 'data', 'environment', 'skincare'] as const
 type Nudge = (typeof NUDGES)[number]
 
 /** The nudges as saved. Older rows keep them under one-letter keys; a nudge never set reads as
@@ -36,6 +36,7 @@ export function nudgesOf(saved: Record<string, boolean> | null | undefined): Rec
     nutrition: Boolean(raw.n ?? raw.nutrition ?? true),
     data: Boolean(raw.d ?? raw.data ?? true),
     environment: Boolean(raw.e ?? raw.environment ?? true),
+    skincare: Boolean(raw.skincare ?? true),
   }
 }
 
@@ -75,6 +76,9 @@ function BotSchedule({ settings }: NotificationsSectionProps) {
   const p = settings.proactive
   const [briefTime, setBriefTime] = useState(p.brief_time)
   const [eveningTime, setEveningTime] = useState(p.evening_time)
+  const [skincareMorning, setSkincareMorning] = useState(p.skincare_morning_time)
+  const [skincareEvening, setSkincareEvening] = useState(p.skincare_evening_time)
+  const skincareOn = moduleOn(settings, 'skincare')
   const [quietStart, setQuietStart] = useState(p.quiet_start)
   const [quietEnd, setQuietEnd] = useState(p.quiet_end)
   const [dailyBudget, setDailyBudget] = useState(String(p.daily_budget))
@@ -82,6 +86,8 @@ function BotSchedule({ settings }: NotificationsSectionProps) {
   const dirty =
     briefTime !== p.brief_time ||
     eveningTime !== p.evening_time ||
+    skincareMorning !== p.skincare_morning_time ||
+    skincareEvening !== p.skincare_evening_time ||
     quietStart !== p.quiet_start ||
     quietEnd !== p.quiet_end ||
     dailyBudget !== String(p.daily_budget)
@@ -93,7 +99,15 @@ function BotSchedule({ settings }: NotificationsSectionProps) {
       return false
     }
     return save(
-      { brief_time: briefTime, evening_time: eveningTime, quiet_start: quietStart, quiet_end: quietEnd, ...read.numbers },
+      {
+        brief_time: briefTime,
+        evening_time: eveningTime,
+        skincare_morning_time: skincareMorning,
+        skincare_evening_time: skincareEvening,
+        quiet_start: quietStart,
+        quiet_end: quietEnd,
+        ...read.numbers,
+      },
       'settings.saved.proactive',
     )
   }
@@ -114,6 +128,15 @@ function BotSchedule({ settings }: NotificationsSectionProps) {
           {time('settings.brief_time', briefTime, setBriefTime, 'settings.brief_time_hint')}
           {time('settings.evening_time', eveningTime, setEveningTime, 'settings.evening_time_hint')}
         </div>
+        {skincareOn && (
+          <>
+            <div className="set-times-grid set-mt3">
+              {time('settings.skincare_morning_time', skincareMorning, setSkincareMorning)}
+              {time('settings.skincare_evening_time', skincareEvening, setSkincareEvening)}
+            </div>
+            <p className="fhint set-mt1">{t('settings.skincare_time_hint')}</p>
+          </>
+        )}
         <div className="set-times-grid set-mt3">
           {time('settings.quiet_start', quietStart, setQuietStart)}
           {time('settings.quiet_end', quietEnd, setQuietEnd)}
@@ -139,7 +162,10 @@ function Nudges({ settings }: NotificationsSectionProps) {
   const [nudges, setNudges] = useState(() => nudgesOf(settings.proactive.nudges))
   // A nudge about a section that is off is kept as it is, just not offered.
   const shown = NUDGES.filter(
-    (n) => (n !== 'nutrition' || moduleOn(settings, 'nutrition')) && (n !== 'environment' || moduleOn(settings, 'environment')),
+    (n) =>
+      (n !== 'nutrition' || moduleOn(settings, 'nutrition')) &&
+      (n !== 'environment' || moduleOn(settings, 'environment')) &&
+      (n !== 'skincare' || moduleOn(settings, 'skincare')),
   )
 
   const flip = async (nudge: Nudge) => {

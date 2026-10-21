@@ -8,6 +8,7 @@ import { Disclosure } from '@/components/controls/Disclosure'
 import { DomainAlerts } from '@/components/controls/DomainAlerts'
 import { Delta } from '@/components/controls/Marks'
 import { Odometer } from '@/components/controls/Odometer'
+import { PhotoRibbon } from '@/components/controls/PhotoRibbon'
 import { Segmented } from '@/components/controls/Segmented'
 import { Section } from '@/components/controls/Section'
 import { Icon } from '@/components/icons/Icon'
@@ -35,8 +36,6 @@ export default function WeightMeasuresScreen() {
 
   const [activePane, setActivePane] = useState<'measure' | 'noise' | 'photo' | 'body'>('measure')
   const [openScanId, setOpenScanId] = useState<number | null>(null)
-  // The progress photo shown large, with its delete.
-  const [largePhotoId, setLargePhotoId] = useState<number | null>(null)
   const female = view.sex === 'female'
   const bodyComp = view.body_comp_enabled
   // The scan tab exists only with the body-composition module on.
@@ -688,20 +687,12 @@ export default function WeightMeasuresScreen() {
 
           {/* Progress Gallery */}
           <Section title={t('app.weight.progress_gallery')}>
-            <div className="ribbon">
-              {photos.length === 0 ? (
-                <span className="m ribbon-empty">{t('app.empty')}</span>
-              ) : (
-                photos.map((ph) => (
-                  <button key={ph.id} type="button" className="ph-tile" aria-label={t('app.weight.photo_open')} onClick={() => setLargePhotoId(ph.id)}>
-                    <span className="im">
-                      <img src={ph.url} alt={ph.note ?? t('app.weight.tab_photo')} />
-                    </span>
-                    <span className="m num">{shortDate(parseIsoDate(ph.date), lang)}</span>
-                  </button>
-                ))
-              )}
-            </div>
+            <PhotoRibbon
+              photos={photos}
+              onDelete={(id) => deletePhotoMutation.mutate(id)}
+              label={t('app.weight.tab_photo')}
+              openLabel={t('app.weight.photo_open')}
+            />
           </Section>
         </div>
 
@@ -828,36 +819,6 @@ export default function WeightMeasuresScreen() {
           )}
         </div>
       </div>
-      {largePhotoId !== null && (() => {
-        const ph = photos.find((p) => p.id === largePhotoId)
-        if (ph === undefined) return null
-        return (
-          <div className="ph-large" role="dialog" aria-modal="true" aria-label={t('app.weight.tab_photo')} onClick={() => setLargePhotoId(null)}>
-            <div className="ph-large-box" onClick={(e) => e.stopPropagation()}>
-              <img src={ph.url} alt={ph.note ?? t('app.weight.tab_photo')} />
-              <div className="ph-large-foot">
-                <span className="m num">
-                  {longDate(parseIsoDate(ph.date), lang)}
-                  {ph.note ? ` · ${ph.note}` : ''}
-                </span>
-                <span className="acts">
-                  <ConfirmButton
-                    text
-                    label={t('app.delete')}
-                    onConfirm={() => {
-                      deletePhotoMutation.mutate(ph.id)
-                      setLargePhotoId(null)
-                    }}
-                  />
-                  <button type="button" className="ibtn" aria-label={t('app.close')} onClick={() => setLargePhotoId(null)}>
-                    <Icon name="x" />
-                  </button>
-                </span>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
     </>
   )
 }

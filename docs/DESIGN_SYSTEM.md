@@ -106,6 +106,7 @@ never flash back over the new one.
 | `ConfirmButton` | | A destructive action asks once, in place |
 | `Odometer` | | Digits as reels; the figure rolls to a new value of the same shape |
 | `Meters` | | Range bars and gauges |
+| `PhotoRibbon` | | A dated photo diary: tiles newest first, one shown large with its delete — the weight's progress photos and the face photos |
 | `LogSheet` | `components/sheet` | The entry sheet: a bottom sheet on the phone, a side drawer on the desktop |
 
 Forms opened in place share one layout (`.fpanel`, `.form-acts`, `.form-g2`, `.fhint` in `app.css`);

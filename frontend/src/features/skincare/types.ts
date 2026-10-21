@@ -17,6 +17,8 @@ export interface SkincareProductItem {
   default_time?: string
   schedule_days?: number[]
   usage_instructions?: string | null
+  /** The conflict-engine flag a tick on this product sets; null = none the rules know. */
+  activeFlag?: string | null
 }
 
 export interface SkincareLogItem {
@@ -61,6 +63,34 @@ export interface SkincareAlertItem {
   createdAt?: string | null
 }
 
+/** One product in one slot of a day, and whether it was done. */
+export interface SkincarePlanItem {
+  /** Null once the product was deleted from the catalog — its tick is history. */
+  productId: number | null
+  name: string
+  flag: string | null
+  /** False for a tick on a product that was not scheduled that day. */
+  planned: boolean
+  done: boolean
+  doneAt: string | null
+}
+
+export interface SkincareDayPlan {
+  morning: SkincarePlanItem[]
+  evening: SkincarePlanItem[]
+}
+
+export interface SkincareHistoryDay extends SkincareDayPlan {
+  date: string
+}
+
+export interface SkincarePhotoItem {
+  id: number
+  date: string
+  url: string
+  note?: string | null
+}
+
 export interface SkincareView {
   products: SkincareProductItem[]
   activeCount: number
@@ -71,4 +101,10 @@ export interface SkincareView {
   rules: SkincareRuleItem[]
   alerts: SkincareAlertItem[]
   today: string
+  plan: SkincareDayPlan
+  /** Newest first, today excluded, starting no earlier than the first tick. */
+  history: SkincareHistoryDay[]
+  photos: SkincarePhotoItem[]
+  /** The flags a product can be mapped to. */
+  flags: string[]
 }
