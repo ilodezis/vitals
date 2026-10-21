@@ -1,7 +1,6 @@
 """``/api/v1/share`` — Doctor reports endpoints."""
 from __future__ import annotations
 
-from datetime import date as date_type
 from typing import Optional
 
 from fastapi import Depends, Request, Response, status
@@ -46,22 +45,9 @@ async def create_share_report(
     if not chosen:
         raise ValueError("at least one valid domain must be selected")
 
-    if body.period == "custom":
-        if not body.period_start or not body.period_end:
-            raise ValueError("custom period requires period_start and period_end")
-        start = date_type.fromisoformat(body.period_start)
-        end = date_type.fromisoformat(body.period_end)
-        if end < start:
-            raise ValueError("period_end cannot be before period_start")
-    elif body.period == "all":
-        _, end = share_service.window_for(1)
-        start = await share_service.earliest_data_date(db) or end
-    else:
-        try:
-            days = int(body.period)
-        except ValueError:
-            days = 90
-        start, end = share_service.window_for(days)
+    start, end = await share_service.resolve_period(
+        db, body.period, body.period_start, body.period_end
+    )
 
     row, password = await share_service.create_report(
         db,

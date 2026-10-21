@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <strong>Self-hosted personal health data lake & dashboard with 75 MCP tools for Claude.ai</strong><br>
+  <strong>Self-hosted personal health data lake & dashboard with 103 MCP tools for Claude.ai</strong><br>
   <sub>React PWA · EN/RU interface · 15 Domains · Weight & BIA · HRT/TRT · GLP-1 · Garmin · Hevy · Nutrition · Labs · Genetics · Skincare · Timeline · Signals & Telegram · AI Digests · Doctor Report</sub>
 </p>
 
@@ -84,7 +84,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 **🤖 AI и интеграции**
 - Еженедельные AI-дайджесты (Claude / GPT) из версионированного контекста за закрытый период: Garmin и Hevy, GLP-1 и ГЗТ, состав тела, анализы, питание и остальные включённые домены
 - Проактивный канал в Telegram: утренний бриф, вечерний блок, подсказки по условию
-- 75 MCP-инструментов для Claude.ai (чтение + запись + override)
+- 103 MCP-инструмента для Claude.ai (чтение + запись + override)
 - OAuth 2.0 + PKCE авторизация MCP
 - Полный экспорт данных для LLM (copy-paste ready)
 - Атомарный бэкап и восстановление БД
@@ -127,7 +127,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 - [Философия и ключевые принципы](#ru-principles)
 - [Домены данных (15 модулей)](#ru-domains)
 - [Архитектура системы](#ru-architecture)
-- [MCP-интеграция с Claude.ai (75 инструментов)](#ru-mcp)
+- [MCP-интеграция с Claude.ai (103 инструмента)](#ru-mcp)
 - [Быстрый старт (Docker Compose)](#ru-quickstart)
 - [Безопасный деплой (Сетап автора)](#ru-deploy)
 - [Параметры конфигурации (.env)](#ru-config)
@@ -340,7 +340,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 - **Утренний бриф**: детерминированные блоки собирает код из того же кросс-доменного контекста, что и недельный дайджест, модель добавляет ровно один абзац интерпретации — упала модель, бриф всё равно придёт; пустой день = молчание, а не пустой бриф. Хранится в `weekly_digests` (`kind='daily_brief'`), виден в `/reports` (там же кнопки «Собрать бриф» и «Отправить тестовое»)
 - **Нуджи** (подсказки в течение дня) — список спецификаций (условие, текст, кулдаун, категория-переключатель), один движок обходит реестр; добавить подсказку = одна запись. Сейчас три категории: активность, питание, свежесть данных
 - Единые ворота отправки: выключенный модуль, дедуп, тихие часы (только для нудджей) и дневной бюджет сообщений; ответы на вопросы владельца из бюджета исключены
-- Ответы на вопросы: реплай на сообщение бота или просто «почему hrv просел?» — модель видит то сообщение, на которое отвечают, и контекст последнего брифа, и ничего больше. Глубокие разборы — в Claude.ai через MCP, там 75 инструментов и модель получше
+- Ответы на вопросы: реплай на сообщение бота или просто «почему hrv просел?» — модель видит то сообщение, на которое отвечают, и контекст последнего брифа, и ничего больше. Глубокие разборы — в Claude.ai через MCP, там 103 инструмента и модель получше
 - Сигналы и `day_context` попадают в контекст и недельного дайджеста, и брифа — с временем суток, потому что «кофе в 22» и «кофе в 9» это разные факты с одним ключом
 - Канал — за протоколом `Notifier`, выше него никто не знает про Telegram. Модуль `signals` по умолчанию **выключен** и работает как рубильник всего проактивного слоя: выключен — бот молчит совсем. Настройки (время брифа и вечернего блока, тихие часы, бюджет, категории нуджей, частота опроса Garmin, интервал и окно свежести экспорта веса, шаблон недели) — на карточке в `/settings`, сохранение перевешивает задачи на живом планировщике **без перезапуска**
 - MCP: `get_signals`, `log_signal`, `get_day_context` — Клод видит то, что владелец сказал боту
@@ -418,90 +418,118 @@ graph TD
 
 Встроенный сервер [FastMCP](https://github.com/jlowin/fastmcp) server доступен на `/mcp/` (транспорт streamable HTTP). Авторизация: OAuth 2.0 с верификацией Bearer-токенов. PKCE (`S256`) **обязателен** — запрос на `/oauth/authorize` без `code_challenge` отклоняется, а не проходит мимо проверки. Метаданные защищённого ресурса отдаются на `/.well-known/oauth-protected-resource` (RFC 9728), и ответ `401` указывает на них через `WWW-Authenticate: Bearer resource_metadata="..."`, чтобы клиент сам нашёл, где авторизоваться. Настраивается в веб-интерфейсе (раздел настроек).
 
-**75 инструментов** — Claude может полноценно читать и записывать данные во все домены. Плюс 2 ресурса (`vitals://profile`, `vitals://digest/latest`) и промпт `weekly_review`. Список инструментов фильтруется по включённым модулям: выключенный домен не показывается в `tools/list` (он и так отклонял запись), так что контекст разговора не тратится на схемы того, что владелец не отслеживает. Включили модуль обратно — инструменты вернутся при следующем подключении коннектора, без перезапуска.
+**103 инструмента** — всё, что владелец может сделать в приложении, Claude может сделать из разговора, через те же сервисы и с теми же проверками конфликтов: читать и записывать все домены, видеть экран «Сегодня» и фото, менять профиль, настройки бота и станции, правила конфликтов, графики и отчёты для врача. Сознательно нет только учётных данных, пароля/2FA, импорта бэкапа и перезапуска контейнера — разговор не должен уметь запереть владельца снаружи или перезаписать базу. Плюс 2 ресурса (`vitals://profile`, `vitals://digest/latest`) и промпт `weekly_review`. Список инструментов фильтруется по включённым модулям: выключенный домен не показывается в `tools/list` (он и так отклонял запись), так что контекст разговора не тратится на схемы того, что владелец не отслеживает. Включили модуль обратно — инструменты вернутся при следующем подключении коннектора, без перезапуска.
 
-#### Чтение (33 инструмента)
+#### Чтение (46 инструментов)
 
 | Инструмент | Описание |
 | :--- | :--- |
-| `get_user_profile` | Физические параметры, цели, программа тренировок |
+| `get_today` | Экран «Сегодня» данными: нарратив брифа, ключевые цифры против личного коридора, изменения за неделю, лента дня, что требует внимания, цель с прогнозом |
+| `get_user_profile` | Профиль (рост, пол, возраст, часовой пояс, цели, программа) и цели по питанию — как на экране настроек; `pending_restart` — что сохранено, но ещё не подхвачено приложением |
+| `get_data_overview` | Карта данных: по каждому домену число строк, диапазон дат, дата обновления |
+| `get_full_snapshot` | Кросс-доменный срез за период одним вызовом |
+| `export_everything` | Экспорт истории по всем доменам за один вызов (по умолчанию — последние 90 дней; вся история и отдельные домены — явными аргументами) |
 | `get_weight_logs` | История взвешиваний, замеры тела, периоды шума |
+| `get_measurements` | Замеры тела (шея, талия, бёдра, % жира, LBM) |
+| `list_photos` | Фото из галереи: `kind="face"` — фотодневник лица, `kind="progress"` — прогресс-фото веса |
+| `get_photo` | Одно фото с самой картинкой (уменьшенной) — Claude видит и может сравнить с прошлыми |
+| `get_body_scans` | Замеры состава тела InBody / МедАсс со всеми метриками |
+| `get_body_scan` | Один замер состава тела с полным листком метрик |
+| `get_body_metric_history` | История одной метрики состава тела (SMM, фазовый угол…) |
 | `get_glp1_logs` | Инъекции, фазы дозировок GLP-1, побочные эффекты |
 | `get_hrt_logs` | Дозы ГЗТ/TRT, побочные эффекты, активный курс и его план |
 | `get_hrt_cycles` | Список всех курсов ГЗТ с их подетальными планами |
 | `get_garmin_metrics` | HRV, сон, пульс покоя, активность. `intraday=true` — поминутные кривые дня и ночи, `sleep_detail=true` — гипнограмма ночи и события дыхания |
 | `get_hevy_workouts` | Силовые тренировки с подходами и весами |
-| `get_supplements_catalog` | Каталог добавок с дозировками и уровнями доказательности |
-| `get_skincare_logs` | Рутина ухода и наблюдения за состоянием кожи |
-| `get_genetics_snps` | Генетические варианты с фильтром по гену и/или rsid («покажи мой rs1801133») |
-| `get_active_alerts` | Нерешённые предупреждения и уведомления о конфликтах |
-| `get_weekly_digests` | Архив AI-дайджестов |
-| `check_supplement_conflicts` | Проверка добавки (по названию, RU/EN) на конфликты с генетикой, анализами, другими добавками и уходом за кожей |
-| `list_conflict_rules` | Список курируемых правил конфликтов, фильтр по домену и/или категории |
-| `check_conflicts` | Проверка произвольного состояния любого домена на активные правила конфликтов (без сохранения) |
 | `get_nutrition_summary` | Суточная сводка питания (КБЖУ) и прогресс по целям |
 | `search_meals` | Поиск приёмов пищи по имени и/или дате |
-| `get_measurements` | Замеры тела (шея, талия, бёдра, % жира, LBM) |
-| `get_notes` | Записи с заметками из всех доменов |
-| `get_body_scans` | Замеры состава тела InBody / МедАсс со всеми метриками |
-| `get_body_scan` | Один замер состава тела с полным листком метрик |
-| `get_body_metric_history` | История одной метрики состава тела (SMM, фазовый угол…) |
+| `get_supplements_catalog` | Каталог добавок с дозировками и уровнями доказательности |
+| `get_skincare_routine` | Каталог средств и план на день/диапазон: что, утром или вечером, по каким дням и отмечено ли сделанным |
+| `get_skincare_logs` | История кожи: отметки «сделал» по средствам, наблюдения (воспаление, PIH), дневные флаги для движка конфликтов |
+| `get_genetics_snps` | Генетические варианты с фильтром по гену и/или rsid («покажи мой rs1801133») |
 | `get_lab_results` | Результаты анализов (биомаркер, значение, референс, флаг отклонения) |
+| `get_lab_markers` | Каталог маркеров анализов (референсы, tier, интервал пересдачи, отложено до) и история одного маркера |
 | `get_timeline` | Кросс-доменная лента событий (ручные аннотации + авто-события) |
-| `get_full_snapshot` | Кросс-доменный срез за период одним вызовом |
-| `export_everything` | Экспорт истории по всем доменам за один вызов (по умолчанию — последние 90 дней; вся история и отдельные домены — явными аргументами) |
-| `get_data_overview` | Карта данных: по каждому домену число строк, диапазон дат, дата обновления |
+| `get_notes` | Записи с заметками из всех доменов |
 | `get_milestones` | Карточки целей с расчётом прогресса |
-| `get_modules` | Какие опциональные модули включены |
+| `get_weekly_digests` | Архив AI-дайджестов |
 | `get_trend` | Тренд метрики: наклон (день/неделя), скользящее среднее, прогноз даты до цели |
 | `get_signals` | Сигналы из бота: состояния, симптомы, воздействия (фильтры по виду, ключу, датам) |
 | `get_day_context` | Какой это был день: удалёнка/офис, зал, нагрузка |
-| `get_proactive_state` | Состояние проактивного слоя: включён ли, расписание, шаблон недели, недавние отправки (только чтение — перенастройка бота остаётся за владельцем) |
+| `get_proactive_state` | Состояние проактивного слоя: включён ли, расписание, категории, шаблон недели, недавние отправки |
+| `get_environment_live` | Станция воздуха сейчас: CO2, температура, влажность, зона, тренд, жива ли станция |
+| `get_environment` | Воздух в спальне за период: почасово (до 31 дня) или поминутно (до 2 дней), с покрытием |
+| `get_environment_night` | Одна ночь воздуха: медиана/p90/максимум CO2, минуты выше порогов, диапазоны температуры и влажности |
+| `get_environment_vs_sleep` | Ночь за ночью: воздух рядом со сном Garmin (оценка, фазы, HRV, пульс) |
+| `get_environment_alerts` | Алерты воздуха за последние часы: когда начались/закончились, пик |
+| `get_environment_settings` | Пороги станции (зоны CO2, комфорт по температуре и влажности), окно ночи, выключатели алертов |
+| `get_active_alerts` | Нерешённые предупреждения и уведомления о конфликтах (фильтр по домену) |
+| `check_supplement_conflicts` | Проверка добавки (по названию, RU/EN) на конфликты с генетикой, анализами, другими добавками и уходом за кожей |
+| `list_conflict_rules` | Правила конфликтов с фильтрами по домену/категории; `active` — включено ли, `firing` — горит ли сейчас |
+| `check_conflicts` | Проверка произвольного состояния любого домена на активные правила конфликтов (без сохранения) |
+| `get_modules` | Какие опциональные модули включены |
+| `get_shared_reports` | Опубликованные отчёты для врача: состояние (живой / истёк / отозван), срок, сколько раз открывали |
+| `get_saved_charts` | Сохранённые графики: конфигурации, данные одного графика, каталог метрик |
 
-#### Запись (40 инструментов)
+#### Запись (55 инструментов)
 
 | Инструмент | Описание |
 | :--- | :--- |
 | `log_meal` | Запись приёма пищи с калориями и макро (Б/Ж/У) |
-| `update_meal` | Обновление существующей записи о еде |
+| `update_meal` | Обновление записи о еде (непереданные поля сохраняются; `clear` — очистить поле) |
 | `log_weight` | Запись веса (перекрывает Garmin за ту же дату) |
-| `log_glp1` | Запись инъекции GLP-1 (препарат, доза, место) |
-| `log_hrt_dose` | Запись приема дозы ГЗТ (расчет мл -> мг; бренд/лаборатория/партия; конфликт-гейт) |
-| `add_hrt_cycle` | Начать новый курс ГЗТ (тип, дата начала, название; закрывает прошлый открытый) |
-| `add_hrt_cycle_item` | Добавить препарат и план его приема в курс ГЗТ (разовые дозы, интервал, неделя старта) |
-| `update_hrt_dose` | Редактировать дозу ГЗТ (непереданные поля сохраняются; конфликт-гейт) |
-| `log_hrt_side_effect` | Записать побочный эффект ГЗТ (тип, тяжесть 1–5) |
-| `close_hrt_cycle` | Закрыть курс ГЗТ датой окончания (по умолчанию — сегодня) |
-| `log_skincare` | Запись/обновление дневного чек-листа ухода (upsert) |
+| `update_weight` | Исправить запись веса: значение, дату, заметку (тот же конфликт-гейт) |
 | `log_measurement` | Запись замеров тела (авто-расчёт Navy % жира) |
-| `log_note` | Добавление заметки к записи любого домена (включая анализы) |
+| `update_measurement` | Редактировать замер тела (непереданные поля и дата сохраняются; пересчёт Navy % жира / LBM) |
+| `add_noise_marker` | Отметить период как шумовой (исключается из тренда веса) |
+| `add_photo` | Добавить фото в галерею лица или прогресса (base64 — только если у клиента есть сам файл) |
 | `log_body_scan` | Запись замера состава тела из метрик (мост в домен веса) |
-| `log_lab_result` | Запись одного биомаркера (авто-расчёт флага отклонения) |
-| `log_lab_results` | Запись всей панели анализов за раз (список маркеров → результаты + дедупликация) |
-| `update_lab_result` | Редактировать результат анализа (пересчёт флага отклонения, обновление алертов) |
-| `log_event` | Ручная аннотация хронологии (поездка, болезнь, смена протокола) |
-| `update_event` | Редактировать событие хронологии (непереданные поля сохраняются) |
-| `create_milestone` | Создать карточку цели (целевое значение, дедлайн) |
-| `update_milestone` | Обновить цель (в т.ч. статус: достигнута/пропущена/пауза) |
+| `log_glp1` | Запись инъекции GLP-1 (препарат, доза, место) |
 | `update_glp1` | Редактировать инъекцию GLP-1 (с конфликт-гейтом) |
 | `log_side_effect` | Записать побочный эффект GLP-1 (тип, тяжесть 1–5) |
 | `add_dose_phase` | Добавить фазу дозировки GLP-1 |
-| `log_skincare_observation` | Записать наблюдение за кожей (воспаление, ПВГ, зона) |
+| `close_dose_phase` | Закрыть фазу дозировки GLP-1 (по умолчанию — текущую, сегодняшней датой) |
+| `log_hrt_dose` | Запись приема дозы ГЗТ (расчет мл -> мг; бренд/лаборатория/партия; конфликт-гейт) |
+| `update_hrt_dose` | Редактировать дозу ГЗТ (непереданные поля сохраняются; конфликт-гейт) |
+| `log_hrt_side_effect` | Записать побочный эффект ГЗТ (тип, тяжесть 1–5) |
+| `add_hrt_cycle` | Начать новый курс ГЗТ (тип, дата начала, название; закрывает прошлый открытый) |
+| `add_hrt_cycle_item` | Добавить препарат и план его приема в курс ГЗТ (разовые дозы, интервал, неделя старта) |
+| `close_hrt_cycle` | Закрыть курс ГЗТ датой окончания (по умолчанию — сегодня) |
+| `add_skincare_product` | Добавить средство в каталог: тип, активный компонент, утро/вечер/оба, дни недели, флаг для правил |
+| `update_skincare_product` | Изменить средство: расписание, флаг, выключить/включить (`active`), очистить поля |
+| `set_skincare_check` | Отметить средство сделанным (или снять отметку) в слоте утро/вечер за любую дату; без `product_id` — «всё сделано». Тот же тик, что в приложении и Telegram, с проверкой конфликтов |
+| `log_skincare_observation` | Записать наблюдение за кожей (воспаление, PIH, зона, заметка) |
 | `add_supplement` | Добавить добавку в каталог (конфликт-гейт) |
 | `update_supplement` | Обновить добавку в каталоге |
 | `set_supplement_active` | Включить/выключить добавку (конфликт-гейт при включении) |
-| `update_measurement` | Редактировать замер тела (пересчёт Navy % жира / LBM) |
-| `add_noise_marker` | Отметить период как шумовой (исключается из тренда веса) |
 | `upsert_genetic_variant` | Добавить или обновить генетический вариант (по паре ген + rsid) |
-| `set_module` | Включить/выключить опциональный модуль |
+| `log_lab_result` | Запись одного биомаркера (авто-расчёт флага отклонения) |
+| `log_lab_results` | Запись всей панели анализов за раз (список маркеров → результаты + дедупликация) |
+| `update_lab_result` | Редактировать результат анализа (пересчёт флага отклонения, обновление алертов) |
+| `update_lab_marker` | Изменить маркер в каталоге: референсы, tier, интервал пересдачи, «напомнить позже» (`defer_until`) |
+| `log_event` | Ручная аннотация хронологии (поездка, болезнь, смена протокола) |
+| `update_event` | Редактировать событие хронологии (непереданные поля сохраняются; `clear` — убрать конец периода / заметку) |
+| `create_milestone` | Создать карточку цели (целевое значение, дедлайн) |
+| `update_milestone` | Обновить цель (в т.ч. статус: достигнута/пропущена/пауза) |
+| `log_note` | Добавление заметки к записи любого домена (включая анализы) |
 | `log_signal` | Записать сигнал (состояние / симптом / воздействие) — через тот же сервис, что и бот |
 | `mark_signal_misparse` | Пометить разбор сообщения как ошибочный — то же, что кнопка «не то» в боте (по `batch_id`) |
 | `log_day_context` | Записать, какой это был день — те же ответы, что владелец нажимает в вечернем блоке (догадка шаблона сохраняется рядом с ответом) |
 | `set_week_template` | Задать шаблон недели: чем считается каждый будний день, пока владелец не сказал иначе |
+| `update_user_profile` | Изменить профиль и цели по питанию — те же поля и та же запись, что в настройках |
+| `set_proactive_settings` | Перенастроить бота: время брифа, вечера и чек-листа кожи, тихие часы, бюджет, категории, частота опроса Garmin (планировщик перетаймливается сразу) |
+| `set_environment_settings` | Изменить пороги станции воздуха, окно ночи и выключатели алертов |
+| `set_module` | Включить/выключить опциональный модуль |
+| `set_conflict_rule_active` | Включить/выключить отдельное правило конфликтов |
 | `resolve_alert` | Закрыть предупреждение — оно исчезает из `get_active_alerts` |
+| `resolve_all_alerts` | Закрыть все активные предупреждения разом (или все по одному домену) |
 | `override_alert` | Отметить блокирующее предупреждение как «принято, делаю всё равно» |
 | `generate_digest_now` | Сгенерировать свежий еженедельный AI-дайджест сейчас |
-| `delete_record` | Удалить одну запись любого домена по ID (`domain` + `record_id`) — вес, замер, шумовой период, анализ, цель, еда, GLP-1 (инъекция / побочка / фаза), ГЗТ (доза / курс / препарат курса), состав тела, событие хронологии, наблюдение за кожей, добавка, генетический вариант, сигнал |
+| `create_shared_report` | Опубликовать отчёт для врача (ссылка + одноразово показанный пароль) — только по явной просьбе |
+| `revoke_shared_report` | Отозвать ссылку на отчёт: перестаёт открываться, копия данных стирается |
+| `create_saved_chart` | Сохранить новый график на экране «Графики» |
+| `delete_saved_chart` | Удалить сохранённый график |
+| `delete_record` | Удалить одну запись любого домена по ID (`domain` + `record_id`) — вес, замер, шумовой период, прогресс-фото, анализ, цель, отчёт для врача, еда, GLP-1 (инъекция / побочка / фаза), ГЗТ (доза / курс / препарат курса), состав тела, событие хронологии, средство ухода, фото лица, наблюдение за кожей, дневные флаги кожи, добавка, генетический вариант, сигнал. Фото и сканы удаляются вместе с файлом |
 
 #### Синхронизация (2 инструмента)
 
@@ -517,14 +545,14 @@ graph TD
 > **Override-флоу.** Все записывающие инструменты, проходящие движок конфликтов (вес, GLP-1, ГЗТ, добавки, кожа, замеры, состав тела), принимают `override=true`. При жёстком блоке инструмент возвращает `{"blocked": true, "violations": [...]}` вместо сохранения — повтор вызова с `override=true` сохраняет (аналог кнопки «Записать всё равно» в UI).
 
 > [!IMPORTANT]
-> **Правки частичные.** Все `update_*` меняют только те поля, которые переданы в вызове; остальные берутся из существующей строки, а не обнуляются. Дата не передана — остаётся дата самой записи, а не «сегодня». Веб-формы работают иначе (шлют всё, очистка поля действительно очищает колонку) — расхождение намеренное и живёт на границе MCP.
+> **Правки частичные.** Все `update_*` меняют только те поля, которые переданы в вызове; остальные берутся из существующей строки, а не обнуляются. Дата не передана — остаётся дата самой записи, а не «сегодня». Веб-формы работают иначе (шлют всё, очистка поля действительно очищает колонку) — расхождение намеренное и живёт на границе MCP. Очистить поле из разговора можно явно — параметром `clear` (`update_meal`, `update_event`, `update_skincare_product`; у веса — `clear_note`).
 >
 > **Периметр записи.** Запись в выключенный опциональный модуль отклоняется на общей точке входа, а не в каждом инструменте по отдельности: новый инструмент наследует проверку, а не «не забудь дописать».
 >
 > **Провенанс.** Записи через коннектор помечаются источником `mcp`. В приоритете источников веса `mcp` равен ручному вводу — то есть перекрывает Garmin и не перекрывается им; между собой решает свежесть. Старые записи задним числом не перекрашиваются.
 
 > [!NOTE]
-> **Ответ платит только за то, о чём спросили.** Схемы 75 инструментов пересылаются с каждым сообщением разговора, а чтение по умолчанию отдаёт сотню строк — поэтому в ответах нет ничего, чем модель не может воспользоваться.
+> **Ответ платит только за то, о чём спросили.** Схемы 103 инструментов пересылаются с каждым сообщением разговора, а чтение по умолчанию отдаёт сотню строк — поэтому в ответах нет ничего, чем модель не может воспользоваться.
 >
 > - **Строка — это данные, а не служебка.** `serialize_row` не отдаёт колонки, которые ни один инструмент не принимает обратно (`domain`, `created_at`, `updated_at`, `raw_payload_id`), и не отдаёт незаполненные поля: отсутствующий ключ и `null` читаются одинаково, а `null` стоит токенов на каждой строке. `id`, `date` и `source` остаются — правки и удаления адресуются по id, а провенанс сам по себе ответ. Строка ужимается на 39–59%.
 > - **Гипнограмма — по запросу.** Поминутная раскладка фаз сна и события дыхания — это ~70% дневной строки Garmin, и раньше они ехали на каждом чтении последней сотни ночей. По умолчанию сворачиваются в счётчик с подсказкой (`"28 entries — call again with sleep_detail=True"`), а не исчезают: молчание модель прочитала бы как «фаз сна нет». Флаг отдельный от `intraday` — вопрос про форму одной ночи не тянет за собой все кривые окна. Чтение за 100 дней: ~96k → ~24k токенов.
@@ -915,7 +943,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 **🤖 AI & Integrations**
 - Weekly AI digests (Claude / GPT via OpenRouter) from versioned closed-period context: Garmin and Hevy, GLP-1 and HRT, body composition, labs, nutrition, and the other enabled domains
 - Proactive Telegram channel: morning brief, evening block, condition-driven nudges
-- 75 MCP tools for Claude.ai (read + write + override)
+- 103 MCP tools for Claude.ai (read + write + override)
 - OAuth 2.0 + PKCE authorization for MCP
 - Full data export for LLM (copy-paste ready)
 - Atomic database backup & restore
@@ -958,7 +986,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 - [Core Philosophy](#en-principles)
 - [Supported Domains (15 modules)](#en-domains)
 - [Technical Architecture](#en-architecture)
-- [MCP Integration with Claude.ai (75 tools)](#en-mcp)
+- [MCP Integration with Claude.ai (103 tools)](#en-mcp)
 - [Quick Start (Docker Compose)](#en-quickstart)
 - [Secure Deployment (Creator's Setup)](#en-deploy)
 - [Configuration (.env)](#en-config)
@@ -1171,7 +1199,7 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 - **Morning brief**: the deterministic blocks are built by code from the same cross-domain context the weekly digest assembles, and the model contributes exactly one interpretation paragraph — if it fails, the brief still arrives; an empty day is silence, not an empty brief. Stored in `weekly_digests` (`kind='daily_brief'`), visible in `/reports` along with "Build brief" and "Send a test message" buttons
 - **Nudges** — a list of specs (condition, text, cooldown, category toggle) walked by one engine; adding a nudge is a single entry. Three categories today: activity, nutrition, data freshness
 - One gate for everything outgoing: module off, dedupe, quiet hours (nudges only) and a daily message budget; replies to the owner are deliberately exempt from the budget
-- Answering questions: a reply to one of the bot's messages, or just "why is my hrv down?" — the model sees the message being replied to plus the context the last brief was built on, and nothing else. Deep analysis belongs in Claude.ai over MCP, which has 75 tools and a better model
+- Answering questions: a reply to one of the bot's messages, or just "why is my hrv down?" — the model sees the message being replied to plus the context the last brief was built on, and nothing else. Deep analysis belongs in Claude.ai over MCP, which has 103 tools and a better model
 - Signals and `day_context` reach both the weekly digest and the brief, with the hour attached — "coffee at 22:00" and "coffee at 09:00" are opposite facts wearing the same key
 - The channel sits behind a `Notifier` protocol — nothing above it knows about Telegram. The `signals` module is **off by default** and doubles as the master switch for the whole proactive layer: off means the bot says nothing at all. Brief and evening times, quiet hours, budget, nudge categories, the Garmin poll rate, the weight-export interval and freshness window, and the week template live on a card in `/settings`, and saving re-registers the jobs on the running scheduler **without a restart**
 - MCP: `get_signals`, `log_signal`, `get_day_context` — Claude can see what the owner told the bot
@@ -1249,90 +1277,118 @@ Brief time, evening time, the Garmin poll rate, the weight-export interval and i
 
 Built-in [FastMCP](https://github.com/jlowin/fastmcp) server at `/mcp/` (streamable HTTP transport). Authorization: OAuth 2.0 with signed Bearer token verification. PKCE (`S256`) is **mandatory** — an `/oauth/authorize` request without a `code_challenge` is rejected rather than skipping the check. Protected-resource metadata is served at `/.well-known/oauth-protected-resource` (RFC 9728), and a `401` points at it via `WWW-Authenticate: Bearer resource_metadata="..."` so the client can discover where to authorize. Configured in the web dashboard settings.
 
-**75 tools** — Claude can fully read and write data across all domains. Plus 2 resources (`vitals://profile`, `vitals://digest/latest`) and a `weekly_review` prompt. The listing is filtered by enabled modules: a switched-off domain is not shown in `tools/list` at all (it already refused writes), so a conversation does not spend its context on schemas for what the owner does not track. Switch a module back on and its tools return on the connector's next reconnect, no restart needed.
+**103 tools** — whatever the owner can do in the app, Claude can do from a conversation, through the same services and the same conflict checks: read and write every domain, see the Today screen and the photos, change the profile, the bot's and the station's settings, conflict rules, charts and doctor reports. Deliberately absent: credentials, password/2FA, backup import and the container restart — a conversation must not be able to lock the owner out or overwrite the lake. Plus 2 resources (`vitals://profile`, `vitals://digest/latest`) and a `weekly_review` prompt. The listing is filtered by enabled modules: a switched-off domain is not shown in `tools/list` at all (it already refused writes), so a conversation does not spend its context on schemas for what the owner does not track. Switch a module back on and its tools return on the connector's next reconnect, no restart needed.
 
-#### Read (33 tools)
+#### Read (46 tools)
 
 | Tool | Description |
 | :--- | :--- |
-| `get_user_profile` | Physical profile, goals, training program |
+| `get_today` | The Today screen as data: the brief's narrative, key figures against the personal corridor, the week's changes, the day's feed, what needs attention, the goal with its forecast |
+| `get_user_profile` | Profile (height, sex, age, timezone, goals, program) and nutrition goals as Settings holds them; `pending_restart` lists what is saved but not yet picked up |
+| `get_data_overview` | Per-domain map: row count, date range, last-updated timestamp |
+| `get_full_snapshot` | One cross-domain snapshot for a period (weight trend, GLP-1, recent labs, activity/recovery, workouts, nutrition, skincare, goals) |
+| `export_everything` | The entire history as one compact, LLM-ready export across all domains |
 | `get_weight_logs` | Weight history, body measurements, noise markers |
+| `get_measurements` | Body measurements (neck, waist, hips, body-fat %, LBM) |
+| `list_photos` | Photos from a gallery: `kind="face"` — the face diary, `kind="progress"` — weight progress photos |
+| `get_photo` | One photo with the image itself (scaled down) — Claude can look at it and compare |
+| `get_body_scans` | InBody / МедАсс body-composition scans with every metric |
+| `get_body_scan` | A single body-composition scan with its full metric sheet |
+| `get_body_metric_history` | History of one body-composition metric (SMM, phase angle…) |
 | `get_glp1_logs` | GLP-1 injections, dose phases, side effects |
 | `get_hrt_logs` | HRT/TRT doses, side effects, and the active cycle with its plan |
 | `get_hrt_cycles` | All HRT cycles with their per-compound plans |
 | `get_garmin_metrics` | HRV, sleep, resting HR, activities. `intraday=true` for the per-minute day and night curves, `sleep_detail=true` for the night's hypnogram and breathing events |
 | `get_hevy_workouts` | Strength workouts with sets, reps, weights |
-| `get_supplements_catalog` | Supplements with dosages and evidence tiers |
-| `get_skincare_logs` | Skincare routine logs and skin observations |
-| `get_genetics_snps` | Genetic SNPs filtered by gene and/or rsid ("show me my rs1801133") |
-| `get_active_alerts` | Unresolved warnings and conflict notifications |
-| `get_weekly_digests` | Historical AI digest archive |
-| `check_supplement_conflicts` | Check a supplement (by name, RU/EN) against genetics, labs, other supplements, and skincare |
-| `list_conflict_rules` | List the curated conflict-rule catalog, filterable by domain and/or category |
-| `check_conflicts` | Check an arbitrary state against active conflict rules for any domain (read-only, no save) |
 | `get_nutrition_summary` | Daily nutrition summary (calories, macros) and goal progress |
 | `search_meals` | Search meals by name and/or date |
-| `get_measurements` | Body measurements (neck, waist, hips, body-fat %, LBM) |
-| `get_notes` | Records with notes across all domains |
-| `get_body_scans` | InBody / МедАсс body-composition scans with every metric |
-| `get_body_scan` | A single body-composition scan with its full metric sheet |
-| `get_body_metric_history` | History of one body-composition metric (SMM, phase angle…) |
+| `get_supplements_catalog` | Supplements with dosages and evidence tiers |
+| `get_skincare_routine` | The product catalog and the plan for a day or range: what, morning or evening, which weekdays, and whether it was ticked done |
+| `get_skincare_logs` | Skincare history: per-product done ticks, skin observations (inflammation, PIH), the day flags the conflict engine reads |
+| `get_genetics_snps` | Genetic SNPs filtered by gene and/or rsid ("show me my rs1801133") |
 | `get_lab_results` | Lab results (biomarker, value, reference range, out-of-range flag) |
+| `get_lab_markers` | The lab-marker catalog (reference ranges, tier, retest interval, deferred until) and one marker's history |
 | `get_timeline` | Cross-domain event timeline (manual annotations + auto-events) |
-| `get_full_snapshot` | One cross-domain snapshot for a period (weight trend, GLP-1, recent labs, activity/recovery, workouts, nutrition, skincare, goals) |
-| `export_everything` | The entire history as one compact, LLM-ready export across all domains |
-| `get_data_overview` | Per-domain map: row count, date range, last-updated timestamp |
+| `get_notes` | Records with notes across all domains |
 | `get_milestones` | Goal cards with computed progress (filter by status) |
-| `get_modules` | Which optional modules are enabled |
+| `get_weekly_digests` | Historical AI digest archive |
 | `get_trend` | Metric trend: slope (day/week), latest rolling mean, projected date-to-target |
 | `get_signals` | Signals captured by the bot: states, symptoms, exposures (filter by kind, key, dates) |
 | `get_day_context` | What kind of day it was: remote/office, gym, workload |
-| `get_proactive_state` | State of the proactive layer: on/off, schedule, week template, recent sends (read-only — retiming or muting the bot stays with the owner) |
+| `get_proactive_state` | State of the proactive layer: on/off, schedule, categories, week template, recent sends |
+| `get_environment_live` | The bedroom station now: CO2, temperature, humidity, zone, trend, station liveness |
+| `get_environment` | The bedroom's air over a period: hourly (up to 31 days) or by the minute (up to 2 days), with coverage |
+| `get_environment_night` | One night of air: CO2 median/p90/max, minutes above the lines, temperature and humidity ranges |
+| `get_environment_vs_sleep` | Night by night: the air next to that night's Garmin sleep (score, stages, HRV, HR) |
+| `get_environment_alerts` | Air alerts over the last hours: start/end, peak |
+| `get_environment_settings` | The station's thresholds (CO2 zones, temperature and humidity bands), night window, alert switches |
+| `get_active_alerts` | Unresolved warnings and conflict notifications (filter by domain) |
+| `check_supplement_conflicts` | Check a supplement (by name, RU/EN) against genetics, labs, other supplements, and skincare |
+| `list_conflict_rules` | Conflict rules filterable by domain/category; `active` — switched on, `firing` — alerting right now |
+| `check_conflicts` | Check an arbitrary state against active conflict rules for any domain (read-only, no save) |
+| `get_modules` | Which optional modules are enabled |
+| `get_shared_reports` | Published doctor reports: state (live / expired / revoked), expiry, open count |
+| `get_saved_charts` | Saved charts: configurations, one chart's data, the metric catalog |
 
-#### Write (40 tools)
+#### Write (55 tools)
 
 | Tool | Description |
 | :--- | :--- |
 | `log_meal` | Record a meal with calories and macros |
-| `update_meal` | Update an existing meal entry |
+| `update_meal` | Update a meal (fields left out are kept; `clear` empties a field) |
 | `log_weight` | Record weight (overrides Garmin for the same date) |
-| `log_glp1` | Record a GLP-1 injection (drug, dose, site) |
-| `log_hrt_dose` | Record an HRT dose (ml × concentration → mg; brand/lab/batch; conflict-gated) |
-| `add_hrt_cycle` | Start an HRT cycle (kind; closes the previous open one) |
-| `add_hrt_cycle_item` | Add a compound to a cycle (schedule: segments/ramp, or dose + interval) |
-| `update_hrt_dose` | Edit an HRT dose (fields left out are preserved; conflict-gated) |
-| `log_hrt_side_effect` | Record an HRT side effect (type, severity 1–5) |
-| `close_hrt_cycle` | Close an HRT cycle with an end date (defaults to today) |
-| `log_skincare` | Record/update daily skincare checklist (upsert) |
+| `update_weight` | Correct a weight entry: value, date, note (same conflict gate) |
 | `log_measurement` | Record body measurements (auto-computes Navy body-fat %) |
-| `log_note` | Add a note to any domain record (including lab results) |
+| `update_measurement` | Edit a body measurement (fields and date left out are kept; recomputes Navy body-fat % / LBM) |
+| `add_noise_marker` | Mark a range as noise (excluded from the weight trend) |
+| `add_photo` | Add a photo to the face or progress gallery (base64 — only where the client holds the file) |
 | `log_body_scan` | Record a body-composition scan from metrics (bridges into weight) |
-| `log_lab_result` | Record a single biomarker (auto-computes the out-of-range flag) |
-| `log_lab_results` | Record a whole lab panel at once (a list of markers → results + dedup) |
-| `update_lab_result` | Edit a lab result (recomputes the out-of-range flag, refreshes alerts) |
-| `log_event` | Manual timeline annotation (trip, illness, protocol change) |
-| `update_event` | Edit a timeline event (fields left out are preserved) |
-| `create_milestone` | Create a goal card (target value, deadline) |
-| `update_milestone` | Update a goal (incl. status: achieved/missed/paused) |
+| `log_glp1` | Record a GLP-1 injection (drug, dose, site) |
 | `update_glp1` | Edit a GLP-1 injection (conflict-gated) |
 | `log_side_effect` | Record a GLP-1 side effect (type, severity 1–5) |
 | `add_dose_phase` | Add a GLP-1 dose phase (overlaid on the weight chart) |
-| `log_skincare_observation` | Record a skin observation (inflammation, PIH, zone) |
+| `close_dose_phase` | Close a GLP-1 dose phase (by default the current one, dated today) |
+| `log_hrt_dose` | Record an HRT dose (ml × concentration → mg; brand/lab/batch; conflict-gated) |
+| `update_hrt_dose` | Edit an HRT dose (fields left out are preserved; conflict-gated) |
+| `log_hrt_side_effect` | Record an HRT side effect (type, severity 1–5) |
+| `add_hrt_cycle` | Start an HRT cycle (kind; closes the previous open one) |
+| `add_hrt_cycle_item` | Add a compound to a cycle (schedule: segments/ramp, or dose + interval) |
+| `close_hrt_cycle` | Close an HRT cycle with an end date (defaults to today) |
+| `add_skincare_product` | Add a product to the catalog: type, active ingredient, morning/evening/both, weekdays, conflict flag |
+| `update_skincare_product` | Edit a product: schedule, flag, switch off/on (`active`), clear fields |
+| `set_skincare_check` | Tick a product done (or untick it) in the morning/evening slot of any date; no `product_id` = "all done". The same tick as the app and Telegram, conflict-checked |
+| `log_skincare_observation` | Record a skin observation (inflammation, PIH, zone, note) |
 | `add_supplement` | Add a supplement to the catalog (conflict-gated) |
 | `update_supplement` | Update a catalog supplement |
 | `set_supplement_active` | Toggle a supplement active (conflict-gated on enable) |
-| `update_measurement` | Edit a body measurement (recomputes Navy body-fat % / LBM) |
-| `add_noise_marker` | Mark a range as noise (excluded from the weight trend) |
 | `upsert_genetic_variant` | Add or update a genetic variant (keyed on gene + rsid) |
-| `set_module` | Enable/disable an optional module |
+| `log_lab_result` | Record a single biomarker (auto-computes the out-of-range flag) |
+| `log_lab_results` | Record a whole lab panel at once (a list of markers → results + dedup) |
+| `update_lab_result` | Edit a lab result (recomputes the out-of-range flag, refreshes alerts) |
+| `update_lab_marker` | Edit a catalog marker: reference range, tier, retest interval, "remind me later" (`defer_until`) |
+| `log_event` | Manual timeline annotation (trip, illness, protocol change) |
+| `update_event` | Edit a timeline event (fields left out are kept; `clear` drops the end date / note) |
+| `create_milestone` | Create a goal card (target value, deadline) |
+| `update_milestone` | Update a goal (incl. status: achieved/missed/paused) |
+| `log_note` | Add a note to any domain record (including lab results) |
 | `log_signal` | Record a signal (state / symptom / exposure) — through the same service the bot uses |
 | `mark_signal_misparse` | Flag one message's parse as wrong — the bot's "не то" button, by `batch_id` |
 | `log_day_context` | Record what kind of day it was — the same answers the owner taps in the evening block (the template's guess is kept next to the answer) |
 | `set_week_template` | Set the week template: what each weekday is assumed to be until the owner says otherwise |
+| `update_user_profile` | Change the profile and nutrition goals — the same fields, written the same way as Settings |
+| `set_proactive_settings` | Re-tune the bot: brief, evening and skincare-checklist times, quiet hours, budget, categories, Garmin polling (the scheduler re-times at once) |
+| `set_environment_settings` | Change the station's thresholds, night window and alert switches |
+| `set_module` | Enable/disable an optional module |
+| `set_conflict_rule_active` | Switch one conflict rule on or off |
 | `resolve_alert` | Resolve an alert — it disappears from `get_active_alerts` |
+| `resolve_all_alerts` | Resolve every active alert at once (or all of one domain) |
 | `override_alert` | Mark a blocking alert overridden — "noted, doing it anyway" |
 | `generate_digest_now` | Generate a fresh weekly AI digest now |
-| `delete_record` | Delete one record from any domain by ID (`domain` + `record_id`) — weight, measurement, noise marker, lab result, goal, meal, GLP-1 (injection / side effect / dose phase), HRT (dose / cycle / cycle item), body scan, timeline event, skin observation, supplement, genetic variant, signal |
+| `create_shared_report` | Publish a doctor report (link + a password shown once) — only on explicit request |
+| `revoke_shared_report` | Revoke a report link: it stops opening and its data copy is erased |
+| `create_saved_chart` | Save a new chart on the Charts screen |
+| `delete_saved_chart` | Delete a saved chart |
+| `delete_record` | Delete one record from any domain by ID (`domain` + `record_id`) — weight, measurement, noise marker, progress photo, lab result, goal, doctor report, meal, GLP-1 (injection / side effect / phase), HRT (dose / cycle / cycle item), body scan, timeline event, skincare product, face photo, skin observation, skincare day flags, supplement, genetic variant, signal. Photos and scans go with their file |
 
 #### Sync (2 tools)
 
@@ -1348,14 +1404,14 @@ Built-in [FastMCP](https://github.com/jlowin/fastmcp) server at `/mcp/` (streama
 > **Override flow.** Every write tool that runs the conflict engine (weight, GLP-1, HRT, supplements, skincare, measurements, body composition) accepts `override=true`. On a hard block the tool returns `{"blocked": true, "violations": [...]}` instead of saving — retry the same call with `override=true` to save anyway (the equivalent of the UI's "Save anyway" button).
 
 > [!IMPORTANT]
-> **Edits are partial.** Every `update_*` tool changes only the fields the call actually passes; the rest are carried over from the existing row instead of being nulled. Omit the date and the record keeps its own date rather than jumping to today. The web forms behave differently on purpose (they submit everything, and clearing a field there really does clear the column) — the divergence is resolved at the MCP boundary.
+> **Edits are partial.** Every `update_*` tool changes only the fields the call actually passes; the rest are carried over from the existing row instead of being nulled. Omit the date and the record keeps its own date rather than jumping to today. The web forms behave differently on purpose (they submit everything, and clearing a field there really does clear the column) — the divergence is resolved at the MCP boundary. Emptying a field from a conversation is explicit — the `clear` parameter (`update_meal`, `update_event`, `update_skincare_product`; `clear_note` on a weight).
 >
 > **Write perimeter.** Writing into a disabled optional module is refused at one shared entry point rather than tool by tool: a new tool inherits the check instead of having to remember it.
 >
 > **Provenance.** Records written through the connector are stamped `source = "mcp"`. In the weight source priority `mcp` ranks equal to manual entry — it overrides a Garmin import and is not overridden by one; between equals, recency decides. Existing rows are not relabelled retroactively.
 
 > [!NOTE]
-> **A response pays only for what was asked.** The 75 tool schemas are re-sent with every message of a conversation, and a read answers with a hundred rows by default — so responses carry nothing the model cannot act on.
+> **A response pays only for what was asked.** The 103 tool schemas are re-sent with every message of a conversation, and a read answers with a hundred rows by default — so responses carry nothing the model cannot act on.
 >
 > - **A row is data, not bookkeeping.** `serialize_row` omits the columns no tool accepts back (`domain`, `created_at`, `updated_at`, `raw_payload_id`) and every unset field: an absent key and a `null` read the same, and the `null` costs tokens on every row. `id`, `date` and `source` stay — edits and deletes address rows by id, and provenance is an answer in its own right. Rows shrink 39–59%.
 > - **The hypnogram is opt-in.** The per-minute sleep-stage timeline and breathing events are ~70% of a Garmin daily row, and used to ride along on every read of the last hundred nights. They now fold to a count plus a hint (`"28 entries — call again with sleep_detail=True"`) rather than vanishing: silence would read as "this night has no stages". The switch is separate from `intraday`, so asking about the shape of one night does not pull every curve in the window. A 100-day read drops from ~96k to ~24k tokens.

@@ -30,6 +30,7 @@ GATED_WRITE_TOOLS: dict[str, str] = {
     "update_glp1": "glp1",
     "log_side_effect": "glp1",
     "add_dose_phase": "glp1",
+    "close_dose_phase": "glp1",
     "log_hrt_dose": "hrt",
     "update_hrt_dose": "hrt",
     "log_hrt_side_effect": "hrt",
@@ -37,8 +38,10 @@ GATED_WRITE_TOOLS: dict[str, str] = {
     "add_hrt_cycle_item": "hrt",
     "close_hrt_cycle": "hrt",
     "upsert_genetic_variant": "genetics",
-    "log_skincare": "skincare",
     "log_skincare_observation": "skincare",
+    "add_skincare_product": "skincare",
+    "update_skincare_product": "skincare",
+    "set_skincare_check": "skincare",
     "add_supplement": "supplements",
     "update_supplement": "supplements",
     "set_supplement_active": "supplements",
@@ -51,6 +54,8 @@ GATED_WRITE_TOOLS: dict[str, str] = {
     # the whole proactive layer — off means the day is not being tracked at all.
     "log_day_context": "signals",
     "set_week_template": "signals",
+    "set_conflict_rule_active": "interactions",
+    "set_environment_settings": "environment",
 }
 
 # Write tools that deliberately have no module gate, each with the reason.
@@ -70,10 +75,22 @@ UNGATED_WRITE_TOOLS: dict[str, str] = {
     "override_alert": "same — an alert is not owned by an optional module",
     "set_module": "this is the toggle itself",
     "generate_digest_now": "reports is core",
+    "update_weight": "weight is core",
+    "update_lab_marker": "labs is core",
+    "resolve_all_alerts": "same as resolve_alert",
+    "add_photo": "gated per kind inside: face → skincare, progress → weight (core)",
+    "update_user_profile": "the profile is not a module — it is Settings",
+    "set_proactive_settings": (
+        "Settings, like the app's card; the bot itself is silenced by the signals module"
+    ),
+    "create_shared_report": "doctor reports are core (Share screen); domains are cut to enabled modules",
+    "revoke_shared_report": "same — core",
+    "create_saved_chart": "charts is core",
+    "delete_saved_chart": "charts is core",
 }
 
 _WRITE_PREFIXES = ("log_", "add_", "create_", "update_", "upsert_", "delete_", "set_",
-                   "mark_", "close_", "resolve_", "override_", "generate_")
+                   "mark_", "close_", "resolve_", "override_", "generate_", "revoke_")
 
 
 def _write_tool_names() -> set[str]:
@@ -163,11 +180,12 @@ GATED_READ_TOOLS: dict[str, str] = {
     "get_environment_night": "environment",
     "get_environment_alerts": "environment",
     "get_environment_vs_sleep": "environment",
+    "get_environment_settings": "environment",
 }
 
 
 def test_every_environment_read_tool_is_classified():
-    """A fifth ``get_environment_*`` tool has to be gated too, not just the four."""
+    """A new ``get_environment_*`` tool has to be gated too, not just the first ones."""
     names = {
         name
         for name in dir(mcp_router)

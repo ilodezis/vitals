@@ -1,11 +1,18 @@
 """Model Context Protocol (MCP) server integration for Vitals.
 
-Exposes access to all health domains using FastMCP and standard SQLAlchemy
-preloading patterns. Read tools cover every domain; write tools let Claude
-record and edit meals, weight, GLP-1, skincare, supplements, measurements,
-body scans, labs, goals, timeline events and notes directly from the
-conversation. Two resources (``vitals://profile``, ``vitals://digest/latest``)
-and a ``weekly_review`` prompt round out the surface.
+Exposes the app to Claude: everything the owner can do on a screen of the app,
+Claude can do from a conversation, through the same services and the same
+conflict checks. Read tools cover every domain plus the Today screen, the
+settings, the photo galleries, saved charts and doctor reports; write tools
+record, edit and delete across the domains (meals, weight, GLP-1, HRT, the
+skincare catalog and its morning/evening ticks, supplements, measurements, body
+scans, labs and their marker catalog, goals, timeline events, signals, notes)
+and change what Settings changes (profile and nutrition goals, the bot's
+schedule, the bedroom station's thresholds, module and conflict-rule switches).
+Deliberately absent: credentials, password/2FA, backup import and the container
+restart — a conversation must not be able to lock the owner out or overwrite
+the lake. Two resources (``vitals://profile``, ``vitals://digest/latest``) and a
+``weekly_review`` prompt round out the surface.
 
 Response conventions (a stable contract the model can rely on):
   * Success — the tool's normal payload (a dict, or a list of dicts).
@@ -23,6 +30,7 @@ from __future__ import annotations
 
 import functools
 import importlib
+import json
 import logging
 import os
 from datetime import date as date_type, timedelta
@@ -57,12 +65,15 @@ from vitals.models import (
     MealLog,
     Milestone,
     NoiseMarker,
+    ProgressPhoto,
     SideEffect,
     Signal,
+    SkincareCheck,
     SkincareLog,
     SkincareObservation,
+    SkincarePhoto,
+    SkincareProduct,
     Supplement,
-    SystemAlert,
     WeightLog,
     WeeklyDigest,
 )
@@ -184,7 +195,7 @@ async def _module_enabled(session, key: str) -> bool:
 
 # tool name → the optional module it belongs to. Writes register themselves through
 # ``gated``; the reads of those same domains are listed below. Used only to hide a
-# switched-off module's tools from ``tools/list`` — the surface is 75 tools and
+# switched-off module's tools from ``tools/list`` — the surface is over a hundred tools and
 # their schemas are re-sent with every message of every conversation, so a domain
 # the owner does not track is pure weight. Reads stay callable if invoked directly:
 # hiding them is a budget decision, not a permission one.
@@ -220,16 +231,133 @@ def gated(module_key: str):
 
 @mcp.tool()
 async def get_user_profile() -> dict:
-    """Returns the user's physical profile, active goals, and program overview."""
+    """Returns the owner's profile as the Settings screen holds it — height, sex,
+    age, timezone, goals, program — and the nutrition goals (protein target,
+    calorie corridor). ``pending_restart`` lists any saved value the running app
+    has not picked up yet: these settings live in ``.env`` and reach the
+    computations (Navy body-fat, the nutrition corridor) on the next restart.
+    READ tool; change them with ``update_user_profile``."""
+    from web.services import profile_settings
+
     cfg = load_config()
-    return {
-        "height_cm": cfg.height_cm,
-        "sex": cfg.sex,
-        "age": cfg.user_age,
-        "timezone": str(cfg.timezone),
-        "goals": cfg.user_goals,
-        "program": cfg.user_program,
+    saved = {**profile_settings.read_profile(), **profile_settings.read_nutrition_goals()}
+
+    def _num(raw: str, cast, fallback):
+        try:
+            return cast(raw)
+        except (TypeError, ValueError):
+            return fallback
+
+    goals = [g.strip() for g in saved["user_goals"].split(",") if g.strip()] or cfg.user_goals
+    profile = {
+        "height_cm": _num(saved["height_cm"], float, cfg.height_cm),
+        "sex": saved["sex"],
+        "age": _num(saved["user_age"], int, cfg.user_age),
+        "timezone": saved["timezone"],
+        "goals": goals,
+        "program": saved["user_program"] or cfg.user_program,
+        "nutrition_goals": {
+            "protein_target_g": _num(saved["nutrition_protein_target_g"], float, cfg.nutrition_protein_target_g),
+            "calories_min": _num(saved["nutrition_calories_min"], int, cfg.nutrition_calories_min),
+            "calories_max": _num(saved["nutrition_calories_max"], int, cfg.nutrition_calories_max),
+        },
     }
+    running = {
+        "height_cm": cfg.height_cm, "sex": cfg.sex, "age": cfg.user_age,
+        "timezone": str(cfg.timezone), "goals": cfg.user_goals, "program": cfg.user_program,
+        "protein_target_g": cfg.nutrition_protein_target_g,
+        "calories_min": cfg.nutrition_calories_min, "calories_max": cfg.nutrition_calories_max,
+    }
+    flat = {**{k: v for k, v in profile.items() if k != "nutrition_goals"}, **profile["nutrition_goals"]}
+    pending = sorted(k for k, v in flat.items() if running[k] != v)
+    if pending:
+        profile["pending_restart"] = pending
+    return profile
+
+
+_HEIGHT_RANGE = (100.0, 250.0)
+_AGE_RANGE = (10, 120)
+_PROTEIN_RANGE = (0.0, 500.0)
+_CALORIES_RANGE = (500, 8000)
+
+
+@mcp.tool()
+async def update_user_profile(
+    height_cm: Optional[float] = None,
+    age: Optional[int] = None,
+    sex: Optional[str] = None,
+    timezone: Optional[str] = None,
+    program: Optional[str] = None,
+    goals: Optional[list[str]] = None,
+    protein_target_g: Optional[float] = None,
+    calories_min: Optional[int] = None,
+    calories_max: Optional[int] = None,
+) -> dict:
+    """Changes the owner's profile and nutrition goals — the same fields as the
+    "About me" and nutrition cards in Settings, written the same way. Only the
+    fields you pass change.
+
+    ``sex`` is male or female (it switches the Navy body-fat formula);
+    ``timezone`` an IANA name ("Europe/Chisinau"); ``goals`` the full new list
+    (short phrases, no commas inside one); ``program`` one line describing the
+    current program. ``calories_min`` / ``calories_max`` are the daily corridor
+    the nutrition summary measures against; ``protein_target_g`` the daily
+    protein goal.
+
+    Like a save in Settings, this is stored at once but the running app applies
+    it on its next restart — the result's ``pending_restart`` says what is
+    waiting. WRITE tool. Returns the profile as now stored."""
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    from web.services import profile_settings
+
+    def _bounded(name, value, bounds):
+        low, high = bounds
+        if value is not None and not low <= value <= high:
+            raise ValueError(f"{name} must be between {low:g} and {high:g}")
+
+    try:
+        _bounded("height_cm", height_cm, _HEIGHT_RANGE)
+        _bounded("age", age, _AGE_RANGE)
+        _bounded("protein_target_g", protein_target_g, _PROTEIN_RANGE)
+        _bounded("calories_min", calories_min, _CALORIES_RANGE)
+        _bounded("calories_max", calories_max, _CALORIES_RANGE)
+        if sex is not None and sex not in profile_settings.SEXES:
+            raise ValueError(f"sex must be one of {', '.join(profile_settings.SEXES)}")
+        if timezone is not None:
+            try:
+                ZoneInfo(timezone.strip())
+            except (ZoneInfoNotFoundError, ValueError):
+                raise ValueError(f"unknown timezone {timezone!r} — use an IANA name") from None
+        if goals is not None and any("," in g for g in goals):
+            raise ValueError("a goal cannot contain a comma — goals are stored comma-separated")
+        stored = profile_settings.read_nutrition_goals()
+        low = calories_min if calories_min is not None else int(float(stored["nutrition_calories_min"]))
+        high = calories_max if calories_max is not None else int(float(stored["nutrition_calories_max"]))
+        if low > high:
+            raise ValueError(f"calories_min ({low}) is above calories_max ({high})")
+
+        def _text(value):
+            return None if value is None else f"{value:g}" if isinstance(value, float) else str(value)
+
+        written = profile_settings.apply_profile(
+            height_cm=_text(height_cm),
+            sex=sex,
+            user_age=_text(age),
+            timezone=timezone,
+            user_program=program,
+            user_goals=None if goals is None else ", ".join(g.strip() for g in goals if g.strip()),
+        )
+        written.update(profile_settings.apply_nutrition_goals(
+            protein_target_g=_text(protein_target_g),
+            calories_min=_text(calories_min),
+            calories_max=_text(calories_max),
+        ))
+    except ValueError as e:
+        return {"error": str(e)}
+    if not written:
+        return {"error": "nothing to change — pass at least one field"}
+    return await get_user_profile()
 
 
 @mcp.tool()
@@ -484,34 +612,54 @@ async def get_supplements_catalog() -> list[dict]:
 async def get_skincare_logs(
     start_date: Optional[str] = None, end_date: Optional[str] = None, limit: int = 100
 ) -> dict:
-    """Retrieves skincare routine application logs and skin status observations.
-    Each series defaults to the most recent 100 rows."""
+    """The skincare *history* for a date range (YYYY-MM-DD), newest first, each
+    series capped at ``limit`` rows (default 100):
+
+      * ``checks`` — what was actually done: one row per product, slot (morning /
+        evening) and day, the same ticks the app's checklist, the Telegram reminder
+        and ``set_skincare_check`` write. ``product_id`` is null once the product
+        was deleted from the catalog; ``product_name`` keeps the row readable.
+      * ``observations`` — skin state: inflammation and PIH scores, zone, note.
+      * ``day_flags`` — the day's actives as the conflict engine sees them
+        (retinoid, azelaic, peel, …). Derived from the ticks; the rows from before
+        the first tick are the old hand-filled checklist, and their ``note`` keeps
+        what was written then.
+
+    For the product catalog and what is planned today use
+    ``get_skincare_routine``; to record a done product use ``set_skincare_check``.
+    Face photos: ``list_photos(kind="face")``. READ tool."""
+    from vitals.models import SkincareCheck
+
     session_factory = get_session_factory()
     start = _parse_date(start_date, field="start_date")
     end = _parse_date(end_date, field="end_date")
 
-    async with session_factory() as session:
-        # Routine logs
-        l_stmt = select(SkincareLog)
+    def _ranged(stmt, model):
         if start:
-            l_stmt = l_stmt.where(SkincareLog.date >= start)
+            stmt = stmt.where(model.date >= start)
         if end:
-            l_stmt = l_stmt.where(SkincareLog.date <= end)
-        l_stmt = l_stmt.order_by(SkincareLog.date.desc()).limit(limit)
-        logs = (await session.execute(l_stmt)).scalars().all()
+            stmt = stmt.where(model.date <= end)
+        return stmt
 
-        # Observations
-        o_stmt = select(SkincareObservation)
-        if start:
-            o_stmt = o_stmt.where(SkincareObservation.date >= start)
-        if end:
-            o_stmt = o_stmt.where(SkincareObservation.date <= end)
-        o_stmt = o_stmt.order_by(SkincareObservation.date.desc()).limit(limit)
-        observations = (await session.execute(o_stmt)).scalars().all()
+    async with session_factory() as session:
+        checks = (await session.execute(
+            _ranged(select(SkincareCheck), SkincareCheck)
+            .order_by(SkincareCheck.date.desc(), SkincareCheck.slot, SkincareCheck.done_at)
+            .limit(limit)
+        )).scalars().all()
+        observations = (await session.execute(
+            _ranged(select(SkincareObservation), SkincareObservation)
+            .order_by(SkincareObservation.date.desc()).limit(limit)
+        )).scalars().all()
+        logs = (await session.execute(
+            _ranged(select(SkincareLog), SkincareLog)
+            .order_by(SkincareLog.date.desc()).limit(limit)
+        )).scalars().all()
 
         return {
-            "logs": [serialize_row(l) for l in logs],
+            "checks": [serialize_row(c) for c in checks],
             "observations": [serialize_row(o) for o in observations],
+            "day_flags": [serialize_row(l) for l in logs],
         }
 
 
@@ -583,12 +731,16 @@ async def upsert_genetic_variant(
 
 
 @mcp.tool()
-async def get_active_alerts() -> list[dict]:
-    """Returns currently active warning alerts and conflict notifications."""
+async def get_active_alerts(domain: Optional[str] = None) -> list[dict]:
+    """Returns the currently active (unresolved) alerts — warnings, conflict
+    blocks, overdue retests, the station's air — newest first, optionally for one
+    ``domain``. ``override_at`` marks a block the owner already answered with
+    "doing it anyway". The same list as the app's attention panel."""
+    from vitals.services import alerts_service
+
     session_factory = get_session_factory()
     async with session_factory() as session:
-        stmt = select(SystemAlert).where(SystemAlert.resolved_at.is_(None)).order_by(SystemAlert.created_at.desc())
-        alerts = (await session.execute(stmt)).scalars().all()
+        alerts = await alerts_service.list_active(session, domain=domain)
         return [serialize_row(a) for a in alerts]
 
 
@@ -607,6 +759,24 @@ async def resolve_alert(alert_id: int) -> dict:
             return {"error": f"Alert {alert_id} not found"}
         await session.commit()
         return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def resolve_all_alerts(domain: Optional[str] = None) -> dict:
+    """Resolves every active alert at once — the app's "dismiss all" — or, with
+    ``domain`` (e.g. "labs", "skincare", "environment"), every alert of that
+    domain. Bulk and immediate: use it only when the owner asks to clear them
+    all; for one alert use ``resolve_alert``. An alert whose cause is still there
+    may be raised again by the next check. Returns how many were resolved.
+    WRITE tool."""
+    from vitals.services import alerts_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        count = len(await alerts_service.list_active(session, domain=domain))
+        await alerts_service.resolve_all(session, domain=domain)
+        await session.commit()
+        return {"resolved": count, "domain": domain}
 
 
 @mcp.tool()
@@ -668,9 +838,12 @@ async def list_conflict_rules(
     """Lists the curated cross-domain conflict rules (vitals/data/conflict_rules.yaml),
     optionally filtered by ``domain`` (matches either side of the rule) and/or
     ``category`` (absorption, pharmacogenomics, dermatology, lab_safety, glp1,
-    contraindication). Only ``active`` rules are meaningful for evaluation, but
-    inactive ones are included too so a caller can see the full catalog."""
+    contraindication). ``active`` is the owner's on/off switch for the rule
+    (``set_conflict_rule_active``); ``firing`` is true while the rule has an
+    unresolved alert right now. Switched-off rules are included so the whole
+    catalog is visible."""
     from vitals.models.conflict_rule import ConflictRule
+    from vitals.services import conflict_service
 
     session_factory = get_session_factory()
     async with session_factory() as session:
@@ -680,7 +853,28 @@ async def list_conflict_rules(
         rows = (await session.execute(stmt)).scalars().all()
         if domain:
             rows = [r for r in rows if r.domain_a == domain or r.domain_b == domain]
-        return [serialize_row(r) for r in rows]
+        firing = await conflict_service.get_firing_rule_ids(session)
+        return [{**serialize_row(r), "firing": r.id in firing} for r in rows]
+
+
+@mcp.tool()
+@gated("interactions")
+async def set_conflict_rule_active(rule_id: int, active: bool) -> dict:
+    """Switches one conflict rule on or off — the toggle on the app's
+    Interactions screen. A rule switched off is never evaluated: its warnings and
+    blocks stop for every write (the app's and yours) until it is switched back
+    on. ``rule_id`` from ``list_conflict_rules``. Turning off a ``block`` rule
+    removes a safety check, so do it only on the owner's explicit request, and
+    say which rule it was. WRITE tool."""
+    from vitals.services import conflict_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        row = await conflict_service.toggle_rule(session, rule_id, active)
+        if row is None:
+            return {"error": f"Conflict rule {rule_id} not found"}
+        await session.commit()
+        return await serialize_written(session, row)
 
 
 @mcp.tool()
@@ -778,6 +972,8 @@ async def get_nutrition_summary(
 
 
 # ── Meal CRUD tools ─────────────────────────────────────────────────────────
+_MEAL_CLEARABLE = ("eaten_at", "calories", "protein_g", "fat_g", "carbs_g", "note")
+
 
 @mcp.tool()
 @gated("nutrition")
@@ -791,12 +987,15 @@ async def update_meal(
     eaten_at: Optional[str] = None,
     note: Optional[str] = None,
     on_date: Optional[str] = None,
+    clear: Optional[list[str]] = None,
 ) -> dict:
     """Updates an existing meal by ID. Returns the updated meal or an error.
 
     Only the fields you pass are changed — anything left out keeps its stored
     value, including ``on_date``, which stays the meal's own date rather than
-    moving the meal to today. WRITE tool — changes are saved immediately.
+    moving the meal to today. To empty a field (an unknown macro, a wrong time,
+    a note) name it in ``clear``: any of eaten_at, calories, protein_g, fat_g,
+    carbs_g, note. WRITE tool — changes are saved immediately.
     """
     from vitals.services import nutrition_service
 
@@ -820,6 +1019,11 @@ async def update_meal(
         )
         if merged is None:
             return {"error": f"Meal {meal_id} not found"}
+        unknown = sorted(set(clear or []) - set(_MEAL_CLEARABLE))
+        if unknown:
+            return {"error": f"cannot clear {unknown} — clearable: {', '.join(_MEAL_CLEARABLE)}"}
+        for field in clear or []:
+            merged[field] = None
         row = await nutrition_service.update_meal(
             session, meal_id, on_date=merged.pop("date"), **merged
         )
@@ -885,6 +1089,45 @@ async def log_weight(
             return {"error": str(e)}
         await session.commit()
         return await serialize_written(session, row)
+
+
+@mcp.tool()
+async def update_weight(
+    log_id: int,
+    weight_kg: Optional[float] = None,
+    on_date: Optional[str] = None,
+    note: Optional[str] = None,
+    clear_note: bool = False,
+    override: bool = False,
+) -> dict:
+    """Corrects a weight entry by ID (from ``get_weight_logs``) — a mistyped
+    value, the wrong day, a note. Only what you pass changes; ``clear_note=True``
+    empties the note. Moving it to another date re-ranks both days (the entry
+    can outrank a Garmin import there, and the old day's next entry becomes
+    active again). Runs the same conflict check as ``log_weight`` — a hard block
+    returns ``{"blocked": true, ...}``; retry with ``override=True``. WRITE tool."""
+    from vitals.services import weight_service
+
+    parsed_date = _parse_date(on_date, field="on_date")
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        row = await weight_service.get_weight_log(session, log_id)
+        if row is None:
+            return {"error": f"Weight log {log_id} not found"}
+        try:
+            updated = await weight_service.update_weight_log(
+                session, log_id,
+                on_date=parsed_date or row.date,
+                weight_kg=weight_kg if weight_kg is not None else row.weight_kg,
+                note=None if clear_note else (note if note is not None else row.note),
+                override=override,
+            )
+        except ConflictBlocked as e:
+            return _conflict_payload(e)
+        except ValueError as e:
+            return {"error": str(e)}
+        await session.commit()
+        return await serialize_written(session, updated)
 
 
 # ── GLP-1 tools ─────────────────────────────────────────────────────────────
@@ -1212,44 +1455,262 @@ async def get_hrt_cycles() -> dict:
         return {"cycles": out}
 
 
-# ── Skincare tools ──────────────────────────────────────────────────────────
+# ── Skincare: the catalog, the day's plan and what was done ──────────────────
+# The routine is the catalog read for a date: every product in use whose
+# ``schedule_days`` include that weekday, in the slot(s) its ``default_time``
+# names. A tick (``set_skincare_check``) is what records it as done — the same
+# service call as a tap in the app or under the Telegram reminder, so it runs the
+# same conflict check and sets the same day flags the engine reads.
+SKINCARE_RANGE_MAX_DAYS = 31
+_SKINCARE_TIMES = ("morning", "evening", "both")
+_SKINCARE_CLEARABLE = ("active_ingredient", "description", "usage_instructions", "active_flag")
+
+
+def _skincare_schedule(
+    default_time: Optional[str], schedule_days: Optional[list[int]], active_flag: Optional[str]
+) -> None:
+    """Reject what the app's form can't produce: an unknown slot, a weekday
+    outside 0..6, a conflict flag the engine has no rule key for."""
+    from vitals.services import skincare_service
+
+    if default_time is not None and default_time not in _SKINCARE_TIMES:
+        raise ValueError(f"default_time must be one of {', '.join(_SKINCARE_TIMES)}")
+    if schedule_days is not None and any(
+        not isinstance(d, int) or isinstance(d, bool) or not 0 <= d <= 6 for d in schedule_days
+    ):
+        raise ValueError("schedule_days are weekday numbers 0..6 (Monday=1 … Saturday=6, Sunday=0)")
+    if active_flag is not None and active_flag not in skincare_service.ACTIVE_FLAGS:
+        raise ValueError(
+            f"active_flag must be one of {', '.join(skincare_service.ACTIVE_FLAGS)} "
+            "(or left out / cleared for a product no rule concerns)"
+        )
+
+
+@mcp.tool()
+async def get_skincare_routine(
+    start_date: Optional[str] = None, end_date: Optional[str] = None
+) -> dict:
+    """The skincare routine as the app runs it: the product catalog and the plan
+    for a day or a range of days (YYYY-MM-DD, default today; ``start_date`` alone
+    runs to today; at most 31 days), with what was ticked done. Call this first for anything about the routine —
+    "what do I put on tonight", "did I do the morning", "add Х to Tuesdays".
+
+    ``products`` — the whole catalog, products in use and switched off: ``id``,
+    ``name``, ``type``, ``active_ingredient``, ``description``,
+    ``usage_instructions``, ``default_time`` (morning / evening / both),
+    ``schedule_days`` (weekday numbers: Monday=1 … Saturday=6, Sunday=0),
+    ``active`` (false = switched off: kept in the catalog, never planned) and
+    ``active_flag`` (the conflict-engine key ticking it sets — one of ``flags``;
+    absent = a product no rule concerns, like a cleanser).
+
+    ``days`` — newest first, each with ``morning`` and ``evening`` lists of
+    ``{product_id, name, flag, planned, done, done_at}``; ``planned: false`` marks
+    a product ticked on a day it wasn't scheduled. The ``product_id`` here is what
+    ``set_skincare_check`` and ``update_skincare_product`` take. READ tool."""
+    from vitals.services import skincare_service
+
+    today = today_local()
+    start = _parse_date(start_date, field="start_date")
+    end = _parse_date(end_date, field="end_date")
+    if start is None and end is None:
+        start = end = today
+    elif end is None:  # "since Monday" reads up to today
+        end = max(start, today)
+    elif start is None:
+        start = end
+    if end < start:
+        return {"error": "end_date is before start_date"}
+    if (end - start).days >= SKINCARE_RANGE_MAX_DAYS:
+        return {"error": f"at most {SKINCARE_RANGE_MAX_DAYS} days per call — narrow the range"}
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        products = await skincare_service.list_products(session)
+        return {
+            "today": today.isoformat(),
+            "products": [serialize_row(p) for p in products],
+            "days": await skincare_service.plans_between(session, start, end),
+            "flags": list(skincare_service.ACTIVE_FLAGS),
+        }
+
 
 @mcp.tool()
 @gated("skincare")
-async def log_skincare(
-    on_date: Optional[str] = None,
-    retinoid: bool = False,
-    azelaic: bool = False,
-    peel: bool = False,
-    niacinamide_spf: bool = False,
-    moisturizer: bool = False,
-    vitamin_c: bool = False,
-    benzoyl_peroxide: bool = False,
-    note: Optional[str] = None,
-    override: bool = False,
+async def add_skincare_product(
+    name: str,
+    type: str,
+    default_time: str = "evening",
+    schedule_days: Optional[list[int]] = None,
+    active_ingredient: Optional[str] = None,
+    active_flag: Optional[str] = None,
+    description: Optional[str] = None,
+    usage_instructions: Optional[str] = None,
+    active: bool = True,
 ) -> dict:
-    """Records or updates the daily skincare routine checklist (one per day, upsert).
-    Boolean flags indicate which products were applied. WRITE tool — saved
-    immediately. If a hard conflict rule blocks the save, returns
-    ``{"blocked": true, ...}``; call again with ``override=True`` to save anyway."""
+    """Adds a product to the skincare catalog — from then on it is planned on its
+    days and shows on the checklist (app and Telegram).
+
+    ``type`` is a short free-text kind ("Ретиноид", "Крем", "Умывалка").
+    ``default_time`` is morning, evening or both. ``schedule_days`` are weekday
+    numbers, Monday=1 … Saturday=6, Sunday=0; left out = every day.
+    ``active_flag`` ties the product to the conflict rules — one of retinoid,
+    azelaic, peel, niacinamide_spf, moisturizer, vitamin_c, benzoyl_peroxide; set
+    it for anything containing that active (adapalene and tretinoin are
+    ``retinoid``), leave it out for products no rule concerns. ``active=False``
+    adds it switched off. WRITE tool — saved immediately."""
     from vitals.services import skincare_service
-    from vitals.utils.timeutils import today_local
+
+    name, type = (name or "").strip(), (type or "").strip()
+    if not name or not type:
+        return {"error": "name and type are required"}
+    days = list(range(7)) if schedule_days is None else sorted(set(schedule_days))
+    try:
+        _skincare_schedule(default_time, days, active_flag)
+    except ValueError as e:
+        return {"error": str(e)}
 
     session_factory = get_session_factory()
-    parsed_date = _parse_date(on_date, today_local(), field="on_date")
-
     async with session_factory() as session:
-        try:
-            row = await skincare_service.upsert_log(
-                session, on_date=parsed_date, retinoid=retinoid, azelaic=azelaic,
-                peel=peel, niacinamide_spf=niacinamide_spf, moisturizer=moisturizer,
-                vitamin_c=vitamin_c, benzoyl_peroxide=benzoyl_peroxide,
-                note=note, override=override,
-            )
-        except ConflictBlocked as e:
-            return _conflict_payload(e)
+        row = await skincare_service.add_product(
+            session, name=name, type=type, active_ingredient=active_ingredient,
+            description=description, usage_instructions=usage_instructions,
+            default_time=default_time, schedule_days=days, active=active,
+            active_flag=active_flag,
+        )
         await session.commit()
         return await serialize_written(session, row)
+
+
+@mcp.tool()
+@gated("skincare")
+async def update_skincare_product(
+    product_id: int,
+    name: Optional[str] = None,
+    type: Optional[str] = None,
+    default_time: Optional[str] = None,
+    schedule_days: Optional[list[int]] = None,
+    active_ingredient: Optional[str] = None,
+    active_flag: Optional[str] = None,
+    description: Optional[str] = None,
+    usage_instructions: Optional[str] = None,
+    active: Optional[bool] = None,
+    clear: Optional[list[str]] = None,
+) -> dict:
+    """Edits a catalog product by ``product_id`` (from ``get_skincare_routine``).
+    Only the fields you pass change. Use it to reschedule (``schedule_days`` is
+    the full new list, Monday=1 … Sunday=0; ``default_time`` morning / evening /
+    both), to switch a product off or back on (``active=False`` / ``True`` — it
+    stays in the catalog with its history, just is no longer planned; prefer this
+    over deleting), or to correct its conflict flag.
+
+    To empty a text field or remove the conflict flag, name it in ``clear``
+    (any of active_ingredient, description, usage_instructions, active_flag).
+    Ticks already recorded keep the flag they were made with. WRITE tool."""
+    from vitals.models import SkincareProduct
+    from vitals.services import skincare_service
+
+    clear = list(clear or [])
+    unknown = sorted(set(clear) - set(_SKINCARE_CLEARABLE))
+    if unknown:
+        return {"error": f"cannot clear {unknown} — clearable: {', '.join(_SKINCARE_CLEARABLE)}"}
+    days = sorted(set(schedule_days)) if schedule_days is not None else None
+    try:
+        _skincare_schedule(default_time, days, active_flag)
+    except ValueError as e:
+        return {"error": str(e)}
+    if name is not None and not name.strip() or type is not None and not type.strip():
+        return {"error": "name and type cannot be empty"}
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        merged = await _merged(
+            session, SkincareProduct, product_id,
+            name=name.strip() if name else None, type=type.strip() if type else None,
+            default_time=default_time, schedule_days=days,
+            active_ingredient=active_ingredient, active_flag=active_flag,
+            description=description, usage_instructions=usage_instructions, active=active,
+        )
+        if merged is None:
+            return {"error": f"Skincare product {product_id} not found"}
+        for field in clear:
+            merged[field] = None
+        merged["schedule_days"] = merged["schedule_days"] or []
+        row = await skincare_service.update_product(session, product_id, **merged)
+        await session.commit()
+        return await serialize_written(session, row)
+
+
+@mcp.tool()
+@gated("skincare")
+async def set_skincare_check(
+    slot: str,
+    product_id: Optional[int] = None,
+    done: bool = True,
+    on_date: Optional[str] = None,
+    override: bool = False,
+) -> dict:
+    """Records that a skincare product was applied — or takes the mark back.
+    The same tick as a tap on the app's checklist or the button under the Telegram
+    reminder (a reminder already in the chat is redrawn to match). This is THE
+    way to log skincare; it replaced the old seven-checkbox ``log_skincare``.
+
+    ``slot`` is morning or evening. ``product_id`` comes from
+    ``get_skincare_routine``; leave it out (with ``done=True``) to tick everything
+    still open in that slot — the "all done" button. ``done=False`` unticks one
+    product. ``on_date`` defaults to today; any past date works for catching up.
+    A product can be ticked on a day it isn't scheduled — it then shows as
+    ``planned: false``. Idempotent: ticking twice records one tick.
+
+    Ticking a product whose conflict flag a blocking rule forbids (e.g. a
+    retinoid and a peel the same evening) returns ``{"blocked": true, ...}`` and
+    saves nothing; retry with ``override=True`` only when the owner confirms it
+    was actually done. Returns the day's plan as it now stands plus any
+    non-blocking ``warnings``. WRITE tool."""
+    from vitals.services import skincare_service
+    from vitals.services.proactive import channels
+    from vitals.services.proactive import skincare as skincare_reminders
+
+    if slot not in skincare_service.SLOTS:
+        return {"error": f"slot must be one of {', '.join(skincare_service.SLOTS)}"}
+    if product_id is None and not done:
+        return {"error": "a whole slot can only be ticked, not unticked — pass product_id"}
+    parsed_date = _parse_date(on_date, today_local(), field="on_date")
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        try:
+            if product_id is None:
+                violations = await skincare_service.complete_slot(
+                    session, on_date=parsed_date, slot=slot, override=override,
+                    source=Source.MCP.value,
+                )
+            else:
+                violations = await skincare_service.set_check(
+                    session, on_date=parsed_date, product_id=product_id, slot=slot,
+                    done=done, override=override, source=Source.MCP.value,
+                )
+        except ConflictBlocked as e:
+            return _conflict_payload(e)
+        except LookupError:
+            return {"error": f"Skincare product {product_id} not found"}
+        await session.commit()
+
+        # Best-effort, as in the app: the tick is committed, and a slow or
+        # refused Telegram edit must not turn it into an error.
+        try:
+            await skincare_reminders.sync_sent(
+                session, channels.build_notifier(), parsed_date, slot
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("mcp: could not sync the skincare reminder", exc_info=True)
+
+        result = {
+            "date": parsed_date.isoformat(),
+            **await skincare_service.plan_for(session, parsed_date),
+        }
+        if violations:
+            result["warnings"] = [v.to_dict() for v in violations]
+        return result
 
 
 # ── Body measurement tools ──────────────────────────────────────────────────
@@ -1390,17 +1851,20 @@ async def get_notes(
 # ── Deletion (one tool, every domain) ─────────────────────────────────────────
 
 # domain → (module key gating the write, service module, delete function).
-# Every delete service happens to share one signature — ``(session, id) -> bool`` —
-# which is what lets a single tool stand in for the eighteen near-identical ones
-# that used to live here, each differing only in the noun it echoed back. The tool
-# list is re-read at the top of every conversation, so a fifth of it was spent
-# spelling out delete_meal / delete_glp1 / delete_hrt_cycle_item.
+# Every delete service takes ``(session, id)`` and reports whether there was a row —
+# a bool, or for a photo the stored file's key (truthy) so the file can go once the
+# row is committed. That shared shape is what lets a single tool stand in for the
+# near-identical ones that used to live here, each differing only in the noun it
+# echoed back. The tool list is re-read at the top of every conversation, so a
+# fifth of it was spent spelling out delete_meal / delete_glp1 / delete_hrt_cycle_item.
 _DELETE_TARGETS: dict[str, tuple[Optional[str], str, str]] = {
     "weight": (None, "weight_service", "delete_weight_log"),
     "measurement": (None, "weight_service", "delete_body_measurement"),
     "noise_marker": (None, "weight_service", "delete_noise_marker"),
+    "progress_photo": (None, "weight_service", "delete_progress_photo"),
     "labs": (None, "labs_service", "delete_result"),
     "milestones": (None, "milestones_service", "delete_milestone"),
+    "shared_report": (None, "share_service", "delete_report"),
     "nutrition": ("nutrition", "nutrition_service", "delete_meal"),
     "glp1": ("glp1", "glp1_service", "delete_injection"),
     "glp1_side_effect": ("glp1", "glp1_service", "delete_side_effect"),
@@ -1410,25 +1874,57 @@ _DELETE_TARGETS: dict[str, tuple[Optional[str], str, str]] = {
     "hrt_cycle_item": ("hrt", "hrt_cycle_service", "delete_cycle_item"),
     "body_comp": ("body_comp", "body_scan_service", "delete_scan"),
     "timeline": ("timeline", "timeline_service", "delete_annotation"),
+    "skincare_product": ("skincare", "skincare_service", "delete_product"),
+    "skincare_photo": ("skincare", "skincare_service", "delete_photo"),
     "skincare_observation": ("skincare", "skincare_service", "delete_observation"),
+    "skincare_day_flags": ("skincare", "skincare_service", "delete_log"),
     "supplements": ("supplements", "supplements_service", "delete_supplement"),
     "genetics": ("genetics", "genetics_service", "delete_variant"),
     "signals": ("signals", "signals_service", "delete_signal"),
 }
 
+# The domains whose rows feed passive alerts: the app re-derives those alerts after
+# a delete, so a removed out-of-range result can't leave its warning behind.
+_DELETE_REFRESHES: dict[str, str] = {
+    "labs": "labs_service",
+    "body_comp": "body_scan_service",
+}
+
+
+def _remove_upload(rel_path: Optional[str]) -> None:
+    """Delete a stored upload once its row is gone — best-effort, like the app."""
+    from web.templating import STATIC_DIR
+
+    if not rel_path:
+        return
+    path = os.path.join(STATIC_DIR, rel_path)
+    if os.path.exists(path):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
 
 @mcp.tool()
 async def delete_record(domain: str, record_id: int) -> dict:
-    """Deletes one record from any domain by its ID. WRITE tool — immediate.
+    """Deletes one record from any domain by its ID — permanently; there is no
+    undo, so delete only what the owner asked to remove. WRITE tool — immediate.
 
-    ``domain`` is one of: weight, measurement (body tape), noise_marker, labs (one
-    result), milestones (a goal card), nutrition (a meal), glp1 (an injection),
-    glp1_side_effect, glp1_dose_phase, hrt_dose, hrt_cycle (with its compound
-    plans), hrt_cycle_item (one plan, cycle kept), body_comp (a scan with its
-    metrics), timeline (a manual event), skincare_observation, supplements (a
-    catalog entry), genetics (a variant), signals (one parsed signal — the raw
-    message stays in the lake; for a whole batch parsed wrongly out of one message
-    use ``mark_signal_misparse`` instead).
+    ``domain`` is one of: weight, measurement (body tape), noise_marker,
+    progress_photo (a weight progress photo and its file), labs (one result),
+    milestones (a goal card), shared_report (a doctor link's record — to only
+    kill the link and keep the record use ``revoke_shared_report``), nutrition (a
+    meal), glp1 (an injection), glp1_side_effect, glp1_dose_phase, hrt_dose,
+    hrt_cycle (with its compound plans), hrt_cycle_item (one plan, cycle kept),
+    body_comp (a scan with its metrics and file), timeline (a manual event),
+    skincare_product (removes it from the catalog; past ticks keep its name —
+    to stop using a product prefer ``update_skincare_product(active=False)``),
+    skincare_photo (a face photo and its file), skincare_observation,
+    skincare_day_flags (one day's conflict-flag row — the old hand-filled
+    checklist; ticks are taken back with ``set_skincare_check(done=False)``,
+    not here), supplements (a catalog entry), genetics (a variant), signals (one
+    parsed signal — the raw message stays in the lake; for a whole batch parsed
+    wrongly out of one message use ``mark_signal_misparse`` instead).
 
     Deleting a weight log reactivates the next-highest-priority log for that date.
     Returns ``{"deleted": false, ...}`` when nothing has that id."""
@@ -1442,9 +1938,215 @@ async def delete_record(domain: str, record_id: int) -> dict:
         if module_key and not await _module_enabled(session, module_key):
             return {"error": f"module '{module_key}' is disabled"}
         service = importlib.import_module(f"vitals.services.{service_name}")
-        ok = await getattr(service, fn_name)(session, record_id)
+        upload = None
+        if domain == "body_comp":
+            # The scan's file key is relative to uploads/, unlike the photos'.
+            scan = await session.get(BodyScan, record_id)
+            upload = f"uploads/{scan.file_key}" if scan is not None and scan.file_key else None
+        result = await getattr(service, fn_name)(session, record_id)
+        if isinstance(result, str):  # a photo: the service hands back its file key
+            upload = result
+        refresher = _DELETE_REFRESHES.get(domain)
+        if result and refresher:
+            await importlib.import_module(f"vitals.services.{refresher}").refresh_alerts(session)
         await session.commit()
-        return {"deleted": ok, "domain": domain, "record_id": record_id}
+        if result:
+            _remove_upload(upload)
+        return {"deleted": bool(result), "domain": domain, "record_id": record_id}
+
+
+# ── Photos: the weight's progress photos and the face diary ──────────────────
+# Two galleries with one shape (a dated row + a file under static/uploads), so
+# one set of tools serves both. ``get_photo`` hands the picture itself back as
+# image content, scaled down: the model can look at it and compare, which a URL
+# behind the owner's login never allowed.
+_PHOTO_KINDS = ("face", "progress")
+PHOTO_MAX_BYTES = 25 * 1024 * 1024  # the app's upload cap
+PHOTOS_PER_LIST_MAX = 200
+_PHOTO_FORMATS = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"}
+
+
+def _photo_model(kind: str):
+    from vitals.models import ProgressPhoto, SkincarePhoto
+
+    return SkincarePhoto if kind == "face" else ProgressPhoto
+
+
+async def _photo_kind_error(session, kind: str) -> Optional[dict]:
+    """``None`` when ``kind`` is usable; the face diary belongs to skincare."""
+    if kind not in _PHOTO_KINDS:
+        return {"error": f"kind must be one of {', '.join(_PHOTO_KINDS)}"}
+    if kind == "face" and not await _module_enabled(session, "skincare"):
+        return {"error": "module 'skincare' is disabled"}
+    return None
+
+
+def _photo_row(row) -> dict:
+    d = serialize_row(row)
+    d["url"] = f"/static/{row.file_key}"
+    return d
+
+
+@mcp.tool()
+async def list_photos(
+    kind: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    limit: int = 50,
+) -> list[dict]:
+    """Lists photos from one of the app's two galleries, newest first:
+    ``kind="face"`` — the face photo diary on the skincare screen;
+    ``kind="progress"`` — the body progress photos on the weight screen.
+    Each row is ``{id, date, note, url}`` (the url is a path behind the owner's
+    login — to actually look at a photo call ``get_photo``). Optional
+    YYYY-MM-DD range; most recent 50 by default. READ tool."""
+    session_factory = get_session_factory()
+    start = _parse_date(start_date, field="start_date")
+    end = _parse_date(end_date, field="end_date")
+    async with session_factory() as session:
+        problem = await _photo_kind_error(session, kind)
+        if problem:
+            return [problem]
+        model = _photo_model(kind)
+        stmt = select(model)
+        if start:
+            stmt = stmt.where(model.date >= start)
+        if end:
+            stmt = stmt.where(model.date <= end)
+        stmt = stmt.order_by(model.date.desc(), model.id.desc()).limit(
+            max(1, min(limit, PHOTOS_PER_LIST_MAX))
+        )
+        return [_photo_row(r) for r in (await session.execute(stmt)).scalars().all()]
+
+
+def _scaled_jpeg(path: str, max_px: int) -> bytes:
+    """The stored photo, upright (EXIF orientation applied) and fitted inside
+    ``max_px`` on its longer side, as a JPEG."""
+    import io
+
+    from PIL import Image as PilImage, ImageOps
+
+    with PilImage.open(path) as img:
+        img = ImageOps.exif_transpose(img)
+        img.thumbnail((max_px, max_px))
+        out = io.BytesIO()
+        img.convert("RGB").save(out, "JPEG", quality=85)
+        return out.getvalue()
+
+
+@mcp.tool()
+async def get_photo(kind: str, photo_id: int, max_px: int = 1024):
+    """Shows one photo — returns its details and the image itself, so you can
+    look at it: compare the face week to week (inflammation, marks, redness) or
+    the body against an earlier progress photo. ``kind`` is "face" or
+    "progress", ``photo_id`` from ``list_photos``. ``max_px`` bounds the longer
+    side (default 1024, 256–2048): larger shows more detail but costs more of the
+    conversation — ask for one or two photos at a time, not a whole gallery.
+    READ tool."""
+    import asyncio
+
+    from fastmcp.tools import ToolResult
+    from fastmcp.utilities.types import Image
+    from mcp.types import TextContent
+
+    from web.templating import STATIC_DIR
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        problem = await _photo_kind_error(session, kind)
+        if problem:
+            return problem
+        row = await session.get(_photo_model(kind), photo_id)
+        if row is None:
+            return {"error": f"{kind} photo {photo_id} not found"}
+        meta = _photo_row(row)
+
+    path = os.path.join(STATIC_DIR, row.file_key)
+    if not os.path.exists(path):
+        return {**meta, "error": "the file is missing on disk"}
+    try:
+        data = await asyncio.to_thread(_scaled_jpeg, path, max(256, min(int(max_px), 2048)))
+    except Exception:  # noqa: BLE001 — HEIC without a decoder, a truncated file…
+        logger.warning("mcp: cannot render photo %s", row.file_key, exc_info=True)
+        return {**meta, "error": "this file can't be rendered here (unsupported or damaged image)"}
+    return ToolResult(content=[
+        TextContent(type="text", text=json.dumps(meta, ensure_ascii=False)),
+        Image(data=data, format="jpeg").to_image_content(),
+    ])
+
+
+def _decode_image(image_base64: str) -> tuple[bytes, str]:
+    """Base64 (optionally a ``data:`` URL) → ``(bytes, extension)``. The bytes are
+    checked to be a JPEG, PNG or WebP image — whatever the caller claims."""
+    import base64
+    import binascii
+    import io
+
+    from PIL import Image as PilImage, UnidentifiedImageError
+
+    raw = (image_base64 or "").strip()
+    if raw.startswith("data:") and "," in raw:
+        raw = raw.split(",", 1)[1]
+    if len(raw) * 3 // 4 > PHOTO_MAX_BYTES:
+        raise ValueError(f"image too large (max {PHOTO_MAX_BYTES // (1024 * 1024)} MB)")
+    try:
+        data = base64.b64decode(raw, validate=True)
+    except (binascii.Error, ValueError):
+        raise ValueError("image_base64 is not valid base64") from None
+    try:
+        with PilImage.open(io.BytesIO(data)) as img:
+            fmt = img.format
+            img.verify()
+    except (UnidentifiedImageError, OSError, SyntaxError):
+        raise ValueError("image_base64 does not decode to an image") from None
+    ext = _PHOTO_FORMATS.get(fmt or "")
+    if ext is None:
+        raise ValueError(f"unsupported image format {fmt} — send JPEG, PNG or WebP")
+    return data, ext
+
+
+@mcp.tool()
+async def add_photo(
+    kind: str,
+    image_base64: str,
+    on_date: Optional[str] = None,
+    note: Optional[str] = None,
+) -> dict:
+    """Adds a photo to a gallery — ``kind="face"`` (the skincare face diary) or
+    ``kind="progress"`` (body progress photos on the weight screen) — dated
+    ``on_date`` (default today), with an optional note.
+
+    ``image_base64`` is the file's bytes in base64 (a ``data:image/...;base64,``
+    prefix is fine): JPEG, PNG or WebP, up to 25 MB. This only works where you
+    actually hold the file's bytes (e.g. a client with file access). A photo the
+    owner attached to a chat message is NOT available to you as bytes — don't
+    try to re-create or describe it into this tool; ask the owner to upload it in
+    the app instead. WRITE tool — saved immediately."""
+    import uuid
+
+    from vitals.services import skincare_service, weight_service
+    from web.templating import STATIC_DIR
+    from web.uploads import write_upload
+
+    try:
+        data, ext = _decode_image(image_base64)
+    except ValueError as e:
+        return {"error": str(e)}
+    parsed_date = _parse_date(on_date, today_local(), field="on_date")
+    note = (note or "").strip() or None
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        problem = await _photo_kind_error(session, kind)
+        if problem:
+            return problem
+        file_key = f"uploads/{uuid.uuid4().hex}{ext}"
+        await write_upload(os.path.join(STATIC_DIR, file_key), data)
+        add = skincare_service.add_photo if kind == "face" else weight_service.add_progress_photo
+        row = await add(session, on_date=parsed_date, file_key=file_key, note=note)
+        await session.commit()
+        await session.refresh(row)
+        return _photo_row(row)
 
 
 # ── Body composition tools (InBody / МедАсс — optional module) ────────────────
@@ -1548,6 +2250,7 @@ async def log_body_scan(
             return _conflict_payload(e)
         except ValueError as e:
             return {"error": str(e)}
+        await body_scan_service.refresh_alerts(session)
         await session.commit()
         full = await body_scan_service.get_scan(session, scan.id)
         return _serialize_scan(full) if full else {"scan_id": scan.id}
@@ -1581,6 +2284,73 @@ async def get_lab_results(
         stmt = stmt.order_by(LabResult.date.desc(), LabResult.id.desc()).limit(limit)
         results = (await session.execute(stmt)).scalars().all()
         return [serialize_row(r) for r in results]
+
+
+@mcp.tool()
+async def get_lab_markers(marker: Optional[str] = None) -> dict:
+    """The lab-marker catalog the alerts are computed from: per marker its
+    ``unit``, reference range (``ref_low``/``ref_high``), ``category``, ``tier``
+    (1 = key marker … 3), ``retest_interval_days`` (when an "overdue retest"
+    alert fires) and ``defer_until`` (retest alert paused until then). With
+    ``marker`` (any spelling — normalized like the results) it returns that one
+    marker plus its full value history. READ tool; change with
+    ``update_lab_marker``."""
+    from vitals.services import labs_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        if marker is None:
+            return {"markers": [serialize_row(m) for m in await labs_service.list_markers(session)]}
+        row = await labs_service.get_marker(session, labs_service.normalize_marker(marker))
+        if row is None:
+            return {"error": f"No marker '{marker}' in the catalog"}
+        return {
+            **serialize_row(row),
+            "history": await labs_service.marker_history(session, row.name),
+        }
+
+
+@mcp.tool()
+async def update_lab_marker(
+    marker: str,
+    ref_low: Optional[float] = None,
+    ref_high: Optional[float] = None,
+    category: Optional[str] = None,
+    tier: Optional[int] = None,
+    retest_interval_days: Optional[int] = None,
+    defer_until: Optional[str] = None,
+    note: Optional[str] = None,
+) -> dict:
+    """Edits a catalog marker — the marker card on the Labs screen. Only what you
+    pass changes. ``ref_low``/``ref_high`` is the catalog's reference range (used
+    when a result comes without one); ``tier`` 1–3; ``retest_interval_days``
+    drives the "overdue retest" alert; ``defer_until`` (YYYY-MM-DD) is "remind me
+    later": it pauses that alert until the date and closes the open one. Alerts
+    are re-derived after the save. WRITE tool."""
+    from vitals.services import labs_service
+
+    parsed_defer = _parse_date(defer_until, field="defer_until")
+    if tier is not None and not 1 <= tier <= 3:
+        return {"error": "tier must be 1, 2 or 3"}
+    if retest_interval_days is not None and retest_interval_days <= 0:
+        return {"error": "retest_interval_days must be positive"}
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        row = await labs_service.get_marker(session, labs_service.normalize_marker(marker))
+        if row is None:
+            return {"error": f"No marker '{marker}' in the catalog"}
+        for field, value in {
+            "ref_low": ref_low, "ref_high": ref_high, "category": category, "tier": tier,
+            "retest_interval_days": retest_interval_days, "note": note,
+        }.items():
+            if value is not None:
+                setattr(row, field, value)
+        await session.flush()
+        if parsed_defer is not None:
+            await labs_service.defer_retest(session, row.name, until=parsed_defer)
+        await labs_service.refresh_alerts(session)
+        await session.commit()
+        return await serialize_written(session, row)
 
 
 @mcp.tool()
@@ -1626,6 +2396,8 @@ async def log_lab_result(
             return _conflict_payload(e)
         except ValueError as e:
             return {"error": str(e)}
+        # The app re-derives the out-of-range / retest alerts after every save.
+        await labs_service.refresh_alerts(session)
         await session.commit()
         return await serialize_written(session, row)
 
@@ -1709,6 +2481,7 @@ async def log_lab_results(
             )
         except ConflictBlocked as e:
             return _conflict_payload(e)
+        await labs_service.refresh_alerts(session)
         await session.commit()
         return {
             "created": summary["created"],
@@ -1793,11 +2566,14 @@ async def update_event(
     kind: Optional[str] = None,
     domain: Optional[str] = None,
     note: Optional[str] = None,
+    clear: Optional[list[str]] = None,
 ) -> dict:
     """Updates a manual Timeline annotation by ID — the ``id`` of a row from
     ``get_timeline`` whose source is manual (derived events are computed and
     cannot be edited). Only the fields you pass are changed; everything left out
-    keeps its stored value, including the event's own date. WRITE tool."""
+    keeps its stored value, including the event's own date. ``clear`` empties
+    fields: ``end_date`` (a range back to a single day) and/or ``note``.
+    WRITE tool."""
     from vitals.services import timeline_service
 
     session_factory = get_session_factory()
@@ -1818,6 +2594,11 @@ async def update_event(
         )
         if merged is None:
             return {"error": f"Event {event_id} not found"}
+        unknown = sorted(set(clear or []) - {"end_date", "note"})
+        if unknown:
+            return {"error": f"cannot clear {unknown} — clearable: end_date, note"}
+        for field in clear or []:
+            merged[field] = None
         row = await timeline_service.update_annotation(
             session, event_id, on_date=merged.pop("date"), **merged
         )
@@ -1905,8 +2686,11 @@ async def get_data_overview() -> dict:
         ("workouts", HevyWorkout, HevyWorkout.date),
         ("labs", LabResult, LabResult.date),
         ("nutrition", MealLog, MealLog.date),
+        ("skincare_checks", SkincareCheck, SkincareCheck.date),
         ("skincare_logs", SkincareLog, SkincareLog.date),
         ("skincare_observations", SkincareObservation, SkincareObservation.date),
+        ("skincare_photos", SkincarePhoto, SkincarePhoto.date),
+        ("progress_photos", ProgressPhoto, ProgressPhoto.date),
         ("weekly_digests", WeeklyDigest, WeeklyDigest.date),
         ("timeline", Annotation, Annotation.date),
         ("noise_markers", NoiseMarker, NoiseMarker.start_date),
@@ -1921,6 +2705,7 @@ async def get_data_overview() -> dict:
     # Config/catalog tables have no per-day date — report count only.
     count_only = [
         ("supplements", Supplement),
+        ("skincare_products", SkincareProduct),
         ("genetics", GeneticVariant),
         ("milestones", Milestone),
         ("dose_phases", DosePhase),
@@ -2113,6 +2898,10 @@ async def add_dose_phase(
     still-open phase the day before it starts. WRITE tool."""
     from vitals.services import glp1_service
 
+    if not (drug or "").strip():
+        return {"error": "drug is required"}
+    if dose_mg is None or dose_mg <= 0:
+        return {"error": "dose_mg must be a positive number"}
     session_factory = get_session_factory()
     parsed_start = _parse_date(start_date, field="start_date")
     parsed_end = _parse_date(end_date, field="end_date")
@@ -2123,6 +2912,35 @@ async def add_dose_phase(
         )
         await session.commit()
         return await serialize_written(session, row)
+
+
+@mcp.tool()
+@gated("glp1")
+async def close_dose_phase(
+    phase_id: Optional[int] = None, end_date: Optional[str] = None
+) -> dict:
+    """Ends a GLP-1 dose phase — the "close" action on the GLP-1 screen: the
+    phase gets ``end_date`` (default today) and stops being the current dose.
+    Without ``phase_id`` it closes the phase covering today. Starting a new
+    open-ended phase with ``add_dose_phase`` already closes the previous one, so
+    this is for stopping (a pause, the end of the course). WRITE tool."""
+    from vitals.services import glp1_service
+
+    parsed_end = _parse_date(end_date, today_local(), field="end_date")
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        if phase_id is not None:
+            phase = await session.get(DosePhase, phase_id)
+        else:
+            phase = await glp1_service.active_dose_phase(session)
+        if phase is None:
+            return {"error": "No such dose phase" if phase_id else "No dose phase covers today"}
+        if parsed_end < phase.start_date:
+            return {"error": f"end_date is before the phase's start ({phase.start_date.isoformat()})"}
+        phase.end_date = parsed_end
+        await session.flush()
+        await session.commit()
+        return await serialize_written(session, phase)
 
 
 # ── Skincare observations ─────────────────────────────────────────────────────
@@ -2136,8 +2954,9 @@ async def log_skincare_observation(
     note: Optional[str] = None,
 ) -> dict:
     """Records a skin-status observation — inflammation and PIH (post-inflammatory
-    hyperpigmentation) scores, an optional face ``zone``, and a note. Distinct from
-    the daily routine checklist (log_skincare). WRITE tool — saved immediately."""
+    hyperpigmentation) scores, an optional face ``zone``, and a note: how the skin
+    looks, not what was applied (that is ``set_skincare_check``). WRITE tool —
+    saved immediately."""
     from vitals.services import skincare_service
     from vitals.utils.timeutils import today_local
 
@@ -2258,21 +3077,27 @@ async def set_supplement_active(
 @mcp.tool()
 async def update_measurement(
     measurement_id: int,
-    on_date: str,
+    on_date: Optional[str] = None,
     neck_cm: Optional[float] = None,
     waist_cm: Optional[float] = None,
     hips_cm: Optional[float] = None,
     note: Optional[str] = None,
     override: bool = False,
 ) -> dict:
-    """Edits a body-measurement row by ID (recomputes Navy body-fat % / LBM). On a
-    hard block returns ``{"blocked": true, ...}``; retry with ``override=True``.
-    WRITE tool."""
+    """Edits a body-measurement row by ID (recomputes Navy body-fat % / LBM).
+    Only the fields you pass change; ``on_date`` left out keeps the row's own
+    date. On a hard block returns ``{"blocked": true, ...}``; retry with
+    ``override=True``. WRITE tool."""
     from vitals.services import weight_service
 
     session_factory = get_session_factory()
     parsed_date = _parse_date(on_date, field="on_date")
     async with session_factory() as session:
+        if parsed_date is None:
+            existing = await session.get(BodyMeasurement, measurement_id)
+            if existing is None:
+                return {"error": f"Measurement {measurement_id} not found"}
+            parsed_date = existing.date
         try:
             row = await weight_service.update_body_measurement(
                 session, measurement_id, on_date=parsed_date, neck_cm=neck_cm,
@@ -2602,8 +3427,9 @@ async def get_proactive_state(limit: int = 10) -> dict:
     settings (message times, daily budget, which nudge categories are allowed), the
     week template (what each weekday is assumed to be until the owner says
     otherwise), and the last messages the bot actually sent. Read this before
-    explaining why the bot did or didn't say something. READ tool — the settings are
-    read-only here; retiming or muting the bot is done in Settings, by the owner."""
+    explaining why the bot did or didn't say something. READ tool — change the
+    settings with ``set_proactive_settings``, the week template with
+    ``set_week_template``."""
     from vitals.models.proactive import Notification
     from vitals.services.proactive import day_plan, prefs
 
@@ -2617,6 +3443,92 @@ async def get_proactive_state(limit: int = 10) -> dict:
             "week_template": await day_plan.get_week_template(session),
             "recent_notifications": [serialize_row(n) for n in sent],
         }
+
+
+# The host FastAPI app, handed over by ``get_mcp_app``: a proactive-settings save
+# re-registers the jobs on its running scheduler, exactly like the Settings card.
+_HOST_APP = None
+
+
+@mcp.tool()
+async def set_proactive_settings(
+    brief_time: Optional[str] = None,
+    evening_time: Optional[str] = None,
+    skincare_morning_time: Optional[str] = None,
+    skincare_evening_time: Optional[str] = None,
+    quiet_start: Optional[str] = None,
+    quiet_end: Optional[str] = None,
+    daily_budget: Optional[int] = None,
+    nudges: Optional[dict] = None,
+    garmin_sync_hours: Optional[int] = None,
+    garmin_weight_export_minutes: Optional[int] = None,
+    garmin_weight_max_age_days: Optional[int] = None,
+    pulse_seconds: Optional[int] = None,
+    pulse_start_hour: Optional[int] = None,
+    pulse_end_hour: Optional[int] = None,
+) -> dict:
+    """Changes how the Telegram bot behaves — the Notifications card in Settings,
+    applied the same way (the scheduler is re-timed at once, no restart). Only
+    the fields you pass change; read the current values with
+    ``get_proactive_state``.
+
+    Times are HH:MM local: ``brief_time`` (morning brief), ``evening_time``
+    (evening block), ``skincare_morning_time`` / ``skincare_evening_time`` (the
+    skincare checklist messages), ``quiet_start``–``quiet_end`` (no self-initiated
+    messages). ``daily_budget`` caps self-initiated messages a day (1–12).
+    ``nudges`` switches categories on/off, e.g. ``{"activity": false,
+    "skincare": true}`` — categories: activity, nutrition, data, environment,
+    skincare (only those you name change). Data freshness: ``garmin_sync_hours``
+    (1–24), ``pulse_seconds`` (60–3600, 0 = light pulse off) within
+    ``pulse_start_hour``–``pulse_end_hour``; Garmin weight export cadence
+    ``garmin_weight_export_minutes`` (5–1440) and ``garmin_weight_max_age_days``
+    (1–30). Out-of-range values are clamped, as in the app — ``adjusted: true``
+    says the stored result differs from what was asked. Switching the whole bot
+    off is the signals module (``set_module("signals", False)``). WRITE tool."""
+    from vitals.services.proactive import prefs
+    from web.api.settings import apply_schedule
+
+    current = await _proactive_current()
+    raw = dict(current)
+    given = False
+    for key, value in {
+        "brief_time": brief_time, "evening_time": evening_time,
+        "skincare_morning_time": skincare_morning_time,
+        "skincare_evening_time": skincare_evening_time,
+        "quiet_start": quiet_start, "quiet_end": quiet_end, "daily_budget": daily_budget,
+        "garmin_sync_hours": garmin_sync_hours,
+        "garmin_weight_export_minutes": garmin_weight_export_minutes,
+        "garmin_weight_max_age_days": garmin_weight_max_age_days,
+        "pulse_seconds": pulse_seconds, "pulse_start_hour": pulse_start_hour,
+        "pulse_end_hour": pulse_end_hour,
+    }.items():
+        if value is not None:
+            raw[key] = value
+            given = True
+    if nudges is not None:
+        given = True
+        unknown = sorted(set(nudges) - set(prefs.NUDGE_CATEGORIES))
+        if unknown:
+            return {"error": f"unknown nudge categories {unknown} — use {', '.join(prefs.NUDGE_CATEGORIES)}"}
+        raw["nudges"] = {**current["nudges"], **{k: bool(v) for k, v in nudges.items()}}
+    if not given:
+        return {"error": "nothing to change — pass at least one field"}
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        settings = await prefs.set_prefs(session, raw)
+        await session.commit()
+    if _HOST_APP is not None:
+        apply_schedule(_HOST_APP, settings)
+    return {"prefs": settings, "adjusted": raw != settings}
+
+
+async def _proactive_current() -> dict:
+    from vitals.services.proactive import prefs
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        return await prefs.get_prefs(session)
 
 
 @mcp.tool()
@@ -2838,6 +3750,326 @@ async def get_environment_alerts(hours: int = 24) -> dict:
         return await environment_context.alerts_view(session, hours=hours)
 
 
+@mcp.tool()
+@gated("environment")
+async def get_environment_settings() -> dict:
+    """Returns the bedroom station's settings as the owner set them: the CO2
+    zones (good < ``co2_ok_max`` ≤ ok < ``co2_warn`` ≤ warn < ``co2_bad`` ≤ bad,
+    ppm), the day comfort and sleeping temperature ranges (°C), the humidity
+    comfort band and the wider alert band (%), the ``night_window`` the night
+    summaries use, and whether alerts fire at all (``alerts_enabled``) and go to
+    Telegram (``alert_telegram``). Read-only; change with
+    ``set_environment_settings``."""
+    from vitals.services.environment import settings as env_settings
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        return (await env_settings.get_settings(session)).to_dict()
+
+
+@mcp.tool()
+@gated("environment")
+async def set_environment_settings(
+    co2_ok_max: Optional[int] = None,
+    co2_warn: Optional[int] = None,
+    co2_bad: Optional[int] = None,
+    temp_day_min: Optional[float] = None,
+    temp_day_max: Optional[float] = None,
+    temp_sleep_min: Optional[float] = None,
+    temp_sleep_max: Optional[float] = None,
+    rh_min: Optional[float] = None,
+    rh_max: Optional[float] = None,
+    rh_alert_low: Optional[float] = None,
+    rh_alert_high: Optional[float] = None,
+    night_start: Optional[str] = None,
+    night_end: Optional[str] = None,
+    alerts_enabled: Optional[bool] = None,
+    alert_telegram: Optional[bool] = None,
+) -> dict:
+    """Changes the bedroom station's thresholds and alert switches — the
+    station card in Settings. Only the fields you pass change (see
+    ``get_environment_settings`` for their meaning; ``night_start`` /
+    ``night_end`` are HH:MM). As in the app, out-of-range values are clamped and
+    the zones kept in order (CO2 400–5000 ppm, temperature −10…45 °C, humidity
+    0–100 %) rather than rejected — the result is what was actually stored.
+    WRITE tool."""
+    from vitals.services.environment import settings as env_settings
+
+    patch = {k: v for k, v in {
+        "co2_ok_max": co2_ok_max, "co2_warn": co2_warn, "co2_bad": co2_bad,
+        "temp_day_min": temp_day_min, "temp_day_max": temp_day_max,
+        "temp_sleep_min": temp_sleep_min, "temp_sleep_max": temp_sleep_max,
+        "rh_min": rh_min, "rh_max": rh_max,
+        "rh_alert_low": rh_alert_low, "rh_alert_high": rh_alert_high,
+        "alerts_enabled": alerts_enabled, "alert_telegram": alert_telegram,
+    }.items() if v is not None}
+    window = {k: v for k, v in {"start": night_start, "end": night_end}.items() if v is not None}
+    if window:
+        patch["night_window"] = window
+    if not patch:
+        return {"error": "nothing to change — pass at least one field"}
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        saved = await env_settings.set_settings(session, patch)
+        await session.commit()
+        return saved.to_dict()
+
+
+# ── The Today screen ──────────────────────────────────────────────────────────
+def _jsonable(value):
+    """Dates, times and nested containers → plain JSON values."""
+    if isinstance(value, dict):
+        return {k: _jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(v) for v in value]
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return value
+
+
+@mcp.tool()
+async def get_today() -> dict:
+    """The app's Today screen as data — the same assembly the owner opens the app
+    on: ``narrative`` (the morning brief's paragraph, or a computed sentence when
+    there is none yet — ``narrative_source`` says which), ``figures`` (weight with
+    its weekly trend, sleep score, HRV, Body Battery against the personal corridor,
+    today's calories when nutrition is on), ``changes`` (this week vs last),
+    ``feed`` (today's meals, signals, events, weigh-in), ``attention`` (active
+    alerts and the recovery advice, most severe first), ``goal`` (the active goal
+    with its forecast), and ``sync`` (when each source last delivered). Switched
+    off modules contribute nothing, as on the screen. Use it for "как я сегодня" /
+    "что у меня на сегодня" before drilling into a domain. READ tool."""
+    from vitals.services import modules_service, today_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        enabled = await modules_service.get_enabled_modules(session)
+        data = await today_service.collect(session, enabled_modules=enabled, weigh_ins=True)
+        return _jsonable(data)
+
+
+# ── Doctor reports (shared links) ─────────────────────────────────────────────
+@mcp.tool()
+async def get_shared_reports() -> dict:
+    """Lists the doctor reports the owner has published — the Share screen: each
+    with ``id``, ``title``, ``domains``, the period, ``state`` (live / expired /
+    revoked), ``expires_at``, how many times it was opened and when last, and its
+    ``url`` (a path on the owner's Vitals host; the visitor also needs the
+    password, which is shown only once, at creation, and is not stored). Also
+    ``available_domains``, ``presets``, ``period_choices`` and ``expiry_choices``
+    for ``create_shared_report``. READ tool."""
+    from vitals.services import modules_service, share_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        enabled = await modules_service.get_enabled_modules(session)
+        data = await share_service.collect(session, enabled)
+        for r in data["reports"]:
+            r.pop("token", None)  # the url carries it; once is enough
+        return data
+
+
+@mcp.tool()
+async def create_shared_report(
+    title: str,
+    domains: Optional[list[str]] = None,
+    preset: Optional[str] = None,
+    period: str = "90",
+    period_start: Optional[str] = None,
+    period_end: Optional[str] = None,
+    expires_days: int = 30,
+    labs_flagged_only: bool = False,
+    note: Optional[str] = None,
+) -> dict:
+    """Publishes a doctor report — a frozen, password-protected page with the
+    chosen domains for a period, exactly like "New report" on the Share screen.
+    OUTWARD-FACING: anyone holding the link and the password can read that
+    medical data until it expires or is revoked. Create one only when the owner
+    explicitly asks for it.
+
+    ``domains`` from ``get_shared_reports().available_domains``, or a ``preset``
+    from its ``presets`` instead. ``period`` is a number of days back ("30",
+    "90", "180"), "all", or "custom" with ``period_start``/``period_end``
+    (YYYY-MM-DD). ``expires_days`` — link lifetime (7, 30, 90).
+    ``labs_flagged_only`` keeps only out-of-range lab results.
+
+    Returns the ``url`` path and the ``password`` — the password exists only in
+    this answer (only its hash is stored): give both to the owner right away.
+    WRITE tool."""
+    from vitals.i18n import t
+    from vitals.services import modules_service, share_service
+
+    title = (title or "").strip()
+    if not title:
+        return {"error": "title is required"}
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        enabled = await modules_service.get_enabled_modules(session)
+        wanted = list(domains or [])
+        if preset:
+            spec = share_service.PRESETS.get(preset)
+            if spec is None:
+                return {"error": f"unknown preset '{preset}' — use {', '.join(share_service.PRESETS)}"}
+            wanted += list(spec["domains"])
+            labs_flagged_only = labs_flagged_only or spec["labs_flagged_only"]
+        chosen = share_service.resolve_domains(wanted, enabled)
+        if not chosen:
+            return {
+                "error": "at least one available domain is required — choose from "
+                + ", ".join(share_service.available_domains(enabled))
+            }
+        try:
+            start, end = await share_service.resolve_period(
+                session, period, period_start, period_end
+            )
+        except ValueError as e:
+            return {"error": str(e)}
+        row, password = await share_service.create_report(
+            session, title=title, domains=chosen, period_start=start, period_end=end,
+            expires_days=expires_days, note=note, labs_flagged_only=labs_flagged_only,
+            preset=preset, enabled=enabled,
+        )
+        if not (row.snapshot or {}).get("blocks"):
+            await session.rollback()
+            return {"error": t("share.error.empty")}
+        await session.commit()
+        return {
+            "id": row.id,
+            "url": f"/r/{row.token}",
+            "password": password,
+            "domains": chosen,
+            "period_start": start.isoformat(),
+            "period_end": end.isoformat(),
+            "expires_at": row.expires_at.isoformat(),
+        }
+
+
+@mcp.tool()
+async def revoke_shared_report(report_id: int) -> dict:
+    """Kills a doctor report's link now — it stops opening for anyone and its
+    frozen copy of the data is erased; the record of what was shared, with whom
+    and when stays on the Share screen. Irreversible: a revoked link can't be
+    revived (publish a new one instead). To also remove the record use
+    ``delete_record("shared_report", id)``. WRITE tool."""
+    from vitals.services import share_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        row = await share_service.get_report(session, report_id)
+        if row is None:
+            return {"error": f"Shared report {report_id} not found"}
+        if row.revoked_at is not None:
+            return {"error": f"Shared report {report_id} is already revoked"}
+        await share_service.revoke(session, report_id)
+        await session.commit()
+        return {"revoked": True, "id": report_id}
+
+
+# ── Saved charts (the Charts screen) ──────────────────────────────────────────
+@mcp.tool()
+async def get_saved_charts(
+    chart_id: Optional[str] = None, include_catalog: bool = False
+) -> dict:
+    """The owner's saved charts from the Charts screen. Without ``chart_id``:
+    every chart's configuration — ``id``, ``name``, ``normalize`` and its
+    ``series`` (``metric_key``, ``param``, ``label``). With ``chart_id``: that
+    chart with its data resolved — each series' points ``{date, value}`` as the
+    screen draws them, plus the timeline flags laid over it. ``include_catalog``
+    adds the metric catalog (every ``metric_key`` a chart can plot, with the
+    ``param`` it needs) — what ``create_saved_chart`` takes. READ tool."""
+    from vitals.services import (
+        chart_data_service, charts_service, custom_charts_service, language_service,
+        modules_service,
+    )
+
+    redis = _redis_or_none()
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        enabled = await modules_service.get_enabled_modules(session)
+        lang = await language_service.get_language(session, redis)
+        result: dict = {}
+        if chart_id is None:
+            result["charts"] = await custom_charts_service.list_charts(session, redis)
+        else:
+            chart = await custom_charts_service.get_chart(session, chart_id, redis)
+            if chart is None:
+                return {"error": f"Chart '{chart_id}' not found"}
+            overlays = await charts_service._overlays_by_chart(
+                session, [chart], with_supplements=bool(enabled.get("supplements"))
+            ) if enabled.get("timeline") else {}
+            result["chart"] = {
+                "id": chart["id"],
+                "name": chart["name"],
+                "normalize": chart.get("normalize", False),
+                "series": await chart_data_service.resolve_chart_series(session, chart, lang=lang),
+                "overlays": overlays.get(chart["id"], []),
+            }
+        if include_catalog:
+            result["catalog"] = await chart_data_service.build_catalog(session, enabled, lang=lang)
+        return result
+
+
+def _redis_or_none():
+    """The shared Redis client, or ``None`` — the caches it serves only accelerate."""
+    try:
+        return get_redis_client()
+    except Exception:
+        return None
+
+
+@mcp.tool()
+async def create_saved_chart(
+    name: str, series: list[dict], normalize: bool = False
+) -> dict:
+    """Saves a new chart on the Charts screen. ``series`` is 1–8 items of
+    ``{"metric_key": str, "param": str?, "label": str?}`` — keys from
+    ``get_saved_charts(include_catalog=True)`` (or the ``get_trend`` registry,
+    e.g. ``weight.weight_kg``, ``garmin.hrv_avg``; ``labs.marker`` needs
+    ``param`` = marker name). ``normalize=True`` draws every series on a shared
+    0–100 scale, for comparing shapes of different units. WRITE tool."""
+    from vitals.services import custom_charts_service
+    from vitals.services.analytics import chart_registry
+
+    clean = []
+    for s in series or []:
+        if not isinstance(s, dict) or not s.get("metric_key"):
+            return {"error": "every series needs a metric_key"}
+        try:
+            domain = chart_registry.get(s["metric_key"]).domain
+        except KeyError:
+            return {"error": f"unknown metric_key '{s['metric_key']}'"}
+        clean.append({
+            "domain": s.get("domain") or domain, "metric_key": s["metric_key"],
+            "param": s.get("param"), "label": s.get("label"),
+        })
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        try:
+            chart = await custom_charts_service.create_chart(
+                session, name=name, series=clean, normalize=normalize, redis=_redis_or_none()
+            )
+        except custom_charts_service.ChartConfigError as e:
+            return {"error": str(e)}
+        await session.commit()
+        return chart
+
+
+@mcp.tool()
+async def delete_saved_chart(chart_id: str) -> dict:
+    """Deletes a saved chart from the Charts screen (only the chart — the data it
+    plots is untouched). Permanent. WRITE tool."""
+    from vitals.services import custom_charts_service
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        ok = await custom_charts_service.delete_chart(session, chart_id, redis=_redis_or_none())
+        await session.commit()
+        return {"deleted": ok, "chart_id": chart_id}
+
+
 # ── Resources & prompts ───────────────────────────────────────────────────────
 @mcp.resource("vitals://profile")
 async def profile_resource() -> dict:
@@ -2883,6 +4115,7 @@ TOOL_MODULES.update({
     "get_hevy_workouts": "hevy",
     "get_supplements_catalog": "supplements",
     "get_skincare_logs": "skincare",
+    "get_skincare_routine": "skincare",
     "get_genetics_snps": "genetics",
     "get_hrt_logs": "hrt",
     "get_hrt_cycles": "hrt",
@@ -3064,15 +4297,19 @@ class MCPAuthMiddleware:
                 })
 
 
-def get_mcp_app() -> tuple[object, object]:
+def get_mcp_app(host_app=None) -> tuple[object, object]:
     """Wraps the FastMCP Starlette app with Bearer authorization middleware.
 
     Returns ``(app, lifespan)``. Streamable HTTP builds its session manager inside
     the lifespan, and ``app.mount()`` does not run a sub-app's lifespan — so the
     caller must enter it explicitly or every request fails with "manager not
-    initialized". See web/main.py.
+    initialized". See web/main.py. ``host_app`` is the app it is mounted on, for
+    the tools that act on it (re-timing the scheduler).
     """
     from web.config import get_web_config
+
+    global _HOST_APP
+    _HOST_APP = host_app
     cfg = get_web_config()
     # Streamable HTTP (the SSE transport is deprecated in the MCP spec since
     # 2025-03). path="/" so that mounting on /mcp lands the endpoint on /mcp/

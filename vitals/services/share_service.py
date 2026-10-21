@@ -723,6 +723,36 @@ def default_period(days: int = 90) -> tuple[date_type, date_type]:
     return window_for(days)
 
 
+async def resolve_period(
+    session: AsyncSession,
+    period: str,
+    period_start: Optional[str] = None,
+    period_end: Optional[str] = None,
+) -> tuple[date_type, date_type]:
+    """The form's period choice → ``(start, end)``.
+
+    ``period`` is a number of days back (``"90"``), ``"all"`` (from the first
+    stored fact) or ``"custom"`` (then both ISO dates are required). Raises
+    ``ValueError`` with a message fit for the owner on a bad custom range.
+    """
+    if period == "custom":
+        if not period_start or not period_end:
+            raise ValueError("custom period requires period_start and period_end")
+        start = date_type.fromisoformat(period_start)
+        end = date_type.fromisoformat(period_end)
+        if end < start:
+            raise ValueError("period_end cannot be before period_start")
+        return start, end
+    if period == "all":
+        _, end = window_for(1)
+        return (await earliest_data_date(session) or end), end
+    try:
+        days = int(period)
+    except ValueError:
+        days = 90
+    return window_for(days)
+
+
 async def earliest_data_date(session: AsyncSession) -> Optional[date_type]:
     """The oldest dated row in any domain a report can carry — what "all time"
     means. Nine cheap ``MIN()`` reads on one form submit, so a report that says

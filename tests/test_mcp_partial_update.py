@@ -106,7 +106,7 @@ async def test_bad_date_names_the_argument_and_the_shape():
 # that starts by orienting itself concludes the domain doesn't exist. Adding a
 # Domain member without touching this map fails immediately.
 DOMAIN_OVERVIEW_KEYS: dict[Domain, tuple[str, ...]] = {
-    Domain.WEIGHT: ("weight", "measurements", "noise_markers"),
+    Domain.WEIGHT: ("weight", "measurements", "noise_markers", "progress_photos"),
     Domain.BODY_COMPOSITION: ("body_scans",),
     Domain.GLP1: ("glp1_injections", "side_effects", "dose_phases"),
     Domain.HRT: ("hrt_doses", "hrt_side_effects", "hrt_cycles"),
@@ -116,7 +116,10 @@ DOMAIN_OVERVIEW_KEYS: dict[Domain, tuple[str, ...]] = {
     Domain.NUTRITION: ("nutrition",),
     Domain.SUPPLEMENTS: ("supplements",),
     Domain.GENETICS: ("genetics",),
-    Domain.SKINCARE: ("skincare_logs", "skincare_observations"),
+    Domain.SKINCARE: (
+        "skincare_products", "skincare_checks", "skincare_logs",
+        "skincare_observations", "skincare_photos",
+    ),
     Domain.MILESTONES: ("milestones", "weekly_digests"),
     Domain.TIMELINE: ("timeline",),
     Domain.SIGNALS: ("signals", "day_context"),

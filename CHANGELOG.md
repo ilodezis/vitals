@@ -8,6 +8,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed — MCP reaches everything the app does (80 → 103 tools)
+
+Claude over MCP had fallen behind the screens: the skincare routine moved to a product catalog with morning/evening ticks while the tool surface kept writing the old seven-checkbox log nobody read, and whole screens (Today, Share, Charts, the photo galleries, most of Settings) had no tools at all. Every new write goes through the service the app's route calls, with the same conflict checks.
+
+- **Skincare is the catalog and its ticks.** `get_skincare_routine` (catalog + the day's or a range's plan with what was done), `add_skincare_product` / `update_skincare_product` (schedule, weekdays, conflict flag, switch off, `clear`), `set_skincare_check` (tick/untick a product in a slot for any date, or "all done" — conflict-gated, and the Telegram reminder already in the chat is redrawn). `get_skincare_logs` now returns the ticks, the observations and the derived day flags. **`log_skincare` is removed** — it wrote the retired hand-filled checklist.
+- **Photos.** `list_photos`, `get_photo` (returns the image itself, scaled down, so Claude can look and compare) and `add_photo` (base64) for both the face diary and the weight's progress photos; deleting one through `delete_record` removes its file, as the app does.
+- **Settings.** `update_user_profile` (profile + nutrition goals, written through the same helper as the Settings cards, which now share it; `get_user_profile` reads what Settings shows and lists what waits for a restart), `set_proactive_settings` (re-times the scheduler at once, like the card), `get_environment_settings` / `set_environment_settings`.
+- **The rest of the screens.** `get_today`, `set_conflict_rule_active` (and `firing` on `list_conflict_rules`), `resolve_all_alerts` (and a domain filter on `get_active_alerts`), `get_shared_reports` / `create_shared_report` / `revoke_shared_report`, `get_saved_charts` / `create_saved_chart` / `delete_saved_chart`, `update_weight`, `close_dose_phase`, `get_lab_markers` / `update_lab_marker` (incl. "remind me later").
+- **`delete_record`** gains `skincare_product`, `skincare_photo`, `skincare_day_flags`, `progress_photo` and `shared_report`.
+- **Parity fixes in existing tools.** Lab writes and deletes now re-derive the lab alerts and body-scan writes/deletes the scan alerts, as the app always did; deleting a scan removes its file. `update_measurement` no longer requires the date. `update_meal` and `update_event` can empty a field (`clear`). `add_dose_phase` validates drug and dose like the app's form.
+- **Exports.** The LLM export and `get_data_overview` include the skincare catalog, the ticks and both photo galleries.
+
 ### Changed — the React app is the interface
 
 - **The app now lives on the site's own addresses** (`/today`, `/weight`, `/recovery`, …). The old server-rendered interface (Jinja, HTMX, Alpine, Chart.js, Tailwind) and every route behind it are gone; `/app/...`, `/garmin` and `/hevy` answer with a permanent redirect, so bookmarks and an installed app keep working.

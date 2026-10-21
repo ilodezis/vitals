@@ -367,7 +367,9 @@ DOMAIN_EXPORT_KEYS: dict[Domain, tuple[str, ...]] = {
     Domain.NUTRITION: ("nutrition",),
     Domain.SUPPLEMENTS: ("supplements",),
     Domain.GENETICS: ("genetics",),
-    Domain.SKINCARE: ("skincare_logs", "skincare_observations"),
+    Domain.SKINCARE: (
+        "skincare_products", "skincare_checks", "skincare_logs", "skincare_observations",
+    ),
     Domain.MILESTONES: ("milestones", "weekly_digests"),
     Domain.TIMELINE: ("timeline_annotations",),
     Domain.SIGNALS: ("signals", "day_context"),
@@ -393,7 +395,9 @@ async def _seed_every_domain(session) -> None:
     from vitals.models.milestones import Milestone, WeeklyDigest
     from vitals.models.nutrition import MealLog
     from vitals.models.signals import DayContext, Signal
-    from vitals.models.skincare import SkincareLog, SkincareObservation
+    from vitals.models.skincare import (
+        SkincareCheck, SkincareLog, SkincareObservation, SkincareProduct,
+    )
     from vitals.models.timeline import Annotation
     from vitals.models.weight import NoiseMarker
 
@@ -424,6 +428,14 @@ async def _seed_every_domain(session) -> None:
                 genotype="CT", impact="Фолатный цикл", impact_domain="supplements",
             ),
             SkincareLog(date=d, domain="skincare", source="manual", retinoid=True),
+            SkincareProduct(
+                name="Адапален", type="Ретиноид", default_time="evening",
+                schedule_days=[1, 3, 5], active_flag="retinoid",
+            ),
+            SkincareCheck(
+                date=d, domain="skincare", source="manual", product_name="Адапален",
+                slot="evening", active_flag="retinoid", done_at=datetime(2026, 4, 25, 22, 30),
+            ),
             SkincareObservation(
                 date=d, domain="skincare", source="manual", inflammation=2, zone="лоб",
             ),

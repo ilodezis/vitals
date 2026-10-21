@@ -251,6 +251,22 @@ async def plan_for(session: AsyncSession, on_date: date_type) -> dict[str, list[
     return _plan_from(products, checks, on_date)
 
 
+async def plans_between(
+    session: AsyncSession, start: date_type, end: date_type
+) -> list[dict]:
+    """``[{"date", "morning", "evening"}, …]`` for every day from ``end`` back to
+    ``start`` (both inclusive), newest first — :func:`plan_for` over a range, with
+    one read of the catalog and the ticks."""
+    products = await list_products(session, active_only=True)
+    checks = await checks_between(session, start, end)
+    out = []
+    day = end
+    while day >= start:
+        out.append({"date": day.isoformat(), **_plan_from(products, checks, day)})
+        day -= timedelta(days=1)
+    return out
+
+
 async def history(
     session: AsyncSession, *, end: Optional[date_type] = None, days: int = HISTORY_DAYS
 ) -> list[dict]:

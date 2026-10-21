@@ -69,6 +69,7 @@ from web.auth import authenticate, create_session, set_session_cookie
 from web.config import get_web_config
 from web.deps import get_redis, get_session, require_auth
 from web.ratelimit import rate_limit
+from web.services import profile_settings
 from web.services.env_writer import read_key, write_keys
 from web.uploads import JSON_EXTS, VCF_MAX_BYTES, read_capped, validate_extension
 
@@ -140,20 +141,9 @@ async def read_settings(
     if not enabled_modules:
         enabled_modules = await modules_service.get_enabled_modules(db, redis)
 
-    profile = ProfileSettings(
-        height_cm=read_key("VITALS_HEIGHT_CM") or "190",
-        sex=read_key("VITALS_SEX") or "male",
-        user_age=read_key("VITALS_USER_AGE") or "18",
-        timezone=read_key("VITALS_TIMEZONE") or "Europe/Chisinau",
-        user_program=read_key("VITALS_USER_PROGRAM") or "",
-        user_goals=read_key("VITALS_USER_GOALS") or "",
-    )
+    profile = ProfileSettings(**profile_settings.read_profile())
 
-    nutrition_goals = NutritionGoalsSettings(
-        nutrition_protein_target_g=read_key("VITALS_NUTRITION_PROTEIN_TARGET_G") or "150",
-        nutrition_calories_min=read_key("VITALS_NUTRITION_CALORIES_MIN") or "1300",
-        nutrition_calories_max=read_key("VITALS_NUTRITION_CALORIES_MAX") or "1700",
-    )
+    nutrition_goals = NutritionGoalsSettings(**profile_settings.read_nutrition_goals())
 
     lang_code = getattr(request.state, "lang", None) or await language_service.get_language(db, redis)
     language = LanguageSettings(language=lang_code)
@@ -241,37 +231,24 @@ async def read_settings(
 
 @router.post("/profile", response_model=SaveResponse)
 async def update_profile(body: ProfileUpdate) -> SaveResponse:
-    updates: dict[str, str] = {}
-    if body.height_cm is not None and body.height_cm.strip():
-        updates["VITALS_HEIGHT_CM"] = body.height_cm.strip()
-    if body.sex is not None and body.sex in ("male", "female"):
-        updates["VITALS_SEX"] = body.sex
-    if body.user_age is not None and body.user_age.strip().isdigit():
-        updates["VITALS_USER_AGE"] = body.user_age.strip()
-    if body.timezone is not None and body.timezone.strip():
-        updates["VITALS_TIMEZONE"] = body.timezone.strip()
-    if body.user_program is not None:
-        updates["VITALS_USER_PROGRAM"] = " ".join(body.user_program.split())
-    if body.user_goals is not None:
-        updates["VITALS_USER_GOALS"] = body.user_goals.strip()
-
-    if updates:
-        write_keys(updates)
+    profile_settings.apply_profile(
+        height_cm=body.height_cm,
+        sex=body.sex,
+        user_age=body.user_age,
+        timezone=body.timezone,
+        user_program=body.user_program,
+        user_goals=body.user_goals,
+    )
     return SaveResponse(saved=True)
 
 
 @router.post("/nutrition", response_model=SaveResponse)
 async def update_nutrition_goals(body: NutritionGoalsUpdate) -> SaveResponse:
-    updates: dict[str, str] = {}
-    if body.nutrition_protein_target_g is not None and body.nutrition_protein_target_g.strip():
-        updates["VITALS_NUTRITION_PROTEIN_TARGET_G"] = body.nutrition_protein_target_g.strip()
-    if body.nutrition_calories_min is not None and body.nutrition_calories_min.strip():
-        updates["VITALS_NUTRITION_CALORIES_MIN"] = body.nutrition_calories_min.strip()
-    if body.nutrition_calories_max is not None and body.nutrition_calories_max.strip():
-        updates["VITALS_NUTRITION_CALORIES_MAX"] = body.nutrition_calories_max.strip()
-
-    if updates:
-        write_keys(updates)
+    profile_settings.apply_nutrition_goals(
+        protein_target_g=body.nutrition_protein_target_g,
+        calories_min=body.nutrition_calories_min,
+        calories_max=body.nutrition_calories_max,
+    )
     return SaveResponse(saved=True)
 
 

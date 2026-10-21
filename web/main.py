@@ -383,7 +383,7 @@ try:
     from web.routers.mcp import get_mcp_app  # noqa: E402
 
     app.include_router(oauth_router)
-    mcp_app, mcp_lifespan = get_mcp_app()
+    mcp_app, mcp_lifespan = get_mcp_app(host_app=app)
     app.mount("/mcp", mcp_app)
     app.state.mcp_lifespan = mcp_lifespan
 except ImportError:

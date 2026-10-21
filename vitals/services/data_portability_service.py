@@ -64,7 +64,12 @@ from vitals.models.labs import LabResult
 from vitals.models.milestones import Milestone, WeeklyDigest
 from vitals.models.nutrition import MealLog
 from vitals.models.signals import DayContext, Signal
-from vitals.models.skincare import SkincareLog, SkincareObservation
+from vitals.models.skincare import (
+    SkincareCheck,
+    SkincareLog,
+    SkincareObservation,
+    SkincareProduct,
+)
 from vitals.models.supplements import Supplement
 from vitals.models.timeline import Annotation
 from vitals.models.weight import BodyMeasurement, NoiseMarker, WeightLog
@@ -740,6 +745,34 @@ async def export_llm(
             }
         )
         for s in sk_logs
+    ]
+    # The routine as planned (the catalog) and as done (one tick per product, slot
+    # and day) — the flags above are only what the conflict engine reads of it.
+    sk_products = (
+        await session.execute(select(SkincareProduct).order_by(SkincareProduct.name))
+    ).scalars().all()
+    out["skincare_products"] = [
+        _compact(
+            {
+                "name": p.name,
+                "type": p.type,
+                "active_ingredient": p.active_ingredient,
+                "default_time": p.default_time,
+                "schedule_days": p.schedule_days or None,
+                "active": p.active,
+                "active_flag": p.active_flag,
+            }
+        )
+        for p in sk_products
+    ]
+    sk_checks = (
+        await session.execute(
+            select(SkincareCheck).order_by(SkincareCheck.date, SkincareCheck.done_at)
+        )
+    ).scalars().all()
+    out["skincare_checks"] = [
+        _compact({"date": c.date.isoformat(), "slot": c.slot, "product": c.product_name})
+        for c in sk_checks
     ]
     sk_obs = (
         await session.execute(select(SkincareObservation).order_by(SkincareObservation.date))
