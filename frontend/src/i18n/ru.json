@@ -2458,6 +2458,7 @@
   "timeline.derived.progress_photo": "Фото прогресса",
   "timeline.derived.side_effect": "{type} [{severity}/5]",
   "timeline.derived.skincare_added": "Добавлено в уход: {name}",
+  "timeline.derived.skincare_photo": "Фото лица",
   "timeline.derived.skincare_removed": "Убрано из ухода: {name}",
   "timeline.derived.supplement_inferred": "Дата примерная: когда добавка попала в справочник",
   "timeline.derived.supplement_started": "Начат приём: {name}",

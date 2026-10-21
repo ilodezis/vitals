@@ -108,7 +108,9 @@ def test_sanitize_clamps_whatever_arrives():
     assert clean["garmin_weight_max_age_days"] == prefs.WEIGHT_MAX_AGE_DAYS_RANGE[1]
     assert clean["pulse_seconds"] == prefs.PULSE_SECONDS_RANGE[0]
     assert clean["pulse_end_hour"] > clean["pulse_start_hour"]
-    assert clean["nudges"] == {"activity": False, "nutrition": True, "data": True, "environment": True}
+    assert clean["nudges"] == {
+        "activity": False, "nutrition": True, "data": True, "environment": True, "skincare": True,
+    }
     # 0 means off and must survive the clamp that pulls 5 up to 60.
     assert prefs.sanitize({"pulse_seconds": 0})["pulse_seconds"] == 0
 
@@ -118,6 +120,8 @@ def test_settings_rebuild_the_job_triggers():
         {
             "brief_time": "07:30",
             "evening_time": "22:15",
+            "skincare_morning_time": "08:10",
+            "skincare_evening_time": "21:40",
             "garmin_sync_hours": 4,
             "garmin_weight_export_minutes": 45,
         }
@@ -127,6 +131,8 @@ def test_settings_rebuild_the_job_triggers():
     # A window, not one fire: the brief waits out a night that isn't scored yet.
     assert registry["daily_brief"].trigger_kwargs == {"hour": "7-12", "minute": 30}
     assert registry["evening_block"].trigger_kwargs == {"hour": 22, "minute": 15}
+    assert registry["skincare_morning"].trigger_kwargs == {"hour": 8, "minute": 10}
+    assert registry["skincare_evening"].trigger_kwargs == {"hour": 21, "minute": 40}
     assert registry["garmin_sync"].trigger_kwargs == {"hour": "*/4", "minute": 0}
     assert registry["garmin_weight_export"].trigger_kwargs == {"minutes": 45}
 
@@ -193,6 +199,7 @@ async def test_saving_reschedules_without_a_restart(auth_client, db_session):
         # A category missing from the saved list is switched off — environment included.
         assert stored["nudges"] == {
             "activity": True, "nutrition": False, "data": False, "environment": False,
+            "skincare": False,
         }
 
         from vitals.services.proactive import day_plan

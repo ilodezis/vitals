@@ -2458,6 +2458,7 @@
   "timeline.derived.progress_photo": "Progress photo",
   "timeline.derived.side_effect": "{type} [{severity}/5]",
   "timeline.derived.skincare_added": "Added to routine: {name}",
+  "timeline.derived.skincare_photo": "Face photo",
   "timeline.derived.skincare_removed": "Removed from routine: {name}",
   "timeline.derived.supplement_inferred": "Approximate date: recorded when it was added to the catalog",
   "timeline.derived.supplement_started": "Started: {name}",

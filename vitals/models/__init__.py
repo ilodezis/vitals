@@ -30,7 +30,13 @@ from vitals.models.glp1 import (
 # Phase 3 — Supplements / Genetics / Skincare.
 from vitals.models.supplements import Supplement, SupplementPeriod
 from vitals.models.genetics import GeneticVariant
-from vitals.models.skincare import SkincareLog, SkincareObservation, SkincareProduct
+from vitals.models.skincare import (
+    SkincareCheck,
+    SkincareLog,
+    SkincareObservation,
+    SkincarePhoto,
+    SkincareProduct,
+)
 
 # Module 5 — Hevy workouts.
 from vitals.models.hevy import HevyWorkout, HevyExercise, HevySet
@@ -100,8 +106,10 @@ __all__ = [
     "Supplement",
     "SupplementPeriod",
     "GeneticVariant",
+    "SkincareCheck",
     "SkincareLog",
     "SkincareObservation",
+    "SkincarePhoto",
     "SkincareProduct",
     "HevyWorkout",
     "HevyExercise",

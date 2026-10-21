@@ -2,8 +2,8 @@
 
 Three inbound shapes, deliberately three code paths:
 
-  * **a tap** (``callback_query``) — the "не то" undo, and the day-context answers
-    the evening block will ask for. Stateless: the button carries
+  * **a tap** (``callback_query``) — the "не то" undo, the day-context answers
+    the evening block will ask for, and the skincare checklist's ticks. Stateless: the button carries
     everything needed in its payload, so a tap works days later.
   * **a question** — either a reply to one of our messages or a plain «почему hrv
     просел?». Answered from the message replied to — or, when nothing was
@@ -38,7 +38,7 @@ from vitals.enums import DigestKind, Domain, SignalKind, Source
 from vitals.integrations.llm_client import LLMClient
 from vitals.models.raw_payload import RawPayload
 from vitals.services import digest_service, signals_service
-from vitals.services.proactive import day_plan, delivery, prefs
+from vitals.services.proactive import day_plan, delivery, prefs, skincare
 from vitals.services.proactive.channels import Notifier
 from vitals.services.raw_payload_service import upsert_raw_payload
 from vitals.utils.timeutils import now_local
@@ -51,6 +51,7 @@ SOURCE = Source.TELEGRAM.value
 # Button payloads (Telegram caps callback_data at 64 bytes, both fit comfortably).
 CB_MISPARSE = "mis:"   # mis:<batch_id>
 CB_CONTEXT = "ctx:"    # ctx:<iso date>:<key>:<value>
+CB_SKINCARE = skincare.CB_PREFIX  # sk:<iso date>:<slot>:<product id | all>
 
 # The answer to any slash command, ``/start`` included. One reply for all of them
 # on purpose: this bot has no command surface — everything it does is either
@@ -265,6 +266,7 @@ async def _handle_callback(
 
     toast = ""
     answered: Optional[tuple[date_type, str]] = None
+    ticked: Optional[tuple[date_type, str]] = None
     if data.startswith(CB_MISPARSE):
         batch_id = data[len(CB_MISPARSE):]
         changed = await signals_service.mark_misparse(session, batch_id)
@@ -274,6 +276,11 @@ async def _handle_callback(
     elif data.startswith(CB_CONTEXT):
         answered = await _apply_context(session, data)
         toast = "Записал" if answered is not None else ""
+    elif data.startswith(CB_SKINCARE):
+        applied = await skincare.apply_tap(session, data)
+        if applied is not None:
+            ticked = applied[:2]
+            toast = applied[2]
 
     if notifier is not None and callback_id:
         # Acknowledged first: Telegram spins on the button until this lands, and
@@ -285,6 +292,9 @@ async def _handle_callback(
 
     if notifier is not None and answered is not None:
         await _redraw(session, callback, *answered, notifier=notifier)
+    message_id = (callback.get("message") or {}).get("message_id")
+    if notifier is not None and ticked is not None and message_id:
+        await skincare.redraw(session, notifier, str(message_id), *ticked)
 
 
 async def _redraw(

@@ -1,18 +1,28 @@
-"""``/api/v1/skincare`` — Skincare checklist, observations, and products endpoints."""
+"""``/api/v1/skincare`` — Skincare checklist, observations, products, the day's
+done-ticks, and the face photo diary."""
 from __future__ import annotations
 
+import logging
+import os
+import uuid
 from datetime import date as date_type
+from typing import Optional
 
-from fastapi import Depends, Response, status
+from fastapi import Depends, File, Form, HTTPException, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.services import skincare_service
+from vitals.services.proactive import channels
+from vitals.services.proactive import skincare as skincare_reminders
 from web.api.errors import MUTATION_ERRORS, ApiRouter, not_found
 from web.api.schemas.skincare import (
+    SkincareCheckUpdate,
+    SkincareDayPlan,
     SkincareLogCreate,
     SkincareLogItem,
     SkincareObservationCreate,
     SkincareObservationCreated,
+    SkincarePhotoItem,
     SkincareProductCreate,
     SkincareProductCreated,
     SkincareProductItem,
@@ -20,8 +30,15 @@ from web.api.schemas.skincare import (
     SkincareView,
 )
 from web.deps import get_session, require_auth
+from web.templating import STATIC_DIR
+from web.uploads import IMAGE_EXTS, read_capped, validate_extension, write_upload
+
+logger = logging.getLogger(__name__)
 
 router = ApiRouter(prefix="/skincare", dependencies=[Depends(require_auth)])
+
+# Same cap as the weight's progress photos: one shot from a few angles, not an album.
+MAX_PHOTOS_PER_UPLOAD = 5
 
 
 @router.get("", response_model=SkincareView)
@@ -139,6 +156,7 @@ async def create_skincare_product(
         default_time=body.default_time,
         schedule_days=body.schedule_days,
         active=body.active,
+        active_flag=body.active_flag,
     )
     await db.commit()
     return SkincareProductCreated(id=row.id)
@@ -177,6 +195,9 @@ async def update_skincare_product(
         default_time=body.default_time if body.default_time is not None else existing.default_time,
         schedule_days=body.schedule_days if body.schedule_days is not None else (existing.schedule_days or []),
         active=body.active if body.active is not None else existing.active,
+        active_flag=(
+            body.active_flag if "active_flag" in body.model_fields_set else existing.active_flag
+        ),
     )
     await db.commit()
     return SkincareProductItem(
@@ -195,6 +216,7 @@ async def update_skincare_product(
         days=row.schedule_days or [],
         active=row.active,
         on=row.active,
+        active_flag=row.active_flag,
     )
 
 
@@ -206,4 +228,108 @@ async def delete_skincare_product(
     if not await skincare_service.delete_product(db, product_id):
         return not_found()
     await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ── The day's ticks ──────────────────────────────────────────────────────────
+@router.post("/checks", response_model=SkincareDayPlan, responses=MUTATION_ERRORS)
+async def set_skincare_check(
+    body: SkincareCheckUpdate, db: AsyncSession = Depends(get_session)
+) -> SkincareDayPlan:
+    """Tick or untick one product in a slot (or, with no product, tick the whole
+    slot). Returns that day's plan as it now stands. A blocking conflict rule
+    answers 409 unless ``override``."""
+    on_date = date_type.fromisoformat(body.date)
+    if body.slot not in skincare_service.SLOTS:
+        raise ValueError(f"unknown slot: {body.slot}")
+    if body.product_id is None:
+        if not body.done:
+            raise ValueError("a whole slot can only be ticked, not unticked")
+        await skincare_service.complete_slot(
+            db, on_date=on_date, slot=body.slot, override=body.override
+        )
+    else:
+        try:
+            await skincare_service.set_check(
+                db,
+                on_date=on_date,
+                product_id=body.product_id,
+                slot=body.slot,
+                done=body.done,
+                override=body.override,
+            )
+        except LookupError:
+            return not_found()
+    await db.commit()
+
+    # The reminder already sitting in Telegram shows the same ticks. Best-effort:
+    # the tick is committed, and a slow or refused edit must not fail it.
+    try:
+        await skincare_reminders.sync_sent(db, channels.build_notifier(), on_date, body.slot)
+    except Exception:  # noqa: BLE001
+        logger.warning("could not sync the skincare reminder", exc_info=True)
+
+    return SkincareDayPlan.model_validate(await skincare_service.plan_for(db, on_date))
+
+
+# ── Face photo diary ─────────────────────────────────────────────────────────
+@router.post(
+    "/photos",
+    status_code=status.HTTP_201_CREATED,
+    response_model=list[SkincarePhotoItem],
+    responses=MUTATION_ERRORS,
+)
+async def upload_skincare_photos(
+    date: str = Form(...),
+    note: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    files: Optional[list[UploadFile]] = File(None),
+    db: AsyncSession = Depends(get_session),
+) -> list[SkincarePhotoItem]:
+    """Upload up to five face photos for a date."""
+    on_date = date_type.fromisoformat(date)
+    uploaded = [f for f in ([file] if file is not None else []) + list(files or []) if f.filename]
+    if not uploaded:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files uploaded")
+    if len(uploaded) > MAX_PHOTOS_PER_UPLOAD:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Too many files (max {MAX_PHOTOS_PER_UPLOAD})",
+        )
+
+    note = note.strip() if note else None
+    uploads_dir = os.path.join(STATIC_DIR, "uploads")
+    saved: list[SkincarePhotoItem] = []
+    for f in uploaded:
+        ext = validate_extension(f.filename, IMAGE_EXTS)
+        contents = await read_capped(f)
+        unique_name = f"{uuid.uuid4().hex}{ext}"
+        await write_upload(os.path.join(uploads_dir, unique_name), contents)
+        file_key = f"uploads/{unique_name}"
+        photo = await skincare_service.add_photo(
+            db, on_date=on_date, file_key=file_key, note=note or None
+        )
+        saved.append(
+            SkincarePhotoItem(
+                id=photo.id, date=photo.date.isoformat(), url=f"/static/{file_key}", note=photo.note
+            )
+        )
+    await db.commit()
+    return saved
+
+
+@router.delete("/photos/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_skincare_photo(photo_id: int, db: AsyncSession = Depends(get_session)):
+    """Delete a face photo, and its file once the row is gone."""
+    file_key = await skincare_service.delete_photo(db, photo_id)
+    if not file_key:
+        return not_found()
+    await db.commit()
+
+    file_path = os.path.join(STATIC_DIR, file_key)
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
     return Response(status_code=status.HTTP_204_NO_CONTENT)

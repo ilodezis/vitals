@@ -259,6 +259,21 @@ async def _derived_events(
             detail=p.note, tone="", source="derived", ref=f"progress_photo:{p.id}",
         ))
 
+    # Face photos — the same marker-only rule, for the same reason.
+    from vitals.models.skincare import DOMAIN as SKINCARE_DOMAIN, SkincarePhoto
+
+    sp_stmt = select(SkincarePhoto).where(SkincarePhoto.domain == SKINCARE_DOMAIN)
+    if start is not None:
+        sp_stmt = sp_stmt.where(SkincarePhoto.date >= start)
+    if end is not None:
+        sp_stmt = sp_stmt.where(SkincarePhoto.date <= end)
+    for p in (await session.execute(sp_stmt)).scalars().all():
+        events.append(TimelineEvent(
+            date=p.date, end_date=None, domain=SKINCARE_DOMAIN, kind="photo",
+            title=t("timeline.derived.skincare_photo"),
+            detail=p.note, tone="", source="derived", ref=f"skincare_photo:{p.id}",
+        ))
+
     # Milestones — created (any status, from created_at) and the achieved/
     # missed transition (from updated_at; same accepted limitation as before:
     # editing an already-resolved goal would also bump updated_at, and there's

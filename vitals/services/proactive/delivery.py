@@ -22,7 +22,8 @@ Five rules, in the order they're checked:
    evening messages still due today, and once the block has started its second
    half is not re-checked — a recap without its plan is the worst of both.
 
-   Environment alerts are exempt from it too (see ``CATEGORY_ENVIRONMENT``).
+   Environment alerts are exempt from it too (see ``CATEGORY_ENVIRONMENT``), and
+   so is the skincare checklist (``CATEGORY_SKINCARE``).
 
    Answers to the owner (``reply``, ``echo``) are deliberately exempt as well.
    Counting them would mean that after the fourth thing you logged, the bot stops replying
@@ -68,6 +69,11 @@ CATEGORY_TEST = "test"
 # budget (a stuffy room is not less stuffy because three other messages went
 # out), yet it still stays quiet at night.
 CATEGORY_ENVIRONMENT = "environment"
+# The morning / evening skincare checklist (``proactive.skincare``). Sent at a
+# time the owner typed in, about a routine the owner set up: like the brief it ignores
+# quiet hours, and unlike it it does not spend the budget either — a checklist a
+# busy day of nudges could cancel is not a checklist.
+CATEGORY_SKINCARE = "skincare"
 
 INITIATIVE_CATEGORIES = frozenset({CATEGORY_BRIEF, CATEGORY_EVENING, CATEGORY_NUDGE})
 # Messages the evening block sends (recap + tomorrow's plan, see

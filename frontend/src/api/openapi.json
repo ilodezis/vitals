@@ -1267,6 +1267,57 @@
         "title": "Body_upload_progress_photos",
         "type": "object"
       },
+      "Body_upload_skincare_photos": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "items": {
+                  "contentMediaType": "application/octet-stream",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Files"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "Body_upload_skincare_photos",
+        "type": "object"
+      },
       "ChartCreateRequest": {
         "properties": {
           "name": {
@@ -7648,6 +7699,14 @@
             "title": "Quiet Start",
             "type": "string"
           },
+          "skincare_evening_time": {
+            "title": "Skincare Evening Time",
+            "type": "string"
+          },
+          "skincare_morning_time": {
+            "title": "Skincare Morning Time",
+            "type": "string"
+          },
           "week_template": {
             "additionalProperties": {
               "additionalProperties": true,
@@ -7660,6 +7719,8 @@
         "required": [
           "brief_time",
           "evening_time",
+          "skincare_morning_time",
+          "skincare_evening_time",
           "quiet_start",
           "quiet_end",
           "daily_budget",
@@ -7809,6 +7870,28 @@
               }
             ],
             "title": "Quiet Start"
+          },
+          "skincare_evening_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skincare Evening Time"
+          },
+          "skincare_morning_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skincare Morning Time"
           },
           "week_template": {
             "anyOf": [
@@ -9324,6 +9407,97 @@
         "title": "SkincareAlertItem",
         "type": "object"
       },
+      "SkincareCheckUpdate": {
+        "description": "Tick or untick one product, or (``product_id`` null + ``done``) the whole slot.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "done": {
+            "default": true,
+            "title": "Done",
+            "type": "boolean"
+          },
+          "override": {
+            "default": false,
+            "title": "Override",
+            "type": "boolean"
+          },
+          "productId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Productid"
+          },
+          "slot": {
+            "title": "Slot",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "slot"
+        ],
+        "title": "SkincareCheckUpdate",
+        "type": "object"
+      },
+      "SkincareDayPlan": {
+        "properties": {
+          "evening": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SkincarePlanItem"
+            },
+            "title": "Evening",
+            "type": "array"
+          },
+          "morning": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SkincarePlanItem"
+            },
+            "title": "Morning",
+            "type": "array"
+          }
+        },
+        "title": "SkincareDayPlan",
+        "type": "object"
+      },
+      "SkincareHistoryDay": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "evening": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SkincarePlanItem"
+            },
+            "title": "Evening",
+            "type": "array"
+          },
+          "morning": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SkincarePlanItem"
+            },
+            "title": "Morning",
+            "type": "array"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "SkincareHistoryDay",
+        "type": "object"
+      },
       "SkincareLogCreate": {
         "properties": {
           "azelaic": {
@@ -9595,12 +9769,114 @@
         "title": "SkincareObservationItem",
         "type": "object"
       },
+      "SkincarePhotoItem": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "url"
+        ],
+        "title": "SkincarePhotoItem",
+        "type": "object"
+      },
+      "SkincarePlanItem": {
+        "description": "One product in one slot of a day, and whether it was done.",
+        "properties": {
+          "done": {
+            "default": false,
+            "title": "Done",
+            "type": "boolean"
+          },
+          "doneAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doneat"
+          },
+          "flag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flag"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "planned": {
+            "default": true,
+            "title": "Planned",
+            "type": "boolean"
+          },
+          "productId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Productid"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "SkincarePlanItem",
+        "type": "object"
+      },
       "SkincareProductCreate": {
         "properties": {
           "active": {
             "default": true,
             "title": "Active",
             "type": "boolean"
+          },
+          "activeFlag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activeflag"
           },
           "activeIngredient": {
             "anyOf": [
@@ -9683,6 +9959,17 @@
             "default": true,
             "title": "Active",
             "type": "boolean"
+          },
+          "activeFlag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activeflag"
           },
           "activeIngredient": {
             "anyOf": [
@@ -9814,6 +10101,17 @@
               }
             ],
             "title": "Active"
+          },
+          "activeFlag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activeflag"
           },
           "activeIngredient": {
             "anyOf": [
@@ -9963,6 +10261,22 @@
             "title": "Alerts",
             "type": "array"
           },
+          "flags": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "history": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SkincareHistoryDay"
+            },
+            "title": "History",
+            "type": "array"
+          },
           "logs": {
             "default": [],
             "items": {
@@ -9978,6 +10292,21 @@
             },
             "title": "Observations",
             "type": "array"
+          },
+          "photos": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SkincarePhotoItem"
+            },
+            "title": "Photos",
+            "type": "array"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/SkincareDayPlan",
+            "default": {
+              "evening": [],
+              "morning": []
+            }
           },
           "products": {
             "default": [],
@@ -18448,6 +18777,85 @@
         "summary": "Read Skincare"
       }
     },
+    "/api/v1/skincare/checks": {
+      "post": {
+        "description": "Tick or untick one product in a slot (or, with no product, tick the whole\nslot). Returns that day's plan as it now stands. A blocking conflict rule\nanswers 409 unless ``override``.",
+        "operationId": "set_skincare_check",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkincareCheckUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkincareDayPlan"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Skincare Check"
+      }
+    },
     "/api/v1/skincare/logs": {
       "post": {
         "description": "Save or update skincare daily checklist log.",
@@ -18710,6 +19118,142 @@
           }
         },
         "summary": "Delete Skincare Observation"
+      }
+    },
+    "/api/v1/skincare/photos": {
+      "post": {
+        "description": "Upload up to five face photos for a date.",
+        "operationId": "upload_skincare_photos",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_skincare_photos"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SkincarePhotoItem"
+                  },
+                  "title": "Response Upload Skincare Photos",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Skincare Photos"
+      }
+    },
+    "/api/v1/skincare/photos/{photo_id}": {
+      "delete": {
+        "description": "Delete a face photo, and its file once the row is gone.",
+        "operationId": "delete_skincare_photo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "photo_id",
+            "required": true,
+            "schema": {
+              "title": "Photo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Skincare Photo"
       }
     },
     "/api/v1/skincare/products": {

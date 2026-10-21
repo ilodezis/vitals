@@ -47,6 +47,10 @@ def register_all_jobs(settings: Optional[dict[str, Any]] = None) -> None:
     from vitals.services.proactive.brief import brief_job, last_attempt_hour
     from vitals.services.proactive.day_plan import evening_job
     from vitals.services.proactive.nudges import nudges_job
+    from vitals.services.proactive.skincare import (
+        evening_job as skincare_evening_job,
+        morning_job as skincare_morning_job,
+    )
     from vitals.services.raw_payload_service import sweep_pending_job as raw_payload_sweep_job
     from vitals.services.share_service import purge_job as share_purge_job
 
@@ -171,6 +175,27 @@ def register_all_jobs(settings: Optional[dict[str, Any]] = None) -> None:
         trigger="cron",
         hour=evening_hour,
         minute=evening_minute,
+    )
+
+    # Skincare checklist — two messages at the times from the settings card, one
+    # per slot of the routine. Deterministic (the catalog's schedule for the day),
+    # off the daily budget, and silent when the slot has nothing planned, when
+    # it was all ticked in the app already, or with the module or toggle off.
+    sk_morning_hour, sk_morning_minute = prefs.hhmm(settings["skincare_morning_time"])
+    register_job(
+        "skincare_morning",
+        skincare_morning_job,
+        trigger="cron",
+        hour=sk_morning_hour,
+        minute=sk_morning_minute,
+    )
+    sk_evening_hour, sk_evening_minute = prefs.hhmm(settings["skincare_evening_time"])
+    register_job(
+        "skincare_evening",
+        skincare_evening_job,
+        trigger="cron",
+        hour=sk_evening_hour,
+        minute=sk_evening_minute,
     )
 
     # Garmin light pulse (N3) — today's step count between the full syncs, so an

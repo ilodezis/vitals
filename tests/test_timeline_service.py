@@ -293,6 +293,24 @@ async def test_derived_events_progress_photo_is_marker_only(db_session):
     assert "image" not in photo_events[0].to_dict()
 
 
+async def test_derived_events_face_photo_is_marker_only(db_session):
+    from vitals.models.skincare import DOMAIN as SKINCARE_DOMAIN, SkincarePhoto
+
+    db_session.add(SkincarePhoto(
+        date=date(2026, 6, 16), domain=SKINCARE_DOMAIN, source="manual",
+        file_key="uploads/face.jpg", note="после пилинга",
+    ))
+    await db_session.commit()
+
+    events = await timeline_service.list_events(db_session)
+    photo_events = [e for e in events if e.kind == "photo"]
+
+    assert len(photo_events) == 1
+    assert photo_events[0].ref.startswith("skincare_photo:")
+    assert photo_events[0].domain == SKINCARE_DOMAIN
+    assert "image" not in photo_events[0].to_dict()
+
+
 async def test_derived_events_labs_tone_reflects_worst_flag(db_session):
     db_session.add(LabResult(
         date=date(2026, 6, 1), domain="labs", source="manual",

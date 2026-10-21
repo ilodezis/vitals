@@ -1890,6 +1890,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/skincare/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Skincare Check
+         * @description Tick or untick one product in a slot (or, with no product, tick the whole
+         *     slot). Returns that day's plan as it now stands. A blocking conflict rule
+         *     answers 409 unless ``override``.
+         */
+        post: operations["set_skincare_check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/skincare/logs": {
         parameters: {
             query?: never;
@@ -1965,6 +1987,46 @@ export interface paths {
          * @description Delete a skincare observation entry.
          */
         delete: operations["delete_skincare_observation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skincare/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Skincare Photos
+         * @description Upload up to five face photos for a date.
+         */
+        post: operations["upload_skincare_photos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skincare/photos/{photo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Skincare Photo
+         * @description Delete a face photo, and its file once the row is gone.
+         */
+        delete: operations["delete_skincare_photo"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2887,6 +2949,17 @@ export interface components {
         };
         /** Body_upload_progress_photos */
         Body_upload_progress_photos: {
+            /** Date */
+            date: string;
+            /** File */
+            file?: string | null;
+            /** Files */
+            files?: string[] | null;
+            /** Note */
+            note?: string | null;
+        };
+        /** Body_upload_skincare_photos */
+        Body_upload_skincare_photos: {
             /** Date */
             date: string;
             /** File */
@@ -5119,6 +5192,10 @@ export interface components {
             quiet_end: string;
             /** Quiet Start */
             quiet_start: string;
+            /** Skincare Evening Time */
+            skincare_evening_time: string;
+            /** Skincare Morning Time */
+            skincare_morning_time: string;
             /** Week Template */
             week_template?: {
                 [key: string]: {
@@ -5152,6 +5229,10 @@ export interface components {
             quiet_end?: string | null;
             /** Quiet Start */
             quiet_start?: string | null;
+            /** Skincare Evening Time */
+            skincare_evening_time?: string | null;
+            /** Skincare Morning Time */
+            skincare_morning_time?: string | null;
             /** Week Template */
             week_template?: {
                 [key: string]: {
@@ -5772,6 +5853,56 @@ export interface components {
             /** Severity */
             severity: string;
         };
+        /**
+         * SkincareCheckUpdate
+         * @description Tick or untick one product, or (``product_id`` null + ``done``) the whole slot.
+         */
+        SkincareCheckUpdate: {
+            /** Date */
+            date: string;
+            /**
+             * Done
+             * @default true
+             */
+            done: boolean;
+            /**
+             * Override
+             * @default false
+             */
+            override: boolean;
+            /** Productid */
+            productId?: number | null;
+            /** Slot */
+            slot: string;
+        };
+        /** SkincareDayPlan */
+        SkincareDayPlan: {
+            /**
+             * Evening
+             * @default []
+             */
+            evening: components["schemas"]["SkincarePlanItem"][];
+            /**
+             * Morning
+             * @default []
+             */
+            morning: components["schemas"]["SkincarePlanItem"][];
+        };
+        /** SkincareHistoryDay */
+        SkincareHistoryDay: {
+            /** Date */
+            date: string;
+            /**
+             * Evening
+             * @default []
+             */
+            evening: components["schemas"]["SkincarePlanItem"][];
+            /**
+             * Morning
+             * @default []
+             */
+            morning: components["schemas"]["SkincarePlanItem"][];
+        };
         /** SkincareLogCreate */
         SkincareLogCreate: {
             /**
@@ -5898,6 +6029,41 @@ export interface components {
             /** Zone */
             zone?: string | null;
         };
+        /** SkincarePhotoItem */
+        SkincarePhotoItem: {
+            /** Date */
+            date: string;
+            /** Id */
+            id: number;
+            /** Note */
+            note?: string | null;
+            /** Url */
+            url: string;
+        };
+        /**
+         * SkincarePlanItem
+         * @description One product in one slot of a day, and whether it was done.
+         */
+        SkincarePlanItem: {
+            /**
+             * Done
+             * @default false
+             */
+            done: boolean;
+            /** Doneat */
+            doneAt?: string | null;
+            /** Flag */
+            flag?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Planned
+             * @default true
+             */
+            planned: boolean;
+            /** Productid */
+            productId?: number | null;
+        };
         /** SkincareProductCreate */
         SkincareProductCreate: {
             /**
@@ -5905,6 +6071,8 @@ export interface components {
              * @default true
              */
             active: boolean;
+            /** Activeflag */
+            activeFlag?: string | null;
             /** Activeingredient */
             activeIngredient?: string | null;
             /**
@@ -5938,6 +6106,8 @@ export interface components {
              * @default true
              */
             active: boolean;
+            /** Activeflag */
+            activeFlag?: string | null;
             /** Activeingredient */
             activeIngredient?: string | null;
             /**
@@ -5986,6 +6156,8 @@ export interface components {
         SkincareProductUpdate: {
             /** Active */
             active?: boolean | null;
+            /** Activeflag */
+            activeFlag?: string | null;
             /** Activeingredient */
             activeIngredient?: string | null;
             /** Defaulttime */
@@ -6034,6 +6206,16 @@ export interface components {
              */
             alerts: components["schemas"]["SkincareAlertItem"][];
             /**
+             * Flags
+             * @default []
+             */
+            flags: string[];
+            /**
+             * History
+             * @default []
+             */
+            history: components["schemas"]["SkincareHistoryDay"][];
+            /**
              * Logs
              * @default []
              */
@@ -6043,6 +6225,18 @@ export interface components {
              * @default []
              */
             observations: components["schemas"]["SkincareObservationItem"][];
+            /**
+             * Photos
+             * @default []
+             */
+            photos: components["schemas"]["SkincarePhotoItem"][];
+            /**
+             * @default {
+             *       "evening": [],
+             *       "morning": []
+             *     }
+             */
+            plan: components["schemas"]["SkincareDayPlan"];
             /**
              * Products
              * @default []
@@ -12137,6 +12331,75 @@ export interface operations {
             };
         };
     };
+    set_skincare_check: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkincareCheckUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkincareDayPlan"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     upsert_skincare_log: {
         parameters: {
             query?: never;
@@ -12328,6 +12591,122 @@ export interface operations {
             header?: never;
             path: {
                 obs_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_skincare_photos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_skincare_photos"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkincarePhotoItem"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_skincare_photo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                photo_id: number;
             };
             cookie?: never;
         };
@@ -14087,4 +14466,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: 68014151af043375ed055f4847a86dcb05c62df6912d4642b8ec111f0a260f27
+// openapi.json sha256: ca66e7d05c7362a870deb9a366b26412cfbdfb91cb302146863a4ea292cfbf52

@@ -1,6 +1,7 @@
 """Прогон 6 — every knob the owner turns, in one ``app_settings`` row.
 
-What lives here: when the brief and the evening block go out, when the bot must
+What lives here: when the brief, the evening block and the skincare checklist go
+out, when the bot must
 stay quiet, how many self-initiated messages a day are allowed, which nudge
 categories are live, and how often Garmin is polled — the freshness of the data
 those messages are made of.
@@ -46,11 +47,16 @@ CATEGORY_NUTRITION = "nutrition"
 CATEGORY_DATA = "data"
 # The bedroom-air station's alerts (stuffy, hot, dry, station silent).
 CATEGORY_ENVIRONMENT = "environment"
+# The morning / evening skincare checklist (``proactive.skincare``). A switch here
+# like the others, though it is not a nudge in the engine's sense: it goes out at
+# a set time, not when a condition holds.
+CATEGORY_SKINCARE = "skincare"
 NUDGE_CATEGORIES: tuple[str, ...] = (
     CATEGORY_ACTIVITY,
     CATEGORY_NUTRITION,
     CATEGORY_DATA,
     CATEGORY_ENVIRONMENT,
+    CATEGORY_SKINCARE,
 )
 
 # ── Hard bounds (the UI shows them, the sanitizer enforces them) ─────────────
@@ -69,6 +75,10 @@ PULSE_SECONDS_RANGE = (60, 3600)
 DEFAULTS: dict[str, Any] = {
     "brief_time": "11:00",
     "evening_time": "23:45",
+    # The skincare checklist's two messages. Their own times, not the brief's and
+    # the evening block's: "after washing up" is not when the day gets summed up.
+    "skincare_morning_time": "10:30",
+    "skincare_evening_time": "22:30",
     "quiet_start": "02:00",
     "quiet_end": "10:00",
     "daily_budget": 4,
@@ -121,6 +131,12 @@ def sanitize(raw: Any) -> dict[str, Any]:
     return {
         "brief_time": _time(src.get("brief_time"), DEFAULTS["brief_time"]),
         "evening_time": _time(src.get("evening_time"), DEFAULTS["evening_time"]),
+        "skincare_morning_time": _time(
+            src.get("skincare_morning_time"), DEFAULTS["skincare_morning_time"]
+        ),
+        "skincare_evening_time": _time(
+            src.get("skincare_evening_time"), DEFAULTS["skincare_evening_time"]
+        ),
         "quiet_start": _time(src.get("quiet_start"), DEFAULTS["quiet_start"]),
         "quiet_end": _time(src.get("quiet_end"), DEFAULTS["quiet_end"]),
         "daily_budget": _int(src.get("daily_budget"), DEFAULTS["daily_budget"], *BUDGET_RANGE),

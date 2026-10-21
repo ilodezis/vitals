@@ -30,6 +30,7 @@ class SkincareProductItem(CamelModel):
     days: list[int] = []
     active: bool = True
     on: bool = True
+    active_flag: Optional[str] = None
 
 
 class SkincareProductCreate(CamelModel):
@@ -41,6 +42,7 @@ class SkincareProductCreate(CamelModel):
     default_time: str = "evening"
     schedule_days: list[int] = []
     active: bool = True
+    active_flag: Optional[str] = None
 
 
 class SkincareProductUpdate(CamelModel):
@@ -52,6 +54,9 @@ class SkincareProductUpdate(CamelModel):
     default_time: Optional[str] = None
     schedule_days: Optional[list[int]] = None
     active: Optional[bool] = None
+    # Unlike the other fields, null here is a value ("no flag"), so leaving the
+    # field out is what keeps the stored one.
+    active_flag: Optional[str] = None
 
 
 class SkincareProductCreated(BaseModel):
@@ -125,6 +130,43 @@ class SkincareAlertItem(CamelModel):
     created_at: Optional[str] = None
 
 
+class SkincarePlanItem(CamelModel):
+    """One product in one slot of a day, and whether it was done."""
+
+    product_id: Optional[int] = None
+    name: str
+    flag: Optional[str] = None
+    planned: bool = True
+    done: bool = False
+    done_at: Optional[str] = None
+
+
+class SkincareDayPlan(CamelModel):
+    morning: list[SkincarePlanItem] = []
+    evening: list[SkincarePlanItem] = []
+
+
+class SkincareHistoryDay(SkincareDayPlan):
+    date: str
+
+
+class SkincareCheckUpdate(CamelModel):
+    """Tick or untick one product, or (``product_id`` null + ``done``) the whole slot."""
+
+    date: str
+    slot: str
+    product_id: Optional[int] = None
+    done: bool = True
+    override: bool = False
+
+
+class SkincarePhotoItem(CamelModel):
+    id: int
+    date: str
+    url: str
+    note: Optional[str] = None
+
+
 class SkincareView(CamelModel):
     products: list[SkincareProductItem] = []
     active_count: int = 0
@@ -135,3 +177,7 @@ class SkincareView(CamelModel):
     rules: list[SkincareRuleItem] = []
     alerts: list[SkincareAlertItem] = []
     today: str
+    plan: SkincareDayPlan = SkincareDayPlan()
+    history: list[SkincareHistoryDay] = []
+    photos: list[SkincarePhotoItem] = []
+    flags: list[str] = []
