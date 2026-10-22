@@ -20,6 +20,11 @@ web/static/app/
 .env.local
 *.db
 backups/
+# User uploads (photos, lab documents) are bind-mounted at runtime; baking a
+# copy into every image layer is both dead weight and a privacy leak
+web/static/uploads/
+# README media, not needed at runtime
+gifs/
 .coverage
 htmlcov/
 
