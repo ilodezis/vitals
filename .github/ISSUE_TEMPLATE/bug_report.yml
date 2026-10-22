@@ -43,7 +43,7 @@ body:
       placeholder: |
         - OS: Ubuntu 22.04 / macOS 15 / Windows 11
         - Docker: 27.x
-        - Python: 3.13.x (if running locally)
+        - Python: 3.14.x (if running locally)
         - Browser: Chrome 130
     validations:
       required: false

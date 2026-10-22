@@ -11,7 +11,7 @@ silent-loss class this suite guards against. Two mechanisms cover it:
 """
 from __future__ import annotations
 
-import asyncio
+import inspect
 import time
 
 
@@ -90,7 +90,7 @@ async def test_keepalive_job_actually_records_its_heartbeat(redis):
     scheduler = scheduler_mod.setup_scheduler(lambda: None, redis)
     job = scheduler.get_job(scheduler_mod.KEEPALIVE_JOB_ID)
 
-    assert asyncio.iscoroutinefunction(job.func), (
+    assert inspect.iscoroutinefunction(job.func), (
         "the keepalive must be a coroutine function — anything else is called "
         "synchronously and its coroutine thrown away"
     )

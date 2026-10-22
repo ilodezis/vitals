@@ -15,7 +15,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # ── Stage 2: the app ─────────────────────────────────────────────────────────
-FROM python:3.13-slim@sha256:27b7c9d4f13ca20bb1170148f02095d50a5dfce1f7f2dabf5ca273727e43b7ea
+FROM python:3.14-slim@sha256:0514bc76712d64f8bb48adcb95b1ab0d88c69fee95d62fe4c18ee948bee9b1e1
 
 # Sync timezone to Chisinau wall-clock time
 ENV TZ=Europe/Chisinau
