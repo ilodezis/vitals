@@ -4,7 +4,7 @@ asyncpg==0.32.0
 alembic==1.20.1
 python-dotenv==1.2.4
 APScheduler==3.11.3
-redis>=5.0,<6.0
+redis>=8.1,<9.0
 greenlet==3.5.6
 tzdata==2026.5
 numpy>=1.26,<3.0

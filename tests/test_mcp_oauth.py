@@ -728,13 +728,13 @@ async def test_token_exchange_rejects_code_stored_without_challenge(auth_client,
     import json as _json
 
     code = "code_legacy_no_pkce"
-    await redis.setex(f"oauth_code:{code}", 300, _json.dumps({
+    await redis.set(f"oauth_code:{code}", _json.dumps({
         "client_id": "vitals-claude-connector",
         "redirect_uri": "https://claude.ai/callback",
         "code_challenge": None,
         "code_challenge_method": None,
         "username": "tester",
-    }))
+    }), ex=300)
 
     token_response = await auth_client.post(
         "/oauth/token",

@@ -219,7 +219,7 @@ async def oauth_approve(
         "code_challenge_method": code_challenge_method,
         "username": username,
     }
-    await redis.setex(f"oauth_code:{code}", 300, json.dumps(code_payload))
+    await redis.set(f"oauth_code:{code}", json.dumps(code_payload), ex=300)
 
     # Redirect back to Claude's callback URL. Params are urlencoded so a state
     # value carrying '&'/'=' can't break out and inject extra query parameters.
