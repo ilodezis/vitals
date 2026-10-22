@@ -163,7 +163,11 @@ class SkincareCheckUpdate(CamelModel):
 class SkincarePhotoItem(CamelModel):
     id: int
     date: str
+    #: The original, as uploaded.
     url: str
+    #: The tile copy and the screen copy (WebP); answered with the original until made.
+    thumb_url: str
+    screen_url: str
     note: Optional[str] = None
 
 

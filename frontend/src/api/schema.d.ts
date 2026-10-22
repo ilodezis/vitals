@@ -5301,6 +5301,10 @@ export interface components {
             id: number;
             /** Note */
             note?: string | null;
+            /** Screen Url */
+            screen_url: string;
+            /** Thumb Url */
+            thumb_url: string;
             /** Url */
             url: string;
         };
@@ -6037,6 +6041,10 @@ export interface components {
             id: number;
             /** Note */
             note?: string | null;
+            /** Screenurl */
+            screenUrl: string;
+            /** Thumburl */
+            thumbUrl: string;
             /** Url */
             url: string;
         };
@@ -14466,4 +14474,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: ca66e7d05c7362a870deb9a366b26412cfbdfb91cb302146863a4ea292cfbf52
+// openapi.json sha256: 2e74c451c27901e61db7309c15f8bf1bc77195bb58713d1cdd7a8a13c7d0e070

@@ -3,6 +3,7 @@ body-composition scans, and Garmin export.
 """
 from __future__ import annotations
 
+import asyncio
 import datetime as dt
 import logging
 import os
@@ -15,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from vitals.enums import Domain, Source
 from vitals.i18n import t
 from vitals.integrations.llm_client import LLMClient, LLMNotConfigured
-from vitals.services import body_scan_service, raw_payload_service, weight_service
+from vitals.services import body_scan_service, photo_derivatives, raw_payload_service, weight_service
 from vitals.utils.timeutils import today_local
 from web.api.errors import MUTATION_ERRORS, ApiRouter, not_found
 from web.api.schemas.weight import (
@@ -233,6 +234,9 @@ async def upload_progress_photos(
         await write_upload(os.path.join(uploads_dir, unique_name), contents)
 
         file_key = f"uploads/{unique_name}"
+        # The tile and screen copies. A photo the decoder cannot read is still saved:
+        # the screens show the original in their place.
+        await asyncio.to_thread(photo_derivatives.make_derivatives, STATIC_DIR, file_key)
         photo = await weight_service.add_progress_photo(
             db, on_date=on_date, file_key=file_key, note=note
         )
@@ -241,8 +245,8 @@ async def upload_progress_photos(
                 id=photo.id,
                 date=photo.date,
                 file_key=file_key,
-                url=f"/static/{file_key}",
                 note=photo.note,
+                **photo_derivatives.photo_urls(file_key),
             )
         )
 
@@ -264,6 +268,7 @@ async def delete_progress_photo(photo_id: int, db: AsyncSession = Depends(get_se
             os.remove(file_path)
         except OSError:
             pass
+    photo_derivatives.remove_derivatives(STATIC_DIR, file_key)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

@@ -26,4 +26,18 @@ describe('PhotosPane', () => {
     expect(html).toContain('Upload photos')
     expect(html).toContain('aria-busy="false"')
   })
+
+  it('draws the tiles from the small copies, never the originals', () => {
+    const photo = { id: 1, date: '2026-10-20', url: '/static/uploads/a.jpeg', thumbUrl: '/static/uploads/derived/a.jpeg.thumb.webp', screenUrl: '/static/uploads/derived/a.jpeg.screen.webp' }
+    const view = { today: '2026-10-22', photos: [photo] } as unknown as SkincareView
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={new QueryClient()}>
+        <I18nProvider lang="en" dictionary={{}}>
+          <PhotosPane view={view} />
+        </I18nProvider>
+      </QueryClientProvider>,
+    )
+    expect(html).toContain('src="/static/uploads/derived/a.jpeg.thumb.webp"')
+    expect(html).not.toContain('src="/static/uploads/a.jpeg"')
+  })
 })

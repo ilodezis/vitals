@@ -2,6 +2,7 @@
 done-ticks, and the face photo diary."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import uuid
@@ -11,7 +12,7 @@ from typing import Optional
 from fastapi import Depends, File, Form, HTTPException, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from vitals.services import skincare_service
+from vitals.services import photo_derivatives, skincare_service
 from vitals.services.proactive import channels
 from vitals.services.proactive import skincare as skincare_reminders
 from web.api.errors import MUTATION_ERRORS, ApiRouter, not_found
@@ -306,12 +307,15 @@ async def upload_skincare_photos(
         unique_name = f"{uuid.uuid4().hex}{ext}"
         await write_upload(os.path.join(uploads_dir, unique_name), contents)
         file_key = f"uploads/{unique_name}"
+        # The tile and screen copies. A photo the decoder cannot read is still saved:
+        # the screens show the original in their place.
+        await asyncio.to_thread(photo_derivatives.make_derivatives, STATIC_DIR, file_key)
         photo = await skincare_service.add_photo(
             db, on_date=on_date, file_key=file_key, note=note or None
         )
         saved.append(
             SkincarePhotoItem(
-                id=photo.id, date=photo.date.isoformat(), url=f"/static/{file_key}", note=photo.note
+                id=photo.id, date=photo.date.isoformat(), note=photo.note, **photo_derivatives.photo_urls(file_key)
             )
         )
     await db.commit()
@@ -332,4 +336,5 @@ async def delete_skincare_photo(photo_id: int, db: AsyncSession = Depends(get_se
             os.remove(file_path)
         except OSError:
             pass
+    photo_derivatives.remove_derivatives(STATIC_DIR, file_key)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

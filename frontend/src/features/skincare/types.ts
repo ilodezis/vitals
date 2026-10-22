@@ -88,6 +88,8 @@ export interface SkincarePhotoItem {
   id: number
   date: string
   url: string
+  thumbUrl: string
+  screenUrl: string
   note?: string | null
 }
 

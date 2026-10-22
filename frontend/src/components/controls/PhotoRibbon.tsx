@@ -7,7 +7,11 @@ import { ConfirmButton } from './ConfirmButton'
 export interface RibbonPhoto {
   id: number
   date: string
+  /** The original, as uploaded: only behind the "Original" link, never drawn here. */
   url: string
+  /** The small copy the tile shows, and the screen-sized one the opened photo shows. */
+  thumbUrl: string
+  screenUrl: string
   note?: string | null
 }
 
@@ -36,7 +40,7 @@ export function PhotoRibbon({ photos, onDelete, label, openLabel }: PhotoRibbonP
           photos.map((ph) => (
             <button key={ph.id} type="button" className="ph-tile" aria-label={openLabel} onClick={() => setLargeId(ph.id)}>
               <span className="im">
-                <img src={ph.url} alt={ph.note ?? label} loading="lazy" />
+                <img src={ph.thumbUrl} alt={ph.note ?? label} loading="lazy" decoding="async" />
               </span>
               <span className="m num">{shortDate(parseIsoDate(ph.date), lang)}</span>
             </button>
@@ -46,13 +50,23 @@ export function PhotoRibbon({ photos, onDelete, label, openLabel }: PhotoRibbonP
       {large !== undefined && (
         <div className="ph-large" role="dialog" aria-modal="true" aria-label={label} onClick={() => setLargeId(null)}>
           <div className="ph-large-box" onClick={(e) => e.stopPropagation()}>
-            <img src={large.url} alt={large.note ?? label} />
+            <img src={large.screenUrl} alt={large.note ?? label} decoding="async" />
             <div className="ph-large-foot">
               <span className="m num">
                 {longDate(parseIsoDate(large.date), lang)}
                 {large.note ? ` · ${large.note}` : ''}
               </span>
               <span className="acts">
+                <a
+                  className="ibtn"
+                  href={large.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={t('app.photo_original')}
+                  title={t('app.photo_original')}
+                >
+                  <Icon name="image" />
+                </a>
                 <ConfirmButton
                   text
                   label={t('app.delete')}

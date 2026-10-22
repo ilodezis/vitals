@@ -314,7 +314,7 @@ export default function WeightMeasuresScreen() {
   const bodyFat = view.body_fat_pct ?? null
   const measurements = view.measurements ?? []
   const noiseMarkers = view.noise_markers ?? []
-  const photos = view.photos ?? []
+  const photos = (view.photos ?? []).map((p) => ({ ...p, thumbUrl: p.thumb_url, screenUrl: p.screen_url }))
   const scans = view.scans ?? []
   const headlineMetrics = view.headline_metrics ?? []
   // The last tape reading is what the empty fields hint at — nothing when there is none.

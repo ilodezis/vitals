@@ -31,7 +31,7 @@ from vitals.models.skincare import (
     SkincarePhoto,
     SkincareProduct,
 )
-from vitals.services import conflict_engine
+from vitals.services import conflict_engine, photo_derivatives
 from vitals.utils.timeutils import now_local, today_local
 
 _FLAGS = (
@@ -675,7 +675,7 @@ async def collect(session: AsyncSession) -> dict[str, Any]:
             {
                 "id": ph.id,
                 "date": ph.date.isoformat(),
-                "url": f"/static/{ph.file_key}",
+                **photo_derivatives.photo_urls(ph.file_key),
                 "note": ph.note,
             }
             for ph in photos

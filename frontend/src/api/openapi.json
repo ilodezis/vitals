@@ -8046,6 +8046,14 @@
             ],
             "title": "Note"
           },
+          "screen_url": {
+            "title": "Screen Url",
+            "type": "string"
+          },
+          "thumb_url": {
+            "title": "Thumb Url",
+            "type": "string"
+          },
           "url": {
             "title": "Url",
             "type": "string"
@@ -8055,7 +8063,9 @@
           "id",
           "date",
           "file_key",
-          "url"
+          "url",
+          "thumb_url",
+          "screen_url"
         ],
         "title": "ProgressPhotoItem",
         "type": "object"
@@ -9790,6 +9800,14 @@
             ],
             "title": "Note"
           },
+          "screenUrl": {
+            "title": "Screenurl",
+            "type": "string"
+          },
+          "thumbUrl": {
+            "title": "Thumburl",
+            "type": "string"
+          },
           "url": {
             "title": "Url",
             "type": "string"
@@ -9798,7 +9816,9 @@
         "required": [
           "id",
           "date",
-          "url"
+          "url",
+          "thumbUrl",
+          "screenUrl"
         ],
         "title": "SkincarePhotoItem",
         "type": "object"

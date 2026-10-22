@@ -172,7 +172,11 @@ class ProgressPhotoItem(BaseModel):
     id: int
     date: dt.date
     file_key: str
+    #: The original, as uploaded.
     url: str
+    #: The tile copy and the screen copy (WebP); answered with the original until made.
+    thumb_url: str
+    screen_url: str
     note: Optional[str] = None
 
 

@@ -38,7 +38,7 @@ from vitals.models.weight import (
     ProgressPhoto,
     WeightLog,
 )
-from vitals.services import alerts_service, conflict_engine
+from vitals.services import alerts_service, conflict_engine, photo_derivatives
 from vitals.services.analytics import exclude_ranges
 from vitals.services.analytics.navy import lean_body_mass_kg, navy_body_fat_pct
 from vitals.services.analytics.regression import fit_trend, project_date_for_value
@@ -1196,7 +1196,7 @@ async def collect_measures(
             "id": p.id,
             "date": p.date,
             "file_key": p.file_key,
-            "url": f"/static/{p.file_key}",
+            **photo_derivatives.photo_urls(p.file_key),
             "note": p.note,
         }
         for p in photos

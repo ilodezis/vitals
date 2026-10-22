@@ -5,6 +5,7 @@ Redis cache connection, and background APScheduler thread.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from contextlib import AsyncExitStack, asynccontextmanager
@@ -16,6 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
+from vitals.services import photo_derivatives
 from web.api import api_router, errors as api_errors
 from web.auth import router as auth_router
 from web.compression import AppGZipMiddleware
@@ -33,6 +35,7 @@ from web.deps import (
     require_module,
 )
 from web.templating import STATIC_DIR, templates
+from web.uploads import IMAGE_EXTS, file_ext
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +84,11 @@ async def lifespan(app: FastAPI):
     scheduler.start()
     app.state.scheduler = scheduler
 
+    # The tile and screen copies of photos uploaded before they existed (or whose
+    # copies failed): in the background, the app is up meanwhile and serves the
+    # originals in their place.
+    photo_backfill = asyncio.create_task(photo_derivatives.backfill(session_factory, STATIC_DIR))
+
     async with AsyncExitStack() as stack:
         # The mounted MCP app builds its streamable-HTTP session manager in its own
         # lifespan, which app.mount() never runs — without this every /mcp/ request
@@ -91,6 +99,7 @@ async def lifespan(app: FastAPI):
         yield
 
     # ── Shutdown ─────────────────────────────────────────────────────────────
+    photo_backfill.cancel()
     scheduler.shutdown()
 
 
@@ -132,16 +141,44 @@ app.add_middleware(AppGZipMiddleware)
 UPLOADS_DIR = os.path.realpath(os.path.join(STATIC_DIR, "uploads"))
 
 
-@app.get("/static/uploads/{key:path}", dependencies=[Depends(require_auth)])
-async def serve_upload(key: str):
+# Never written to disk cache: the file is readable again on the next request, and
+# a logged-out browser should keep nothing.
+_NO_STORE = "private, no-store"
+# Photos and their copies: kept by the browser (never by a shared cache) for good.
+# Every upload gets a fresh name and nothing rewrites one, so a cached copy can never
+# be stale — and a diary of 3 MB photos re-downloaded on every visit is what made the
+# screens slow.
+_KEPT = "private, max-age=31536000, immutable"
+
+
+def _upload_path(key: str) -> str | None:
     path = os.path.realpath(os.path.join(UPLOADS_DIR, key))
     # ``..`` (and any symlink out) resolves to somewhere else: a miss, not a read.
-    if not path.startswith(UPLOADS_DIR + os.sep) or not os.path.isfile(path):
+    return path if path.startswith(UPLOADS_DIR + os.sep) else None
+
+
+def _is_photo(key: str) -> bool:
+    """A progress or face photo: an image straight in the uploads folder. Lab sheets
+    and scan printouts live in their own folders and stay uncached."""
+    return "/" not in key and file_ext(key) in IMAGE_EXTS
+
+
+@app.get("/static/uploads/{key:path}", dependencies=[Depends(require_auth)])
+async def serve_upload(key: str):
+    path = _upload_path(key)
+    if path is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    # Never written to disk cache: the file is readable again on the next request,
-    # and a logged-out browser should keep nothing. Matches the service worker,
-    # which already refuses to cache this prefix.
-    return FileResponse(path, headers={"Cache-Control": "private, no-store"})
+    if os.path.isfile(path):
+        cached = photo_derivatives.is_derived(key) or _is_photo(key)
+        return FileResponse(path, headers={"Cache-Control": _KEPT if cached else _NO_STORE})
+
+    # A copy not made yet (the startup backfill still running, or a format the decoder
+    # cannot read): the original stands in, uncached, so the copy is fetched once it exists.
+    original = photo_derivatives.original_key(key)
+    original_path = _upload_path(original) if original is not None else None
+    if original_path is not None and os.path.isfile(original_path):
+        return FileResponse(original_path, headers={"Cache-Control": _NO_STORE})
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
 
 # Mount static files — everything else under /static is public site furniture
