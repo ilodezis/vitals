@@ -623,6 +623,9 @@ textarea.input { height: auto; min-height: 48px; padding: 12px 14px; line-height
 .sheet .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .alert-conflict { margin-top: 12px; }
 .toast .toast-muted { color: var(--muted); }
+/* A long job's progress along the toast's foot */
+.toast { position: relative; overflow: hidden; }
+.toast .toast-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent-2); transform-origin: 0 50%; transition: transform .2s linear; }
 
 /* A phone hands horizontal drags to the app (the swipe back), vertical ones to the scroller */
 .screen { touch-action: pan-y; }

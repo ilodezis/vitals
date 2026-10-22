@@ -11,7 +11,7 @@ const sources = import.meta.glob<string>(['/src/**/*.{ts,tsx}', '!/src/**/*.test
   eager: true,
 })
 
-const RAW_FETCH = /\bfetch\(\s*(['"`])(\/api\/v1\/[^'"`]*)\1/g
+const RAW_FETCH = /\b(?:fetch|sendForm)\(\s*(['"`])(\/api\/v1\/[^'"`]*)\1/g
 
 export function rawFetchPaths(source: string): string[] {
   return [...source.matchAll(RAW_FETCH)].map((m) => m[2] as string)
@@ -24,6 +24,7 @@ describe('rawFetchPaths', () => {
   it('finds the path of a plain fetch however it is quoted', () => {
     expect(rawFetchPaths("await fetch('/api/v1/a/b', {})")).toEqual(['/api/v1/a/b'])
     expect(rawFetchPaths('fetch(`/api/v1/a/${id}`)')).toEqual(['/api/v1/a/${id}'])
+    expect(rawFetchPaths("sendForm('/api/v1/a/b', fd, onProgress)")).toEqual(['/api/v1/a/b'])
   })
 
   it('leaves the typed client and other hosts alone', () => {

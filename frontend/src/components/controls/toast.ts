@@ -10,6 +10,8 @@ export interface ToastItem {
   text: string
   icon: IconName
   undo?: () => void
+  /** How far a long job has got, from 0 to 1: drawn as a bar along the toast's foot. */
+  progress?: number
   /** Fading out: still drawn, no longer counted. */
   leaving: boolean
 }
@@ -24,7 +26,10 @@ const subscribe = (l: () => void) => {
   return () => listeners.delete(l)
 }
 
-export const useToasts = (): readonly ToastItem[] => useSyncExternalStore(subscribe, () => items)
+/** The toasts as they stand now, outside React. */
+export const currentToasts = (): readonly ToastItem[] => items
+
+export const useToasts = (): readonly ToastItem[] => useSyncExternalStore(subscribe, currentToasts)
 
 const LEAVE_MS = 220
 
@@ -38,11 +43,22 @@ export function dismissToast(id: number): void {
   }, LEAVE_MS)
 }
 
-/** Show a toast. One with an undo stays a little longer, so there is time to use it. */
-export function toast(text: string, options: { undo?: () => void; icon?: IconName } = {}): number {
+/** Show a toast. One with an undo stays a little longer, so there is time to use it; a
+ *  `persist` one stays until it is dismissed — the running status of a long job. */
+export function toast(
+  text: string,
+  options: { undo?: () => void; icon?: IconName; persist?: boolean; progress?: number } = {},
+): number {
   const id = nextId++
-  items = [...items, { id, text, icon: options.icon ?? 'check', undo: options.undo, leaving: false }]
+  items = [...items, { id, text, icon: options.icon ?? 'check', undo: options.undo, progress: options.progress, leaving: false }]
   emit()
-  setTimeout(() => dismissToast(id), options.undo === undefined ? 2600 : 4200)
+  if (options.persist !== true) setTimeout(() => dismissToast(id), options.undo === undefined ? 2600 : 4200)
   return id
+}
+
+/** Change a shown toast in place: a long job's status line moving on. */
+export function updateToast(id: number, change: { text?: string; progress?: number }): void {
+  if (!items.some((t) => t.id === id && !t.leaving)) return
+  items = items.map((t) => (t.id === id ? { ...t, ...change } : t))
+  emit()
 }

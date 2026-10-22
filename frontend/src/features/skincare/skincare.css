@@ -66,6 +66,8 @@
 .sk-file { position: relative; display: inline-flex; align-items: center; gap: var(--s2); }
 .sk-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .sk-file-n { font-size: var(--t-label); color: var(--muted); }
+.sk-file-n.sk-file-over { color: var(--warn); }
+.sk-file:has(input:disabled) { opacity: .5; pointer-events: none; }
 .sk-rule .t { font-size: var(--t-body); }
 
 @container app (min-width: 768px) {

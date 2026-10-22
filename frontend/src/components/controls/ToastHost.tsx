@@ -36,6 +36,7 @@ function ToastView({ item }: { item: ToastItem }) {
       ) : (
         <span style={{ width: 6 }} />
       )}
+      {item.progress !== undefined && <span className="toast-bar" style={{ transform: `scaleX(${item.progress})` }} />}
     </div>
   )
 }
