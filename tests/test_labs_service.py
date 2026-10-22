@@ -313,8 +313,8 @@ async def test_extract_and_ingest(db_session):
 
 
 async def test_extract_and_ingest_multipage_pdf(db_session):
-    import fitz
-    doc = fitz.open()
+    import pymupdf
+    doc = pymupdf.open()
     doc.new_page()
     doc.new_page()
     pdf_bytes = doc.write()

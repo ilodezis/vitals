@@ -39,7 +39,7 @@ garminconnect==0.3.7
 
 # Labs: render a PDF page to an image for the vision LLM (no system deps,
 # lazy-imported in labs_service).
-PyMuPDF>=1.24,<2.0
+PyMuPDF>=2.0,<3.0
 
 # ── Model Context Protocol (MCP) ─────────────────────────────────────────────
 fastmcp==4.1.3

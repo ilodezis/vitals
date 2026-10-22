@@ -15,9 +15,9 @@ from typing import Optional
 
 def pdf_pages_png(file_bytes: bytes, max_pages: int = 10) -> list[bytes]:
     """Render PDF pages to PNG bytes (lazy PyMuPDF; no system deps)."""
-    import fitz  # PyMuPDF, lazy
+    import pymupdf  # lazy
 
-    doc = fitz.open(stream=file_bytes, filetype="pdf")
+    doc = pymupdf.open(stream=file_bytes, filetype="pdf")
     pages_png = []
     try:
         limit = min(len(doc), max_pages)

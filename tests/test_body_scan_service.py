@@ -49,9 +49,9 @@ async def test_extract_from_image():
 
 
 async def test_extract_from_multipage_pdf():
-    import fitz
+    import pymupdf
 
-    doc = fitz.open()
+    doc = pymupdf.open()
     doc.new_page()
     doc.new_page()
     pdf_bytes = doc.write()
