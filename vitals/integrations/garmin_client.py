@@ -56,8 +56,8 @@ LOGIN_PAUSE_KEY = "garmin:login_pause"
 MAX_LOGINS_PER_DAY = 3
 LOGIN_PAUSE_SECONDS = 6 * 3600
 
-# Below this length garminconnect reads a token store argument as a filesystem
-# path instead of token JSON; the real session is ~2 KB.
+# A real session is ~2 KB of token JSON; anything shorter is a truncated or
+# foreign value, not a token worth handing to the library.
 _TOKEN_STRING_MIN_LEN = 512
 
 # Sub-metrics fetched for a day. Each maps to a garminconnect method; a failure on
@@ -180,9 +180,9 @@ class GarminClient:
         the store doesn't parse, so calling it blind would spend the expensive
         path without the breaker ever seeing it. Loading the tokens ourselves
         first is a local read with no network — and once they load, ``login()``
-        stays on the token path: 0.3.7 added one more escalation (a cached token
-        the API rejects triggers a fresh credential login), and it is skipped
-        precisely because we pass ``return_on_mfa=True``."""
+        stays on the token path: since 0.3.7 there is one more escalation (a
+        cached token the API rejects triggers a fresh credential login), and it
+        is skipped precisely because we pass ``return_on_mfa=True``."""
         from garminconnect import Garmin  # lazy
 
         sources = (("Redis", cached_token), ("disk", self._config.garmin_token_dir))
