@@ -89,6 +89,10 @@ export default defineConfig(({ command }) => ({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // main.tsx registers a classic worker, and the bundle has no imports left
+        // in it anyway; the ES path also sets Rollup's deprecated
+        // inlineDynamicImports on every build.
+        rollupFormat: 'iife',
       },
     }),
   ],
