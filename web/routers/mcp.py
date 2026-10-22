@@ -28,6 +28,7 @@ Response conventions (a stable contract the model can rely on):
 """
 from __future__ import annotations
 
+import asyncio
 import functools
 import importlib
 import json
@@ -77,7 +78,7 @@ from vitals.models import (
     WeightLog,
     WeeklyDigest,
 )
-from vitals.services import conflict_engine, modules_service
+from vitals.services import conflict_engine, modules_service, photo_derivatives
 from vitals.services.conflict_engine import ConflictBlocked
 from vitals.utils.timeutils import today_local
 from web.deps import get_redis_client, get_session_factory
@@ -1903,6 +1904,8 @@ def _remove_upload(rel_path: Optional[str]) -> None:
             os.remove(path)
         except OSError:
             pass
+    # A photo's tile and screen copies go with it; anything else has none.
+    photo_derivatives.remove_derivatives(STATIC_DIR, rel_path)
 
 
 @mcp.tool()
@@ -1983,7 +1986,7 @@ async def _photo_kind_error(session, kind: str) -> Optional[dict]:
 
 def _photo_row(row) -> dict:
     d = serialize_row(row)
-    d["url"] = f"/static/{row.file_key}"
+    d.update(photo_derivatives.photo_urls(row.file_key))
     return d
 
 
@@ -2142,6 +2145,8 @@ async def add_photo(
             return problem
         file_key = f"uploads/{uuid.uuid4().hex}{ext}"
         await write_upload(os.path.join(STATIC_DIR, file_key), data)
+        # The same tile and screen copies an upload from the app gets.
+        await asyncio.to_thread(photo_derivatives.make_derivatives, STATIC_DIR, file_key)
         add = skincare_service.add_photo if kind == "face" else weight_service.add_progress_photo
         row = await add(session, on_date=parsed_date, file_key=file_key, note=note)
         await session.commit()

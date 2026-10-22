@@ -203,6 +203,9 @@ async def test_face_photo_round_trip(static_dir):
     added = await mcp_router.add_photo("face", _png_b64(), on_date=WED.isoformat(), note="день 3")
     assert added["date"] == WED.isoformat() and added["url"].startswith("/static/uploads/")
     assert (static_dir / added["file_key"]).exists()
+    # The same tile and screen copies an upload from the app gets.
+    copies = [static_dir / u.removeprefix("/static/") for u in (added["thumb_url"], added["screen_url"])]
+    assert all(c.exists() for c in copies)
 
     listed = await mcp_router.list_photos("face")
     assert [p["id"] for p in listed] == [added["id"]]
@@ -217,6 +220,7 @@ async def test_face_photo_round_trip(static_dir):
     gone = await mcp_router.delete_record("skincare_photo", added["id"])
     assert gone["deleted"] is True
     assert not (static_dir / added["file_key"]).exists()
+    assert not any(c.exists() for c in copies)
 
 
 async def test_photo_and_today_survive_the_protocol(static_dir):
