@@ -400,7 +400,7 @@ class GarminClient:
         def _blocking() -> dict:
             out: dict = {}
             for key, method_name in (
-                ("hr_zones", "get_activity_hr_zones"),
+                ("hr_zones", "get_activity_hr_in_timezones"),
                 ("splits", "get_activity_splits"),
             ):
                 try:

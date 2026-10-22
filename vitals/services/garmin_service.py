@@ -708,7 +708,7 @@ async def reparse_pending(
 
 def _normalize_hr_zones(raw: dict) -> Optional[list]:
     """Seconds-in-HR-zone as a compact array. Prefers the per-activity
-    ``get_activity_hr_zones`` detail (carries each zone's low HR boundary); falls
+    ``get_activity_hr_in_timezones`` detail (carries each zone's low HR boundary); falls
     back to the ``hrTimeInZone_N`` fields already on the activity summary."""
     detail = _dig(raw, "_details", "hr_zones")
     if isinstance(detail, list) and detail:

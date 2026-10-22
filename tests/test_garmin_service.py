@@ -257,7 +257,7 @@ RAW_DAY = {
 }
 
 
-# Per-activity detail bundles (real shapes from get_activity_hr_zones /
+# Per-activity detail bundles (real shapes from get_activity_hr_in_timezones /
 # get_activity_splits), keyed as the client merges them under ``_details``.
 HR_ZONES_DETAIL = [
     {"zoneNumber": 1, "secsInZone": 1382.487, "zoneLowBoundary": 101},
@@ -725,6 +725,29 @@ async def test_client_lists_the_sub_metrics_that_failed():
     assert bundle["sleep"] is None
     assert bundle[FAILED_KEY] == ["sleep"]
     assert bundle["hrv"] == {"ok": "get_hrv_data"}
+
+
+async def test_activity_details_fetch_hr_zones_with_boundaries():
+    """The HR-zone detail comes from get_activity_hr_in_timezones; the client
+    used to call a method the library never had, so every activity fell back
+    to summary seconds without zone boundaries."""
+    class _Garmin:
+        def get_activity_hr_in_timezones(self, activity_id):
+            assert activity_id == 12345
+            return HR_ZONES_DETAIL
+
+        def get_activity_splits(self, activity_id):
+            return SPLITS_DETAIL
+
+    client = GarminClient(Config(database_url="", redis_url=""))
+    client._garmin = _Garmin()
+
+    details = await client.fetch_activity_details(12345)
+    zones = garmin_service._normalize_hr_zones({"_details": details})
+
+    assert details["hr_zones"] == HR_ZONES_DETAIL
+    assert [z["low_hr"] for z in zones] == [101, 121, 141, 162, 182]
+    assert zones[1] == {"zone": 2, "secs": 1569.401, "low_hr": 121}
 
 
 async def test_every_garmin_pull_shares_one_lock(session_factory, redis, monkeypatch):
