@@ -1,12 +1,12 @@
 # ── Core (vitals/) ───────────────────────────────────────────────────────────
 SQLAlchemy==2.0.51
-asyncpg==0.31.0
-alembic==1.18.5
-python-dotenv==1.2.2
+asyncpg==0.32.0
+alembic==1.20.1
+python-dotenv==1.2.4
 APScheduler==3.11.3
 redis>=5.0,<6.0
-greenlet==3.5.4
-tzdata==2026.3
+greenlet==3.5.6
+tzdata==2026.5
 numpy>=1.26,<3.0
 # Conflict-engine catalog (vitals/data/*.yaml) — was previously only a
 # transitive dependency (uvicorn[standard]); now imported directly.
@@ -42,7 +42,7 @@ garminconnect==0.3.7
 PyMuPDF>=1.24,<2.0
 
 # ── Model Context Protocol (MCP) ─────────────────────────────────────────────
-fastmcp==4.0.2
+fastmcp==4.1.3
 
 # ── Hardware & Displays ───────────────────────────────────────────────────────
 Pillow>=10.0,<13.0
