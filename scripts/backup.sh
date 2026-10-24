@@ -19,6 +19,12 @@
 # only on completion are checked, and only then is it compressed and renamed.
 # A failure leaves a marker in $BACKUP_DIR/status/ that the app's /health reads;
 # the next good dump removes it.
+#
+# Each pass first waits for the database with pg_isready: after a host reboot the
+# sidecar starts before Postgres accepts connections, and a refused first dump
+# would keep /health red until the next pass a whole interval later. If the
+# database is still not ready after the last attempt, the dump runs anyway and
+# fails the normal way.
 set -eu
 
 BACKUP_DIR="${VITALS_BACKUP_DIR:-/backups}"
@@ -26,6 +32,8 @@ RETENTION_DAYS="${VITALS_BACKUP_RETENTION_DAYS:-7}"
 INTERVAL_SECONDS="${VITALS_BACKUP_INTERVAL_SECONDS:-86400}"
 GARMIN_SESSION_DIR="${VITALS_GARMIN_SESSION_DIR:-/garmin_session}"
 ONCE="${VITALS_BACKUP_ONCE:-0}"
+DB_WAIT_ATTEMPTS="${VITALS_BACKUP_DB_WAIT_ATTEMPTS:-60}"
+DB_WAIT_POLL_SECONDS="${VITALS_BACKUP_DB_WAIT_POLL_SECONDS:-2}"
 STATUS_DIR="$BACKUP_DIR/status"
 FAILED_MARKER="$STATUS_DIR/backup_failed"
 DUMP_TRAILER="PostgreSQL database dump complete"
@@ -46,7 +54,20 @@ fail_dump() {
     dump_ok=0
 }
 
+wait_for_db() {
+    attempt=1
+    until pg_isready -q; do
+        if [ "$attempt" -ge "$DB_WAIT_ATTEMPTS" ]; then
+            echo "[backup] WARN: database not ready after $attempt attempts — dumping anyway" >&2
+            return 0
+        fi
+        attempt=$((attempt + 1))
+        sleep "$DB_WAIT_POLL_SECONDS"
+    done
+}
+
 while true; do
+    wait_for_db
     ts="$(date +%Y%m%d_%H%M%S)"
     out="$BACKUP_DIR/vitals_${ts}.sql.gz"
     raw="$BACKUP_DIR/vitals_${ts}.sql.tmp"

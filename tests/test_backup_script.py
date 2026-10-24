@@ -23,22 +23,40 @@ pytestmark = pytest.mark.skipif(SH is None, reason="needs a POSIX sh")
 GOOD_DUMP = "-- PostgreSQL database dump\nCREATE TABLE t (id int);\n-- PostgreSQL database dump complete\n"
 
 
-def _stub_pg_dump(bin_dir: Path, body: str, rc: int) -> None:
+def _stub(bin_dir: Path, name: str, script: str) -> None:
     bin_dir.mkdir(exist_ok=True)
-    stub = bin_dir / "pg_dump"
-    stub.write_text(f"#!/bin/sh\nprintf '%s' '{body}'\nexit {rc}\n", newline="\n")
+    stub = bin_dir / name
+    stub.write_text(f"#!/bin/sh\n{script}", newline="\n")
     stub.chmod(0o755)
 
 
-def _run(tmp_path: Path, body: str, rc: int) -> subprocess.CompletedProcess:
+def _stub_pg_isready(bin_dir: Path, not_ready_times: int) -> None:
+    # Reports "not ready" for the first N calls, then ready; every call is counted.
+    calls = (bin_dir / "pg_isready.calls").as_posix()
+    _stub(
+        bin_dir,
+        "pg_isready",
+        f"n=$(cat '{calls}' 2>/dev/null || echo 0)\nn=$((n + 1))\necho $n > '{calls}'\n"
+        f"[ $n -gt {not_ready_times} ]\n",
+    )
+
+
+def _isready_calls(tmp_path: Path) -> int:
+    return int((tmp_path / "bin" / "pg_isready.calls").read_text())
+
+
+def _run(tmp_path: Path, body: str, rc: int, not_ready_times: int = 0) -> subprocess.CompletedProcess:
     bin_dir = tmp_path / "bin"
-    _stub_pg_dump(bin_dir, body, rc)
+    _stub(bin_dir, "pg_dump", f"printf '%s' '{body}'\nexit {rc}\n")
+    _stub_pg_isready(bin_dir, not_ready_times)
     env = dict(os.environ)
     env.update(
         PATH=f"{bin_dir}{os.pathsep}{env.get('PATH', '')}",
         VITALS_BACKUP_DIR=(tmp_path / "backups").as_posix(),
         VITALS_GARMIN_SESSION_DIR=(tmp_path / "no_garmin").as_posix(),
         VITALS_BACKUP_ONCE="1",
+        VITALS_BACKUP_DB_WAIT_ATTEMPTS="5",
+        VITALS_BACKUP_DB_WAIT_POLL_SECONDS="0",
     )
     return subprocess.run([SH, SCRIPT.as_posix()], env=env, capture_output=True, text=True)
 
@@ -85,6 +103,26 @@ def test_a_dump_without_the_completion_trailer_is_rejected(tmp_path):
     assert result.returncode != 0
     assert _dumps(tmp_path) == []
     assert "incomplete" in result.stderr
+    assert _marker(tmp_path).exists()
+
+
+def test_the_dump_waits_for_a_database_that_is_still_starting(tmp_path):
+    # Host reboot: the sidecar comes up before Postgres accepts connections.
+    result = _run(tmp_path, GOOD_DUMP, 0, not_ready_times=3)
+
+    assert result.returncode == 0, result.stderr
+    assert _isready_calls(tmp_path) == 4
+    assert len(_dumps(tmp_path)) == 1
+    assert not _marker(tmp_path).exists()
+
+
+def test_a_database_that_never_comes_up_fails_the_pass_instead_of_hanging(tmp_path):
+    result = _run(tmp_path, "", 1, not_ready_times=100)
+
+    assert result.returncode != 0
+    assert _isready_calls(tmp_path) == 5
+    assert "not ready after 5 attempts" in result.stderr
+    assert _dumps(tmp_path) == []
     assert _marker(tmp_path).exists()
 
 
