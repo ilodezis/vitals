@@ -28,6 +28,7 @@ from vitals.services import (
     garmin_weight_service,
     language_service,
     modules_service,
+    passkey_service,
     twofa_service,
 )
 from vitals.services.modules_service import ModuleToggleError
@@ -53,6 +54,8 @@ from web.api.schemas.settings import (
     ModuleToggleUpdate,
     NutritionGoalsSettings,
     NutritionGoalsUpdate,
+    PasskeyItem,
+    PasskeyRegistrationUpdate,
     PasswordChangeUpdate,
     ProfileSettings,
     ProfileUpdate,
@@ -65,8 +68,15 @@ from web.api.schemas.settings import (
     TwoFaCodeUpdate,
     TwoFaStartResponse,
 )
-from web.auth import authenticate, create_session, set_session_cookie
-from web.config import get_web_config
+from web.auth import (
+    authenticate,
+    clear_passkey_ceremony_cookie,
+    create_session,
+    passkey_rp,
+    set_passkey_ceremony_cookie,
+    set_session_cookie,
+)
+from web.config import PASSKEY_CEREMONY_COOKIE, get_web_config
 from web.deps import get_redis, get_session, require_auth
 from web.ratelimit import rate_limit
 from web.services import profile_settings
@@ -183,9 +193,28 @@ async def read_settings(
         mcp_client_secret_set=bool(read_key("VITALS_MCP_CLIENT_SECRET")),
     )
 
+    passkeys = await passkey_service.list_passkeys(db)
+    passkey_handle = await passkey_service.peek_user_handle(db)
+    rp = passkey_rp()
     security = SecuritySettings(
         twofa_enabled=twofa.enabled,
         twofa_pending=twofa.pending,
+        passkeys_available=rp is not None,
+        passkey_rp_id=rp.rp_id if rp is not None else None,
+        passkey_user_id=(
+            passkey_service.user_handle_text(passkey_handle) if passkey_handle else None
+        ),
+        passkeys=[
+            PasskeyItem(
+                id=p.id,
+                name=p.name,
+                credential_id=passkey_service.credential_id_text(p),
+                backed_up=p.backed_up,
+                created_at=p.created_at,
+                last_used_at=p.last_used_at,
+            )
+            for p in passkeys
+        ],
     )
 
     proactive_settings = ProactiveSettings(
@@ -480,6 +509,85 @@ async def disable_twofa(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="twofa_bad_code",
         )
+    await db.commit()
+    return SaveResponse(saved=True)
+
+
+# ── Passkeys ──────────────────────────────────────────────────────────────────
+# Adding one needs only the session: the owner chose that over asking for the
+# password again. Removing one takes access away rather than granting it.
+
+
+def _passkey_rp_or_refuse() -> passkey_service.RelyingParty:
+    rp = passkey_rp()
+    if rp is None:
+        raise ValueError(t("settings.passkeys_unavailable"))
+    return rp
+
+
+@router.post("/passkeys/register/options", response_model=dict[str, Any])
+async def start_passkey_registration(
+    response: Response,
+    username: str = Depends(require_auth),
+    db: AsyncSession = Depends(get_session),
+    redis: Redis = Depends(get_redis),
+    _rl: None = Depends(rate_limit("passkey_setup", limit=20, window=300)),
+) -> dict[str, Any]:
+    """Options for ``navigator.credentials.create()``; the challenge waits in Redis."""
+    rp = _passkey_rp_or_refuse()
+    options, challenge = await passkey_service.registration_options(db, rp, username=username)
+    # The user handle is minted on the first registration and must outlive it.
+    await db.commit()
+    try:
+        ceremony_id = await passkey_service.start_ceremony(
+            redis, passkey_service.REGISTER, challenge
+        )
+    except Exception:
+        logger.warning("passkey ceremony store unavailable", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+    set_passkey_ceremony_cookie(response, ceremony_id)
+    return json.loads(options)
+
+
+@router.post("/passkeys/register/verify", response_model=SaveResponse)
+async def finish_passkey_registration(
+    body: PasskeyRegistrationUpdate,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_session),
+    redis: Redis = Depends(get_redis),
+    _rl: None = Depends(rate_limit("passkey_setup", limit=20, window=300)),
+) -> SaveResponse:
+    rp = _passkey_rp_or_refuse()
+    challenge = await passkey_service.take_ceremony(
+        redis, request.cookies.get(PASSKEY_CEREMONY_COOKIE), passkey_service.REGISTER
+    )
+    clear_passkey_ceremony_cookie(response)
+    if challenge is None:
+        raise ValueError(t("settings.error.passkey_expired"))
+    try:
+        await passkey_service.finish_registration(
+            db,
+            rp,
+            credential=body.credential,
+            challenge=challenge,
+            name=body.name.strip() or t("settings.passkey_default_name"),
+        )
+    except passkey_service.PasskeyError as exc:
+        if exc.code == "already_registered":
+            raise ValueError(t("settings.error.passkey_already_registered"))
+        raise ValueError(t("settings.error.passkey_failed"))
+    await db.commit()
+    return SaveResponse(saved=True)
+
+
+@router.delete("/passkeys/{passkey_id}", response_model=SaveResponse)
+async def delete_passkey(
+    passkey_id: int,
+    db: AsyncSession = Depends(get_session),
+) -> SaveResponse:
+    if not await passkey_service.delete_passkey(db, passkey_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     await db.commit()
     return SaveResponse(saved=True)
 

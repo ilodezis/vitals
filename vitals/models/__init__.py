@@ -86,6 +86,9 @@ from vitals.models.proactive import Notification
 # Doctor reports — frozen snapshots published behind a password.
 from vitals.models.share import SharedReport
 
+# Passkeys — WebAuthn credentials for signing in without a password.
+from vitals.models.passkey import Passkey
+
 __all__ = [
     "Base",
     "TimestampMixin",
@@ -140,4 +143,5 @@ __all__ = [
     "DayContext",
     "Notification",
     "SharedReport",
+    "Passkey",
 ]

@@ -7,6 +7,7 @@ be returned in GET responses or mutation returns. Return only booleans
 """
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -136,11 +137,30 @@ class McpUpdate(BaseModel):
     mcp_client_secret: Optional[str] = None
 
 
+class PasskeyItem(BaseModel):
+    id: int
+    name: str
+    # base64url, as the browser spells it — for the Signal API that tells the
+    # phone's keychain which Vitals passkeys still work.
+    credential_id: str
+    # Lives in a synced keychain (iCloud, Google) rather than on one device.
+    backed_up: bool
+    created_at: datetime
+    last_used_at: Optional[datetime] = None
+
+
 class SecuritySettings(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     twofa_enabled: bool = False
     twofa_pending: bool = False
+    # VITALS_PUBLIC_ORIGIN is set to an address passkeys can be bound to.
+    passkeys_available: bool = False
+    # Where the passkeys are bound and the user handle they carry; null until the
+    # first one is registered.
+    passkey_rp_id: Optional[str] = None
+    passkey_user_id: Optional[str] = None
+    passkeys: list[PasskeyItem] = []
 
 
 class PasswordChangeUpdate(BaseModel):
@@ -157,6 +177,12 @@ class TwoFaStartResponse(BaseModel):
 
 class TwoFaCodeUpdate(BaseModel):
     code: str
+
+
+class PasskeyRegistrationUpdate(BaseModel):
+    # What navigator.credentials.create() returned, in its JSON form.
+    credential: dict[str, Any]
+    name: str = ""
 
 
 class ProactiveSettings(BaseModel):

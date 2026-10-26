@@ -331,6 +331,19 @@ html, body {
   background: var(--surface);
   color: var(--fg);
 }
+.ghost.w {
+  width: 100%;
+}
+.ghost[aria-busy="true"] {
+  color: var(--muted);
+  cursor: progress;
+}
+
+/* The passkey button and its error start hidden and are shown by server-pages.js;
+   their own display rules would otherwise outrank the attribute. */
+.lg [hidden] {
+  display: none;
+}
 
 /* ── Alerts ──────────────────────────────────────────────────── */
 .alert {

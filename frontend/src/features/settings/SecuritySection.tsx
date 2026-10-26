@@ -5,6 +5,7 @@ import { Section } from '@/components/controls/Section'
 import { toast } from '@/components/controls/toast'
 import { Icon } from '@/components/icons/Icon'
 import { useT } from '@/i18n/useT'
+import { PasskeysSection } from './PasskeysSection'
 import { SaveRow } from './parts'
 import type { SettingsView } from './useSettingsView'
 
@@ -307,6 +308,8 @@ export function SecuritySection({ settings }: SecuritySectionProps) {
           </div>
         </div>
       </Section>
+
+      <PasskeysSection settings={settings} />
     </>
   )
 }

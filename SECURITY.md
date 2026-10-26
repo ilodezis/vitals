@@ -40,6 +40,30 @@ Key security controls already in place:
 - **CSP headers**
 - **Loopback-only port binding** in `docker-compose.yml` (`127.0.0.1:8000`)
 - **MCP OAuth 2.0 + PKCE** for Claude.ai integration
+- **Passkeys (WebAuthn)**, when `VITALS_PUBLIC_ORIGIN` is set — see below
+
+## Passkeys
+
+A passkey is a complete sign-in, not a second step: the server demands user
+verification (`userVerification: required`, enforced on both registration and
+sign-in), so the authenticator has checked a face, fingerprint or PIN before it
+signs. That is two factors in one gesture, and the TOTP step is skipped.
+
+- **Bound to `VITALS_PUBLIC_ORIGIN`**, never to the request's `Host` header —
+  behind a tunnel that header is whatever reached the proxy. Unset = off, and
+  both `/login/passkey/*` routes answer 404.
+- **Challenges are single-use and fail closed.** Each one lives five minutes in
+  Redis, tied to the browser by an HttpOnly cookie, and is taken with `GETDEL`.
+  With Redis down passkey sign-in is unavailable rather than replayable; the
+  password form keeps working.
+- **The server stores public keys only.** A copy of the database signs nobody in.
+- **Backups neither carry nor accept the `passkeys` table**, so a crafted backup
+  file cannot plant a key, and a restore does not drop the ones you enrolled.
+- **Adding a passkey needs a signed-in session and nothing more** — the owner's
+  choice for a single-user install. The flip side: whoever holds a stolen session
+  cookie can enrol a key of their own, and that key outlives a password change.
+  Check **Settings → Security → Passkeys** if a session may have leaked, and
+  remove what you don't recognise.
 
 ## The Telegram Webhook
 

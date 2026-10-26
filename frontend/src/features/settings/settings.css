@@ -186,6 +186,48 @@
   width: 160px;
 }
 
+/* Passkeys */
+.pk-list {
+  display: grid;
+  gap: var(--s2);
+  margin: 0 0 var(--s3);
+  padding: 0;
+  list-style: none;
+}
+
+.pk-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.pk-l {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pk-name {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.pk-meta {
+  font-size: var(--t-micro);
+  color: var(--muted);
+}
+
+.pk-empty {
+  margin: 0 0 var(--s3);
+  color: var(--muted);
+}
+
 /* Data import drop */
 .data-drop-btn {
   display: flex;
