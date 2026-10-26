@@ -42,6 +42,7 @@ GATED_WRITE_TOOLS: dict[str, str] = {
     "add_skincare_product": "skincare",
     "update_skincare_product": "skincare",
     "set_skincare_check": "skincare",
+    "set_skincare_note": "skincare",
     "add_supplement": "supplements",
     "update_supplement": "supplements",
     "set_supplement_active": "supplements",

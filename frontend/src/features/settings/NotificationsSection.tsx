@@ -78,6 +78,7 @@ function BotSchedule({ settings }: NotificationsSectionProps) {
   const [eveningTime, setEveningTime] = useState(p.evening_time)
   const [skincareMorning, setSkincareMorning] = useState(p.skincare_morning_time)
   const [skincareEvening, setSkincareEvening] = useState(p.skincare_evening_time)
+  const [dayEnd, setDayEnd] = useState(p.day_end)
   const skincareOn = moduleOn(settings, 'skincare')
   const [quietStart, setQuietStart] = useState(p.quiet_start)
   const [quietEnd, setQuietEnd] = useState(p.quiet_end)
@@ -88,6 +89,7 @@ function BotSchedule({ settings }: NotificationsSectionProps) {
     eveningTime !== p.evening_time ||
     skincareMorning !== p.skincare_morning_time ||
     skincareEvening !== p.skincare_evening_time ||
+    dayEnd !== p.day_end ||
     quietStart !== p.quiet_start ||
     quietEnd !== p.quiet_end ||
     dailyBudget !== String(p.daily_budget)
@@ -104,6 +106,7 @@ function BotSchedule({ settings }: NotificationsSectionProps) {
         evening_time: eveningTime,
         skincare_morning_time: skincareMorning,
         skincare_evening_time: skincareEvening,
+        day_end: dayEnd,
         quiet_start: quietStart,
         quiet_end: quietEnd,
         ...read.numbers,
@@ -141,6 +144,8 @@ function BotSchedule({ settings }: NotificationsSectionProps) {
           {time('settings.quiet_start', quietStart, setQuietStart)}
           {time('settings.quiet_end', quietEnd, setQuietEnd)}
         </div>
+        <div className="set-mt3 set-narrow-field">{time('settings.day_end', dayEnd, setDayEnd)}</div>
+        <p className="fhint set-mt1">{t('settings.day_end_hint')}</p>
         <label className="field set-mt3 set-narrow-field">
           <span className="flabel">{t('settings.daily_budget')}</span>
           <input type="text" inputMode="numeric" className="input" value={dailyBudget} onChange={(e) => setDailyBudget(e.target.value)} />

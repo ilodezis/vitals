@@ -14,10 +14,16 @@
 .sk-check .mk svg { width: 14px; height: 14px; stroke-width: 2.4; }
 .sk-check.on .mk { background: var(--good); border-color: var(--good); }
 .sk-check.on .nm { color: var(--fg-2); }
-.sk-check .nm { flex: 1; min-width: 0; }
+.sk-check .nm { flex: 1; min-width: 0; padding: 6px 0; }
+/* How to apply it: a second line under the name, until it is ticked */
+.sk-check .how { display: block; margin-top: 2px; font-size: var(--t-label); color: var(--muted); }
 .sk-check .hint { flex: none; font-size: var(--t-micro); color: var(--faint); }
-.sk-all-btn { margin-top: var(--s2); }
 .sk-none { margin: 0; padding: var(--s2) 0; }
+/* The day's note on the slot, above its checklist */
+.sk-slot-note { display: flex; gap: var(--s2); margin: 0 0 var(--s2); padding: var(--s2) var(--s3); border-radius: var(--r-sm); background: var(--surface-2); font-size: var(--t-label); color: var(--fg-2); }
+.sk-slot-note svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--accent-2); }
+.sk-note-edit { display: grid; gap: var(--s2); margin-bottom: var(--s2); }
+.sk-slot-acts { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s3); margin-top: var(--s2); }
 
 .sk-panes { margin-bottom: 0; }
 
@@ -35,6 +41,7 @@
 .sk-row { grid-template-columns: minmax(0, 1fr) auto; }
 .fpanel.mb-s4 { margin-bottom: var(--s4); }
 .sk-form { display: grid; gap: var(--s3); }
+.sk-step { max-width: 160px; }
 
 /* The week: products down, days across; a sun for the morning, a moon for the evening */
 .sk-week { display: grid; gap: 2px; }

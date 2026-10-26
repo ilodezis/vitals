@@ -23,12 +23,13 @@ doesn't apply for five minutes.
 from __future__ import annotations
 
 import logging
-from datetime import time as time_type
-from typing import Any
+from datetime import date as date_type, datetime, time as time_type
+from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.models.app_settings import AppSetting
+from vitals.utils.timeutils import day_of, now_local
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,9 @@ WEIGHT_MAX_AGE_DAYS_RANGE = (1, 30)
 # 60. A *read* costs nothing; it is the credential *login* Garmin rate-limits,
 # and the login breaker is what rations those.
 PULSE_SECONDS_RANGE = (60, 3600)
+# The day may end past midnight, but not so late that a morning routine would
+# land on the day before: past 06:00 it would.
+DAY_END_MAX = "06:00"
 
 DEFAULTS: dict[str, Any] = {
     "brief_time": "11:00",
@@ -79,6 +83,9 @@ DEFAULTS: dict[str, Any] = {
     # the evening block's: "after washing up" is not when the day gets summed up.
     "skincare_morning_time": "10:30",
     "skincare_evening_time": "22:30",
+    # When the owner's day ends, for the routines run on their own clock: an
+    # evening round at 01:00 belongs to the evening before, not to a new day.
+    "day_end": "05:00",
     "quiet_start": "02:00",
     "quiet_end": "10:00",
     "daily_budget": 4,
@@ -137,6 +144,7 @@ def sanitize(raw: Any) -> dict[str, Any]:
         "skincare_evening_time": _time(
             src.get("skincare_evening_time"), DEFAULTS["skincare_evening_time"]
         ),
+        "day_end": min(_time(src.get("day_end"), DEFAULTS["day_end"]), DAY_END_MAX),
         "quiet_start": _time(src.get("quiet_start"), DEFAULTS["quiet_start"]),
         "quiet_end": _time(src.get("quiet_end"), DEFAULTS["quiet_end"]),
         "daily_budget": _int(src.get("daily_budget"), DEFAULTS["daily_budget"], *BUDGET_RANGE),
@@ -191,6 +199,13 @@ async def set_prefs(session: AsyncSession, raw: Any) -> dict[str, Any]:
         row.value = clean  # a new dict, so SQLAlchemy sees the change
     await session.flush()
     return clean
+
+
+async def routine_today(session: AsyncSession, now: Optional[datetime] = None) -> date_type:
+    """The day the owner's routines are on right now — yesterday until ``day_end``
+    has passed. Never raises (``get_prefs`` falls back to the defaults)."""
+    day_end = as_time((await get_prefs(session))["day_end"])
+    return day_of(now or now_local(), day_end)
 
 
 async def bot_enabled(session: AsyncSession) -> bool:

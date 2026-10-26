@@ -33,6 +33,7 @@ from vitals.models.genetics import GeneticVariant
 from vitals.models.skincare import (
     SkincareCheck,
     SkincareLog,
+    SkincareNote,
     SkincareObservation,
     SkincarePhoto,
     SkincareProduct,
@@ -108,6 +109,7 @@ __all__ = [
     "GeneticVariant",
     "SkincareCheck",
     "SkincareLog",
+    "SkincareNote",
     "SkincareObservation",
     "SkincarePhoto",
     "SkincareProduct",

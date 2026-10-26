@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 
@@ -24,6 +24,9 @@ class SkincareProductItem(CamelModel):
     desc: Optional[str] = None
     usage_instructions: Optional[str] = None
     use: Optional[str] = None
+    usage_morning: Optional[str] = None
+    usage_evening: Optional[str] = None
+    step: Optional[int] = None
     default_time: str = "evening"
     time: str = "evening"
     schedule_days: list[int] = []
@@ -39,6 +42,9 @@ class SkincareProductCreate(CamelModel):
     active_ingredient: Optional[str] = None
     description: Optional[str] = None
     usage_instructions: Optional[str] = None
+    usage_morning: Optional[str] = None
+    usage_evening: Optional[str] = None
+    step: Optional[int] = Field(default=None, ge=1, le=99)
     default_time: str = "evening"
     schedule_days: list[int] = []
     active: bool = True
@@ -55,8 +61,11 @@ class SkincareProductUpdate(CamelModel):
     schedule_days: Optional[list[int]] = None
     active: Optional[bool] = None
     # Unlike the other fields, null here is a value ("no flag"), so leaving the
-    # field out is what keeps the stored one.
+    # field out is what keeps the stored one. The same holds for the three below.
     active_flag: Optional[str] = None
+    usage_morning: Optional[str] = None
+    usage_evening: Optional[str] = None
+    step: Optional[int] = Field(default=None, ge=1, le=99)
 
 
 class SkincareProductCreated(BaseModel):
@@ -136,6 +145,8 @@ class SkincarePlanItem(CamelModel):
     product_id: Optional[int] = None
     name: str
     flag: Optional[str] = None
+    #: How to apply it in this slot, from the catalog.
+    how: Optional[str] = None
     planned: bool = True
     done: bool = False
     done_at: Optional[str] = None
@@ -144,6 +155,8 @@ class SkincarePlanItem(CamelModel):
 class SkincareDayPlan(CamelModel):
     morning: list[SkincarePlanItem] = []
     evening: list[SkincarePlanItem] = []
+    #: The day's note per slot; only the slots that have one.
+    notes: dict[str, str] = {}
 
 
 class SkincareHistoryDay(SkincareDayPlan):
@@ -158,6 +171,14 @@ class SkincareCheckUpdate(CamelModel):
     product_id: Optional[int] = None
     done: bool = True
     override: bool = False
+
+
+class SkincareNoteUpdate(CamelModel):
+    """Write the note on one slot of a day; empty text removes it."""
+
+    date: str
+    slot: str
+    text: str = ""
 
 
 class SkincarePhotoItem(CamelModel):

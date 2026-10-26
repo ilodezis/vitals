@@ -13,6 +13,16 @@ product's ``active_flag`` on that day's ``SkincareLog`` — so the checklist the
 engine evaluates is now *what was ticked*, and the old hand-filled form is no
 longer needed to feed it. Unticking clears the flag only when no other tick of
 the day still carries it.
+
+**The routine day.** "Today" here is :func:`prefs.routine_today`, not the
+calendar: until the owner's day ends (05:00 by default) an evening round still
+belongs to the evening before, so the plan, the ticks and the conflict check all
+land on the night they were done.
+
+**How and when.** Products come in their order of application (``step``), and
+each plan item carries ``how`` — the product's instructions for that slot. A
+slot of a day can also carry a note (``SkincareNote``): «ретиноид сегодня
+пропусти», shown above the checklist.
 """
 from __future__ import annotations
 
@@ -27,12 +37,14 @@ from vitals.models.skincare import (
     DOMAIN,
     SkincareCheck,
     SkincareLog,
+    SkincareNote,
     SkincareObservation,
     SkincarePhoto,
     SkincareProduct,
 )
 from vitals.services import conflict_engine, photo_derivatives
-from vitals.utils.timeutils import now_local, today_local
+from vitals.services.proactive import prefs
+from vitals.utils.timeutils import now_local
 
 _FLAGS = (
     "retinoid", "azelaic", "peel", "niacinamide_spf", "moisturizer",
@@ -48,6 +60,14 @@ SLOTS = (SLOT_MORNING, SLOT_EVENING)
 # How far back the diary shows planned-vs-done. Two weeks reads as a pattern;
 # further back the schedule it is measured against may well have changed.
 HISTORY_DAYS = 14
+
+# A note is a line or two above a checklist, not a diary entry.
+NOTE_MAX_CHARS = 500
+
+
+async def today(session: AsyncSession) -> date_type:
+    """The routine day the skincare checklist is on right now."""
+    return await prefs.routine_today(session)
 
 
 # ── Checklist log ─────────────────────────────────────────────────────────────
@@ -167,7 +187,7 @@ async def delete_observation(session: AsyncSession, observation_id: int) -> bool
 # ── Conflict-engine resolver ──────────────────────────────────────────────────
 async def resolve_today(session: AsyncSession) -> list[dict]:
     """Today's checklist flags as a single match item (empty list if no log yet)."""
-    row = await get_log(session, today_local())
+    row = await get_log(session, await today(session))
     if row is None:
         return []
     return [{flag: getattr(row, flag) for flag in _FLAGS}]
@@ -193,6 +213,13 @@ def _clean_flag(flag: Optional[str]) -> Optional[str]:
     return flag if flag in _FLAGS else None
 
 
+def how_to(product: SkincareProduct, slot: str) -> Optional[str]:
+    """How to apply ``product`` in ``slot``: that slot's own instructions, else
+    the general ones."""
+    own = product.usage_morning if slot == SLOT_MORNING else product.usage_evening
+    return (own or product.usage_instructions or "").strip() or None
+
+
 async def checks_between(
     session: AsyncSession, start: date_type, end: date_type
 ) -> Sequence[SkincareCheck]:
@@ -204,14 +231,28 @@ async def checks_between(
     return result.scalars().all()
 
 
+async def notes_between(
+    session: AsyncSession, start: date_type, end: date_type
+) -> Sequence[SkincareNote]:
+    result = await session.execute(
+        select(SkincareNote).where(SkincareNote.date >= start, SkincareNote.date <= end)
+    )
+    return result.scalars().all()
+
+
 def _plan_from(
-    products: Sequence[SkincareProduct], checks: Sequence[SkincareCheck], on_date: date_type
-) -> dict[str, list[dict]]:
-    """``{slot: [item, …]}`` for one day. An item is a planned product with its
-    tick, or a tick on a product that was *not* planned that day (applied off
-    schedule) — the plan alone would lose those."""
+    products: Sequence[SkincareProduct],
+    checks: Sequence[SkincareCheck],
+    on_date: date_type,
+    notes: Sequence[SkincareNote] = (),
+) -> dict[str, Any]:
+    """``{slot: [item, …], "notes": {slot: text}}`` for one day. An item is a
+    planned product with its tick, or a tick on a product that was *not* planned
+    that day (applied off schedule) — the plan alone would lose those. ``notes``
+    holds only the slots that have one."""
     day_checks = [c for c in checks if c.date == on_date]
-    plan: dict[str, list[dict]] = {}
+    by_id = {p.id: p for p in products}
+    plan: dict[str, Any] = {}
     for slot in SLOTS:
         done = {c.product_id: c for c in day_checks if c.slot == slot}
         items = []
@@ -224,31 +265,37 @@ def _plan_from(
                     "product_id": p.id,
                     "name": p.name,
                     "flag": _clean_flag(p.active_flag),
+                    "how": how_to(p, slot),
                     "planned": True,
                     "done": check is not None,
                     "done_at": check.done_at.isoformat() if check is not None else None,
                 }
             )
         for check in done.values():
+            product = by_id.get(check.product_id)
             items.append(
                 {
                     "product_id": check.product_id,
                     "name": check.product_name,
                     "flag": _clean_flag(check.active_flag),
+                    "how": how_to(product, slot) if product is not None else None,
                     "planned": False,
                     "done": True,
                     "done_at": check.done_at.isoformat(),
                 }
             )
         plan[slot] = items
+    plan["notes"] = {n.slot: n.text for n in notes if n.date == on_date and n.slot in SLOTS}
     return plan
 
 
-async def plan_for(session: AsyncSession, on_date: date_type) -> dict[str, list[dict]]:
-    """The day's routine, slot by slot, each item with whether it was done."""
+async def plan_for(session: AsyncSession, on_date: date_type) -> dict[str, Any]:
+    """The day's routine, slot by slot, each item with whether it was done, plus
+    the day's notes."""
     products = await list_products(session, active_only=True)
     checks = await checks_between(session, on_date, on_date)
-    return _plan_from(products, checks, on_date)
+    notes = await notes_between(session, on_date, on_date)
+    return _plan_from(products, checks, on_date, notes)
 
 
 async def plans_between(
@@ -259,10 +306,11 @@ async def plans_between(
     one read of the catalog and the ticks."""
     products = await list_products(session, active_only=True)
     checks = await checks_between(session, start, end)
+    notes = await notes_between(session, start, end)
     out = []
     day = end
     while day >= start:
-        out.append({"date": day.isoformat(), **_plan_from(products, checks, day)})
+        out.append({"date": day.isoformat(), **_plan_from(products, checks, day, notes)})
         day -= timedelta(days=1)
     return out
 
@@ -277,7 +325,7 @@ async def history(
     every planned product would read as missed, which is a fact about the app,
     not about the skin.
     """
-    end = end or today_local()
+    end = end or await today(session)
     first = (
         await session.execute(select(SkincareCheck.date).order_by(SkincareCheck.date).limit(1))
     ).scalars().first()
@@ -288,10 +336,11 @@ async def history(
         return []
     products = await list_products(session, active_only=True)
     checks = await checks_between(session, start, end - timedelta(days=1))
+    notes = await notes_between(session, start, end - timedelta(days=1))
     out = []
     day = end - timedelta(days=1)
     while day >= start:
-        plan = _plan_from(products, checks, day)
+        plan = _plan_from(products, checks, day, notes)
         if any(plan[slot] for slot in SLOTS):
             out.append({"date": day.isoformat(), **plan})
         day -= timedelta(days=1)
@@ -433,6 +482,42 @@ async def complete_slot(
     return violations
 
 
+# ── Notes on a slot of a day ─────────────────────────────────────────────────
+async def set_note(
+    session: AsyncSession,
+    *,
+    on_date: date_type,
+    slot: str,
+    text: Optional[str],
+    source: str = Source.MANUAL.value,
+) -> Optional[SkincareNote]:
+    """Write the note on ``slot`` of ``on_date``, replacing any there. Empty text
+    removes it (returns ``None``). Raises ``ValueError`` for an unknown slot or a
+    note past :data:`NOTE_MAX_CHARS`."""
+    if slot not in SLOTS:
+        raise ValueError(f"unknown slot: {slot}")
+    text = (text or "").strip()
+    if len(text) > NOTE_MAX_CHARS:
+        raise ValueError(f"a note is at most {NOTE_MAX_CHARS} characters")
+    result = await session.execute(
+        select(SkincareNote).where(SkincareNote.date == on_date, SkincareNote.slot == slot)
+    )
+    row = result.scalar_one_or_none()
+    if not text:
+        if row is not None:
+            await session.delete(row)
+            await session.flush()
+        return None
+    if row is None:
+        row = SkincareNote(date=on_date, domain=DOMAIN, source=source, slot=slot, text=text)
+        session.add(row)
+    else:
+        row.text = text
+        row.source = source
+    await session.flush()
+    return row
+
+
 # ── Face photo diary ──────────────────────────────────────────────────────────
 async def add_photo(
     session: AsyncSession, *, on_date: date_type, file_key: str, note: Optional[str] = None
@@ -471,7 +556,11 @@ async def list_products(
     stmt = select(SkincareProduct)
     if active_only:
         stmt = stmt.where(SkincareProduct.active.is_(True))
-    stmt = stmt.order_by(SkincareProduct.active.desc(), SkincareProduct.name)
+    stmt = stmt.order_by(
+        SkincareProduct.active.desc(),
+        SkincareProduct.step.asc().nulls_last(),
+        SkincareProduct.name,
+    )
     result = await session.execute(stmt)
     return result.scalars().all()
 
@@ -488,6 +577,9 @@ async def add_product(
     schedule_days: list[int] = [],
     active: bool = True,
     active_flag: Optional[str] = None,
+    usage_morning: Optional[str] = None,
+    usage_evening: Optional[str] = None,
+    step: Optional[int] = None,
 ) -> SkincareProduct:
     row = SkincareProduct(
         name=name,
@@ -495,6 +587,9 @@ async def add_product(
         active_ingredient=active_ingredient,
         description=description,
         usage_instructions=usage_instructions,
+        usage_morning=usage_morning,
+        usage_evening=usage_evening,
+        step=step,
         default_time=default_time,
         schedule_days=schedule_days,
         active=active,
@@ -518,6 +613,9 @@ async def update_product(
     schedule_days: list[int] = [],
     active: bool = True,
     active_flag: Optional[str] = None,
+    usage_morning: Optional[str] = None,
+    usage_evening: Optional[str] = None,
+    step: Optional[int] = None,
 ) -> Optional[SkincareProduct]:
     row = await session.get(SkincareProduct, product_id)
     if row is None:
@@ -527,6 +625,9 @@ async def update_product(
     row.active_ingredient = active_ingredient
     row.description = description
     row.usage_instructions = usage_instructions
+    row.usage_morning = usage_morning
+    row.usage_evening = usage_evening
+    row.step = step
     row.default_time = default_time
     row.schedule_days = schedule_days
     row.active = active
@@ -553,7 +654,8 @@ async def collect(session: AsyncSession) -> dict[str, Any]:
     products = await list_products(session)
     logs = await list_logs(session)
     observations = await list_observations(session)
-    today_l = await get_log(session, today_local())
+    today_d = await today(session)
+    today_l = await get_log(session, today_d)
     active_alerts = await alerts_service.list_active(session, domain=Domain.SKINCARE.value)
 
     # Active conflict rules concerning skincare
@@ -575,6 +677,9 @@ async def collect(session: AsyncSession) -> dict[str, Any]:
             "desc": p.description,
             "usage_instructions": p.usage_instructions,
             "use": p.usage_instructions,
+            "usage_morning": p.usage_morning,
+            "usage_evening": p.usage_evening,
+            "step": p.step,
             "default_time": p.default_time,
             "time": p.default_time,
             "schedule_days": p.schedule_days or [],
@@ -646,7 +751,6 @@ async def collect(session: AsyncSession) -> dict[str, Any]:
     )
 
     active_prods = [p for p in prods_data if p["active"]]
-    today = today_local()
     photos = await list_photos(session)
 
     return {
@@ -668,9 +772,9 @@ async def collect(session: AsyncSession) -> dict[str, Any]:
             }
             for a in active_alerts
         ],
-        "today": today.isoformat(),
-        "plan": await plan_for(session, today),
-        "history": await history(session, end=today),
+        "today": today_d.isoformat(),
+        "plan": await plan_for(session, today_d),
+        "history": await history(session, end=today_d),
         "photos": [
             {
                 "id": ph.id,

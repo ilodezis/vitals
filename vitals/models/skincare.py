@@ -13,6 +13,7 @@ Daily tables, all ``InsightsMixin`` (domain='skincare'):
   * ``skincare_observations`` — graded skin state (inflammation 1-5, PIH 1-5),
     zone map + notes.
   * ``skincare_photos`` — the face photo diary, like the weight's progress photos.
+  * ``skincare_notes`` — a comment on one slot of one day, above its checklist.
 """
 from __future__ import annotations
 
@@ -90,7 +91,15 @@ class SkincareProduct(Base, TimestampMixin):
     type: Mapped[str] = mapped_column(String(64), nullable=False)  # e.g., "Ретиноид", "Азелаин"
     active_ingredient: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # How to apply it. ``usage_instructions`` holds for every slot; the per-slot
+    # ones replace it in that slot, for a product applied differently morning
+    # and evening (a cream thin under SPF, thick over a retinoid).
     usage_instructions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    usage_morning: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    usage_evening: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Its place in the order of application (cleanser 1, active 2, cream 3).
+    # Null = no place given: after the numbered ones, by name.
+    step: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     default_time: Mapped[str] = mapped_column(
         String(32), nullable=False, server_default=text("'evening'")
     )  # morning, evening, both
@@ -127,6 +136,21 @@ class SkincareCheck(Base, InsightsMixin, TimestampMixin):
     # set even if the catalog entry has been re-typed since.
     active_flag: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     done_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class SkincareNote(Base, InsightsMixin, TimestampMixin):
+    """A comment on one slot of one day — «ретиноид сегодня пропусти» — shown
+    above that slot's checklist in the app and in the Telegram reminder."""
+
+    __tablename__ = "skincare_notes"
+    __table_args__ = (
+        insights_index(__tablename__),
+        UniqueConstraint("date", "slot", name="uq_skincare_notes_day_slot"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slot: Mapped[str] = mapped_column(String(16), nullable=False)  # morning | evening
+    text: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class SkincarePhoto(Base, InsightsMixin, TimestampMixin):

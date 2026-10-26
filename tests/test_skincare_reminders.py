@@ -1,9 +1,10 @@
 """The skincare checklist in Telegram.
 
-The two promises that matter: the checklist always goes out at its time — a
-spent daily budget or quiet hours must not eat it — and a tap under it lands on
-the day it was sent for and redraws the message from what is stored, so the
-chat and the app never disagree about what was done.
+The promises that matter: the checklist always goes out at its time — a spent
+daily budget or quiet hours must not eat it; a reminder after midnight is about
+the evening before, not a new day; and a tap under it lands on the day it was
+sent for and redraws the message from what is stored, so the chat and the app
+never disagree about what was done.
 """
 from __future__ import annotations
 
@@ -47,12 +48,17 @@ async def skincare_on(db_session):
     await db_session.commit()
 
 
-async def _product(db_session, name, *, time="evening", flag=None):
+async def _product(db_session, name, *, time="evening", flag=None, **fields):
     row = await skincare_service.add_product(
-        db_session, name=name, type="test", default_time=time, schedule_days=[3], active_flag=flag
+        db_session, name=name, type="test", default_time=time, schedule_days=[3],
+        active_flag=flag, **fields,
     )
     await db_session.commit()
     return row
+
+
+def _labels(message: dict) -> list[str]:
+    return [label for label, _ in message["buttons"]]
 
 
 def _tap(data: str, message_id: int = 901, update_id: int = 1) -> dict:
@@ -74,7 +80,9 @@ async def test_evening_checklist_lists_the_plan_with_a_button_each(db_session):
 
     assert row is not None and row.category == delivery.CATEGORY_SKINCARE
     msg = notifier.sent[0]
-    assert msg["text"].splitlines() == ["Вечерний уход · ср 21.10", "⬜ Дифферин", "⬜ Крем"]
+    # The checklist is the keyboard; the text doesn't repeat it.
+    assert msg["text"] == "🌙 Вечерний уход · ср 21.10"
+    assert _labels(msg) == ["⬜ Дифферин", "⬜ Крем", reminders.ALL_BUTTON]
     payloads = [p for _, p in msg["buttons"]]
     assert payloads == [
         f"sk:2026-10-21:evening:{a.id}",
@@ -89,7 +97,7 @@ async def test_it_spends_no_budget_and_ignores_quiet_hours(db_session):
     the checklist still goes out."""
     await prefs.set_prefs(db_session, {"daily_budget": 1, "quiet_start": "02:00", "quiet_end": "10:00"})
     await _product(db_session, "Крем")
-    night = WED.replace(hour=3)
+    night = WED.replace(hour=3) + timedelta(days=1)  # Wednesday's night, Thursday's date
     db_session.add(
         Notification(sent_at=night, category=delivery.CATEGORY_NUDGE, channel="telegram", payload={})
     )
@@ -152,13 +160,13 @@ async def test_a_tap_ticks_and_redraws_and_a_second_tap_unticks(db_session):
     assert notifier.toasts == ["Отмечено"]
     edit = notifier.edits[-1]
     assert edit["id"] == "901"
-    assert "✅ Дифферин" in edit["text"] and "⬜ Крем" in edit["text"]
+    assert _labels(edit) == ["✅ Дифферин", "⬜ Крем"]
     assert (await skincare_service.get_log(db_session, WED.date())).retinoid is True
 
     await inbound.handle_update(db_session, _tap(data, update_id=2), notifier=notifier)
     await db_session.commit()
     assert notifier.toasts[-1] == "Снял отметку"
-    assert "⬜ Дифферин" in notifier.edits[-1]["text"]
+    assert "⬜ Дифферин" in _labels(notifier.edits[-1])
 
 
 @pytest.mark.usefixtures("skincare_on")
@@ -170,9 +178,10 @@ async def test_all_done_ticks_the_rest_and_says_so(db_session):
     await inbound.handle_update(db_session, _tap("sk:2026-10-21:evening:all"), notifier=notifier)
     await db_session.commit()
 
+    # Everything ticked: the message folds into its header, the keyboard goes.
     edit = notifier.edits[-1]
-    assert reminders.ALL_DONE_LINE in edit["text"]
-    assert reminders.ALL_BUTTON not in [label for label, _ in edit["buttons"]]
+    assert edit["text"] == f"🌙 Вечерний уход · ср 21.10 {reminders.DONE_SUFFIX}"
+    assert edit["buttons"] == []
     plan = await skincare_service.plan_for(db_session, WED.date())
     assert all(i["done"] for i in plan["evening"])
 
@@ -221,6 +230,7 @@ async def test_a_tap_on_a_deleted_product_does_nothing(db_session):
 @pytest.mark.usefixtures("skincare_on")
 async def test_a_tick_in_the_app_redraws_the_sent_message(db_session):
     p = await _product(db_session, "Крем")
+    await _product(db_session, "Сыворотка")
     notifier = FakeNotifier()
     await reminders.send_slot(db_session, notifier, "evening", now=WED)
     await skincare_service.set_check(
@@ -232,7 +242,7 @@ async def test_a_tick_in_the_app_redraws_the_sent_message(db_session):
 
     journal = (await db_session.execute(select(Notification))).scalars().all()
     assert notifier.edits[-1]["id"] == journal[0].external_id
-    assert "✅ Крем" in notifier.edits[-1]["text"]
+    assert "✅ Крем" in _labels(notifier.edits[-1])
 
 
 async def test_sync_without_a_sent_message_is_a_no_op(db_session):
@@ -246,3 +256,77 @@ def test_parse_rejects_what_it_cannot_apply():
     assert reminders.parse("sk:2026-10-21:evening:x") is None
     assert reminders.parse("sk:not-a-date:evening:1") is None
     assert reminders.parse("sk:2026-10-21:evening:all")[2] is None
+
+
+# ── The routine day ──────────────────────────────────────────────────────────
+@pytest.mark.usefixtures("skincare_on")
+async def test_after_midnight_the_evening_reminder_is_about_the_evening_before(db_session):
+    """01:00 on Thursday is still Wednesday's evening: Wednesday's products, a
+    Wednesday header, Wednesday in every button — and a tap lands there."""
+    p = await _product(db_session, "Дифферин", flag="retinoid")
+    notifier = FakeNotifier()
+    one_am = datetime(2026, 10, 22, 1, 0)
+
+    await reminders.send_slot(db_session, notifier, "evening", now=one_am)
+
+    msg = notifier.sent[0]
+    assert msg["text"].startswith("🌙 Вечерний уход · ср 21.10")
+    assert msg["buttons"][0][1] == f"sk:2026-10-21:evening:{p.id}"
+
+
+@pytest.mark.usefixtures("skincare_on")
+async def test_the_day_end_is_the_owners_setting(db_session):
+    """With the day ending at midnight, 01:00 Thursday is Thursday — and the
+    Wednesday-only product isn't on it."""
+    await prefs.set_prefs(db_session, {"day_end": "00:00"})
+    await _product(db_session, "Дифферин")
+    notifier = FakeNotifier()
+
+    assert await reminders.send_slot(db_session, notifier, "evening", now=datetime(2026, 10, 22, 1, 0)) is None
+
+
+# ── How, in what order, and the day's note ───────────────────────────────────
+@pytest.mark.usefixtures("skincare_on")
+async def test_the_message_says_how_to_apply_what_is_still_open(db_session):
+    await _product(db_session, "Крем", usage_instructions="тонко", usage_evening="толстым слоем", step=3)
+    ret = await _product(db_session, "Дифферин", usage_instructions="горошина на сухую кожу", step=2)
+    await _product(db_session, "Умывалка", step=1)
+    notifier = FakeNotifier()
+
+    await reminders.send_slot(db_session, notifier, "evening", now=WED)
+
+    msg = notifier.sent[0]
+    # Buttons in the order of application; the evening's own instructions win.
+    assert _labels(msg)[:3] == ["⬜ Умывалка", "⬜ Дифферин", "⬜ Крем"]
+    assert msg["text"].splitlines() == [
+        "🌙 Вечерний уход · ср 21.10",
+        "",
+        "Дифферин — горошина на сухую кожу",
+        "Крем — толстым слоем",
+    ]
+
+    # Once applied, how to apply it is no longer worth a line.
+    await inbound.handle_update(
+        db_session, _tap(f"sk:2026-10-21:evening:{ret.id}"), notifier=notifier
+    )
+    assert "Дифферин —" not in notifier.edits[-1]["text"]
+
+
+@pytest.mark.usefixtures("skincare_on")
+async def test_the_days_note_heads_the_message_and_a_late_note_redraws_it(db_session):
+    await _product(db_session, "Дифферин")
+    await _product(db_session, "Крем")
+    notifier = FakeNotifier()
+    await reminders.send_slot(db_session, notifier, "evening", now=WED)
+    assert reminders.NOTE_MARK not in notifier.sent[0]["text"]
+
+    await skincare_service.set_note(
+        db_session, on_date=WED.date(), slot="evening", text="Щёки раздражены — ретиноид только на лоб"
+    )
+    await db_session.commit()
+    await reminders.sync_sent(db_session, notifier, WED.date(), "evening")
+
+    assert notifier.edits[-1]["text"].splitlines()[:2] == [
+        "🌙 Вечерний уход · ср 21.10",
+        "💬 Щёки раздражены — ретиноид только на лоб",
+    ]

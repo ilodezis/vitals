@@ -1464,15 +1464,27 @@ async def get_hrt_cycles() -> dict:
 # same conflict check and sets the same day flags the engine reads.
 SKINCARE_RANGE_MAX_DAYS = 31
 _SKINCARE_TIMES = ("morning", "evening", "both")
-_SKINCARE_CLEARABLE = ("active_ingredient", "description", "usage_instructions", "active_flag")
+_SKINCARE_CLEARABLE = (
+    "active_ingredient", "description", "usage_instructions", "usage_morning",
+    "usage_evening", "step", "active_flag",
+)
+_SKINCARE_STEP_RANGE = (1, 99)
 
 
 def _skincare_schedule(
-    default_time: Optional[str], schedule_days: Optional[list[int]], active_flag: Optional[str]
+    default_time: Optional[str],
+    schedule_days: Optional[list[int]],
+    active_flag: Optional[str],
+    step: Optional[int] = None,
 ) -> None:
     """Reject what the app's form can't produce: an unknown slot, a weekday
-    outside 0..6, a conflict flag the engine has no rule key for."""
+    outside 0..6, a conflict flag the engine has no rule key for, a step outside
+    1..99."""
     from vitals.services import skincare_service
+
+    low, high = _SKINCARE_STEP_RANGE
+    if step is not None and not low <= step <= high:
+        raise ValueError(f"step must be between {low} and {high}")
 
     if default_time is not None and default_time not in _SKINCARE_TIMES:
         raise ValueError(f"default_time must be one of {', '.join(_SKINCARE_TIMES)}")
@@ -1496,21 +1508,31 @@ async def get_skincare_routine(
     runs to today; at most 31 days), with what was ticked done. Call this first for anything about the routine —
     "what do I put on tonight", "did I do the morning", "add Х to Tuesdays".
 
-    ``products`` — the whole catalog, products in use and switched off: ``id``,
-    ``name``, ``type``, ``active_ingredient``, ``description``,
-    ``usage_instructions``, ``default_time`` (morning / evening / both),
-    ``schedule_days`` (weekday numbers: Monday=1 … Saturday=6, Sunday=0),
-    ``active`` (false = switched off: kept in the catalog, never planned) and
-    ``active_flag`` (the conflict-engine key ticking it sets — one of ``flags``;
-    absent = a product no rule concerns, like a cleanser).
+    ``today`` is the owner's routine day, not the calendar: until the day ends
+    (``day_end`` in the settings, 05:00 by default) it is still the evening before
+    — at 01:00 "tonight" means the date ``today`` says.
+
+    ``products`` — the whole catalog, products in use and switched off, in the
+    order of application: ``id``, ``name``, ``type``, ``active_ingredient``,
+    ``description``, ``usage_instructions`` (how to apply it) and
+    ``usage_morning`` / ``usage_evening`` (how in that slot, when different),
+    ``step`` (place in the order of application), ``default_time`` (morning /
+    evening / both), ``schedule_days`` (weekday numbers: Monday=1 … Saturday=6,
+    Sunday=0), ``active`` (false = switched off: kept in the catalog, never
+    planned) and ``active_flag`` (the conflict-engine key ticking it sets — one of
+    ``flags``; absent = a product no rule concerns, like a cleanser).
 
     ``days`` — newest first, each with ``morning`` and ``evening`` lists of
-    ``{product_id, name, flag, planned, done, done_at}``; ``planned: false`` marks
-    a product ticked on a day it wasn't scheduled. The ``product_id`` here is what
-    ``set_skincare_check`` and ``update_skincare_product`` take. READ tool."""
+    ``{product_id, name, flag, how, planned, done, done_at}`` and ``notes``
+    (``{slot: text}`` for the slots with a ``set_skincare_note``); ``planned:
+    false`` marks a product ticked on a day it wasn't scheduled. The
+    ``product_id`` here is what ``set_skincare_check`` and
+    ``update_skincare_product`` take. READ tool."""
     from vitals.services import skincare_service
 
-    today = today_local()
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        today = await skincare_service.today(session)
     start = _parse_date(start_date, field="start_date")
     end = _parse_date(end_date, field="end_date")
     if start is None and end is None:
@@ -1524,7 +1546,6 @@ async def get_skincare_routine(
     if (end - start).days >= SKINCARE_RANGE_MAX_DAYS:
         return {"error": f"at most {SKINCARE_RANGE_MAX_DAYS} days per call — narrow the range"}
 
-    session_factory = get_session_factory()
     async with session_factory() as session:
         products = await skincare_service.list_products(session)
         return {
@@ -1546,10 +1567,19 @@ async def add_skincare_product(
     active_flag: Optional[str] = None,
     description: Optional[str] = None,
     usage_instructions: Optional[str] = None,
+    usage_morning: Optional[str] = None,
+    usage_evening: Optional[str] = None,
+    step: Optional[int] = None,
     active: bool = True,
 ) -> dict:
     """Adds a product to the skincare catalog — from then on it is planned on its
     days and shows on the checklist (app and Telegram).
+
+    ``usage_instructions`` is how to apply it, one short line («горошина на сухую
+    кожу, через 20 мин после умывания») — printed under the product in the
+    reminder. ``usage_morning`` / ``usage_evening`` replace it in that slot for a
+    product applied differently morning and evening. ``step`` is its place in
+    the order of application, 1..99 (cleanser 1, active 2, cream 3).
 
     ``type`` is a short free-text kind ("Ретиноид", "Крем", "Умывалка").
     ``default_time`` is morning, evening or both. ``schedule_days`` are weekday
@@ -1566,7 +1596,7 @@ async def add_skincare_product(
         return {"error": "name and type are required"}
     days = list(range(7)) if schedule_days is None else sorted(set(schedule_days))
     try:
-        _skincare_schedule(default_time, days, active_flag)
+        _skincare_schedule(default_time, days, active_flag, step)
     except ValueError as e:
         return {"error": str(e)}
 
@@ -1575,6 +1605,7 @@ async def add_skincare_product(
         row = await skincare_service.add_product(
             session, name=name, type=type, active_ingredient=active_ingredient,
             description=description, usage_instructions=usage_instructions,
+            usage_morning=usage_morning, usage_evening=usage_evening, step=step,
             default_time=default_time, schedule_days=days, active=active,
             active_flag=active_flag,
         )
@@ -1594,6 +1625,9 @@ async def update_skincare_product(
     active_flag: Optional[str] = None,
     description: Optional[str] = None,
     usage_instructions: Optional[str] = None,
+    usage_morning: Optional[str] = None,
+    usage_evening: Optional[str] = None,
+    step: Optional[int] = None,
     active: Optional[bool] = None,
     clear: Optional[list[str]] = None,
 ) -> dict:
@@ -1602,11 +1636,16 @@ async def update_skincare_product(
     the full new list, Monday=1 … Sunday=0; ``default_time`` morning / evening /
     both), to switch a product off or back on (``active=False`` / ``True`` — it
     stays in the catalog with its history, just is no longer planned; prefer this
-    over deleting), or to correct its conflict flag.
+    over deleting), to correct its conflict flag, or to say how and in what order
+    it is applied: ``usage_instructions`` (one line, shown under it in the
+    reminder), ``usage_morning`` / ``usage_evening`` (that slot only, when it
+    differs), ``step`` (1..99, place in the order of application). For something
+    about one day only («сегодня пропусти»), use ``set_skincare_note`` instead.
 
-    To empty a text field or remove the conflict flag, name it in ``clear``
-    (any of active_ingredient, description, usage_instructions, active_flag).
-    Ticks already recorded keep the flag they were made with. WRITE tool."""
+    To empty a field or remove the conflict flag, name it in ``clear`` (any of
+    active_ingredient, description, usage_instructions, usage_morning,
+    usage_evening, step, active_flag). Ticks already recorded keep the flag they
+    were made with. WRITE tool."""
     from vitals.models import SkincareProduct
     from vitals.services import skincare_service
 
@@ -1616,7 +1655,7 @@ async def update_skincare_product(
         return {"error": f"cannot clear {unknown} — clearable: {', '.join(_SKINCARE_CLEARABLE)}"}
     days = sorted(set(schedule_days)) if schedule_days is not None else None
     try:
-        _skincare_schedule(default_time, days, active_flag)
+        _skincare_schedule(default_time, days, active_flag, step)
     except ValueError as e:
         return {"error": str(e)}
     if name is not None and not name.strip() or type is not None and not type.strip():
@@ -1629,7 +1668,8 @@ async def update_skincare_product(
             name=name.strip() if name else None, type=type.strip() if type else None,
             default_time=default_time, schedule_days=days,
             active_ingredient=active_ingredient, active_flag=active_flag,
-            description=description, usage_instructions=usage_instructions, active=active,
+            description=description, usage_instructions=usage_instructions,
+            usage_morning=usage_morning, usage_evening=usage_evening, step=step, active=active,
         )
         if merged is None:
             return {"error": f"Skincare product {product_id} not found"}
@@ -1658,7 +1698,8 @@ async def set_skincare_check(
     ``slot`` is morning or evening. ``product_id`` comes from
     ``get_skincare_routine``; leave it out (with ``done=True``) to tick everything
     still open in that slot — the "all done" button. ``done=False`` unticks one
-    product. ``on_date`` defaults to today; any past date works for catching up.
+    product. ``on_date`` defaults to the routine day (at 01:00, the evening
+    before); any past date works for catching up.
     A product can be ticked on a day it isn't scheduled — it then shows as
     ``planned: false``. Idempotent: ticking twice records one tick.
 
@@ -1675,10 +1716,10 @@ async def set_skincare_check(
         return {"error": f"slot must be one of {', '.join(skincare_service.SLOTS)}"}
     if product_id is None and not done:
         return {"error": "a whole slot can only be ticked, not unticked — pass product_id"}
-    parsed_date = _parse_date(on_date, today_local(), field="on_date")
 
     session_factory = get_session_factory()
     async with session_factory() as session:
+        parsed_date = _parse_date(on_date, await skincare_service.today(session), field="on_date")
         try:
             if product_id is None:
                 violations = await skincare_service.complete_slot(
@@ -1712,6 +1753,48 @@ async def set_skincare_check(
         if violations:
             result["warnings"] = [v.to_dict() for v in violations]
         return result
+
+
+@mcp.tool()
+@gated("skincare")
+async def set_skincare_note(slot: str, text: str, on_date: Optional[str] = None) -> dict:
+    """Leaves a note on one slot of one day — what to do differently that time:
+    «щёки раздражены — ретиноид только на лоб», «после пилинга без кислот». Shown
+    above that slot's checklist in the app and at the top of its Telegram
+    reminder (a reminder already sent is redrawn). One note per slot and day:
+    writing again replaces it, empty ``text`` removes it. ``slot`` is morning or
+    evening; ``on_date`` (YYYY-MM-DD) defaults to the routine day. How a product
+    is applied every time belongs in its ``usage_instructions`` instead. WRITE
+    tool. Returns the day's plan with its notes."""
+    from vitals.services import skincare_service
+    from vitals.services.proactive import channels
+    from vitals.services.proactive import skincare as skincare_reminders
+
+    if slot not in skincare_service.SLOTS:
+        return {"error": f"slot must be one of {', '.join(skincare_service.SLOTS)}"}
+
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        parsed_date = _parse_date(on_date, await skincare_service.today(session), field="on_date")
+        try:
+            await skincare_service.set_note(
+                session, on_date=parsed_date, slot=slot, text=text, source=Source.MCP.value
+            )
+        except ValueError as e:
+            return {"error": str(e)}
+        await session.commit()
+
+        try:
+            await skincare_reminders.sync_sent(
+                session, channels.build_notifier(), parsed_date, slot
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("mcp: could not sync the skincare reminder", exc_info=True)
+
+        return {
+            "date": parsed_date.isoformat(),
+            **await skincare_service.plan_for(session, parsed_date),
+        }
 
 
 # ── Body measurement tools ──────────────────────────────────────────────────

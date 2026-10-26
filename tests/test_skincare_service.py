@@ -100,7 +100,11 @@ async def test_observation_crud(db_session):
 
 async def test_resolve_today(db_session):
     conflict_registrations.register_all_resolvers()
-    await skincare_service.upsert_log(db_session, on_date=today_local(), peel=True)
+    # The routine day, not the calendar one: between midnight and the day end
+    # they differ, and "today's checklist" is the routine day's.
+    await skincare_service.upsert_log(
+        db_session, on_date=await skincare_service.today(db_session), peel=True
+    )
     await db_session.commit()
     items = await skincare_service.resolve_today(db_session)
     assert items and items[0]["peel"] is True

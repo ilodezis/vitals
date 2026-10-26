@@ -16,7 +16,7 @@ the zone) — production reads the env once.
 from __future__ import annotations
 
 import os
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -52,6 +52,17 @@ def now_local() -> datetime:
 def today_local() -> date:
     """Current local calendar date."""
     return now_local().date()
+
+
+def day_of(moment: datetime, day_end: time) -> date:
+    """The day ``moment`` belongs to when the day ends at ``day_end`` instead of at
+    midnight: 01:00 with the day ending at 05:00 is still last night, not the
+    morning of a new day. Calendar dates stay what ``today_local`` says — this is
+    only for the routines a person runs on their own clock (a 1 a.m. evening
+    skincare round)."""
+    if moment.time() < day_end:
+        return moment.date() - timedelta(days=1)
+    return moment.date()
 
 
 def to_local_naive(dt: Optional[datetime]) -> Optional[datetime]:

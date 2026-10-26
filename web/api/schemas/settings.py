@@ -166,6 +166,7 @@ class ProactiveSettings(BaseModel):
     evening_time: str
     skincare_morning_time: str
     skincare_evening_time: str
+    day_end: str
     quiet_start: str
     quiet_end: str
     daily_budget: int
@@ -184,6 +185,7 @@ class ProactiveUpdate(BaseModel):
     evening_time: Optional[str] = None
     skincare_morning_time: Optional[str] = None
     skincare_evening_time: Optional[str] = None
+    day_end: Optional[str] = None
     quiet_start: Optional[str] = None
     quiet_end: Optional[str] = None
     daily_budget: Optional[int] = None

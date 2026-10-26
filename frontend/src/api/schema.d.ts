@@ -1952,6 +1952,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/skincare/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Skincare Note
+         * @description Write the note on one slot of a day (empty text removes it). Returns that
+         *     day's plan as it now stands.
+         */
+        put: operations["set_skincare_note"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/skincare/observations": {
         parameters: {
             query?: never;
@@ -5170,6 +5191,8 @@ export interface components {
             brief_time: string;
             /** Daily Budget */
             daily_budget: number;
+            /** Day End */
+            day_end: string;
             /** Evening Time */
             evening_time: string;
             /** Garmin Sync Hours */
@@ -5209,6 +5232,8 @@ export interface components {
             brief_time?: string | null;
             /** Daily Budget */
             daily_budget?: number | null;
+            /** Day End */
+            day_end?: string | null;
             /** Evening Time */
             evening_time?: string | null;
             /** Garmin Sync Hours */
@@ -5891,6 +5916,13 @@ export interface components {
              * @default []
              */
             morning: components["schemas"]["SkincarePlanItem"][];
+            /**
+             * Notes
+             * @default {}
+             */
+            notes: {
+                [key: string]: string;
+            };
         };
         /** SkincareHistoryDay */
         SkincareHistoryDay: {
@@ -5906,6 +5938,13 @@ export interface components {
              * @default []
              */
             morning: components["schemas"]["SkincarePlanItem"][];
+            /**
+             * Notes
+             * @default {}
+             */
+            notes: {
+                [key: string]: string;
+            };
         };
         /** SkincareLogCreate */
         SkincareLogCreate: {
@@ -5998,6 +6037,21 @@ export interface components {
              */
             vitaminC: boolean;
         };
+        /**
+         * SkincareNoteUpdate
+         * @description Write the note on one slot of a day; empty text removes it.
+         */
+        SkincareNoteUpdate: {
+            /** Date */
+            date: string;
+            /** Slot */
+            slot: string;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+        };
         /** SkincareObservationCreate */
         SkincareObservationCreate: {
             /** Date */
@@ -6062,6 +6116,8 @@ export interface components {
             doneAt?: string | null;
             /** Flag */
             flag?: string | null;
+            /** How */
+            how?: string | null;
             /** Name */
             name: string;
             /**
@@ -6097,10 +6153,16 @@ export interface components {
              * @default []
              */
             scheduleDays: number[];
+            /** Step */
+            step?: number | null;
             /** Type */
             type: string;
+            /** Usageevening */
+            usageEvening?: string | null;
             /** Usageinstructions */
             usageInstructions?: string | null;
+            /** Usagemorning */
+            usageMorning?: string | null;
         };
         /** SkincareProductCreated */
         SkincareProductCreated: {
@@ -6148,6 +6210,8 @@ export interface components {
              * @default []
              */
             scheduleDays: number[];
+            /** Step */
+            step?: number | null;
             /**
              * Time
              * @default evening
@@ -6155,8 +6219,12 @@ export interface components {
             time: string;
             /** Type */
             type: string;
+            /** Usageevening */
+            usageEvening?: string | null;
             /** Usageinstructions */
             usageInstructions?: string | null;
+            /** Usagemorning */
+            usageMorning?: string | null;
             /** Use */
             use?: string | null;
         };
@@ -6176,10 +6244,16 @@ export interface components {
             name?: string | null;
             /** Scheduledays */
             scheduleDays?: number[] | null;
+            /** Step */
+            step?: number | null;
             /** Type */
             type?: string | null;
+            /** Usageevening */
+            usageEvening?: string | null;
             /** Usageinstructions */
             usageInstructions?: string | null;
+            /** Usagemorning */
+            usageMorning?: string | null;
         };
         /** SkincareRuleItem */
         SkincareRuleItem: {
@@ -6241,7 +6315,8 @@ export interface components {
             /**
              * @default {
              *       "evening": [],
-             *       "morning": []
+             *       "morning": [],
+             *       "notes": {}
              *     }
              */
             plan: components["schemas"]["SkincareDayPlan"];
@@ -12524,6 +12599,75 @@ export interface operations {
             };
         };
     };
+    set_skincare_note: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkincareNoteUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkincareDayPlan"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthenticatedBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_skincare_observation: {
         parameters: {
             query?: never;
@@ -14474,4 +14618,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: 2e74c451c27901e61db7309c15f8bf1bc77195bb58713d1cdd7a8a13c7d0e070
+// openapi.json sha256: 6132159244b7edcbaf1e03363bb8c5afb970ceeb0d588a07ea9e5017bb48942d

@@ -508,3 +508,62 @@ async def test_event_range_can_be_collapsed_to_one_day():
     event = await mcp_router.log_event(title="Поездка", on_date="2026-10-01", end_date="2026-10-05")
     edited = await mcp_router.update_event(event["id"], clear=["end_date"])
     assert "end_date" not in edited and edited["date"] == "2026-10-01"
+
+
+
+# ── How, in what order, and notes on a day ──────────────────────────────────
+async def test_how_to_apply_and_the_order_are_tool_fields():
+    cream = await mcp_router.add_skincare_product(
+        name="Крем", type="Крем", schedule_days=[3], step=3,
+        usage_instructions="тонко", usage_evening="толстым слоем поверх",
+    )
+    ret = await mcp_router.add_skincare_product(
+        name="Адапален", type="Ретиноид", schedule_days=[3], step=2,
+        usage_instructions="горошина на сухую кожу",
+    )
+    day = (await mcp_router.get_skincare_routine(WED.isoformat(), WED.isoformat()))["days"][0]
+    assert [(i["name"], i["how"]) for i in day["evening"]] == [
+        ("Адапален", "горошина на сухую кожу"),
+        ("Крем", "толстым слоем поверх"),
+    ]
+
+    moved = await mcp_router.update_skincare_product(ret["id"], step=4, usage_morning="не наносить")
+    assert moved["step"] == 4 and moved["usage_instructions"] == "горошина на сухую кожу"
+    cleared = await mcp_router.update_skincare_product(cream["id"], clear=["usage_evening", "step"])
+    assert "usage_evening" not in cleared and "step" not in cleared
+    assert cleared["usage_instructions"] == "тонко"
+
+    assert "step" in (await mcp_router.update_skincare_product(ret["id"], step=0))["error"]
+    assert "step" in (await mcp_router.add_skincare_product(name="X", type="Y", step=100))["error"]
+
+
+async def test_a_note_on_a_day_from_the_conversation():
+    await mcp_router.add_skincare_product(name="Адапален", type="Ретиноид", schedule_days=[3])
+
+    written = await mcp_router.set_skincare_note(
+        "evening", "Щёки раздражены — ретиноид только на лоб", on_date=WED.isoformat()
+    )
+    assert written["date"] == WED.isoformat()
+    assert written["notes"] == {"evening": "Щёки раздражены — ретиноид только на лоб"}
+    day = (await mcp_router.get_skincare_routine(WED.isoformat(), WED.isoformat()))["days"][0]
+    assert day["notes"]["evening"].startswith("Щёки")
+
+    removed = await mcp_router.set_skincare_note("evening", "", on_date=WED.isoformat())
+    assert removed["notes"] == {}
+    assert "slot" in (await mcp_router.set_skincare_note("noon", "x"))["error"]
+    assert "at most" in (await mcp_router.set_skincare_note("evening", "x" * 501))["error"]
+
+
+async def test_after_midnight_the_tools_default_to_the_evening_before():
+    """«Отметь вечерний уход» at 01:00 is about the evening that is ending."""
+    from freezegun import freeze_time
+
+    p = await mcp_router.add_skincare_product(name="Адапален", type="Ретиноид", schedule_days=[3])
+    with freeze_time("2026-10-21 22:00:00"):  # 01:00 on Thursday in Chisinau
+        routine = await mcp_router.get_skincare_routine()
+        ticked = await mcp_router.set_skincare_check("evening", p["id"])
+        noted = await mcp_router.set_skincare_note("evening", "без кислот")
+
+    assert routine["today"] == WED.isoformat()
+    assert ticked["date"] == WED.isoformat() and ticked["evening"][0]["done"]
+    assert noted["date"] == WED.isoformat()

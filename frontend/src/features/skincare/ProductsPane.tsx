@@ -18,6 +18,11 @@ import type { SkincareProductItem, SkincareView } from './types'
 export type Editing = SkincareProductItem | 'new' | null
 
 const TIMES = ['morning', 'evening', 'both'] as const
+const SLOT_USAGE = [
+  ['morning', 'usageMorning'],
+  ['evening', 'usageEvening'],
+] as const
+const STEP_MAX = 99
 
 /** The catalog: what is applied on which day, and each product's card. */
 export function ProductsPane({ view, editing, setEditing }: { view: SkincareView; editing: Editing; setEditing: (e: Editing) => void }) {
@@ -148,6 +153,16 @@ function ProductList({ view, onEdit }: { view: SkincareView; onEdit: (p: Skincar
                     <span>{usage}</span>
                   </p>
                 )}
+                {SLOT_USAGE.map(([slot, key]) =>
+                  p[key] ? (
+                    <p key={slot} className="m sk-use">
+                      <Icon name={slot === 'morning' ? 'today' : 'pulse'} />
+                      <span>
+                        {t(`app.skincare.${slot}`)}: {p[key]}
+                      </span>
+                    </p>
+                  ) : null,
+                )}
               </div>
             </Disclosure>
           )
@@ -168,6 +183,9 @@ function ProductForm({ product, flags, onClose }: { product: SkincareProductItem
   const [flag, setFlag] = useState(product?.activeFlag ?? '')
   const [description, setDescription] = useState(product?.description || product?.desc || '')
   const [usage, setUsage] = useState(product?.usageInstructions || product?.usage_instructions || product?.use || '')
+  const [usageMorning, setUsageMorning] = useState(product?.usageMorning ?? '')
+  const [usageEvening, setUsageEvening] = useState(product?.usageEvening ?? '')
+  const [step, setStep] = useState(product?.step != null ? String(product.step) : '')
   const [active, setActive] = useState(product === null ? true : product.active || product.on)
 
   const toggleDay = (d: number) => setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort((a, b) => a - b)))
@@ -175,6 +193,11 @@ function ProductForm({ product, flags, onClose }: { product: SkincareProductItem
   const save = async (): Promise<boolean> => {
     if (!name.trim()) {
       toast(t('app.name_required'), { icon: 'warn' })
+      return false
+    }
+    const stepNumber = step.trim() === '' ? null : Number(step)
+    if (stepNumber !== null && !(Number.isInteger(stepNumber) && stepNumber >= 1 && stepNumber <= STEP_MAX)) {
+      toast(t('app.skincare.step_invalid', { max: STEP_MAX }), { icon: 'warn' })
       return false
     }
     const body = {
@@ -186,6 +209,10 @@ function ProductForm({ product, flags, onClose }: { product: SkincareProductItem
       activeFlag: flag || null,
       description: description.trim() || null,
       usageInstructions: usage.trim() || null,
+      step: stepNumber,
+      // The per-slot lines only mean something for a product used in both slots; for any
+      // other they are left as stored.
+      ...(time === 'both' && { usageMorning: usageMorning.trim() || null, usageEvening: usageEvening.trim() || null }),
       active,
     }
     try {
@@ -259,7 +286,25 @@ function ProductForm({ product, flags, onClose }: { product: SkincareProductItem
         </label>
         <label className="field">
           <span className="flabel">{t('app.skincare.instructions')}</span>
-          <textarea className="input" rows={2} value={usage} onChange={(e) => setUsage(e.target.value)} />
+          <textarea className="input" rows={2} placeholder={t('app.skincare.instructions_ph')} value={usage} onChange={(e) => setUsage(e.target.value)} />
+          <span className="fhint">{t('app.skincare.instructions_hint')}</span>
+        </label>
+        {time === 'both' && (
+          <div className="form-g2">
+            <label className="field">
+              <span className="flabel">{t('app.skincare.usage_morning')}</span>
+              <textarea className="input" rows={2} value={usageMorning} onChange={(e) => setUsageMorning(e.target.value)} />
+            </label>
+            <label className="field">
+              <span className="flabel">{t('app.skincare.usage_evening')}</span>
+              <textarea className="input" rows={2} value={usageEvening} onChange={(e) => setUsageEvening(e.target.value)} />
+            </label>
+          </div>
+        )}
+        <label className="field sk-step">
+          <span className="flabel">{t('app.skincare.step')}</span>
+          <input className="input" type="text" inputMode="numeric" value={step} onChange={(e) => setStep(e.target.value)} />
+          <span className="fhint">{t('app.skincare.step_hint')}</span>
         </label>
         <button type="button" className={cx('tgl', active && 'on')} aria-pressed={active} onClick={() => setActive(!active)}>
           <i />

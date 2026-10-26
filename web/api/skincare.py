@@ -1,5 +1,5 @@
 """``/api/v1/skincare`` — Skincare checklist, observations, products, the day's
-done-ticks, and the face photo diary."""
+done-ticks and notes, and the face photo diary."""
 from __future__ import annotations
 
 import asyncio
@@ -21,6 +21,7 @@ from web.api.schemas.skincare import (
     SkincareDayPlan,
     SkincareLogCreate,
     SkincareLogItem,
+    SkincareNoteUpdate,
     SkincareObservationCreate,
     SkincareObservationCreated,
     SkincarePhotoItem,
@@ -154,6 +155,9 @@ async def create_skincare_product(
         active_ingredient=body.active_ingredient,
         description=body.description,
         usage_instructions=body.usage_instructions,
+        usage_morning=body.usage_morning,
+        usage_evening=body.usage_evening,
+        step=body.step,
         default_time=body.default_time,
         schedule_days=body.schedule_days,
         active=body.active,
@@ -184,6 +188,7 @@ async def update_skincare_product(
         raise ValueError("name cannot be empty")
     if not type_val:
         raise ValueError("type cannot be empty")
+    sent = body.model_fields_set
 
     row = await skincare_service.update_product(
         db,
@@ -196,9 +201,10 @@ async def update_skincare_product(
         default_time=body.default_time if body.default_time is not None else existing.default_time,
         schedule_days=body.schedule_days if body.schedule_days is not None else (existing.schedule_days or []),
         active=body.active if body.active is not None else existing.active,
-        active_flag=(
-            body.active_flag if "active_flag" in body.model_fields_set else existing.active_flag
-        ),
+        active_flag=body.active_flag if "active_flag" in sent else existing.active_flag,
+        usage_morning=body.usage_morning if "usage_morning" in sent else existing.usage_morning,
+        usage_evening=body.usage_evening if "usage_evening" in sent else existing.usage_evening,
+        step=body.step if "step" in sent else existing.step,
     )
     await db.commit()
     return SkincareProductItem(
@@ -211,6 +217,9 @@ async def update_skincare_product(
         desc=row.description,
         usage_instructions=row.usage_instructions,
         use=row.usage_instructions,
+        usage_morning=row.usage_morning,
+        usage_evening=row.usage_evening,
+        step=row.step,
         default_time=row.default_time,
         time=row.default_time,
         schedule_days=row.schedule_days or [],
@@ -265,6 +274,24 @@ async def set_skincare_check(
 
     # The reminder already sitting in Telegram shows the same ticks. Best-effort:
     # the tick is committed, and a slow or refused edit must not fail it.
+    try:
+        await skincare_reminders.sync_sent(db, channels.build_notifier(), on_date, body.slot)
+    except Exception:  # noqa: BLE001
+        logger.warning("could not sync the skincare reminder", exc_info=True)
+
+    return SkincareDayPlan.model_validate(await skincare_service.plan_for(db, on_date))
+
+
+@router.put("/notes", response_model=SkincareDayPlan, responses=MUTATION_ERRORS)
+async def set_skincare_note(
+    body: SkincareNoteUpdate, db: AsyncSession = Depends(get_session)
+) -> SkincareDayPlan:
+    """Write the note on one slot of a day (empty text removes it). Returns that
+    day's plan as it now stands."""
+    on_date = date_type.fromisoformat(body.date)
+    await skincare_service.set_note(db, on_date=on_date, slot=body.slot, text=body.text)
+    await db.commit()
+
     try:
         await skincare_reminders.sync_sent(db, channels.build_notifier(), on_date, body.slot)
     except Exception:  # noqa: BLE001

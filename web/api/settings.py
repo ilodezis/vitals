@@ -197,6 +197,7 @@ async def read_settings(
         skincare_evening_time=proactive.get(
             "skincare_evening_time", prefs.DEFAULTS["skincare_evening_time"]
         ),
+        day_end=proactive.get("day_end", prefs.DEFAULTS["day_end"]),
         quiet_start=proactive.get("quiet_start", prefs.DEFAULTS["quiet_start"]),
         quiet_end=proactive.get("quiet_end", prefs.DEFAULTS["quiet_end"]),
         daily_budget=proactive.get("daily_budget", prefs.DEFAULTS["daily_budget"]),
@@ -500,6 +501,8 @@ async def update_proactive(
         raw_prefs["skincare_morning_time"] = body.skincare_morning_time
     if body.skincare_evening_time is not None:
         raw_prefs["skincare_evening_time"] = body.skincare_evening_time
+    if body.day_end is not None:
+        raw_prefs["day_end"] = body.day_end
     if body.quiet_start is not None:
         raw_prefs["quiet_start"] = body.quiet_start
     if body.quiet_end is not None:

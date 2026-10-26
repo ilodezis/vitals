@@ -4,7 +4,8 @@ from __future__ import annotations
 import os
 
 from vitals.models.conflict_rule import ConflictRule
-from vitals.utils.timeutils import today_local
+from vitals.services.proactive import prefs
+from vitals.utils.timeutils import day_of, now_local
 
 URL = "/api/v1/skincare"
 
@@ -13,8 +14,13 @@ FAKE_PNG = (
 )
 
 
+def _today():
+    """The routine day the view is on (the default day end), not the calendar one."""
+    return day_of(now_local(), prefs.as_time(prefs.DEFAULTS["day_end"]))
+
+
 def _today_dow() -> int:
-    return (today_local().weekday() + 1) % 7
+    return (_today().weekday() + 1) % 7
 
 
 async def _create(auth_client, name, *, flag=None, time="evening"):
@@ -41,6 +47,7 @@ async def test_the_view_carries_todays_plan(auth_client):
             "productId": pid,
             "name": "Дифферин",
             "flag": "retinoid",
+            "how": None,
             "planned": True,
             "done": False,
             "doneAt": None,
@@ -54,7 +61,7 @@ async def test_the_view_carries_todays_plan(auth_client):
 
 async def test_tick_and_untick(auth_client):
     pid = await _create(auth_client, "Крем", flag="moisturizer")
-    today = today_local().isoformat()
+    today = _today().isoformat()
 
     r = await auth_client.post(
         f"{URL}/checks", json={"date": today, "slot": "evening", "productId": pid, "done": True}
@@ -73,7 +80,7 @@ async def test_tick_and_untick(auth_client):
 async def test_whole_slot_tick(auth_client):
     await _create(auth_client, "A")
     await _create(auth_client, "B")
-    today = today_local().isoformat()
+    today = _today().isoformat()
     r = await auth_client.post(f"{URL}/checks", json={"date": today, "slot": "evening"})
     assert r.status_code == 200
     assert all(i["done"] for i in r.json()["evening"])
@@ -95,7 +102,7 @@ async def test_conflict_answers_409_and_override_saves(auth_client, db_session):
     await db_session.commit()
     ret = await _create(auth_client, "Дифферин", flag="retinoid")
     peel = await _create(auth_client, "Пилинг", flag="peel")
-    today = today_local().isoformat()
+    today = _today().isoformat()
     tick = {"date": today, "slot": "evening", "done": True}
 
     assert (await auth_client.post(f"{URL}/checks", json={**tick, "productId": ret})).status_code == 200
@@ -109,7 +116,7 @@ async def test_conflict_answers_409_and_override_saves(auth_client, db_session):
 
 
 async def test_bad_slot_and_unknown_product(auth_client):
-    today = today_local().isoformat()
+    today = _today().isoformat()
     r = await auth_client.post(f"{URL}/checks", json={"date": today, "slot": "noon", "productId": 1})
     assert r.status_code == 400
     r = await auth_client.post(f"{URL}/checks", json={"date": today, "slot": "evening", "productId": 999})
@@ -134,7 +141,7 @@ async def test_photos_upload_list_and_delete(auth_client, monkeypatch, tmp_path)
     from web.api import skincare as skincare_api
 
     monkeypatch.setattr(skincare_api, "STATIC_DIR", str(tmp_path))
-    today = today_local().isoformat()
+    today = _today().isoformat()
     files = [
         ("files", ("a.png", FAKE_PNG, "image/png")),
         ("files", ("b.jpg", FAKE_PNG, "image/jpeg")),
@@ -158,7 +165,7 @@ async def test_photos_refuse_non_images_and_too_many(auth_client, monkeypatch, t
     from web.api import skincare as skincare_api
 
     monkeypatch.setattr(skincare_api, "STATIC_DIR", str(tmp_path))
-    today = today_local().isoformat()
+    today = _today().isoformat()
     r = await auth_client.post(
         f"{URL}/photos", data={"date": today}, files=[("files", ("x.html", b"<script>", "text/html"))]
     )
@@ -166,3 +173,40 @@ async def test_photos_refuse_non_images_and_too_many(auth_client, monkeypatch, t
     six = [("files", (f"{i}.png", FAKE_PNG, "image/png")) for i in range(6)]
     r = await auth_client.post(f"{URL}/photos", data={"date": today}, files=six)
     assert r.status_code == 400
+
+
+
+async def test_a_note_written_in_the_app_shows_on_the_days_plan(auth_client):
+    await _create(auth_client, "Крем")
+    today = _today().isoformat()
+
+    r = await auth_client.put(f"{URL}/notes", json={"date": today, "slot": "evening", "text": "без кислот"})
+    assert r.status_code == 200
+    assert r.json()["notes"] == {"evening": "без кислот"}
+    assert (await auth_client.get(URL)).json()["plan"]["notes"] == {"evening": "без кислот"}
+
+    r = await auth_client.put(f"{URL}/notes", json={"date": today, "slot": "evening", "text": ""})
+    assert r.json()["notes"] == {}
+    r = await auth_client.put(f"{URL}/notes", json={"date": today, "slot": "noon", "text": "x"})
+    assert r.status_code in (400, 422)
+
+
+async def test_the_form_sets_and_clears_how_and_the_order(auth_client):
+    pid = await _create(auth_client, "Крем")
+    r = await auth_client.patch(
+        f"{URL}/products/{pid}",
+        json={"usageInstructions": "тонко", "usageEvening": "толстым слоем", "step": 3},
+    )
+    assert r.status_code == 200
+    assert r.json()["usageEvening"] == "толстым слоем" and r.json()["step"] == 3
+    item = (await auth_client.get(URL)).json()["plan"]["evening"][0]
+    assert item["how"] == "толстым слоем"
+
+    # Null clears these; leaving a field out keeps it.
+    r = await auth_client.patch(f"{URL}/products/{pid}", json={"usageEvening": None})
+    assert r.json()["usageEvening"] is None and r.json()["step"] == 3
+    item = (await auth_client.get(URL)).json()["plan"]["evening"][0]
+    assert item["how"] == "тонко"
+
+    r = await auth_client.patch(f"{URL}/products/{pid}", json={"step": 0})
+    assert r.status_code == 422

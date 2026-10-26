@@ -7656,6 +7656,10 @@
             "title": "Daily Budget",
             "type": "integer"
           },
+          "day_end": {
+            "title": "Day End",
+            "type": "string"
+          },
           "evening_time": {
             "title": "Evening Time",
             "type": "string"
@@ -7721,6 +7725,7 @@
           "evening_time",
           "skincare_morning_time",
           "skincare_evening_time",
+          "day_end",
           "quiet_start",
           "quiet_end",
           "daily_budget",
@@ -7757,6 +7762,17 @@
               }
             ],
             "title": "Daily Budget"
+          },
+          "day_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day End"
           },
           "evening_time": {
             "anyOf": [
@@ -9474,6 +9490,14 @@
             },
             "title": "Morning",
             "type": "array"
+          },
+          "notes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "title": "Notes",
+            "type": "object"
           }
         },
         "title": "SkincareDayPlan",
@@ -9500,6 +9524,14 @@
             },
             "title": "Morning",
             "type": "array"
+          },
+          "notes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "title": "Notes",
+            "type": "object"
           }
         },
         "required": [
@@ -9634,6 +9666,30 @@
           "date"
         ],
         "title": "SkincareLogItem",
+        "type": "object"
+      },
+      "SkincareNoteUpdate": {
+        "description": "Write the note on one slot of a day; empty text removes it.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "slot": {
+            "title": "Slot",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "slot"
+        ],
+        "title": "SkincareNoteUpdate",
         "type": "object"
       },
       "SkincareObservationCreate": {
@@ -9853,6 +9909,17 @@
             ],
             "title": "Flag"
           },
+          "how": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "How"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -9937,9 +10004,33 @@
             "title": "Scheduledays",
             "type": "array"
           },
+          "step": {
+            "anyOf": [
+              {
+                "maximum": 99.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          },
           "type": {
             "title": "Type",
             "type": "string"
+          },
+          "usageEvening": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usageevening"
           },
           "usageInstructions": {
             "anyOf": [
@@ -9951,6 +10042,17 @@
               }
             ],
             "title": "Usageinstructions"
+          },
+          "usageMorning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usagemorning"
           }
         },
         "required": [
@@ -10069,6 +10171,17 @@
             "title": "Scheduledays",
             "type": "array"
           },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          },
           "time": {
             "default": "evening",
             "title": "Time",
@@ -10077,6 +10190,17 @@
           "type": {
             "title": "Type",
             "type": "string"
+          },
+          "usageEvening": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usageevening"
           },
           "usageInstructions": {
             "anyOf": [
@@ -10088,6 +10212,17 @@
               }
             ],
             "title": "Usageinstructions"
+          },
+          "usageMorning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usagemorning"
           },
           "use": {
             "anyOf": [
@@ -10191,6 +10326,19 @@
             ],
             "title": "Scheduledays"
           },
+          "step": {
+            "anyOf": [
+              {
+                "maximum": 99.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          },
           "type": {
             "anyOf": [
               {
@@ -10202,6 +10350,17 @@
             ],
             "title": "Type"
           },
+          "usageEvening": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usageevening"
+          },
           "usageInstructions": {
             "anyOf": [
               {
@@ -10212,6 +10371,17 @@
               }
             ],
             "title": "Usageinstructions"
+          },
+          "usageMorning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usagemorning"
           }
         },
         "title": "SkincareProductUpdate",
@@ -10325,7 +10495,8 @@
             "$ref": "#/components/schemas/SkincareDayPlan",
             "default": {
               "evening": [],
-              "morning": []
+              "morning": [],
+              "notes": {}
             }
           },
           "products": {
@@ -19006,6 +19177,85 @@
           }
         },
         "summary": "Delete Skincare Log"
+      }
+    },
+    "/api/v1/skincare/notes": {
+      "put": {
+        "description": "Write the note on one slot of a day (empty text removes it). Returns that\nday's plan as it now stands.",
+        "operationId": "set_skincare_note",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkincareNoteUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkincareDayPlan"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthenticatedBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Skincare Note"
       }
     },
     "/api/v1/skincare/observations": {

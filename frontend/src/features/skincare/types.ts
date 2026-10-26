@@ -8,6 +8,11 @@ export interface SkincareProductItem {
   desc?: string | null
   usageInstructions?: string | null
   use?: string | null
+  /** How to apply it in that slot, when it differs from `usageInstructions`. */
+  usageMorning?: string | null
+  usageEvening?: string | null
+  /** Its place in the order of application; null = after the numbered ones. */
+  step?: number | null
   defaultTime: string
   time: string
   scheduleDays: number[]
@@ -69,6 +74,8 @@ export interface SkincarePlanItem {
   productId: number | null
   name: string
   flag: string | null
+  /** How to apply it in this slot, from the catalog. */
+  how?: string | null
   /** False for a tick on a product that was not scheduled that day. */
   planned: boolean
   done: boolean
@@ -78,6 +85,8 @@ export interface SkincarePlanItem {
 export interface SkincareDayPlan {
   morning: SkincarePlanItem[]
   evening: SkincarePlanItem[]
+  /** The day's note per slot; only the slots that have one. */
+  notes?: Partial<Record<'morning' | 'evening', string>>
 }
 
 export interface SkincareHistoryDay extends SkincareDayPlan {

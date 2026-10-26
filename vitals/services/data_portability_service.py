@@ -67,6 +67,7 @@ from vitals.models.signals import DayContext, Signal
 from vitals.models.skincare import (
     SkincareCheck,
     SkincareLog,
+    SkincareNote,
     SkincareObservation,
     SkincareProduct,
 )
@@ -761,6 +762,10 @@ async def export_llm(
                 "schedule_days": p.schedule_days or None,
                 "active": p.active,
                 "active_flag": p.active_flag,
+                "step": p.step,
+                "usage_instructions": p.usage_instructions,
+                "usage_morning": p.usage_morning,
+                "usage_evening": p.usage_evening,
             }
         )
         for p in sk_products
@@ -773,6 +778,12 @@ async def export_llm(
     out["skincare_checks"] = [
         _compact({"date": c.date.isoformat(), "slot": c.slot, "product": c.product_name})
         for c in sk_checks
+    ]
+    sk_notes = (
+        await session.execute(select(SkincareNote).order_by(SkincareNote.date, SkincareNote.slot))
+    ).scalars().all()
+    out["skincare_notes"] = [
+        _compact({"date": n.date.isoformat(), "slot": n.slot, "text": n.text}) for n in sk_notes
     ]
     sk_obs = (
         await session.execute(select(SkincareObservation).order_by(SkincareObservation.date))

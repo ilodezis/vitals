@@ -3,12 +3,22 @@ off right under the message.
 
 Deterministic on purpose: the list *is* the catalog's schedule for the day
 (``skincare_service.plan_for``), so there is nothing for a model to add. One
-message per slot, each at its own time from the settings card, each with one
-button per product:
+message per slot, each at its own time from the settings card. The checklist is
+the keyboard — one button per product, in the order of application — and the
+text above it holds only what the buttons can't: the day's note and how to
+apply what is still open:
 
-    Вечерний уход · ср 21.10
-    ✅ Дифферин (Ретиноид)
-    ⬜ Увлажняющий крем
+    🌙 Вечерний уход · ср 21.10
+    💬 Щёки раздражены — ретиноид только на лоб
+
+    Дифферин — горошина на сухую кожу
+    [ ⬜ Умывалка ] [ ✅ Дифферин ] [ ⬜ Крем ] [ Всё сделал ]
+
+Once everything is ticked the message folds into its header line, «— готово ✅»,
+and the keyboard goes.
+
+The day is the routine day (``prefs.routine_today``): an evening reminder set
+for 01:00 is about the evening before, and says so in its header.
 
 A tap toggles that product (``sk:<iso date>:<slot>:<product id>``), «Всё
 сделал» ticks whatever is still open (``…:all``). Like the day-context buttons,
@@ -52,13 +62,14 @@ CB_ALL = "all"
 MODULE_KEY = "skincare"
 
 TITLES = {
-    skincare_service.SLOT_MORNING: "Утренний уход",
-    skincare_service.SLOT_EVENING: "Вечерний уход",
+    skincare_service.SLOT_MORNING: "☀️ Утренний уход",
+    skincare_service.SLOT_EVENING: "🌙 Вечерний уход",
 }
 _WEEKDAYS = ("пн", "вт", "ср", "чт", "пт", "сб", "вс")
 MARK_DONE = "✅"
 MARK_OPEN = "⬜"
-ALL_DONE_LINE = "Всё сделано."
+NOTE_MARK = "💬"
+DONE_SUFFIX = "— готово ✅"
 ALL_BUTTON = "Всё сделал"
 
 # Telegram's toast is capped at 200 characters; a long rule message is cut.
@@ -69,25 +80,37 @@ def dedupe_key(on_date: date_type, slot: str) -> str:
     return f"skincare:{on_date.isoformat()}:{slot}"
 
 
-def render(on_date: date_type, slot: str, items: list[dict]) -> tuple[str, list[tuple[str, str]]]:
+def render(
+    on_date: date_type, slot: str, items: list[dict], note: Optional[str] = None
+) -> tuple[str, list[tuple[str, str]]]:
     """The message and its keyboard for one slot of one day."""
     header = f"{TITLES[slot]} · {_WEEKDAYS[on_date.weekday()]} {on_date:%d.%m}"
+    open_items = [i for i in items if not i["done"]]
+    if items and not open_items:
+        return f"{header} {DONE_SUFFIX}", []
+
     lines = [header]
+    if note:
+        lines.append(f"{NOTE_MARK} {note}")
+    how = [f"{i['name']} — {i['how']}" for i in open_items if i.get("how")]
+    if how:
+        lines.append("")
+        lines.extend(how)
+
     buttons: list[tuple[str, str]] = []
     for item in items:
-        mark = MARK_DONE if item["done"] else MARK_OPEN
-        lines.append(f"{mark} {item['name']}")
         if item["product_id"] is not None:
+            mark = MARK_DONE if item["done"] else MARK_OPEN
             buttons.append(
                 (f"{mark} {item['name']}", f"{CB_PREFIX}{on_date.isoformat()}:{slot}:{item['product_id']}")
             )
-    open_items = [i for i in items if not i["done"]]
-    if items and not open_items:
-        lines.append("")
-        lines.append(ALL_DONE_LINE)
-    elif len(open_items) > 1:
+    if len(open_items) > 1:
         buttons.append((ALL_BUTTON, f"{CB_PREFIX}{on_date.isoformat()}:{slot}:{CB_ALL}"))
     return "\n".join(lines), buttons
+
+
+def _render_plan(on_date: date_type, slot: str, plan: dict) -> tuple[str, list[tuple[str, str]]]:
+    return render(on_date, slot, plan[slot], plan["notes"].get(slot))
 
 
 async def reminders_on(session: AsyncSession) -> bool:
@@ -107,16 +130,17 @@ async def send_slot(
     *,
     now: Optional[datetime] = None,
 ) -> Optional[Notification]:
-    """Send today's list for ``slot``. Nothing goes out when nothing is planned,
-    or when all of it was already ticked in the app before the reminder's time."""
+    """Send the routine day's list for ``slot``. Nothing goes out when nothing is
+    planned, or when all of it was already ticked in the app before the
+    reminder's time."""
     if notifier is None or not await reminders_on(session):
         return None
     now = now or now_local()
-    on_date = now.date()
-    items = (await skincare_service.plan_for(session, on_date))[slot]
-    if not any(not i["done"] for i in items):
+    on_date = await prefs.routine_today(session, now)
+    plan = await skincare_service.plan_for(session, on_date)
+    if not any(not i["done"] for i in plan[slot]):
         return None
-    text, buttons = render(on_date, slot, items)
+    text, buttons = _render_plan(on_date, slot, plan)
     return await delivery.send(
         session,
         notifier,
@@ -196,8 +220,7 @@ async def redraw(
     """Rebuild one sent reminder from what is stored for its day. Never raises:
     the tick is already saved, and a refused edit (the text didn't change, the
     message is too old) is not worth failing the update over."""
-    items = (await skincare_service.plan_for(session, on_date))[slot]
-    text, buttons = render(on_date, slot, items)
+    text, buttons = _render_plan(on_date, slot, await skincare_service.plan_for(session, on_date))
     try:
         await notifier.edit(message_id, text, buttons=buttons or None)
     except Exception:
@@ -207,8 +230,9 @@ async def redraw(
 async def sync_sent(
     session: AsyncSession, notifier: Optional[Notifier], on_date: date_type, slot: str
 ) -> None:
-    """After a tick in the app: bring the reminder already in the chat up to date,
-    if one was sent for that slot. A no-op without a channel or a message."""
+    """After a tick or a note in the app or over MCP: bring the reminder already in
+    the chat up to date, if one was sent for that slot. A no-op without a channel
+    or a message."""
     if notifier is None:
         return
     result = await session.execute(
