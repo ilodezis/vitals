@@ -36,6 +36,10 @@ Design notes:
     including ones that had been revoked or had expired — with live snapshots
     behind them. Same mirror rule as the secret settings: what the export won't
     write, the import won't delete or accept.
+  * ``passkeys`` too. Nothing in it is secret — the server holds only public keys
+    — but every row is a way in: a restore that accepted the table would let a
+    crafted backup file plant its own passkey and sign in with no password. And a
+    restore that wiped it would silently drop every passkey the owner enrolled.
 """
 from __future__ import annotations
 
@@ -91,8 +95,9 @@ _SECRET_KEY_MARKERS = ("token", "secret", "password", "api_key", "apikey", "cred
 # docstring). Published doctor reports are outward-facing artifacts with their
 # own lifecycle, not data to round-trip. Raw 10-second environment sensor readings
 # produce millions of rows a year; the hourly summaries (environment_hourly) are
-# kept, while the raw samples stream is omitted from memory dumps.
-_EXCLUDED_TABLES = frozenset({"shared_reports", "environment_samples"})
+# kept, while the raw samples stream is omitted from memory dumps. Passkeys are
+# ways in, and a backup must not be able to add one.
+_EXCLUDED_TABLES = frozenset({"shared_reports", "environment_samples", "passkeys"})
 
 _LABELED_TABLES = (
     "weight_logs", "body_measurements", "progress_photos", "hevy_workouts",

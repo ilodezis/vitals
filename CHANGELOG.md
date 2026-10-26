@@ -8,6 +8,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added — passkeys
+
+Sign in with Face ID, Touch ID or a security key, with no password and no code. Off until `VITALS_PUBLIC_ORIGIN` names the address Vitals is opened at; passkeys are bound to that host.
+
+- **A complete sign-in, not a step after the password.** User verification is required and enforced server-side, so the device has checked a face, fingerprint or PIN before it signs; the TOTP step is skipped. The password (plus 2FA) stays as the way back in.
+- **Sign-in page:** a "Sign in with a passkey" button, and the passkey offered in the username field's autofill (conditional mediation). The `next` of an OAuth consent survives it, so connecting Claude.ai works the same way.
+- **Settings → Security → Passkeys:** the list (name, added, last sign-in, synced or device-bound), adding one, removing one. Where the browser has the Signal API, a removed key is also dropped from the device's keychain.
+- **Challenges are single-use and fail closed** (Redis `GETDEL`, five minutes, tied to the browser by a cookie). With Redis down passkey sign-in is unavailable and the password still works.
+- **Backups neither carry nor accept passkeys** — the table is excluded both ways, like `shared_reports`, so a crafted file can't plant one.
+- New dependency `webauthn==3.0.1` (pinned); migration `0040` adds the `passkeys` table.
+
 ### Changed — MCP reaches everything the app does (80 → 103 tools)
 
 Claude over MCP had fallen behind the screens: the skincare routine moved to a product catalog with morning/evening ticks while the tool surface kept writing the old seven-checkbox log nobody read, and whole screens (Today, Share, Charts, the photo galleries, most of Settings) had no tools at all. Every new write goes through the service the app's route calls, with the same conflict checks.

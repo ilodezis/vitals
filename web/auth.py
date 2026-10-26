@@ -6,19 +6,27 @@ the single-user configuration loaded from web/config.py.
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import quote, urlsplit
 
 from fastapi import APIRouter, Depends, Form, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from pydantic import BaseModel
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.i18n import t
-from vitals.services import twofa_service
+from vitals.services import passkey_service, twofa_service
 from vitals.utils.passwords import verify_password, verify_password_dummy
-from web.config import PENDING_2FA_COOKIE, PENDING_2FA_TTL, SESSION_COOKIE, get_web_config
+from web.config import (
+    PASSKEY_CEREMONY_COOKIE,
+    PASSKEY_CEREMONY_TTL,
+    PENDING_2FA_COOKIE,
+    PENDING_2FA_TTL,
+    SESSION_COOKIE,
+    get_web_config,
+)
 from web.deps import get_redis, get_session
 from web.ratelimit import login_rate_limit
 from web.templating import templates
@@ -83,6 +91,28 @@ def set_pending_2fa_cookie(response: Response, token: str) -> None:
 
 def clear_pending_2fa_cookie(response: Response) -> None:
     response.delete_cookie(key=PENDING_2FA_COOKIE, path="/")
+
+
+def passkey_rp() -> Optional[passkey_service.RelyingParty]:
+    """Where passkeys are bound, or None while ``VITALS_PUBLIC_ORIGIN`` is unset."""
+    return passkey_service.relying_party(get_web_config().public_origin)
+
+
+def set_passkey_ceremony_cookie(response: Response, ceremony_id: str) -> None:
+    cfg = get_web_config()
+    response.set_cookie(
+        key=PASSKEY_CEREMONY_COOKIE,
+        value=ceremony_id,
+        max_age=PASSKEY_CEREMONY_TTL,
+        path="/",
+        secure=cfg.cookie_secure,
+        httponly=True,
+        samesite=cfg.cookie_samesite,
+    )
+
+
+def clear_passkey_ceremony_cookie(response: Response) -> None:
+    response.delete_cookie(key=PASSKEY_CEREMONY_COOKIE, path="/")
 
 
 def safe_next(next: str | None) -> str:
@@ -169,7 +199,9 @@ async def login_page(request: Request, next: Optional[str] = None):
     token = request.cookies.get(SESSION_COOKIE)
     if read_session(token) is not None:
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    return templates.TemplateResponse(request, "login.html", {"next": safe_next(next)})
+    return templates.TemplateResponse(
+        request, "login.html", {"next": safe_next(next), "passkeys": passkey_rp() is not None}
+    )
 
 
 @router.post("/login")
@@ -205,7 +237,11 @@ async def login(
     return templates.TemplateResponse(
         request,
         "login.html",
-        {"error": t("login.error.bad_credentials"), "next": next_url},
+        {
+            "error": t("login.error.bad_credentials"),
+            "next": next_url,
+            "passkeys": passkey_rp() is not None,
+        },
     )
 
 
@@ -257,6 +293,81 @@ async def login_2fa(
     return response
 
 
+# ── Passkey sign-in (only when VITALS_PUBLIC_ORIGIN is set) ───────────────────
+# A sign-in of its own, not a step after the password: the authenticator checks
+# the owner's face/fingerprint/PIN before it signs, so the session is minted here
+# without the TOTP step. See ``passkey_service`` for why that is two factors.
+
+
+def _passkey_refused(code: str, status_code: int = status.HTTP_400_BAD_REQUEST) -> JSONResponse:
+    response = JSONResponse({"error": code}, status_code=status_code)
+    clear_passkey_ceremony_cookie(response)
+    return response
+
+
+@router.post("/login/passkey/options")
+async def login_passkey_options(
+    # Called on every visit to the login page (it arms the autofill), so the
+    # budget is wider than the password form's. Still per-IP: it hands out
+    # challenges, and a loop shouldn't be able to fill Redis with them.
+    _rl: None = Depends(
+        login_rate_limit(limit=30, window=300, bucket="login_passkey_options")
+    ),
+    redis: Redis = Depends(get_redis),
+):
+    rp = passkey_rp()
+    if rp is None:
+        return _passkey_refused("unavailable", status.HTTP_404_NOT_FOUND)
+    options, challenge = passkey_service.authentication_options(rp)
+    try:
+        ceremony_id = await passkey_service.start_ceremony(
+            redis, passkey_service.LOGIN, challenge
+        )
+    except Exception:
+        logger.warning("passkey ceremony store unavailable", exc_info=True)
+        return _passkey_refused("unavailable", status.HTTP_503_SERVICE_UNAVAILABLE)
+    response = Response(content=options, media_type="application/json")
+    set_passkey_ceremony_cookie(response, ceremony_id)
+    return response
+
+
+class PasskeyLoginBody(BaseModel):
+    # What navigator.credentials.get() returned, in its JSON form.
+    credential: dict[str, Any]
+    next: Optional[str] = None
+
+
+@router.post("/login/passkey/verify")
+async def login_passkey_verify(
+    request: Request,
+    body: PasskeyLoginBody,
+    _rl: None = Depends(login_rate_limit(limit=10, window=300, bucket="login_passkey")),
+    db: AsyncSession = Depends(get_session),
+    redis: Redis = Depends(get_redis),
+):
+    rp = passkey_rp()
+    if rp is None:
+        return _passkey_refused("unavailable", status.HTTP_404_NOT_FOUND)
+    challenge = await passkey_service.take_ceremony(
+        redis, request.cookies.get(PASSKEY_CEREMONY_COOKIE), passkey_service.LOGIN
+    )
+    if challenge is None:
+        return _passkey_refused("expired")
+    try:
+        await passkey_service.finish_authentication(
+            db, rp, credential=body.credential, challenge=challenge
+        )
+    except passkey_service.PasskeyError as exc:
+        return _passkey_refused(exc.code)
+    await db.commit()
+
+    response = JSONResponse({"redirect": safe_next(body.next)})
+    set_session_cookie(response, create_session(get_web_config().auth_username))
+    clear_pending_2fa_cookie(response)
+    clear_passkey_ceremony_cookie(response)
+    return response
+
+
 # POST only: a GET logout is a link, and any page (or prefetcher) can point at it.
 # Both templates already submit a form — masthead.html and more.html.
 @router.post("/logout")
@@ -264,4 +375,5 @@ async def logout(request: Request):
     response = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
     clear_session_cookie(response)
     clear_pending_2fa_cookie(response)
+    clear_passkey_ceremony_cookie(response)
     return response

@@ -11,13 +11,17 @@
         <h1 class="bare-h">{{ t("login.heading") }}</h1>
 
         <form class="lg" action="/login" method="POST"
-              data-reveal="{{ t("login.reveal") }}" data-hide="{{ t("login.hide") }}" data-sending="{{ t("login.submitting") }}">
+              data-reveal="{{ t("login.reveal") }}" data-hide="{{ t("login.hide") }}" data-sending="{{ t("login.submitting") }}"
+              {%- if passkeys %}
+              data-passkey-waiting="{{ t("login.passkey_waiting") }}" data-passkey-failed="{{ t("login.error.passkey_failed") }}"
+              data-passkey-unknown="{{ t("login.error.passkey_unknown") }}"
+              {%- endif %}>
             <input type="hidden" name="next" value="{{ next }}">
 
             <div class="lg-f">
                 <label for="lg-username">{{ t("login.username") }}</label>
                 <input type="text" id="lg-username" name="username" required
-                       autocomplete="username" autocapitalize="none" spellcheck="false"
+                       autocomplete="username{% if passkeys %} webauthn{% endif %}" autocapitalize="none" spellcheck="false"
                        {% if not error %}autofocus{% endif %}>
             </div>
 
@@ -43,6 +47,26 @@
             <button class="btn w" type="submit" data-lg-submit>
                 <span data-lg-submit-label>{{ t("login.submit") }}</span>
             </button>
+
+            {% if passkeys %}
+            {# Shown by server-pages.js once it knows the browser can do WebAuthn. #}
+            <p class="lg-err" role="alert" data-passkey-error hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span data-passkey-error-text></span>
+            </p>
+            <button class="ghost w" type="button" data-passkey hidden>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="8" cy="15" r="4"></circle>
+                    <path d="M10.85 12.15 19 4M17 6l2 2M14 9l2 2"></path>
+                </svg>
+                <span data-passkey-label>{{ t("login.passkey") }}</span>
+            </button>
+            {% endif %}
         </form>
     </div>
 </div>

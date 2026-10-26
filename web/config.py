@@ -24,6 +24,11 @@ API_PATH_PREFIX = "/api/"
 PENDING_2FA_COOKIE = "vitals_2fa"
 PENDING_2FA_TTL = 300  # 5 minutes to reach for the phone and type the code
 
+# Ties a passkey ceremony (options → browser → verify) to the browser that started
+# it. The value is only a random id; the challenge itself stays in Redis.
+PASSKEY_CEREMONY_COOKIE = "vitals_passkey"
+PASSKEY_CEREMONY_TTL = 300
+
 # Callback hosts of the AI clients allowed to connect to the MCP server. Matched
 # by host rather than by full URL on purpose: Claude and ChatGPT each use one
 # fixed callback path, but Google mints a per-user one
@@ -53,6 +58,11 @@ class WebConfig:
     # Empty = feature off: the endpoint fails closed with 503, never a
     # wildcard-open door.
     external_api_token: str = ""
+    # The address the owner types into the browser (https://vitals.example.com).
+    # Passkeys are bound to its host, so it is configured rather than read off the
+    # request: behind a tunnel the Host header is whatever reached the proxy.
+    # Empty = passkeys off.
+    public_origin: str = ""
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -101,5 +111,6 @@ def get_web_config() -> WebConfig:
             h.lower() for h in _env_csv("VITALS_MCP_REDIRECT_HOSTS", DEFAULT_MCP_REDIRECT_HOSTS)
         ),
         external_api_token=os.getenv("VITALS_EXTERNAL_API_TOKEN", ""),
+        public_origin=os.getenv("VITALS_PUBLIC_ORIGIN", "").strip(),
     )
 

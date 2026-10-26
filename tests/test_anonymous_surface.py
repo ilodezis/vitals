@@ -44,6 +44,10 @@ ANONYMOUS_BY_DESIGN = {
     ("POST", "/login"),
     ("GET", "/login/2fa"),
     ("POST", "/login/2fa"),
+    # Passkey sign-in: a challenge for anyone, and a session only for a signature
+    # from a registered key. Both answer 404 while VITALS_PUBLIC_ORIGIN is unset.
+    ("POST", "/login/passkey/options"),
+    ("POST", "/login/passkey/verify"),
     # Nothing to authenticate — it only clears cookies.
     ("POST", "/logout"),
     # Liveness for external monitoring. Job names are owner-only — see web/main.py.

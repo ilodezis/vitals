@@ -757,8 +757,11 @@ curl -s http://127.0.0.1:8000/health
 | `VITALS_SESSION_TTL` | Время жизни сессии (сек) | `2592000` (30 дней) |
 | `VITALS_COOKIE_SECURE` | Флаг Secure для кук | `true` |
 | `VITALS_COOKIE_SAMESITE` | Политика SameSite | `lax` |
+| `VITALS_PUBLIC_ORIGIN` | Адрес, по которому вы открываете Vitals (`https://vitals.yourdomain.com`); включает вход по ключам доступа | *пусто — ключи выключены* |
 
 Двухфакторный вход переменной не имеет: он выключен по умолчанию и включается в настройках (**Настройки → Двухфакторная защита**). Ключ хранится в базе, а не в `.env`, и в бэкап не попадает — значит после переезда на новый сервер 2FA нужно включить заново.
+
+**Ключи доступа (passkeys)** — вход по Face ID, Touch ID или ключу безопасности, без пароля и без кода. Задайте `VITALS_PUBLIC_ORIGIN`, затем добавьте ключ в **Настройки → Безопасность → Ключи доступа**; на странице входа появится кнопка, а iPhone и Mac будут предлагать ключ прямо в поле имени. Ключ — это полноценный вход, а не шаг после пароля: устройство само проверяет лицо, отпечаток или PIN, поэтому код 2FA он не спрашивает. Пароль (и 2FA, если включена) остаётся запасным путём. Ключи привязаны к домену: сменили домен — старые ключи перестанут работать. В бэкап они не попадают и при восстановлении не перезаписываются: файл бэкапа не должен уметь подложить свой ключ.
 </details>
 
 <details>
@@ -969,6 +972,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 - Self-hosted, single-user, behind VPN
 - Bcrypt auth + signed session cookies
 - Optional two-factor sign-in (TOTP), switched on in Settings
+- Passkeys: sign in with Face ID / Touch ID / a security key
 - CSRF + Origin Guard + CSP
 - Modular dashboard — toggle domains on/off in Settings
 - No external CDNs — fonts and assets are hosted locally
@@ -1618,8 +1622,11 @@ Connection-pool and timeout tuning (`VITALS_DB_POOL_SIZE`, `VITALS_DB_MAX_OVERFL
 | `VITALS_SESSION_TTL` | Session duration (seconds) | `2592000` (30 days) |
 | `VITALS_COOKIE_SECURE` | Secure cookie flag | `true` |
 | `VITALS_COOKIE_SAMESITE` | SameSite policy | `lax` |
+| `VITALS_PUBLIC_ORIGIN` | The address you open Vitals at (`https://vitals.yourdomain.com`); switches passkey sign-in on | *empty — passkeys off* |
 
 Two-factor sign-in has no variable: it is off by default and switched on in the dashboard (**Settings → Two-factor authentication**). The key lives in the database rather than `.env`, and backups never carry it — so after moving to a new server, 2FA has to be turned on again.
+
+**Passkeys** sign you in with Face ID, Touch ID or a security key: no password, no code. Set `VITALS_PUBLIC_ORIGIN`, then add a passkey under **Settings → Security → Passkeys**; the sign-in page gets a button, and an iPhone or Mac offers the passkey right in the username field. A passkey is a sign-in of its own, not a step after the password: the device itself checks your face, fingerprint or PIN, so it does not ask for the 2FA code. The password (plus 2FA, when on) stays as the way back in. Passkeys are bound to the domain — change it and the old ones stop working. Backups never carry them and a restore never overwrites them: a backup file must not be able to plant a key of its own.
 </details>
 
 <details>
