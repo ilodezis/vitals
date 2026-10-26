@@ -60,8 +60,11 @@ async def _androgen_over_skincare(db_session, *, peel: bool):
     conflict_engine.register_domain_resolver(
         Domain.SKINCARE.value, skincare_service.resolve_today
     )
+    # The routine day, not the calendar one: before day_end the resolver reads
+    # yesterday's log, and a log written on today_local() would go unseen.
     await skincare_service.upsert_log(
-        db_session, on_date=today_local(), peel=peel, moisturizer=True,
+        db_session, on_date=await skincare_service.today(db_session), peel=peel,
+        moisturizer=True,
     )
     await db_session.commit()
     return await conflict_engine.evaluate(
