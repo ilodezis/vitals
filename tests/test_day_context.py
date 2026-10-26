@@ -10,7 +10,7 @@ Three things here fail *silently* if they regress, which is why each gets a test
   * a brief that prefers the template to his actual answer gives advice for a day
     he explicitly said he isn't having.
 """
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
@@ -21,6 +21,7 @@ from vitals.models.proactive import Notification
 from vitals.models.signals import Signal
 from vitals.services import garmin_service, signals_service
 from vitals.services.proactive import brief, day_plan, delivery, inbound
+from vitals.utils.timeutils import local_naive_to_utc
 
 # The bot only speaks when the ``signals`` module is on — the same switch the
 # owner flips in Settings, and it defaults off.
@@ -194,6 +195,100 @@ async def test_evening_block_drops_the_summary_when_garmin_has_nothing(
     assert "Итог дня" not in text
     assert "Как день?" in text
     assert "Завтра:" in notifier.sent[1]["text"]
+
+
+LATE = datetime.combine(DAY, datetime.min.time()).replace(hour=23, minute=45)
+
+
+def _gmt(local: datetime) -> str:
+    """A local wall-clock moment as Garmin's ``lastSyncTimestampGMT``."""
+    return local_naive_to_utc(local).replace(tzinfo=None).isoformat(timespec="milliseconds")
+
+
+class _PulseClient:
+    """Stands in for GarminClient: today's summary is all the evening asks for."""
+
+    summary: dict = {}
+    calls: list = []
+    is_configured = True
+
+    @classmethod
+    def from_config(cls, config=None, redis=None):
+        return cls()
+
+    async def fetch_summary(self, on_date):
+        type(self).calls.append(on_date)
+        return type(self).summary
+
+
+def _patch_pulse(monkeypatch, summary):
+    import vitals.integrations.garmin_client as gc
+
+    _PulseClient.summary = summary
+    _PulseClient.calls = []
+    monkeypatch.setattr(gc, "GarminClient", _PulseClient)
+    monkeypatch.setattr(garmin_service, "now_local", lambda: LATE)
+    monkeypatch.setattr(day_plan, "now_local", lambda: LATE)
+
+
+async def test_the_recap_pulls_the_days_steps_first(db_session, session_factory, monkeypatch):
+    """The scheduled pulls can be most of an hour old at 23:45. The recap fetches
+    today's summary itself, quotes it, and journals the count it quoted."""
+    notifier = FakeNotifier()
+    _patch_evening(monkeypatch, notifier)
+    await garmin_service.ingest_daily(db_session, DAY, GARMIN_RAW)
+    await db_session.commit()
+    _patch_pulse(monkeypatch, {"totalSteps": 9300, "lastSyncTimestampGMT": _gmt(LATE)})
+
+    await day_plan.evening_job(session_factory)
+
+    assert _PulseClient.calls == [DAY]
+    recap = notifier.sent[0]["text"]
+    assert "9300 шагов" in recap
+    assert "синкались" not in recap  # the watch uploaded minutes ago
+    row = await delivery.find_by_key(db_session, day_plan.dedupe_key(DAY))
+    assert row.payload["meta"] == {"steps": 9300}
+    # Last night survived the partial payload.
+    assert (await garmin_service.get_daily(db_session, DAY)).sleep_score == 80
+
+
+async def test_the_recap_says_when_the_watch_stopped_uploading(
+    db_session, session_factory, monkeypatch
+):
+    """Garmin only knows what the phone handed over. A day that stopped counting
+    at 19:40 says so instead of passing 3466 off as the total."""
+    notifier = FakeNotifier()
+    _patch_evening(monkeypatch, notifier)
+    _patch_pulse(monkeypatch, {
+        "totalSteps": 3466,
+        "lastSyncTimestampGMT": _gmt(LATE.replace(hour=19, minute=40)),
+    })
+
+    await day_plan.evening_job(session_factory)
+
+    assert "⚠️ часы синкались в 19:40 — итог неполный" in notifier.sent[0]["text"]
+
+
+def test_a_sync_from_another_day_carries_its_date():
+    garmin = type("Row", (), {
+        "steps": 120, "active_calories": None,
+        "intensity_minutes_moderate": None, "intensity_minutes_vigorous": None,
+    })()
+    line = day_plan.summary_line(
+        garmin, synced_at=LATE - timedelta(days=1, hours=2), now=LATE
+    )
+    assert "синкались в 25.07 21:45" in line
+
+
+async def test_a_replayed_evening_does_not_pull_again(db_session, session_factory, monkeypatch):
+    notifier = FakeNotifier()
+    _patch_evening(monkeypatch, notifier)
+    _patch_pulse(monkeypatch, {"totalSteps": 9300})
+
+    await day_plan.evening_job(session_factory)
+    await day_plan.evening_job(session_factory)
+
+    assert _PulseClient.calls == [DAY]
 
 
 # ── Taps ──────────────────────────────────────────────────────────────────────

@@ -965,6 +965,47 @@ async def pulse(
     return out
 
 
+async def pulse_now(session_factory, redis=None) -> None:
+    """One pulse right now, whatever the settings card says about the interval —
+    for a message that is about to quote today's numbers. No-ops when Garmin isn't
+    configured or another pull holds the lock (that pull stores fresher data)."""
+    from vitals.integrations.garmin_client import GarminClient
+
+    client = GarminClient.from_config(redis=redis)
+    if not client.is_configured:
+        return
+    async with pull_lock(redis) as acquired:
+        if not acquired:
+            logger.info("Garmin pulse skipped: another pull is running")
+            return
+        async with session_factory() as session:
+            await pulse(session, client)
+            await session.commit()
+
+
+def watch_synced_at(raw: Any) -> Optional[datetime]:
+    """When the watch last handed its data to Garmin Connect (local wall clock).
+
+    Garmin only knows what the phone has uploaded, so today's numbers are as old
+    as this moment, not as old as our last pull. Present on the current day's
+    summary only; past days come back without it."""
+    value = _dig(raw, "summary", "lastSyncTimestampGMT")
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return to_local_naive(datetime.fromisoformat(value.strip().replace("Z", "+00:00")))
+    except ValueError:
+        return None
+
+
+async def last_watch_sync(session: AsyncSession, row: Optional[GarminDaily]) -> Optional[datetime]:
+    """:func:`watch_synced_at` for a stored day row."""
+    if row is None or row.raw_payload_id is None:
+        return None
+    raw_row = await session.get(RawPayload, row.raw_payload_id)
+    return watch_synced_at(raw_row.payload) if raw_row is not None else None
+
+
 async def pulse_job(session_factory, redis=None) -> None:
     """The light pulse on its own interval (both from the settings card).
 
@@ -975,25 +1016,15 @@ async def pulse_job(session_factory, redis=None) -> None:
     The active-hours check is here rather than in the trigger because APScheduler
     intervals have no concept of a window, and because a saved setting must apply
     to the *next* tick without touching the job."""
-    from vitals.integrations.garmin_client import GarminClient
     from vitals.services.proactive import prefs
 
     async with session_factory() as session:
         settings = await prefs.get_prefs(session)
-        if not settings["pulse_seconds"]:
-            return
-        if not settings["pulse_start_hour"] <= now_local().hour < settings["pulse_end_hour"]:
-            return
-
-        client = GarminClient.from_config(redis=redis)
-        if not client.is_configured:
-            return
-        async with pull_lock(redis) as acquired:
-            if not acquired:
-                logger.info("Garmin pulse skipped: another pull is running")
-                return
-            await pulse(session, client)
-            await session.commit()
+    if not settings["pulse_seconds"]:
+        return
+    if not settings["pulse_start_hour"] <= now_local().hour < settings["pulse_end_hour"]:
+        return
+    await pulse_now(session_factory, redis)
 
 
 # ── Health Auto Export (backup channel) ───────────────────────────────────────

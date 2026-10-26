@@ -184,6 +184,53 @@ async def test_no_norm_until_there_is_enough_history(db_session):
     assert "норма" not in compose.render(compose.header_blocks(ctx))
 
 
+async def test_the_header_reports_yesterday_as_the_watch_finally_had_it(db_session):
+    """The 23:45 recap quotes whatever the phone had uploaded by then. By morning
+    the rest is in, and the brief sets the final count against the evening's so
+    a short recap reads as the phone being behind, not as a lazy day."""
+    yesterday = DAY - timedelta(days=1)
+    await garmin_service.ingest_daily(db_session, yesterday, {
+        "summary": {
+            "totalSteps": 5024,
+            "activeKilocalories": 1036,
+            "moderateIntensityMinutes": 12,
+        },
+    })
+    db_session.add(Notification(
+        sent_at=datetime.combine(yesterday, datetime.min.time()).replace(hour=23, minute=45),
+        category=delivery.CATEGORY_EVENING,
+        dedupe_key=day_plan.dedupe_key(yesterday),
+        channel="telegram",
+        payload={"text": "Итог дня: 3466 шагов", "meta": {"steps": 3466}},
+    ))
+    await _seed_day(db_session)
+
+    ctx = await brief.build_context(db_session, on_date=DAY)
+    assert ctx["yesterday"]["evening_steps"] == 3466
+    text = compose.render(compose.header_blocks(ctx))
+    assert (
+        "Вчера: 5024 шагов · 1036 ккал актив · 12 мин интенсивности (вечером было 3466)"
+        in text
+    )
+    # Between the bedroom air and the weight: last night, then yesterday, then the scale.
+    assert text.index("Вчера:") < text.index("Вес 88")
+
+
+def test_a_recap_that_was_right_is_not_called_short():
+    """The last walk to bed is not the phone being behind."""
+    block = compose.yesterday_block({"steps": 5100, "evening_steps": 5000})
+    assert block.text == "Вчера: 5100 шагов"
+
+
+async def test_no_yesterday_line_without_yesterdays_activity(db_session):
+    await garmin_service.ingest_daily(db_session, DAY - timedelta(days=1), GARMIN_RAW)
+    await _seed_day(db_session)
+
+    ctx = await brief.build_context(db_session, on_date=DAY)
+    assert ctx["yesterday"] is None
+    assert "Вчера" not in compose.render(compose.header_blocks(ctx))
+
+
 async def test_the_brief_sees_yesterdays_signals(db_session):
     """"Кофе в 22" is yesterday's row and this morning's HRV is what it explains.
     A one-day window would cut every exposure away from the number it caused."""

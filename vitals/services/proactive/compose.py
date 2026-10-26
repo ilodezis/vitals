@@ -27,6 +27,7 @@ from typing import Iterable, Optional
 # Block kinds (also the priority ladder below).
 KIND_GARMIN = "garmin"
 KIND_ENVIRONMENT = "environment"  # last night's bedroom air
+KIND_YESTERDAY = "yesterday"  # yesterday's final activity
 KIND_WEIGHT = "weight"
 KIND_DAY = "day"        # what kind of day it is — see ``day_plan``
 KIND_ASK = "ask"        # a question to the owner, answered in free text
@@ -79,6 +80,10 @@ LINE_NIGHT_PENDING = "Ночь ещё не размечена — цифр во�
 # Relative rather than per-metric: 5% is ~3 bpm of resting HR and ~4 points of
 # sleep score, which is the same size of "actually different" on both.
 _BASELINE_NOTABLE = 0.05
+
+# The fewest steps the final count must add over the evening recap's before the
+# brief mentions the recap was short. Below it the gap is the last walk to bed.
+_EVENING_GAP_STEPS = 200
 
 
 # When last night's air is called off in the header line: CO2 at or above the warn
@@ -252,6 +257,10 @@ def header_blocks(ctx: dict) -> list[Block]:
     if environment is not None:
         blocks.append(environment)
 
+    yesterday = yesterday_block(ctx.get("yesterday"))
+    if yesterday is not None:
+        blocks.append(yesterday)
+
     weight = ctx.get("weight") or {}
     wparts = []
     if weight.get("latest_kg") is not None:
@@ -343,6 +352,32 @@ def environment_block(night: Optional[dict]) -> Optional[Block]:
     if not parts:
         return None
     return Block(KIND_ENVIRONMENT, "Спальня ночью: " + " · ".join(parts), 15)
+
+
+def yesterday_block(day: Optional[dict]) -> Optional[Block]:
+    """``Вчера: 5024 шагов · 1036 ккал актив (вечером было 3466)``.
+
+    The evening recap's count is printed beside the final one only when the gap
+    is real — that line is how he learns the 23:45 number was the phone being
+    behind, not the day."""
+    if not day:
+        return None
+    parts = []
+    if day.get("steps") is not None:
+        parts.append(f"{_num(day['steps'])} шагов")
+    if day.get("active_calories") is not None:
+        parts.append(f"{_num(day['active_calories'])} ккал актив")
+    if day.get("intensity_minutes"):
+        parts.append(f"{_num(day['intensity_minutes'])} мин интенсивности")
+    if not parts:
+        return None
+    line = "Вчера: " + " · ".join(parts)
+    steps, evening = day.get("steps"), day.get("evening_steps")
+    if steps is not None and evening is not None and steps - evening >= max(
+        _EVENING_GAP_STEPS, steps * _BASELINE_NOTABLE
+    ):
+        line += f" (вечером было {_num(evening)})"
+    return Block(KIND_YESTERDAY, line, 17)
 
 
 def _duration(minutes) -> str:

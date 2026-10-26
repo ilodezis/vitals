@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import date as date_type, timedelta
+from datetime import date as date_type, datetime, timedelta
 from typing import Any, Collection, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +41,7 @@ from vitals.models.app_settings import AppSetting
 from vitals.models.signals import DayContext
 from vitals.services import signals_service
 from vitals.services.proactive import compose
-from vitals.utils.timeutils import today_local
+from vitals.utils.timeutils import now_local, today_local
 
 logger = logging.getLogger(__name__)
 
@@ -386,12 +386,19 @@ def redraw(text: str, answers: dict, *, has_buttons: bool) -> str:
     return "\n".join(lines)
 
 
-def summary_line(garmin) -> str:
+# How old the watch's last upload may be before the evening numbers are called
+# partial. Garmin only knows what the phone has handed over, and an iPhone that
+# suspends Garmin Connect in the evening leaves the day hours short.
+WATCH_SYNC_STALE = timedelta(hours=1)
+
+
+def summary_line(garmin, *, synced_at: Optional[datetime] = None, now: Optional[datetime] = None) -> str:
     """The day in the numbers that are actually about *today*.
 
     Recovery numbers belong to the morning brief; what closes a day is what was
-    done in it. Missing metrics are simply absent — the 22:00 Garmin poll is the
-    freshest data at 23:45 and it may not have everything.
+    done in it. Missing metrics are simply absent. ``synced_at`` is when the watch
+    last uploaded: a day that stopped counting hours ago says so, instead of
+    passing a partial number off as the day's total.
     """
     if garmin is None:
         return ""
@@ -405,7 +412,15 @@ def summary_line(garmin) -> str:
     )
     if intensity:
         parts.append(f"{intensity} мин интенсивности")
-    return "Итог дня: " + " · ".join(parts) if parts else ""
+    if not parts:
+        return ""
+    line = "Итог дня: " + " · ".join(parts)
+    if synced_at is not None and now is not None and now - synced_at >= WATCH_SYNC_STALE:
+        when = synced_at.strftime("%H:%M")
+        if synced_at.date() != now.date():
+            when = f"{synced_at:%d.%m} {when}"
+        line += f"\n⚠️ часы синкались в {when} — итог неполный, открой Garmin Connect"
+    return line
 
 
 def dedupe_key(on_date: date_type) -> str:
@@ -430,27 +445,41 @@ async def evening_job(session_factory, redis=None) -> None:
     one more slot of the daily budget; the budget is a knob in Settings, and a
     message nobody can answer is worth less than the slot it costs.
 
-    No Garmin pull in front of this one (unlike the brief): the 22:00 poll is
-    recent enough for a day summary, and every extra pull is a login the account
-    doesn't need to spend. No model call either — both messages are code.
+    One light pulse in front of it — today's summary, one request on the resumed
+    session — because the scheduled pulls can be most of an hour old by now and
+    the recap quotes the day's total. A failed pulse sends what is stored. No
+    model call — both messages are code.
     """
     from vitals.services import garmin_service
     from vitals.services.proactive import channels, delivery
 
     notifier = channels.build_notifier()
-    async with session_factory() as session:
-        today = today_local()
-        tomorrow = today + timedelta(days=1)
+    today = today_local()
+    tomorrow = today + timedelta(days=1)
 
+    async with session_factory() as session:
+        recap_sent = await delivery.already_sent(session, dedupe_key(today))
+    if not recap_sent:
+        try:
+            await garmin_service.pulse_now(session_factory, redis)
+        except Exception:
+            logger.warning("garmin pulse before the evening block failed; using stored data", exc_info=True)
+
+    async with session_factory() as session:
         # ── Today, in hindsight ───────────────────────────────────────────────
         # The recap keyboard is the one-tap version of «Как день?» directly above
         # it, about the day that just ended — the only moment that question can
         # be answered rather than guessed.
         recap_answers, recap_answered = await resolve(session, today)
+        garmin = await garmin_service.get_daily(session, today)
         recap_blocks = [
             compose.Block(
                 compose.KIND_DAY,
-                summary_line(await garmin_service.get_daily(session, today)),
+                summary_line(
+                    garmin,
+                    synced_at=await garmin_service.last_watch_sync(session, garmin),
+                    now=now_local(),
+                ),
                 10,
             ),
             compose.Block(compose.KIND_ASK, ASK_DAY, 20),
@@ -465,6 +494,9 @@ async def evening_job(session_factory, redis=None) -> None:
                 recap_answers, today, recap_answered, RECAP_QUESTIONS
             )
             or None,
+            # What the recap called the day's steps — the morning brief sets the
+            # final count against it once the watch has uploaded the rest.
+            meta={"steps": garmin.steps} if garmin is not None and garmin.steps is not None else None,
         )
 
         # ── Tomorrow, as planned ──────────────────────────────────────────────

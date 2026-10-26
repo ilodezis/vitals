@@ -166,6 +166,14 @@ async def recent_sent(session: AsyncSession, *, limit: int = 3) -> list[Notifica
     return list(reversed(result.scalars().all()))
 
 
+async def find_by_key(session: AsyncSession, dedupe_key: str) -> Optional[Notification]:
+    """The journal row a keyed message left, if it went out."""
+    result = await session.execute(
+        select(Notification).where(Notification.dedupe_key == dedupe_key)
+    )
+    return result.scalars().first()
+
+
 async def already_sent(session: AsyncSession, dedupe_key: str) -> bool:
     result = await session.execute(
         select(Notification.id).where(Notification.dedupe_key == dedupe_key)
@@ -183,8 +191,11 @@ async def send(
     buttons: Optional[Buttons] = None,
     reply_to: Optional[str] = None,
     now: Optional[datetime] = None,
+    meta: Optional[dict] = None,
 ) -> Optional[Notification]:
-    """Send if allowed, and journal what was sent. ``None`` = nothing went out."""
+    """Send if allowed, and journal what was sent. ``None`` = nothing went out.
+    ``meta`` is journalled beside the text for a later message to read back —
+    numbers, so nobody has to parse them out of the wording."""
     if notifier is None:
         return None
     if not text.strip():
@@ -249,7 +260,11 @@ async def send(
         dedupe_key=dedupe_key,
         channel=notifier.channel,
         external_id=external_id or None,
-        payload={"text": text, "buttons": [list(b) for b in buttons] if buttons else None},
+        payload={
+            "text": text,
+            "buttons": [list(b) for b in buttons] if buttons else None,
+            **({"meta": meta} if meta else {}),
+        },
     )
     session.add(row)
     await session.flush()

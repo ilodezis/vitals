@@ -115,6 +115,12 @@ state (состояние, 1-5), symptom (симптом, 1-5), exposure (сде
 нормы совпали» — наблюдение. «Из-за духоты HRV упал» — выдуманная причина: одна
 ночь этого не показывает. Если блока нет — про воздух не пиши.
 
+Блок `yesterday` — вчерашняя активность по финальным данным часов (шаги,
+активные ккал, минуты интенсивности). `evening_steps` — сколько шагов назвал
+вчерашний вечерний итог: телефон к 23:45 мог не успеть залить часы, поэтому
+он бывает меньше. Шапка печатает эту строку сама — не пересказывай. Сравнивать
+вчерашние шаги не с чем (нормы нет), так что «мало/много» не оценивай.
+
 ОГРАНИЧЕНИЯ (нарушение = баг):
 - Опирайся ТОЛЬКО на JSON. Ничего не выдумывай, новых чисел не вводи.
 - Никаких заголовков, списков и разметки — обычный текст, его читают в мессенджере.
@@ -188,6 +194,11 @@ async def build_context(
     # Absent when the module is off or the station saw too little of the night.
     ctx["environment"] = (
         await _last_night_air(session, today) if _module_enabled(ctx, "environment") else None
+    )
+    # Yesterday's activity as the watch finally reported it. The evening recap
+    # quoted whatever the phone had uploaded by 23:45; by morning the rest is in.
+    ctx["yesterday"] = (
+        await _yesterday_activity(session, today) if _module_enabled(ctx, "garmin") else None
     )
     answers, answered = await day_plan.resolve(session, today)
     # Yesterday's answers, and only the ones he actually gave. How heavy a day was
@@ -272,6 +283,31 @@ async def _last_night_air(session: AsyncSession, on_date: date_type) -> Optional
     except Exception:
         logger.warning("brief: last night's air unavailable", exc_info=True)
         return None
+
+
+async def _yesterday_activity(session: AsyncSession, on_date: date_type) -> Optional[dict]:
+    """Yesterday's final steps, active calories and intensity minutes, plus the
+    step count last night's recap quoted (``evening_steps``) when it sent one."""
+    from vitals.services import garmin_service
+    from vitals.services.proactive import delivery
+
+    yesterday = on_date - timedelta(days=1)
+    row = await garmin_service.get_daily(session, yesterday)
+    if row is None:
+        return None
+    intensity = (row.intensity_minutes_moderate or 0) + (row.intensity_minutes_vigorous or 0)
+    out = {
+        "date": yesterday.isoformat(),
+        "steps": row.steps,
+        "active_calories": row.active_calories,
+        "intensity_minutes": intensity or None,
+    }
+    if all(v is None for k, v in out.items() if k != "date"):
+        return None
+    recap = await delivery.find_by_key(session, day_plan.dedupe_key(yesterday))
+    meta = ((recap.payload or {}).get("meta") or {}) if recap is not None else {}
+    out["evening_steps"] = meta.get("steps")
+    return out
 
 
 async def _meals_logged_today(session: AsyncSession, on_date: date_type) -> bool:
