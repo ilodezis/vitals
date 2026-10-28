@@ -1,6 +1,6 @@
 #!/bin/bash
 # Vitals deploy script. Runs on the server, from the checkout it lives in.
-set -e
+set -euo pipefail
 
 # The whole body is a function so bash parses the file up front. Without this,
 # the `git reset --hard` below can rewrite this very script mid-execution and
@@ -37,6 +37,28 @@ main() {
   if ! git diff --quiet "$before" HEAD -- scripts/backup.sh; then
     docker compose restart vitals_backup
   fi
+
+  echo "→ waiting for Vitals health check..."
+  healthy=0
+  for _ in $(seq 1 60); do
+    if curl -fsS http://127.0.0.1:8000/health >/dev/null 2>&1; then
+      healthy=1
+      break
+    fi
+    sleep 1
+  done
+
+  if [ "$healthy" -ne 1 ]; then
+    echo "ROLLBACK: Vitals unhealthy after deploy — rolling back to $before" >&2
+    git reset --hard "$before"
+    docker compose up -d --build
+    if ! git diff --quiet "$before" HEAD -- scripts/backup.sh; then
+      docker compose restart vitals_backup
+    fi
+    echo "ROLLBACK COMPLETE: restored $before" >&2
+    exit 1
+  fi
+
   # Name the branch on the way out: "it deployed but nothing changed" is almost
   # always this line disagreeing with what you assumed was checked out.
   echo "✓ Vitals deployed — $branch @ $(git rev-parse --short HEAD)"
