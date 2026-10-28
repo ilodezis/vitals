@@ -4,6 +4,9 @@ on:
   push:
     branches: [master]
   pull_request:
+  schedule:
+    - cron: "0 6 * * 1"  # weekly: osv-scanner catches new advisories for dependencies that did not change
+  workflow_dispatch:
 
 jobs:
   test:
