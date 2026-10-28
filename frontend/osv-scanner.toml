@@ -1,0 +1,5 @@
+# deepmerge is pulled in at build time only (vite-plugin-pwa -> workbox -> rollup)
+# and merges the project's own config, never untrusted input. Upstream has no fix.
+[[IgnoredVulns]]
+id = "GHSA-gcqx-w48m-w2h4"
+reason = "Build-time transitive dependency with no upstream fix; only merges trusted local config."

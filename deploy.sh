@@ -50,9 +50,10 @@ main() {
 
   if [ "$healthy" -ne 1 ]; then
     echo "ROLLBACK: Vitals unhealthy after deploy — rolling back to $before" >&2
+    failed="$(git rev-parse HEAD)"
     git reset --hard "$before"
     docker compose up -d --build
-    if ! git diff --quiet "$before" HEAD -- scripts/backup.sh; then
+    if ! git diff --quiet "$failed" HEAD -- scripts/backup.sh; then
       docker compose restart vitals_backup
     fi
     echo "ROLLBACK COMPLETE: restored $before" >&2

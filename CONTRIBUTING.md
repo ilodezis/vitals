@@ -48,6 +48,11 @@ pip install -r requirements-dev.txt
 python run_local.py         # SQLite + FakeRedis, no Docker needed
 ```
 
+`requirements.txt` and `requirements-dev.txt` are exact locks generated with
+`uv pip compile` from `requirements.in` / `requirements-dev.in`. Change the `.in`
+files and regenerate (the command is in the header of each lock); don't edit the
+locks by hand.
+
 Default login for local dev: `timur` / `password`.
 
 ## Running Tests

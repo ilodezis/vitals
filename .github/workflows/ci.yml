@@ -32,21 +32,31 @@ jobs:
       - name: Install backend dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
+          pip install -r requirements-dev.txt
       - name: Run backend tests
         env:
           VITALS_TEST_DATABASE_URL: postgresql+asyncpg://postgres:testpass@127.0.0.1:5432/vitals_test
         run: python -m pytest -q
+      # vitest resolves its config from the working directory, so the frontend
+      # steps must run inside frontend/ rather than with --prefix from the root.
       - name: Install frontend dependencies
-        run: npm --prefix frontend ci
+        working-directory: frontend
+        run: npm ci
       - name: Run frontend tests and build
+        working-directory: frontend
         run: |
-          npm --prefix frontend run build
-          npx --prefix frontend vitest run
+          npx vitest run
+          npm run build
 
   osv:
     name: osv-scanner
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # requirements*.txt are exact locks; resolving them again only reintroduces drift.
       - uses: google/osv-scanner-action/osv-scanner-action@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
+        with:
+          scan-args: |-
+            --no-resolve
+            --recursive
+            ./
