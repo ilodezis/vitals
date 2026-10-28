@@ -78,3 +78,4 @@ web/static/app/
 
 # Full-size promo renders (~33 MB each); the web cuts live in gifs/
 docs/promo/video/
+.DS_Store
