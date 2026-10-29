@@ -88,7 +88,12 @@ async def test_resolver_shape(db_session):
     await supplements_service.add_supplement(db_session, name="Iron", key="iron", active=True)
     await db_session.commit()
     items = await supplements_service.resolve_active(db_session)
-    assert {"key": "iron", "active": True, "name": "Iron", "timing_slot": None} in items
+    assert len(items) == 1
+    item = items[0]
+    assert {k: item[k] for k in ("key", "active", "name", "timing_slot", "ref")} == {
+        "key": "iron", "active": True, "name": "Iron", "timing_slot": None, "ref": "supplement:iron",
+    }
+    assert isinstance(item["id"], int)
 
 
 async def _seed_iron_rule(db_session):

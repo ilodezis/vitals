@@ -107,8 +107,23 @@ def timing_bucket(timing: Optional[str]) -> Optional[str]:
     return None
 
 
-def _proposed(key: str, active: bool, timing_slot: Optional[str] = None) -> dict:
-    return {"key": key, "active": active, "timing_slot": timing_slot}
+def _ref(key: str) -> str:
+    """The entity ref conflict alerts about this supplement are bound to."""
+    return f"supplement:{key}"
+
+
+def _proposed(
+    key: str,
+    active: bool,
+    timing_slot: Optional[str] = None,
+    supplement_id: Optional[int] = None,
+) -> dict:
+    """A catalog row as the conflict engine will see it after the save. The ``id``
+    of an existing row makes the engine evaluate it in place of its old state."""
+    return {
+        "id": supplement_id, "key": key, "active": active,
+        "timing_slot": timing_slot, "ref": _ref(key),
+    }
 
 
 # ── Start/stop history ────────────────────────────────────────────────────────
@@ -263,7 +278,7 @@ async def add_supplement(
         Domain.SUPPLEMENTS.value,
         _proposed(resolved_key, active, _parse_slot(timing)),
         override=override,
-        entity_ref=f"supplement:{resolved_key}",
+        entity_ref=_ref(resolved_key),
     )
     row = Supplement(
         domain=DOMAIN,
@@ -281,6 +296,7 @@ async def add_supplement(
     await session.flush()
     if active:
         await _record_switch(session, row, True, source=source)
+    await conflict_engine.reconcile(session, Domain.SUPPLEMENTS.value)
     return row
 
 
@@ -314,9 +330,9 @@ async def update_supplement(
     await conflict_engine.enforce(
         session,
         Domain.SUPPLEMENTS.value,
-        _proposed(resolved_key, active, _parse_slot(timing)),
+        _proposed(resolved_key, active, _parse_slot(timing), supplement_id),
         override=override,
-        entity_ref=f"supplement:{resolved_key}",
+        entity_ref=_ref(resolved_key),
     )
     row.name = name
     row.key = resolved_key
@@ -330,6 +346,7 @@ async def update_supplement(
     await session.flush()
     if switched:
         await _record_switch(session, row, active, source=source)
+    await conflict_engine.reconcile(session, Domain.SUPPLEMENTS.value)
     return row
 
 
@@ -350,15 +367,16 @@ async def set_active(
         await conflict_engine.enforce(
             session,
             Domain.SUPPLEMENTS.value,
-            _proposed(row.key, True, _parse_slot(row.timing)),
+            _proposed(row.key, True, _parse_slot(row.timing), row.id),
             override=override,
-            entity_ref=f"supplement:{row.key}",
+            entity_ref=_ref(row.key),
         )
     switched = row.active != active
     row.active = active
     await session.flush()
     if switched:
         await _record_switch(session, row, active, source=source)
+    await conflict_engine.reconcile(session, Domain.SUPPLEMENTS.value)
     return row
 
 
@@ -372,15 +390,20 @@ async def delete_supplement(session: AsyncSession, supplement_id: int) -> bool:
     )
     await session.delete(row)
     await session.flush()
+    await conflict_engine.reconcile(session, Domain.SUPPLEMENTS.value)
     return True
 
 
 async def resolve_active(session: AsyncSession) -> list[dict]:
     """Conflict-engine resolver: the catalog as match items (key + active flag +
-    parsed timing slot, used by timing_separation rules)."""
+    parsed timing slot, used by timing_separation rules). ``id`` lets an edit
+    replace its row's old state; ``ref`` is what a matching rule's alert is
+    bound to."""
     result = await session.execute(select(Supplement))
     return [
         {
+            "id": s.id,
+            "ref": _ref(s.key),
             "key": s.key,
             "active": s.active,
             "name": s.name,

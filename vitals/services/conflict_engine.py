@@ -65,10 +65,17 @@ class Violation:
     category: Optional[str] = None
     source: Optional[str] = None
     evidence: Optional[str] = None
+    # Refs ("supplement:zinc") of the catalog entities the rule matched, sorted.
+    # Empty when the matched items carry no ref (event-style domains).
+    entity_refs: tuple[str, ...] = ()
 
     @property
     def is_blocking(self) -> bool:
         return self.severity == Severity.BLOCK.value
+
+    @property
+    def alert_key(self) -> str:
+        return f"conflict:{self.rule_id}"
 
     def to_dict(self) -> dict:
         return {
@@ -202,12 +209,19 @@ async def _domain_items(
 ) -> list[dict]:
     """Current items of ``domain``, plus the proposed items when ``domain`` is the
     one being changed (so a new item can clash with something already present in
-    the same domain, e.g. retinoid + peel the same evening)."""
+    the same domain, e.g. retinoid + peel the same evening).
+
+    A proposed item carrying an ``id`` is an edit of an existing row: it replaces
+    the resolver item with that ``id``, so the rules see the state after the save
+    rather than the old and the new version of the row side by side."""
     items: list[dict] = []
     resolver = _resolvers.get(domain)
     if resolver is not None:
         items.extend(await resolver(session))
     if domain == changed_domain:
+        edited = {p["id"] for p in proposed_items if p.get("id") is not None}
+        if edited:
+            items = [i for i in items if i.get("id") not in edited]
         items.extend(proposed_items)
     return items
 
@@ -220,12 +234,41 @@ def _matching_items(condition: dict, items: list[dict]) -> list[dict]:
     return [item for item in items if _matches(condition, item)]
 
 
-def _slots(items: list[dict]) -> set:
-    """The distinct non-empty ``timing_slot`` values carried by matching items.
-    Only the supplements resolver currently sets this key (see
-    ``supplements_service._parse_slot``); other domains' items simply have no
-    slot, which safely excludes them here."""
-    return {item.get("timing_slot") for item in items if item.get("timing_slot")}
+def _firing_pairs(rule_type: str, matches_a: list[dict], matches_b: list[dict]) -> list[tuple]:
+    """Every (side A item, side B item) pair that makes the rule fire.
+
+    A timing_separation rule is about two items taken *together*: a pair counts
+    only when both carry the same declared AM/PM/MEAL/DAY slot. Different (or
+    unknown) slots mean they're already separated in practice. Only the
+    supplements resolver sets ``timing_slot`` (see
+    ``supplements_service._parse_slot``); other domains' items have none, which
+    safely excludes them here."""
+    timing = _is_timing_rule(rule_type)
+    pairs = []
+    for a in matches_a:
+        for b in matches_b:
+            if timing and not (a.get("timing_slot") and a.get("timing_slot") == b.get("timing_slot")):
+                continue
+            pairs.append((a, b))
+    return pairs
+
+
+def _entity_refs(pairs: list[tuple]) -> tuple[str, ...]:
+    refs = {item["ref"] for pair in pairs for item in pair if isinstance(item.get("ref"), str)}
+    return tuple(sorted(refs))
+
+
+# Matches the length of ``system_alerts.entity_ref``.
+_ENTITY_REF_MAX = 128
+
+
+def alert_entity_ref(violation: Violation, fallback: str = "") -> str:
+    """The ``entity_ref`` a violation's alert is stored under: the rule's matched
+    entities when it has any (so the alert is the same row whichever of them was
+    being saved), else ``fallback``."""
+    if not violation.entity_refs:
+        return fallback
+    return ",".join(violation.entity_refs)[:_ENTITY_REF_MAX]
 
 
 async def evaluate(
@@ -239,6 +282,12 @@ async def evaluate(
     current state of the other domains. Pure read — returns the firing violations,
     writes nothing.
 
+    With a ``proposed_state`` only the rules the proposed item itself takes part
+    in are returned: a rule that is true of the rest of the catalog (ashwagandha
+    while cortisol is low) is not a consequence of saving zinc, so it neither
+    blocks nor gets reported for that save. Without one, the current state of
+    every domain is evaluated as is.
+
     Rules whose ``params`` carry ``day_end_only: true`` are skipped unless
     ``include_day_end`` is set. Those rules compare a same-day running total
     against a lower-bound threshold (e.g. "today's calories < 800") which is
@@ -248,14 +297,9 @@ async def evaluate(
     unaffected by default.
     """
     proposed_items = _normalize_proposed(proposed_state)
+    proposed_ids = {id(item) for item in proposed_items}
 
-    result = await session.execute(
-        select(ConflictRule).where(
-            ConflictRule.active.is_(True),
-            (ConflictRule.domain_a == domain) | (ConflictRule.domain_b == domain),
-        )
-    )
-    rules = result.scalars().all()
+    rules = await _rules_touching(session, domain)
 
     violations: list[Violation] = []
     for rule in rules:
@@ -266,16 +310,13 @@ async def evaluate(
 
         matches_a = _matching_items(rule.condition_a or {}, items_a)
         matches_b = _matching_items(rule.condition_b or {}, items_b)
-        if not matches_a or not matches_b:
+        pairs = _firing_pairs(rule.rule_type, matches_a, matches_b)
+        if not pairs:
             continue
-
-        if _is_timing_rule(rule.rule_type):
-            # A timing_separation rule is about two items taken *together* — it
-            # only fires when some matching item on each side shares the same
-            # declared AM/PM/MEAL/DAY slot. Different (or unknown) slots mean
-            # they're already separated in practice, so no warning is raised.
-            if not (_slots(matches_a) & _slots(matches_b)):
-                continue
+        if proposed_ids and not any(
+            id(a) in proposed_ids or id(b) in proposed_ids for a, b in pairs
+        ):
+            continue
 
         violations.append(
             Violation(
@@ -289,9 +330,20 @@ async def evaluate(
                 category=rule.category,
                 source=rule.source,
                 evidence=rule.evidence,
+                entity_refs=_entity_refs(pairs),
             )
         )
     return violations
+
+
+async def _rules_touching(session: AsyncSession, domain: str) -> Sequence[ConflictRule]:
+    result = await session.execute(
+        select(ConflictRule).where(
+            ConflictRule.active.is_(True),
+            (ConflictRule.domain_a == domain) | (ConflictRule.domain_b == domain),
+        )
+    )
+    return result.scalars().all()
 
 
 async def enforce(
@@ -309,6 +361,11 @@ async def enforce(
     ``override``. Otherwise writes an alert row per violation (stamping
     ``override_at`` on overridden blocks) and returns all violations so the caller
     can surface the non-blocking ones. See :func:`evaluate` for ``include_day_end``.
+
+    An alert for a rule that matched catalog entities is stored under those
+    entities (see :func:`alert_entity_ref`) and replaces any other active row of
+    the same rule, so one rule is one alert however many saves touched it.
+    ``entity_ref`` is used only for rules whose items carry no entity.
     """
     violations = await evaluate(session, domain, proposed_state, include_day_end=include_day_end)
     blocking = [v for v in violations if v.is_blocking]
@@ -318,16 +375,60 @@ async def enforce(
 
     for v in violations:
         overridden = v.is_blocking and override
+        ref = alert_entity_ref(v, entity_ref)
+        if v.entity_refs:
+            await alerts_service.resolve_superseded(session, alert_key=v.alert_key, keep_entity=ref)
         await alerts_service.raise_alert(
             session,
             domain=domain,
             severity=v.severity,
             message=v.message,
-            alert_key=f"conflict:{v.rule_id}",
-            entity_ref=entity_ref,
+            alert_key=v.alert_key,
+            entity_ref=ref,
             overridden=overridden,
         )
     return violations
+
+
+async def reconcile(session: AsyncSession, domain: str) -> None:
+    """Bring the conflict alerts of rules touching ``domain`` in line with the
+    current state, after a write to it has been flushed.
+
+    * A rule that no longer fires (its supplement switched off or deleted) has
+      its active alerts resolved.
+    * A rule that still fires keeps exactly one active alert, bound to the
+      entities it matches now; rows raised under another ref are merged into it.
+    * A rule with no active alert is left alone — a dismissal sticks until a
+      save the rule is about raises it again (see :func:`enforce`).
+
+    ``day_end_only`` rules are owned by :func:`enforce_day_end` and skipped.
+    """
+    fired = {v.rule_id: v for v in await evaluate(session, domain)}
+    for rule in await _rules_touching(session, domain):
+        if (rule.params or {}).get("day_end_only"):
+            continue
+        key = f"conflict:{rule.id}"
+        rows = [a for a in await alerts_service.list_active(session) if a.alert_key == key]
+        if not rows:
+            continue
+        v = fired.get(rule.id)
+        if v is None:
+            await alerts_service.resolve_superseded(session, alert_key=key, keep_entity=None)
+            continue
+        if not v.entity_refs:
+            continue
+        ref = alert_entity_ref(v)
+        if not any(r.entity_ref == ref for r in rows):
+            await alerts_service.raise_alert(
+                session,
+                domain=rows[0].domain,
+                severity=v.severity,
+                message=v.message,
+                alert_key=key,
+                entity_ref=ref,
+                overridden=any(r.override_at is not None for r in rows),
+            )
+        await alerts_service.resolve_superseded(session, alert_key=key, keep_entity=ref)
 
 
 async def enforce_day_end(
@@ -349,13 +450,9 @@ async def enforce_day_end(
     violations = await evaluate(session, domain, include_day_end=True)
     fired = {v.rule_id: v for v in violations if (v.params or {}).get("day_end_only")}
 
-    result = await session.execute(
-        select(ConflictRule).where(
-            ConflictRule.active.is_(True),
-            (ConflictRule.domain_a == domain) | (ConflictRule.domain_b == domain),
-        )
-    )
-    day_end_rules = [r for r in result.scalars().all() if (r.params or {}).get("day_end_only")]
+    day_end_rules = [
+        r for r in await _rules_touching(session, domain) if (r.params or {}).get("day_end_only")
+    ]
 
     for rule in day_end_rules:
         key = f"conflict:{rule.id}"

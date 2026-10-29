@@ -824,12 +824,17 @@ async def check_supplement_conflicts(supplement_name: str) -> list[dict]:
         violations = await conflict_engine.evaluate(
             session,
             Domain.SUPPLEMENTS.value,
-            {"key": key, "name": supplement_name, "active": True},
+            {"key": key, "name": supplement_name, "active": True, "ref": f"supplement:{key}"},
         )
-        return [v.to_dict() for v in violations]
+        return [_violation_view(v) for v in violations]
 
 
 _VALID_CONFLICT_DOMAINS = {d.value for d in Domain}
+
+
+def _violation_view(v) -> dict:
+    """A dry-run violation plus the catalog entities the rule matched."""
+    return {**v.to_dict(), "entities": list(v.entity_refs)}
 
 
 @mcp.tool()
@@ -885,15 +890,18 @@ async def check_conflicts(domain: str, payload: dict) -> list[dict]:
     labs, nutrition, workouts, garmin, milestones, system, body_comp). E.g.
     ``check_conflicts("labs", {"marker": "Калий", "value": 5.5})`` or
     ``check_conflicts("supplements", {"key": "iron", "active": True})``.
-    Read-only — never writes, never blocks; returns the violations that would
-    fire if this state were saved."""
+    Read-only — never writes, never blocks; returns the violations the proposed
+    item itself would take part in if saved (``key`` and ``active`` count: an
+    inactive supplement clashes with nothing). Rules already true of the rest of
+    the catalog are not repeated here — those are in ``get_active_alerts``.
+    Each violation lists the catalog ``entities`` it matched."""
     if domain not in _VALID_CONFLICT_DOMAINS:
         return [{"error": f"Unknown domain '{domain}'. Use one of: {', '.join(sorted(_VALID_CONFLICT_DOMAINS))}"}]
 
     session_factory = get_session_factory()
     async with session_factory() as session:
         violations = await conflict_engine.evaluate(session, domain, payload)
-        return [v.to_dict() for v in violations]
+        return [_violation_view(v) for v in violations]
 
 
 # ── Nutrition tools ──────────────────────────────────────────────────────────
@@ -3143,7 +3151,8 @@ async def set_supplement_active(
     supplement_id: int, active: bool, override: bool = False
 ) -> dict:
     """Toggles a supplement's active flag. Activating a contraindicated one runs the
-    conflict check → ``{"blocked": true, ...}`` unless ``override=True``. WRITE tool."""
+    conflict check → ``{"blocked": true, ...}`` unless ``override=True``.
+    Deactivating resolves the conflict alerts that no longer apply. WRITE tool."""
     from vitals.services import supplements_service
 
     session_factory = get_session_factory()
