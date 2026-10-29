@@ -724,11 +724,36 @@ async def assemble_context(
         glp1_truncated = any(
             (injections_truncated, effects_truncated, phases_truncated)
         )
+        all_injection_dates = list(
+            (
+                await session.execute(
+                    select(Injection.date)
+                    .where(Injection.date <= period_end)
+                    .order_by(Injection.date.asc())
+                )
+            ).scalars().all()
+        )
+        last_injection_date = all_injection_dates[-1] if all_injection_dates else None
+        last_injection_str = last_injection_date.isoformat() if last_injection_date else None
+
         phase = await glp1_service.active_dose_phase(session, on_date=period_end)
+        injections_list = [
+            {
+                "date": row.date.isoformat(),
+                "period": _period_name(row.date, window),
+                "drug": row.drug,
+                "dose_mg": row.dose_mg,
+                "site": row.site,
+                "note": row.note,
+                "source": row.source,
+            }
+            for row in glp1_injections
+        ]
         ctx["glp1"] = {
             # Legacy headline fields.
             "drug": phase.drug if phase else None,
             "dose_mg": phase.dose_mg if phase else None,
+            "last_injection": last_injection_str,
             "plateau": await glp1_service.evaluate_plateau(
                 session, on_date=period_end
             ),
@@ -755,18 +780,7 @@ async def assemble_context(
                 }
                 for row in glp1_phases
             ] or None,
-            "injections": [
-                {
-                    "date": row.date.isoformat(),
-                    "period": _period_name(row.date, window),
-                    "drug": row.drug,
-                    "dose_mg": row.dose_mg,
-                    "site": row.site,
-                    "note": row.note,
-                    "source": row.source,
-                }
-                for row in glp1_injections
-            ] or None,
+            "injections": injections_list if (glp1_injections or all_injection_dates) else None,
             "side_effects": [
                 {
                     "date": row.date.isoformat(),
@@ -781,15 +795,19 @@ async def assemble_context(
         }
     else:
         ctx["glp1"] = None
+        all_injection_dates = []
+        last_injection_str = None
+    coverage_dates = all_injection_dates if all_injection_dates else [
+        *(row.date for row in (*glp1_injections, *glp1_effects)),
+        *(row.start_date for row in glp1_phases),
+    ]
+    coverage_rows = len(all_injection_dates) if all_injection_dates else (len(glp1_injections) + len(glp1_effects) + len(glp1_phases))
     ctx["coverage"]["glp1"] = _coverage(
         module="glp1",
         enabled=glp1_enabled,
-        dates=[
-            *(row.date for row in (*glp1_injections, *glp1_effects)),
-            *(row.start_date for row in glp1_phases),
-        ],
+        dates=coverage_dates,
         window=window,
-        rows=len(glp1_injections) + len(glp1_effects) + len(glp1_phases),
+        rows=coverage_rows,
         truncated=glp1_truncated,
         extra={
             "event_limit_per_collection": _TREATMENT_EVENT_LIMIT,
@@ -797,6 +815,7 @@ async def assemble_context(
             "injections_truncated": injections_truncated,
             "side_effects_truncated": effects_truncated,
             "phases_truncated": phases_truncated,
+            "last_injection": last_injection_str,
         },
     )
 
@@ -1972,7 +1991,7 @@ async def assemble_context(
         )
     ctx["milestones"] = milestone_context
     ctx["coverage"]["milestones"] = _coverage(
-        module="reports",
+        module="milestones",
         enabled=True,
         window=window,
         rows=len(active_milestones),
@@ -2051,7 +2070,7 @@ async def assemble_context(
         _resolved_day_context(row) for row in day_rows
     ] or None
     ctx["coverage"]["day_context"] = _coverage(
-        module="signals",
+        module="day_context",
         enabled=signals_enabled,
         dates=[row.date for row in day_rows],
         window=window,

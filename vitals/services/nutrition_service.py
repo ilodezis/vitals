@@ -35,7 +35,7 @@ async def log_meal(
     *,
     on_date: date_type,
     name: str,
-    eaten_at=None,
+    eaten_at: Optional[time_type] = None,
     calories: Optional[float] = None,
     protein_g: Optional[float] = None,
     fat_g: Optional[float] = None,
@@ -51,8 +51,6 @@ async def log_meal(
         override=override,
         entity_ref=f"meal:{on_date.isoformat()}",
     )
-    if eaten_at is None:
-        eaten_at = now_local().time()
     row = MealLog(
         date=on_date,
         domain=DOMAIN,

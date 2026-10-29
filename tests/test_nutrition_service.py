@@ -153,12 +153,12 @@ async def test_goals_from_config(db_session):
     assert goals["calories_max"] == 2000
 
 
-async def test_eaten_at_defaults_to_now(db_session):
+async def test_eaten_at_defaults_to_none(db_session):
     m = await nutrition_service.log_meal(
         db_session, on_date=date(2026, 6, 8), name="no time given"
     )
     await db_session.commit()
-    assert m.eaten_at is not None
+    assert m.eaten_at is None
 
 
 async def test_list_meals_date_range(db_session):

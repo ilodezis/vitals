@@ -112,6 +112,11 @@ def serialize_row(row) -> dict:
         if val is None:
             continue
         d[column.name] = val.isoformat() if hasattr(val, "isoformat") else val
+    if hasattr(row, "__tablename__") and row.__tablename__ == "meal_logs":
+        if hasattr(row, "created_at") and row.created_at:
+            d["logged_at"] = row.created_at.isoformat()
+        if "eaten_at" not in d:
+            d["eaten_at"] = None
     return d
 
 
@@ -929,7 +934,7 @@ async def log_meal(
     """Records a meal or snack with optional macros (KCAL, protein, fat, carbs).
 
     This is a WRITE tool — the meal is saved to the database immediately.
-    Defaults: on_date = today, eaten_at = current time. If a hard conflict rule
+    Defaults: on_date = today, eaten_at = None (unspecified meal time). If a hard conflict rule
     blocks the save, returns ``{"blocked": true, "violations": [...]}`` instead
     of saving; call again with ``override=True`` to save anyway.
     """
