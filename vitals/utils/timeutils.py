@@ -98,3 +98,31 @@ def local_naive_to_utc(dt: datetime) -> datetime:
     clocks go back the first occurrence wins; in the skipped hour the clock is
     read as if it had not jumped."""
     return dt.replace(tzinfo=_zone(), fold=0).astimezone(timezone.utc)
+
+
+def format_iso(
+    dt: Optional[datetime],
+    *,
+    is_utc: bool = False,
+    to_local: bool = True,
+) -> Optional[str]:
+    """Format a datetime as an ISO-8601 string with an explicit offset and no microseconds.
+
+    Convention C4:
+      - Naive datetimes are assumed to be in the local timezone (when is_utc=False)
+        or UTC (when is_utc=True).
+      - If to_local is True, the resulting aware datetime is converted to the configured
+        local timezone (_zone()).
+      - Microseconds are stripped so timestamps read cleanly: YYYY-MM-DDTHH:MM:SS+HH:MM.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        if is_utc:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.replace(tzinfo=_zone())
+    if to_local:
+        dt = dt.astimezone(_zone())
+    return dt.replace(microsecond=0).isoformat()
+

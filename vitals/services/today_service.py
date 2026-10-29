@@ -267,6 +267,7 @@ async def collect(
     *,
     enabled_modules: Optional[dict[str, bool]] = None,
     weigh_ins: bool = False,
+    redis: Optional[Any] = None,
 ) -> dict:
     """The day as values — everything ``today/index.html`` renders and the React
     screen draws, before any of it is phrased.

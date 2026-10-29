@@ -34,7 +34,7 @@ import importlib
 import json
 import logging
 import os
-from datetime import date as date_type, timedelta
+from datetime import date as date_type, datetime, timedelta
 from typing import Optional
 
 from fastmcp import FastMCP
@@ -80,7 +80,7 @@ from vitals.models import (
 )
 from vitals.services import conflict_engine, modules_service, photo_derivatives
 from vitals.services.conflict_engine import ConflictBlocked
-from vitals.utils.timeutils import today_local
+from vitals.utils.timeutils import format_iso, today_local
 from web.deps import get_redis_client, get_session_factory
 
 logger = logging.getLogger(__name__)
@@ -111,10 +111,15 @@ def serialize_row(row) -> dict:
         val = getattr(row, column.name)
         if val is None:
             continue
-        d[column.name] = val.isoformat() if hasattr(val, "isoformat") else val
+        if isinstance(val, datetime):
+            d[column.name] = format_iso(val)
+        elif hasattr(val, "isoformat"):
+            d[column.name] = val.isoformat()
+        else:
+            d[column.name] = val
     if hasattr(row, "__tablename__") and row.__tablename__ == "meal_logs":
         if hasattr(row, "created_at") and row.created_at:
-            d["logged_at"] = row.created_at.isoformat()
+            d["logged_at"] = format_iso(row.created_at, is_utc=True)
         if "eaten_at" not in d:
             d["eaten_at"] = None
     return d
@@ -2871,7 +2876,7 @@ async def get_data_overview() -> dict:
                 "latest": row[2].isoformat() if row[2] else None,
             }
             if updated_col is not None:
-                entry["last_updated"] = row[3].isoformat() if row[3] else None
+                entry["last_updated"] = format_iso(row[3], is_utc=True) if row[3] else None
             overview[name] = entry
 
         for name, model in count_only:
@@ -4003,9 +4008,46 @@ def _jsonable(value):
         return {k: _jsonable(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [_jsonable(v) for v in value]
+    if isinstance(value, datetime):
+        return format_iso(value)
     if hasattr(value, "isoformat"):
         return value.isoformat()
     return value
+
+
+async def _enrich_sync_rows(session, sync_rows: list[dict], redis=None) -> list[dict]:
+    """Enrich sync rows with separate last_data_date and last_sync_at fields (Convention C4)."""
+    enriched = []
+    for s in sync_rows:
+        source = s.get("source")
+        d = s.get("date")
+        d_iso = d.isoformat() if hasattr(d, "isoformat") else str(d)
+        last_sync = None
+        if redis is not None:
+            try:
+                raw_ts = await redis.get(f"sync:last_success:{source.lower()}")
+                if raw_ts:
+                    from datetime import timezone
+                    ts = datetime.fromtimestamp(int(raw_ts), tz=timezone.utc)
+                    last_sync = format_iso(ts)
+            except Exception:
+                pass
+        if last_sync is None:
+            if source == "Garmin":
+                max_updated = (await session.execute(select(func.max(GarminDaily.updated_at)))).scalar()
+                if max_updated:
+                    last_sync = format_iso(max_updated, is_utc=True)
+            elif source == "Hevy":
+                max_updated = (await session.execute(select(func.max(HevyWorkout.updated_at)))).scalar()
+                if max_updated:
+                    last_sync = format_iso(max_updated, is_utc=True)
+        enriched.append({
+            "source": source,
+            "date": d,
+            "last_data_date": d_iso,
+            "last_sync_at": last_sync,
+        })
+    return enriched
 
 
 @mcp.tool()
@@ -4023,9 +4065,14 @@ async def get_today() -> dict:
     from vitals.services import modules_service, today_service
 
     session_factory = get_session_factory()
+    try:
+        redis = get_redis_client()
+    except Exception:
+        redis = None
     async with session_factory() as session:
         enabled = await modules_service.get_enabled_modules(session)
         data = await today_service.collect(session, enabled_modules=enabled, weigh_ins=True)
+        data["sync"] = await _enrich_sync_rows(session, data.get("sync") or [], redis=redis)
         return _jsonable(data)
 
 
@@ -4122,7 +4169,7 @@ async def create_shared_report(
             "domains": chosen,
             "period_start": start.isoformat(),
             "period_end": end.isoformat(),
-            "expires_at": row.expires_at.isoformat(),
+            "expires_at": format_iso(row.expires_at),
         }
 
 
