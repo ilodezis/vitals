@@ -154,10 +154,10 @@ async def test_delete_record_deletes_a_core_domain_row(db_session):
     row = await weight_service.log_weight(db_session, on_date=date(2026, 7, 1), weight_kg=90.0)
     await db_session.commit()
 
-    assert await mcp_router.delete_record("weight", row.id) == {
+    assert await mcp_router.delete_record("weight", row.id, confirm=True) == {
         "deleted": True, "domain": "weight", "record_id": row.id,
     }
-    assert await mcp_router.delete_record("weight", row.id) == {
+    assert await mcp_router.delete_record("weight", row.id, confirm=True) == {
         "deleted": False, "domain": "weight", "record_id": row.id,
     }
 

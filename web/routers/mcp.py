@@ -833,18 +833,28 @@ async def resolve_alert(alert_id: int) -> dict:
 
 
 @mcp.tool()
-async def resolve_all_alerts(domain: Optional[str] = None) -> dict:
+async def resolve_all_alerts(domain: Optional[str] = None, confirm: bool = False) -> dict:
     """Resolves every active alert at once — the app's "dismiss all" — or, with
     ``domain`` (e.g. "labs", "skincare", "environment"), every alert of that
-    domain. Bulk and immediate: use it only when the owner asks to clear them
-    all; for one alert use ``resolve_alert``. An alert whose cause is still there
-    may be raised again by the next check. Returns how many were resolved.
-    WRITE tool."""
+    domain. Bulk and irreversible. Requires two-step confirmation: calling without
+    confirm=True returns a preview with the count and sample alerts. Call with
+    confirm=True to execute. Returns how many were resolved. WRITE tool."""
     from vitals.services import alerts_service
 
     session_factory = get_session_factory()
     async with session_factory() as session:
-        count = len(await alerts_service.list_active(session, domain=domain))
+        active = await alerts_service.list_active(session, domain=domain)
+        count = len(active)
+        if not confirm:
+            return {
+                "preview": True,
+                "confirm_required": True,
+                "action": "resolve_all_alerts",
+                "domain": domain,
+                "count": count,
+                "sample_messages": [a.message for a in active[:5]],
+                "hint": f"To resolve all {count} active alerts, call resolve_all_alerts(domain={domain!r}, confirm=True).",
+            }
         await alerts_service.resolve_all(session, domain=domain)
         await session.commit()
         return {"resolved": count, "domain": domain}
@@ -854,7 +864,10 @@ async def resolve_all_alerts(domain: Optional[str] = None) -> dict:
 async def override_alert(alert_id: int) -> dict:
     """Marks a blocking alert overridden — "noted, doing it anyway". The alert
     stays active and visible; only the block it represents stops being treated as
-    unanswered. For resolving it instead, use ``resolve_alert``. WRITE tool."""
+    unanswered. Call this ONLY when the user explicitly instructs to proceed despite
+    the warning (e.g. "save anyway", "override", "я знаю, сохрани"). Never call this
+    autonomously on the model's own initiative. For resolving an alert instead, use
+    ``resolve_alert``. WRITE tool."""
     from vitals.services import alerts_service
 
     session_factory = get_session_factory()
@@ -2077,9 +2090,11 @@ def _remove_upload(rel_path: Optional[str]) -> None:
 
 
 @mcp.tool()
-async def delete_record(domain: str, record_id: int) -> dict:
+async def delete_record(domain: str, record_id: int, confirm: bool = False) -> dict:
     """Deletes one record from any domain by its ID — permanently; there is no
-    undo, so delete only what the owner asked to remove. WRITE tool — immediate.
+    undo, so delete only what the owner asked to remove. Requires two-step confirmation:
+    calling without confirm=True returns a preview. Call with confirm=True to execute.
+    WRITE tool.
 
     ``domain`` is one of: weight, measurement (body tape), noise_marker,
     progress_photo (a weight progress photo and its file), labs (one result),
@@ -2108,6 +2123,15 @@ async def delete_record(domain: str, record_id: int) -> dict:
     async with session_factory() as session:
         if module_key and not await _module_enabled(session, module_key):
             return {"error": f"module '{module_key}' is disabled"}
+        if not confirm:
+            return {
+                "preview": True,
+                "confirm_required": True,
+                "action": "delete",
+                "domain": domain,
+                "record_id": record_id,
+                "hint": f"To permanently delete {domain} record {record_id}, call delete_record(domain='{domain}', record_id={record_id}, confirm=True).",
+            }
         service = importlib.import_module(f"vitals.services.{service_name}")
         upload = None
         if domain == "body_comp":
@@ -2855,6 +2879,11 @@ async def export_everything(
     parallel arrays per day). This is the way to read long-term history in a single
     call rather than paging each domain's newest-100 read tool. Read-only.
 
+    WARNING: Heavy response payload. Do NOT call this tool 'just in case' or for
+    casual status queries; use ``get_data_overview``, ``get_today``, or domain-specific
+    query tools instead. Data is returned directly in the response payload (not written
+    to disk).
+
     Defaults to the **last 90 days**: the whole lake is years of daily Garmin rows
     with per-minute sleep and would fill the conversation before the question is
     asked. Widen deliberately — ``since="2020-01-01"`` (any early date) for the
@@ -3371,11 +3400,28 @@ async def get_modules() -> dict:
     }
 
 
+_MODULE_DATA_DESCRIPTIONS = {
+    "environment": "air quality, CO2, temperature, humidity readings",
+    "hevy": "workout logs, exercises, sets, and volume",
+    "nutrition": "food and meal logs, calories, macronutrients",
+    "glp1": "GLP-1 injection logs and side effects",
+    "hrt": "hormone replacement therapy logs",
+    "genetics": "genetic traits, SNP markers, and carrier status",
+    "supplements": "supplement regimes, intake logs, and timing",
+    "skincare": "skincare routines and products",
+    "interactions": "drug and supplement interactions and conflicts",
+    "signals": "free-text capture logs and proactive Telegram bot alerts",
+    "body_comp": "BIA scans (InBody/MedAss) and body composition metrics",
+    "timeline": "chronological health event journal",
+}
+
+
 @mcp.tool()
 async def set_module(key: str, enabled: bool) -> dict:
     """Enables or disables an optional module (e.g. body_comp, timeline, glp1,
-    nutrition). Core modules are locked and return an error. WRITE tool — returns
-    the new enabled-module map."""
+    nutrition). Core modules are locked and return an error. Disabling a module
+    hides its data from today, snapshots, and navigation. WRITE tool — returns
+    the new enabled-module map, status, and impact note."""
     from vitals.services import modules_service
 
     session_factory = get_session_factory()
@@ -3387,7 +3433,11 @@ async def set_module(key: str, enabled: bool) -> dict:
         except modules_service.ModuleToggleError as e:
             return {"error": str(e)}
         await session.commit()
-        return {"enabled": state}
+        action = "enabled" if enabled else "disabled"
+        desc = _MODULE_DATA_DESCRIPTIONS.get(key, f"{key} domain data")
+        impact = "now visible in" if enabled else "hidden from"
+        note = f"Module '{key}' {action}. Its data ({desc}) is {impact} today, snapshot, and navigation."
+        return {"enabled": state, "module": key, "status": action, "note": note}
 
 
 # ── Weekly digest generation ──────────────────────────────────────────────────
@@ -4210,17 +4260,19 @@ async def create_shared_report(
     expires_days: int = 30,
     labs_flagged_only: bool = False,
     note: Optional[str] = None,
+    confirm: bool = False,
 ) -> dict:
     """Publishes a doctor report — a frozen, password-protected page with the
     chosen domains for a period, exactly like "New report" on the Share screen.
     OUTWARD-FACING: anyone holding the link and the password can read that
     medical data until it expires or is revoked. Create one only when the owner
-    explicitly asks for it.
+    explicitly asks for it. Requires two-step confirmation: calling without
+    confirm=True returns a preview. Call with confirm=True to create.
 
     ``domains`` from ``get_shared_reports().available_domains``, or a ``preset``
     from its ``presets`` instead. ``period`` is a number of days back ("30",
     "90", "180"), "all", or "custom" with ``period_start``/``period_end``
-    (YYYY-MM-DD). ``expires_days`` — link lifetime (7, 30, 90).
+    (YYYY-MM-DD). ``expires_days`` — link lifetime (7, 30, 90; defaults to 30).
     ``labs_flagged_only`` keeps only out-of-range lab results.
 
     Returns the ``url`` path and the ``password`` — the password exists only in
@@ -4255,6 +4307,23 @@ async def create_shared_report(
             )
         except ValueError as e:
             return {"error": str(e)}
+
+        if not confirm:
+            return {
+                "preview": True,
+                "confirm_required": True,
+                "action": "create_shared_report",
+                "title": title,
+                "domains": chosen,
+                "preset": preset,
+                "period_start": start.isoformat(),
+                "period_end": end.isoformat(),
+                "expires_days": expires_days,
+                "labs_flagged_only": labs_flagged_only,
+                "warning": "Publishes an outward-facing report containing medical data. Call with confirm=True to create.",
+                "hint": f"To publish this shared report, call create_shared_report(title={title!r}, domains={chosen!r}, confirm=True).",
+            }
+
         row, password = await share_service.create_report(
             session, title=title, domains=chosen, period_start=start, period_end=end,
             expires_days=expires_days, note=note, labs_flagged_only=labs_flagged_only,

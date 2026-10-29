@@ -183,7 +183,7 @@ async def test_a_blocking_rule_blocks_the_tick_until_override(db_session):
 async def test_deleting_a_product_keeps_its_history():
     p = await mcp_router.add_skincare_product(name="Старый крем", type="x")
     await mcp_router.set_skincare_check("evening", p["id"], on_date=WED.isoformat())
-    assert (await mcp_router.delete_record("skincare_product", p["id"]))["deleted"] is True
+    assert (await mcp_router.delete_record("skincare_product", p["id"], confirm=True))["deleted"] is True
 
     history = await mcp_router.get_skincare_logs(start_date=WED.isoformat())
     # The tick stays readable by name (on Postgres its product_id goes null — the
@@ -217,7 +217,7 @@ async def test_face_photo_round_trip(static_dir):
     assert json.loads(shown.content[0].text)["note"] == "день 3"
     assert shown.content[1].mime_type == "image/jpeg"
 
-    gone = await mcp_router.delete_record("skincare_photo", added["id"])
+    gone = await mcp_router.delete_record("skincare_photo", added["id"], confirm=True)
     assert gone["deleted"] is True
     assert not (static_dir / added["file_key"]).exists()
     assert not any(c.exists() for c in copies)
@@ -240,7 +240,7 @@ async def test_progress_photo_lives_in_the_weight_gallery(static_dir):
     added = await mcp_router.add_photo("progress", "data:image/png;base64," + _png_b64("blue"))
     assert added["date"] == today_local().isoformat()
     assert [p["id"] for p in await mcp_router.list_photos("progress")] == [added["id"]]
-    assert (await mcp_router.delete_record("progress_photo", added["id"]))["deleted"] is True
+    assert (await mcp_router.delete_record("progress_photo", added["id"], confirm=True))["deleted"] is True
     assert not (static_dir / added["file_key"]).exists()
 
 
@@ -361,7 +361,7 @@ async def test_resolve_all_alerts(db_session):
     await db_session.commit()
 
     assert len(await mcp_router.get_active_alerts(domain="labs")) == 2
-    assert await mcp_router.resolve_all_alerts(domain="labs") == {"resolved": 2, "domain": "labs"}
+    assert await mcp_router.resolve_all_alerts(domain="labs", confirm=True) == {"resolved": 2, "domain": "labs"}
     assert [a["alert_key"] for a in await mcp_router.get_active_alerts()] == ["c"]
 
 
@@ -401,7 +401,9 @@ async def test_doctor_report_lifecycle():
         await mcp_router.log_weight(
             weight_kg=90.0 - i, on_date=(today_local() - timedelta(days=i + 1)).isoformat()
         )
-    created = await mcp_router.create_shared_report(title="Эндокринолог", domains=["weight"], period="30")
+    created = await mcp_router.create_shared_report(
+        title="Эндокринолог", domains=["weight"], period="30", confirm=True
+    )
     assert created["password"] and created["url"].startswith("/r/")
     assert created["domains"] == ["weight"]
 
@@ -414,7 +416,7 @@ async def test_doctor_report_lifecycle():
     assert "already revoked" in (await mcp_router.revoke_shared_report(created["id"]))["error"]
     assert (await mcp_router.get_shared_reports())["reports"][0]["state"] == "revoked"
 
-    assert (await mcp_router.delete_record("shared_report", created["id"]))["deleted"] is True
+    assert (await mcp_router.delete_record("shared_report", created["id"], confirm=True))["deleted"] is True
     assert (await mcp_router.get_shared_reports())["reports"] == []
 
 
@@ -425,7 +427,7 @@ async def test_doctor_report_refuses_empty_or_unknown_input():
         await mcp_router.create_shared_report(title="x", domains=["weight"], period="custom")
     )["error"]
     # A window with nothing in it is not a document.
-    assert "error" in await mcp_router.create_shared_report(title="x", domains=["weight"])
+    assert "error" in await mcp_router.create_shared_report(title="x", domains=["weight"], confirm=True)
 
 
 async def test_saved_chart_lifecycle():

@@ -49,7 +49,7 @@ async def test_log_get_history_delete_body_scan(db_session, session_factory, mon
     hist = await mcp_router.get_body_metric_history("body_fat_pct")
     assert hist and hist[0]["value"] == 18.5
 
-    deleted = await mcp_router.delete_record("body_comp", scan_id)
+    deleted = await mcp_router.delete_record("body_comp", scan_id, confirm=True)
     assert deleted["deleted"] is True
     assert "error" in await mcp_router.get_body_scan(scan_id)
 

@@ -37,7 +37,7 @@ async def test_log_get_delete_lab_result(db_session, session_factory, monkeypatc
 
     assert await mcp_router.get_lab_results(start_date="2026-07-01", end_date="2026-07-31") == []
 
-    deleted = await mcp_router.delete_record("labs", result_id)
+    deleted = await mcp_router.delete_record("labs", result_id, confirm=True)
     assert deleted == {"deleted": True, "domain": "labs", "record_id": result_id}
     assert await mcp_router.get_lab_results(marker="TSH") == []
 

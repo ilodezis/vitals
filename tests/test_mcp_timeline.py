@@ -80,7 +80,7 @@ async def test_update_event_keeps_what_the_call_left_out(db_session, session_fac
 
     assert await mcp_router.update_event(9999, title="x") == {"error": "Event 9999 not found"}
 
-    assert await mcp_router.delete_record("timeline", created["id"]) == {
+    assert await mcp_router.delete_record("timeline", created["id"], confirm=True) == {
         "deleted": True, "domain": "timeline", "record_id": created["id"],
     }
     assert await mcp_router.get_timeline() == []
