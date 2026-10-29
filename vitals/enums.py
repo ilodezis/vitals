@@ -149,6 +149,10 @@ class LabFlag(StrEnum):
     NORMAL = "normal"
     LOW = "low"
     HIGH = "high"
+    # A value no living person can have in that unit (see
+    # ``labs_service.is_implausible``): almost always a misread document. Never
+    # out of range, so it raises no alert and feeds no rule.
+    SUSPECT = "suspect"
     CRITICAL_LOW = "critical_low"
     CRITICAL_HIGH = "critical_high"
 

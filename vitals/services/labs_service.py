@@ -97,6 +97,155 @@ def compute_flag(
     return LabFlag.NORMAL.value
 
 
+# ── Units ─────────────────────────────────────────────────────────────────────
+# Spellings of one unit that labs print differently. Anything not listed is
+# compared by its folded spelling (case, spaces, ё), so "мМоль/л" == "ммоль/л".
+_UNIT_CLASSES = {
+    "%": "%",
+    "10^9/л": "10^9/l", "10^9/l": "10^9/l", "тыс/мкл": "10^9/l", "10^3/мкл": "10^9/l",
+    "10^12/л": "10^12/l", "10^12/l": "10^12/l", "млн/мкл": "10^12/l", "10^6/мкл": "10^12/l",
+    "кл/мкл": "/мкл", "клеток/мкл": "/мкл", "количество/мкл": "/мкл", "ед/мкл": "/мкл", "/мкл": "/мкл",
+    "ммоль/л": "mmol/l", "mmol/l": "mmol/l",
+    "мкмоль/л": "umol/l", "umol/l": "umol/l",
+    "г/л": "g/l", "g/l": "g/l",
+    "г/дл": "g/dl", "g/dl": "g/dl",
+    "мме/л": "miu/l", "мкме/мл": "miu/l", "мкед/мл": "miu/l", "мед/л": "miu/l",
+    "miu/l": "miu/l", "uiu/ml": "miu/l",
+    "ед/л": "u/l", "u/l": "u/l", "ме/л": "u/l",
+    "нг/мл": "ng/ml", "ng/ml": "ng/ml", "мкг/л": "ng/ml",
+    "фл": "fl", "fl": "fl",
+    "пг": "pg", "pg": "pg",
+}
+
+
+def unit_class(unit: Optional[str]) -> Optional[str]:
+    """A canonical key for comparing units: two results whose units share a
+    class are on the same scale. ``None`` when no unit was given."""
+    if unit is None:
+        return None
+    folded = unit.strip().lower().replace("ё", "е").replace(" ", "")
+    if not folded:
+        return None
+    folded = folded.replace("*", "^").replace("×", "").replace("х10", "10").replace("x10", "10")
+    return _UNIT_CLASSES.get(folded, folded)
+
+
+def units_compatible(a: Optional[str], b: Optional[str]) -> bool:
+    """True unless both units are known and on different scales."""
+    ca, cb = unit_class(a), unit_class(b)
+    return ca is None or cb is None or ca == cb
+
+
+# Leukocyte differential counts. Labs print each both as a share of leukocytes
+# (%) and as an absolute count; the two are different markers ("Лимфоциты %" and
+# "Лимфоциты") and must never share a series or a reference range.
+_DIFFERENTIAL = ("Нейтрофилы", "Лимфоциты", "Моноциты", "Эозинофилы", "Базофилы")
+
+
+async def marker_for_unit(session: AsyncSession, marker: str, unit: Optional[str]) -> str:
+    """The catalog marker a new result belongs to, given the unit it came in.
+
+    A differential count goes to its ``%`` or absolute marker by unit. Any other
+    marker whose catalog unit is on a different scale (urine sediment cells per
+    µl under the blood "Эритроциты", g/dl next to g/l) gets a unit-qualified
+    marker of its own, "Эритроциты (кл/мкл)", reused by every later result on
+    that scale. Without a unit nothing can be told apart and the name stands."""
+    name = normalize_marker(marker)
+    if unit_class(unit) is None:
+        return name
+    base = name[:-2].rstrip() if name.endswith(" %") else name
+    if base in _DIFFERENTIAL:
+        return f"{base} %" if unit_class(unit) == "%" else base
+
+    catalog = await get_marker(session, name)
+    if catalog is None or units_compatible(catalog.unit, unit):
+        return name
+    result = await session.execute(
+        select(LabMarker).where(LabMarker.name.startswith(f"{name} (")).order_by(LabMarker.id)
+    )
+    for variant in result.scalars().all():
+        if units_compatible(variant.unit, unit):
+            return variant.name
+    return f"{name} ({unit.strip()})"
+
+
+# ── Plausibility ──────────────────────────────────────────────────────────────
+# Bounds no living adult falls outside of, per marker and unit class — far wider
+# than any reference range, so a real critical value is never caught here. A
+# value beyond them is a misread document (a percentage read as a count, g/l
+# read as g/dl), not a measurement.
+_PLAUSIBLE: dict[tuple[str, str], tuple[float, float]] = {
+    ("Эритроциты", "10^12/l"): (0.5, 10.0),
+    ("Гемоглобин", "g/l"): (20.0, 260.0),
+    ("Гемоглобин", "g/dl"): (2.0, 26.0),
+    ("Гематокрит", "%"): (5.0, 80.0),
+    ("Лейкоциты", "10^9/l"): (0.05, 1000.0),
+    ("Тромбоциты", "10^9/l"): (1.0, 5000.0),
+    ("Средний объем эритроцитов", "fl"): (40.0, 160.0),
+    ("Среднее содержание гемоглобина в эритроците", "pg"): (10.0, 60.0),
+    ("Средняя концентрация гемоглобина в эритроците", "g/l"): (150.0, 500.0),
+    ("Средняя концентрация гемоглобина в эритроците", "g/dl"): (15.0, 50.0),
+    ("Нейтрофилы", "10^9/l"): (0.0, 200.0),
+    ("Лимфоциты", "10^9/l"): (0.0, 500.0),
+    ("Моноциты", "10^9/l"): (0.0, 50.0),
+    ("Эозинофилы", "10^9/l"): (0.0, 50.0),
+    ("Базофилы", "10^9/l"): (0.0, 20.0),
+    ("Калий", "mmol/l"): (1.0, 12.0),
+    ("Натрий", "mmol/l"): (90.0, 200.0),
+    ("Кальций общий", "mmol/l"): (0.8, 5.0),
+    ("Гликированный гемоглобин (HbA1c)", "%"): (2.0, 25.0),
+}
+
+
+def is_implausible(marker: str, value: float, unit: Optional[str]) -> bool:
+    """True when ``value`` cannot be a real measurement of ``marker`` in ``unit``:
+    a percentage outside 0–100, or a value beyond the physiological bounds of
+    :data:`_PLAUSIBLE`. Markers without bounds are never judged."""
+    cls = unit_class(unit)
+    if cls == "%" and not 0 <= value <= 100:
+        return True
+    bounds = _PLAUSIBLE.get((marker, cls)) if cls else None
+    return bounds is not None and not bounds[0] <= value <= bounds[1]
+
+
+def lab_flag(
+    marker: str,
+    value: float,
+    unit: Optional[str],
+    ref_low: Optional[float],
+    ref_high: Optional[float],
+) -> Optional[str]:
+    """:func:`compute_flag`, except that an implausible value is ``suspect``
+    whatever its range says."""
+    if is_implausible(marker, value, unit):
+        return LabFlag.SUSPECT.value
+    return compute_flag(value, ref_low, ref_high)
+
+
+def effective_range(
+    row: LabResult, catalog: Optional[LabMarker]
+) -> tuple[Optional[float], Optional[float]]:
+    """The reference range a stored result is judged against: its own (the
+    lab's, printed next to it), else the catalog's when the units agree."""
+    if row.ref_low is not None or row.ref_high is not None:
+        return row.ref_low, row.ref_high
+    if catalog is not None and units_compatible(catalog.unit, row.unit):
+        return catalog.ref_low, catalog.ref_high
+    return None, None
+
+
+def effective_flag(row: LabResult, catalog: Optional[LabMarker]) -> Optional[str]:
+    """The flag of a stored result as it reads now. The stored ``flag`` was
+    computed at write time and goes stale: a result saved before its marker had
+    a range has none, and a misread value saved before the plausibility check
+    reads as normal. Every read that hands flags out goes through this. With no
+    range known at all the stored flag is kept — there is nothing to judge by."""
+    low, high = effective_range(row, catalog)
+    if low is None and high is None and not is_implausible(row.marker, row.value, row.unit):
+        return row.flag
+    return lab_flag(row.marker, row.value, row.unit, low, high)
+
+
 def is_out_of_range(flag: Optional[str]) -> bool:
     return flag in (
         LabFlag.LOW.value,
@@ -266,33 +415,42 @@ async def add_result(
 ) -> LabResult:
     """Record a marker value, computing its flag and ensuring its catalog row.
 
-    If the result carries no range, fall back to the catalog's default range so a
-    flag can still be computed. Raises ``ValueError`` on a nameless marker or an
-    implausible value, and :class:`ConflictBlocked` when a hard cross-domain rule
-    fires without ``override``."""
+    The result is filed under the marker its unit belongs to (see
+    :func:`marker_for_unit`), so a percentage and an absolute count, or a urine
+    and a blood count, never share a series. If the result carries no range,
+    fall back to the catalog's default range so a flag can still be computed; a
+    value no person can have is flagged ``suspect`` (see :func:`lab_flag`).
+    Raises ``ValueError`` on a nameless marker or an absurd value, and
+    :class:`ConflictBlocked` when a hard cross-domain rule fires without
+    ``override``."""
     marker = normalize_marker(marker)
     if not marker:
         raise ValueError("marker is required")
     if value is None or not math.isfinite(value) or abs(value) > _VALUE_ABS_MAX:
         raise ValueError(f"implausible lab value for {marker}: {value!r}")
+    marker = await marker_for_unit(session, marker, unit)
     catalog = await _ensure_marker(
         session, marker, unit=unit, ref_low=ref_low, ref_high=ref_high
     )
-    eff_low = ref_low if ref_low is not None else catalog.ref_low
-    eff_high = ref_high if ref_high is not None else catalog.ref_high
-    flag = compute_flag(value, eff_low, eff_high)
+    if ref_low is None and ref_high is None and units_compatible(catalog.unit, unit):
+        eff_low, eff_high = catalog.ref_low, catalog.ref_high
+    else:
+        eff_low, eff_high = ref_low, ref_high
+    flag = lab_flag(marker, value, unit or catalog.unit, eff_low, eff_high)
 
     # The same gate every other write path runs, before the row exists: a hard
     # rule (an active potassium supplement meeting a hyperkalemic potassium
     # result) stops the save unless the caller overrides, and soft rules keep
-    # doing what they did — an alert, never a block.
-    await conflict_engine.enforce(
-        session,
-        Domain.LABS.value,
-        {"marker": marker, "value": value, "flag": flag},
-        override=override,
-        entity_ref=f"labs:{marker}",
-    )
+    # doing what they did — an alert, never a block. A suspect value is a misread
+    # document, not a measurement, so it trips nothing.
+    if flag != LabFlag.SUSPECT.value:
+        await conflict_engine.enforce(
+            session,
+            Domain.LABS.value,
+            {"marker": marker, "value": value, "flag": flag},
+            override=override,
+            entity_ref=f"labs:{marker}",
+        )
 
     row = LabResult(
         date=on_date,
@@ -365,7 +523,7 @@ async def update_result(
         row.ref_low = catalog.ref_low
     if row.ref_high is None:
         row.ref_high = catalog.ref_high
-    row.flag = compute_flag(row.value, row.ref_low, row.ref_high)
+    row.flag = lab_flag(row.marker, row.value, row.unit, row.ref_low, row.ref_high)
 
     await session.flush()
     await refresh_alerts(session)
@@ -393,21 +551,24 @@ async def list_results(
 
 
 async def marker_history(session: AsyncSession, marker: str) -> list[dict]:
-    """Chronological series for one marker (the per-marker chart)."""
+    """Chronological series for one marker (the per-marker chart), with flags
+    and ranges as they read now (see :func:`effective_flag`)."""
     marker = normalize_marker(marker)
     result = await session.execute(
         select(LabResult).where(LabResult.marker == marker).order_by(LabResult.date)
     )
-    return [
-        {
+    catalog = await get_marker(session, marker)
+    out = []
+    for r in result.scalars().all():
+        ref_low, ref_high = effective_range(r, catalog)
+        out.append({
             "date": r.date.isoformat(),
             "value": r.value,
-            "flag": r.flag,
-            "ref_low": r.ref_low,
-            "ref_high": r.ref_high,
-        }
-        for r in result.scalars().all()
-    ]
+            "flag": effective_flag(r, catalog),
+            "ref_low": ref_low,
+            "ref_high": ref_high,
+        })
+    return out
 
 
 async def latest_per_marker(session: AsyncSession) -> list[LabResult]:
@@ -426,7 +587,14 @@ async def resolve_latest(session: AsyncSession) -> list[dict]:
     — lets a lab_safety rule reference e.g. {"marker": "Калий", "value": {"$gt":
     5.0}} against the current panel, not just a freshly logged result."""
     latest = await latest_per_marker(session)
-    return [{"marker": r.marker, "value": r.value, "flag": r.flag} for r in latest]
+    catalog = {m.name: m for m in await list_markers(session)}
+    items = []
+    for r in latest:
+        flag = effective_flag(r, catalog.get(r.marker))
+        if flag == LabFlag.SUSPECT.value:
+            continue  # a misread value must not trip a safety rule
+        items.append({"marker": r.marker, "value": r.value, "flag": flag})
+    return items
 
 
 async def delete_result(session: AsyncSession, result_id: int) -> bool:
@@ -463,12 +631,13 @@ async def refresh_alerts(
     for r in latest:
         key = OUT_OF_RANGE_KEY
         entity = f"{r.marker}:{r.id}"
+        flag = effective_flag(r, markers.get(r.marker))
         await book.resolve_superseded(alert_key=key, marker=r.marker, keep_entity=entity)
-        if is_out_of_range(r.flag):
+        if is_out_of_range(flag):
             if book.was_ever_dismissed(key, entity):
                 continue
             tier = markers.get(r.marker).tier if markers.get(r.marker) else 2
-            critical = _is_critical(r.flag) or tier == 1
+            critical = _is_critical(flag) or tier == 1
             severity = Severity.WARN.value if critical else Severity.INFO.value
             await book.raise_alert(
                 domain=Domain.LABS.value,
@@ -479,7 +648,7 @@ async def refresh_alerts(
                     value=decimal(f"{r.value:g}"),
                     unit=(' ' + r.unit) if r.unit else '',
                     # Localized flag label ("crit. high"), not the raw enum value.
-                    flag=t(f"enum.flag.{r.flag}"),
+                    flag=t(f"enum.flag.{flag}"),
                 ),
                 alert_key=key,
                 entity_ref=entity,

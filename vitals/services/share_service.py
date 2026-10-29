@@ -312,13 +312,16 @@ async def _labs_block(session, ctx, stats, start, end, flagged_only) -> dict:
     by_marker: dict[str, list] = {}
     for r in rows:
         by_marker.setdefault(r.marker, []).append(r)
+    catalog = {m.name: m for m in await labs_service.list_markers(session)}
 
     markers = []
     for marker, history in by_marker.items():
         current = next((r for r in history if r.date >= start), None)
         if current is None:
             continue
-        if flagged_only and not labs_service.is_out_of_range(current.flag):
+        flag = labs_service.effective_flag(current, catalog.get(marker))
+        ref_low, ref_high = labs_service.effective_range(current, catalog.get(marker))
+        if flagged_only and not labs_service.is_out_of_range(flag):
             continue
         earlier = [r for r in history if r.date < current.date][:2]
         markers.append(
@@ -326,10 +329,10 @@ async def _labs_block(session, ctx, stats, start, end, flagged_only) -> dict:
                 "marker": marker,
                 "value": current.value,
                 "unit": current.unit,
-                "flag": current.flag,
+                "flag": flag,
                 "date": current.date.isoformat(),
-                "ref_low": current.ref_low,
-                "ref_high": current.ref_high,
+                "ref_low": ref_low,
+                "ref_high": ref_high,
                 # Oldest first, so the line reads left to right in time.
                 "history": [
                     {"date": r.date.isoformat(), "value": r.value}

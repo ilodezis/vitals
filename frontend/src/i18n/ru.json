@@ -1241,6 +1241,7 @@
   "enum.flag.high": "высоко",
   "enum.flag.low": "низко",
   "enum.flag.normal": "норма",
+  "enum.flag.suspect": "под сомнением",
   "enum.signal_kind.exposure": "Воздействие",
   "enum.signal_kind.state": "Состояние",
   "enum.signal_kind.symptom": "Симптом",

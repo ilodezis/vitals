@@ -1103,12 +1103,14 @@ async def assemble_context(
             )
         ).scalars().all()
     )
+    # History is ranked per marker *and unit*: a marker reported both as a
+    # percentage and as a count keeps a full history on each scale.
     ranked_lab_ids = (
         select(
             LabResult.id.label("id"),
             func.row_number()
             .over(
-                partition_by=LabResult.marker,
+                partition_by=(LabResult.marker, LabResult.unit),
                 order_by=(LabResult.date.desc(), LabResult.id.desc()),
             )
             .label("history_rank"),
@@ -1186,56 +1188,76 @@ async def assemble_context(
             }
         )
 
+    # Flags and ranges as they read now, not as stored at write time (see
+    # labs_service.effective_flag): a result saved before its marker had a range
+    # carries no flag, and a misread value reads as "suspect", not "normal".
+    lab_view: dict[int, dict] = {}
+    for row in lab_rows:
+        catalog = marker_catalog.get(row.marker)
+        ref_low, ref_high = labs_service.effective_range(row, catalog)
+        lab_view[row.id] = {
+            "flag": labs_service.effective_flag(row, catalog),
+            "ref_low": ref_low,
+            "ref_high": ref_high,
+        }
+
+    def _lab_result(row) -> dict:
+        view = lab_view[row.id]
+        return {
+            "marker": row.marker,
+            "value": row.value,
+            "unit": row.unit,
+            "flag": view["flag"],
+            "date": row.date.isoformat(),
+            "ref_low": view["ref_low"],
+            "ref_high": view["ref_high"],
+            "lab_name": row.lab_name,
+            "note": row.note,
+            "source": row.source,
+        }
+
+    # A trend is one marker on one scale: results of a marker in different units
+    # (a percentage and a count, g/l and g/dl) are separate series, and every
+    # point carries the range of the lab that measured it.
+    trend_series: dict[tuple[str, Optional[str]], list[Any]] = {}
+    for marker, rows in marker_rows.items():
+        for row in rows:
+            trend_series.setdefault(
+                (marker, labs_service.unit_class(row.unit)), []
+            ).append(row)
+
+    def _trend(marker: str, rows: list[Any]) -> dict:
+        latest = lab_view[rows[0].id]
+        points = []
+        for row in reversed(rows[:_LAB_HISTORY_PER_MARKER]):
+            view = lab_view[row.id]
+            point = {"date": row.date.isoformat(), "value": row.value, "flag": view["flag"]}
+            if (view["ref_low"], view["ref_high"]) != (latest["ref_low"], latest["ref_high"]):
+                point["ref_low"] = view["ref_low"]
+                point["ref_high"] = view["ref_high"]
+            points.append(point)
+        return {
+            "marker": marker,
+            "unit": rows[0].unit,
+            "ref_low": latest["ref_low"],
+            "ref_high": latest["ref_high"],
+            "points": points,
+        }
+
     ctx["labs"] = {
         "out_of_range": [
-            {
-                "marker": row.marker,
-                "value": row.value,
-                "unit": row.unit,
-                "flag": row.flag,
-                "date": row.date.isoformat(),
-                "ref_low": row.ref_low,
-                "ref_high": row.ref_high,
-                "lab_name": row.lab_name,
-                "note": row.note,
-                "source": row.source,
-            }
+            _lab_result(row)
             for row in latest_labs
-            if labs_service.is_out_of_range(row.flag)
+            if labs_service.is_out_of_range(lab_view[row.id]["flag"])
             and 0 <= (period_end - row.date).days <= 14
         ],
         "results_in_period": [
-            {
-                "marker": row.marker,
-                "value": row.value,
-                "unit": row.unit,
-                "flag": row.flag,
-                "date": row.date.isoformat(),
-                "ref_low": row.ref_low,
-                "ref_high": row.ref_high,
-                "lab_name": row.lab_name,
-                "note": row.note,
-                "source": row.source,
-            }
-            for row in reversed(results_in_period)
+            _lab_result(row) for row in reversed(results_in_period)
         ]
         or None,
         "trends": [
-            {
-                "marker": marker,
-                "unit": rows[0].unit,
-                "ref_low": rows[0].ref_low,
-                "ref_high": rows[0].ref_high,
-                "points": [
-                    {
-                        "date": row.date.isoformat(),
-                        "value": row.value,
-                        "flag": row.flag,
-                    }
-                    for row in reversed(rows[:_LAB_HISTORY_PER_MARKER])
-                ],
-            }
-            for marker, rows in marker_rows.items()
+            _trend(marker, rows)
+            for (marker, _unit), rows in trend_series.items()
             if len(rows) >= 2
         ]
         or None,

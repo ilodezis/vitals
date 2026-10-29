@@ -2362,7 +2362,10 @@ async def get_lab_results(
 ) -> list[dict]:
     """Retrieves lab results (biomarker, value, unit, reference range, computed
     out-of-range flag), optionally filtered by marker name and/or date range
-    (YYYY-MM-DD). Defaults to the most recent 100 rows across all markers."""
+    (YYYY-MM-DD). Defaults to the most recent 100 rows across all markers.
+    ``flag`` is judged now against the result's own range (the catalog's when the
+    lab printed none); ``suspect`` marks a value no person can have in that unit
+    — a misread document, not a finding."""
     from vitals.services import labs_service
 
     session_factory = get_session_factory()
@@ -2379,7 +2382,17 @@ async def get_lab_results(
             stmt = stmt.where(LabResult.date <= end)
         stmt = stmt.order_by(LabResult.date.desc(), LabResult.id.desc()).limit(limit)
         results = (await session.execute(stmt)).scalars().all()
-        return [serialize_row(r) for r in results]
+        catalog = {m.name: m for m in await labs_service.list_markers(session)}
+        out = []
+        for r in results:
+            ref_low, ref_high = labs_service.effective_range(r, catalog.get(r.marker))
+            out.append({
+                **serialize_row(r),
+                "ref_low": ref_low,
+                "ref_high": ref_high,
+                "flag": labs_service.effective_flag(r, catalog.get(r.marker)),
+            })
+        return out
 
 
 @mcp.tool()

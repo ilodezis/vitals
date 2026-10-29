@@ -1241,6 +1241,7 @@
   "enum.flag.high": "high",
   "enum.flag.low": "low",
   "enum.flag.normal": "normal",
+  "enum.flag.suspect": "suspect",
   "enum.signal_kind.exposure": "Exposure",
   "enum.signal_kind.state": "State",
   "enum.signal_kind.symptom": "Symptom",

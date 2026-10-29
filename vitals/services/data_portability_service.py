@@ -642,20 +642,25 @@ async def export_llm(
     labs = (
         await session.execute(select(LabResult).order_by(LabResult.date, LabResult.marker))
     ).scalars().all()
-    out["biomarkers"] = [
-        _compact(
+    from vitals.services import labs_service
+
+    lab_catalog = {m.name: m for m in await labs_service.list_markers(session)}
+
+    def _biomarker(r: LabResult) -> dict:
+        ref_low, ref_high = labs_service.effective_range(r, lab_catalog.get(r.marker))
+        return _compact(
             {
                 "date": r.date.isoformat(),
                 "marker": r.marker,
                 "value": r.value,
                 "unit": r.unit,
-                "ref_low": r.ref_low,
-                "ref_high": r.ref_high,
-                "flag": r.flag,
+                "ref_low": ref_low,
+                "ref_high": ref_high,
+                "flag": labs_service.effective_flag(r, lab_catalog.get(r.marker)),
             }
         )
-        for r in labs
-    ]
+
+    out["biomarkers"] = [_biomarker(r) for r in labs]
 
     # Workouts — rebuild the Hevy tree (workout → exercises → sets) without ids.
     out["workouts"] = await _llm_workouts(session)
