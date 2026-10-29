@@ -36,6 +36,7 @@ def test_unit_spellings_of_one_scale_are_compatible():
     assert labs_service.units_compatible("мМЕ/л", "мкМЕ/мл")
     assert labs_service.units_compatible("кл/мкл", "количество/мкл")
     assert labs_service.units_compatible("мМоль/л", "ммоль/л")
+    assert labs_service.units_compatible("мм/ч", "мм/час")
     assert labs_service.units_compatible(None, "%")
     assert not labs_service.units_compatible("%", "10^9/л")
     assert not labs_service.units_compatible("г/л", "г/дл")

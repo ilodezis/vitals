@@ -120,6 +120,7 @@ _UNIT_CLASSES = {
     "нг/мл": "ng/ml", "ng/ml": "ng/ml", "мкг/л": "ng/ml",
     "фл": "fl", "fl": "fl",
     "пг": "pg", "pg": "pg",
+    "мм/ч": "mm/h", "мм/час": "mm/h", "mm/h": "mm/h", "mm/hr": "mm/h",
 }
 
 
