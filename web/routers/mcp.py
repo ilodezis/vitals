@@ -38,6 +38,7 @@ from datetime import date as date_type, datetime, timedelta
 from typing import Optional
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware import Middleware
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
@@ -131,6 +132,27 @@ def serialize_row(row) -> dict:
             if d.get("metric_key") == "body_fat_pct":
                 d["body_fat_pct_bia"] = d.get("value")
                 d["method"] = "bia"
+        elif row.__tablename__ == "glp1_injections":
+            if "site" not in d:
+                d["site"] = None
+        elif row.__tablename__ == "garmin_activities":
+            if "training_effect_aerobic" in d and d["training_effect_aerobic"] is not None:
+                d["training_effect_aerobic"] = round(d["training_effect_aerobic"], 1)
+            if "training_effect_anaerobic" in d and d["training_effect_anaerobic"] is not None:
+                d["training_effect_anaerobic"] = round(d["training_effect_anaerobic"], 1)
+            if "hr_zone_seconds" in d and isinstance(d["hr_zone_seconds"], list):
+                zones = []
+                for z in d["hr_zone_seconds"]:
+                    if isinstance(z, dict):
+                        z_copy = dict(z)
+                        if "secs" in z_copy and isinstance(z_copy["secs"], (int, float)):
+                            z_copy["secs"] = round(z_copy["secs"], 1)
+                        if z_copy.get("low_hr") is None:
+                            z_copy.pop("low_hr", None)
+                        zones.append(z_copy)
+                    else:
+                        zones.append(z)
+                d["hr_zone_seconds"] = zones
     return d
 
 
@@ -163,6 +185,11 @@ def _conflict_payload(exc: ConflictBlocked) -> dict:
     }
 
 
+class ToolValueError(ToolError, ValueError):
+    """A ToolError that also inherits from ValueError for backward compatibility."""
+    pass
+
+
 def _parse_date(value: Optional[str], default=None, *, field: str):
     """Parse a ``YYYY-MM-DD`` tool argument, falling back to ``default`` when omitted.
 
@@ -175,7 +202,7 @@ def _parse_date(value: Optional[str], default=None, *, field: str):
     try:
         return date_type.fromisoformat(value)
     except (ValueError, TypeError):
-        raise ValueError(f"{field} must be a YYYY-MM-DD date, got {value!r}") from None
+        raise ToolValueError(f"{field} must be a YYYY-MM-DD date, got {value!r}") from None
 
 
 def _parse_time(value: Optional[str], *, field: str):
@@ -187,7 +214,7 @@ def _parse_time(value: Optional[str], *, field: str):
     try:
         return time_type.fromisoformat(value)
     except (ValueError, TypeError):
-        raise ValueError(f"{field} must be an HH:MM time, got {value!r}") from None
+        raise ToolValueError(f"{field} must be an HH:MM time, got {value!r}") from None
 
 
 async def _merged(session, model, record_id: int, **fields) -> Optional[dict]:
@@ -608,10 +635,19 @@ async def get_hevy_workouts(
         serialized = []
         for w in workouts:
             w_dict = serialize_row(w)
+            w_dict.pop("id", None)
             w_dict["exercises"] = []
             for e in w.exercises:
                 e_dict = serialize_row(e)
-                e_dict["sets"] = [serialize_row(s) for s in e.sets]
+                e_dict.pop("id", None)
+                e_dict.pop("workout_id", None)
+                sets = []
+                for s in e.sets:
+                    s_dict = serialize_row(s)
+                    s_dict.pop("id", None)
+                    s_dict.pop("exercise_id", None)
+                    sets.append(s_dict)
+                e_dict["sets"] = sets
                 w_dict["exercises"].append(e_dict)
             serialized.append(w_dict)
         return serialized
@@ -2893,7 +2929,11 @@ async def get_data_overview() -> dict:
             updated_col = getattr(model, "updated_at", None)
             if updated_col is not None:
                 cols.append(func.max(updated_col))
-            row = (await session.execute(select(*cols))).one()
+            stmt = select(*cols)
+            if name == "weekly_digests":
+                from vitals.enums import DigestKind
+                stmt = stmt.where(model.kind == DigestKind.WEEKLY.value)
+            row = (await session.execute(stmt)).one()
             entry = {
                 "count": row[0],
                 "earliest": row[1].isoformat() if row[1] else None,
@@ -3982,6 +4022,7 @@ async def set_environment_settings(
     co2_ok_max: Optional[int] = None,
     co2_warn: Optional[int] = None,
     co2_bad: Optional[int] = None,
+    co2_good_max: Optional[int] = None,
     temp_day_min: Optional[float] = None,
     temp_day_max: Optional[float] = None,
     temp_sleep_min: Optional[float] = None,
@@ -4004,8 +4045,9 @@ async def set_environment_settings(
     WRITE tool."""
     from vitals.services.environment import settings as env_settings
 
+    resolved_co2_ok = co2_good_max if co2_good_max is not None else co2_ok_max
     patch = {k: v for k, v in {
-        "co2_ok_max": co2_ok_max, "co2_warn": co2_warn, "co2_bad": co2_bad,
+        "co2_ok_max": resolved_co2_ok, "co2_warn": co2_warn, "co2_bad": co2_bad,
         "temp_day_min": temp_day_min, "temp_day_max": temp_day_max,
         "temp_sleep_min": temp_sleep_min, "temp_sleep_max": temp_sleep_max,
         "rh_min": rh_min, "rh_max": rh_max,
@@ -4074,6 +4116,39 @@ async def _enrich_sync_rows(session, sync_rows: list[dict], redis=None) -> list[
     return enriched
 
 
+def _clean_today_for_mcp(data: dict) -> dict:
+    """Trim empty boilerplate and null fields from today figures and feed (Convention C5, Item 18/19)."""
+    if "figures" in data and isinstance(data["figures"], list):
+        cleaned_figures = []
+        for f in data["figures"]:
+            c = {}
+            for k, v in f.items():
+                if k == "value":
+                    c[k] = v
+                elif v is not None and v != "":
+                    c[k] = v
+            if c.get("key") == "weight" and c.get("trend") is not None:
+                c["trend_unit"] = "kg/week"
+            cleaned_figures.append(c)
+        data["figures"] = cleaned_figures
+
+    if "feed" in data and isinstance(data["feed"], list):
+        cleaned_feed = []
+        for item in data["feed"]:
+            if item.get("kind") == "brief" and not item.get("text") and item.get("value") is None:
+                continue
+            c = {}
+            for k, v in item.items():
+                if v is not None and v != "":
+                    c[k] = v
+                elif k == "value" and v is not None:
+                    c[k] = v
+            cleaned_feed.append(c)
+        data["feed"] = cleaned_feed
+
+    return data
+
+
 @mcp.tool()
 async def get_today() -> dict:
     """The app's Today screen as data — the same assembly the owner opens the app
@@ -4098,6 +4173,7 @@ async def get_today() -> dict:
         current_lang.set(await language_service.get_language(session, redis))
         enabled = await modules_service.get_enabled_modules(session)
         data = await today_service.collect(session, enabled_modules=enabled, weigh_ins=True)
+        data = _clean_today_for_mcp(data)
         data["sync"] = await _enrich_sync_rows(session, data.get("sync") or [], redis=redis)
         return _jsonable(data)
 

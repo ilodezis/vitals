@@ -175,8 +175,8 @@ def _raw_change(
     return {
         "key": key,
         "domain_key": domain_key,
-        "before": before,
-        "after": after,
+        "before": round(before, 2) if before is not None else None,
+        "after": round(after, 2) if after is not None else None,
         "lo": corridor["lo"] if corridor else None,
         "hi": corridor["hi"] if corridor else None,
         "tone": _tone(round(after - before, 1), key),

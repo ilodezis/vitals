@@ -60,6 +60,7 @@ class EnvSettings:
     def thresholds_dict(self) -> dict[str, Any]:
         """The numbers a chart draws as lines (no switches, no night window)."""
         return {
+            "co2_good_max": self.co2_ok_max,
             "co2_ok_max": self.co2_ok_max,
             "co2_warn": self.co2_warn,
             "co2_bad": self.co2_bad,
