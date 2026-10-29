@@ -9,9 +9,11 @@ display name (ru/en), a unit, a UI ``category``, and a ``headline`` flag.
 Anything the registry doesn't recognise is still captured (``category='other'``)
 via a slug of the printed label — the product never drops data.
 
-Segmental rows (per-limb lean/fat) collapse to two keys —
-``segmental_lean`` / ``segmental_fat`` — with the limb carried separately in the
-``segment`` field, so history/grouping is ``(metric_key, segment)``.
+Segmental rows carry the limb in the ``segment`` field, so history/grouping is
+``(metric_key, segment)``. The key says what was measured, one unit per key:
+lean and fat mass (kg) and their share of the norm (``*_pct``), the ECW/TBW
+ratio, and impedance per frequency. A row whose label names only the limb is
+kept as ``segmental_unlabeled`` rather than guessed into lean or fat.
 """
 from __future__ import annotations
 
@@ -91,7 +93,10 @@ METRIC_REGISTRY: dict[str, MetricDef] = {
         _d("muscle_control", "Контроль мышц", "Muscle Control", "кг", CAT_DERIVED),
         # ── Segmental (per-limb; limb in the ``segment`` field) ───────────────
         _d("segmental_lean", "Мышцы по сегментам", "Segmental Lean", "кг", CAT_SEGMENTAL),
+        _d("segmental_lean_pct", "Мышцы по сегментам, % нормы", "Segmental Lean, % of norm", "%", CAT_SEGMENTAL),
         _d("segmental_fat", "Жир по сегментам", "Segmental Fat", "кг", CAT_SEGMENTAL),
+        _d("segmental_fat_pct", "Жир по сегментам, % нормы", "Segmental Fat, % of norm", "%", CAT_SEGMENTAL),
+        _d("segmental_ecw_ratio", "ВКЖ/ОКЖ по сегментам", "Segmental ECW/TBW", None, CAT_SEGMENTAL),
     )
 }
 
@@ -203,6 +208,40 @@ SEGMENT_ALIASES: dict[str, str] = {
 }
 
 _FAT_HINTS = ("жир", "fat")
+_LEAN_HINTS = ("мыш", "lean", "muscle", "безжир", "тощ")
+_ECW_HINTS = ("вкж", "ecw", "внеклет", "extracellular")
+_IMPEDANCE_RE = re.compile(r"z\s*\(|ω|импеданс|impedance|сопротивлен")
+# "50 kHz", "1M kHz" (1 MHz), "250 кГц".
+_FREQUENCY_RE = re.compile(r"(\d+(?:[.,]\d+)?)\s*([mм])?\s*([kк])?\s*(?:hz|гц)")
+
+
+def _frequency_khz(norm_label: str) -> Optional[str]:
+    match = _FREQUENCY_RE.search(norm_label)
+    if match is None:
+        return None
+    number = float(match.group(1).replace(",", "."))
+    if match.group(2):
+        number *= 1000
+    elif not match.group(3):
+        number /= 1000
+    return f"{number:g}"
+
+
+def _segmental_key(norm_label: str, unit: Optional[str]) -> str:
+    """What a per-limb row measures, from its label and unit."""
+    if any(h in norm_label for h in _ECW_HINTS):
+        return "segmental_ecw_ratio"
+    if _IMPEDANCE_RE.search(norm_label):
+        freq = _frequency_khz(norm_label)
+        return f"segmental_impedance_{freq}khz" if freq else "segmental_impedance"
+    pct = (unit or "").strip() == "%"
+    if any(h in norm_label for h in _FAT_HINTS):
+        base = "segmental_fat"
+    elif any(h in norm_label for h in _LEAN_HINTS):
+        base = "segmental_lean"
+    else:
+        base = "segmental_unlabeled"
+    return f"{base}_pct" if pct else base
 
 
 def canonical_segment(value: Any) -> Optional[str]:
@@ -222,19 +261,19 @@ def slugify(label: str) -> str:
     return (s or "metric")[:64]
 
 
-def normalize_metric(label: str, segment: Any = None) -> tuple[str, str, Optional[str]]:
-    """Resolve a printed label (+ optional segment) to ``(metric_key, category,
-    segment)``.
+def normalize_metric(
+    label: str, segment: Any = None, unit: Optional[str] = None
+) -> tuple[str, str, Optional[str]]:
+    """Resolve a printed label (+ optional segment and unit) to ``(metric_key,
+    category, segment)``.
 
-    Segmental rows collapse to ``segmental_lean`` / ``segmental_fat`` with the
-    limb returned separately. Unknown whole-body labels are slugged with
-    ``category='other'`` so they're still captured."""
+    Segmental rows get a key for what they measure (see :func:`_segmental_key`)
+    with the limb returned separately. Unknown whole-body labels are slugged
+    with ``category='other'`` so they're still captured."""
     seg = canonical_segment(segment)
     norm = _norm(label)
     if seg is not None:
-        is_fat = any(h in norm for h in _FAT_HINTS)
-        key = "segmental_fat" if is_fat else "segmental_lean"
-        return key, CAT_SEGMENTAL, seg
+        return _segmental_key(norm, unit), CAT_SEGMENTAL, seg
 
     key = LABEL_ALIASES.get(norm)
     if key is None:

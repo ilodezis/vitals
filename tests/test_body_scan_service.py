@@ -118,7 +118,7 @@ async def test_save_scan_creates_metrics_with_categories(db_session):
         metrics=[
             {"label": "Процент жира", "value": 18.5, "unit": "%"},
             {"label": "Скелетно-мышечная масса", "value": 34.2, "unit": "кг"},
-            {"label": "Right Arm", "value": 3.1, "unit": "кг", "segment": "right_arm"},
+            {"label": "Segmental Lean Analysis", "value": 3.1, "unit": "кг", "segment": "right_arm"},
             {"label": "Вес", "value": 71.5, "unit": "кг"},
         ],
     )

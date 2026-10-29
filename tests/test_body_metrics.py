@@ -32,9 +32,27 @@ def test_unknown_label_is_captured_as_other_slug():
 
 
 def test_segmental_rows_collapse_with_segment():
-    assert bm.normalize_metric("Right Arm", "right_arm") == ("segmental_lean", "segmental", "right_arm")
+    assert bm.normalize_metric("Segmental Lean", "right_arm") == ("segmental_lean", "segmental", "right_arm")
     # a fat-context segmental label → segmental_fat, limb resolved from Russian
     assert bm.normalize_metric("Жир правая нога", "правая нога") == ("segmental_fat", "segmental", "right_leg")
+
+
+def test_segmental_key_says_what_is_measured_one_unit_per_key():
+    seg = "right_arm"
+    assert bm.normalize_metric("Сегментарный анализ мышц", seg, "kg")[0] == "segmental_lean"
+    assert bm.normalize_metric("Сегментарный анализ мышц", seg, "%")[0] == "segmental_lean_pct"
+    assert bm.normalize_metric("Segmental Fat Analysis", seg, "kg")[0] == "segmental_fat"
+    assert bm.normalize_metric("Segmental Fat Analysis", seg, "%")[0] == "segmental_fat_pct"
+    assert bm.normalize_metric("Соотношение ВКЖ/ОКЖ", seg)[0] == "segmental_ecw_ratio"
+    assert bm.normalize_metric("ECW/TBW", seg)[0] == "segmental_ecw_ratio"
+    assert bm.normalize_metric("Z(Ω) 50 kHz", seg)[0] == "segmental_impedance_50khz"
+    assert bm.normalize_metric("Z(Ω) 1M kHz", seg)[0] == "segmental_impedance_1000khz"
+
+
+def test_a_limb_only_label_is_not_guessed_into_lean():
+    """A bare "Right Arm" is printed in both the lean and the fat table."""
+    assert bm.normalize_metric("Right Arm", "right_arm", "kg")[0] == "segmental_unlabeled"
+    assert bm.normalize_metric("Правая Рука", "right_arm", "%")[0] == "segmental_unlabeled_pct"
 
 
 def test_canonical_segment_aliases():

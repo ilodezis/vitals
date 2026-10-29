@@ -68,8 +68,9 @@ _REPORT_BODY_METRIC_KEYS = frozenset(
         "inbody_score",
         "bmr",
         "waist_hip_ratio",
-        "segmental_lean",
-        "segmental_fat",
+        # No segmental keys: per-limb rows of scans imported before the segment
+        # parser told lean, fat, ECW/TBW and impedance apart are all filed as
+        # lean, and the report cannot tell those rows from good ones.
     }
 )
 
@@ -836,21 +837,31 @@ async def assemble_context(
             comp_metrics["lean_body_mass"] = {"value": lbm, "unit": "кг"}
         scan_history = []
         for history_scan in reversed(scans):
+            # Scans stored before rows were deduplicated on save repeat some
+            # values (the weight in the header and in the table): one row each,
+            # with whatever unit/range a repeat carried.
             metrics = []
+            seen: dict[tuple, dict] = {}
             for metric in history_scan.metrics:
                 if metric.metric_key not in _REPORT_BODY_METRIC_KEYS:
                     continue
                 spec = METRIC_REGISTRY.get(metric.metric_key)
-                metrics.append(
-                    {
-                        "key": metric.metric_key,
-                        "value": metric.value,
-                        "unit": metric.unit or (spec.unit if spec else None),
-                        "segment": metric.segment,
-                        "ref_low": metric.ref_low,
-                        "ref_high": metric.ref_high,
-                    }
-                )
+                item = {
+                    "key": metric.metric_key,
+                    "value": metric.value,
+                    "unit": metric.unit or (spec.unit if spec else None),
+                    "segment": metric.segment,
+                    "ref_low": metric.ref_low,
+                    "ref_high": metric.ref_high,
+                }
+                first = seen.get((item["key"], item["segment"], item["value"]))
+                if first is None:
+                    seen[(item["key"], item["segment"], item["value"])] = item
+                    metrics.append(item)
+                    continue
+                for field in ("ref_low", "ref_high"):
+                    if first[field] is None:
+                        first[field] = item[field]
             derived_lbm = lbm_from_scan(history_scan.metrics)
             if derived_lbm is not None and not any(
                 item["key"] == "lean_body_mass" and item["segment"] is None

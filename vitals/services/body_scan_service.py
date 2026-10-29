@@ -62,7 +62,12 @@ _EXTRACT_SYSTEM = (
     "value = a plain number only (no ranges or units inside it). "
     "unit = the printed unit or null. ref_low/ref_high = the normal/target range "
     "bounds when shown, else null. segment = one of right_arm,left_arm,trunk,"
-    "right_leg,left_leg for per-limb segmental rows, otherwise null. Use the "
+    "right_leg,left_leg for per-limb segmental rows, otherwise null. For a "
+    "per-limb row the label names what is measured, not the limb: the section "
+    "it is printed in (e.g. \"Segmental Lean Analysis\", \"Segmental Fat "
+    "Analysis\", \"ECW/TBW\", \"Z(Ω) 50 kHz\"); a kg value and a % value of "
+    "the same limb are two rows with their own units. Skip the history/trend "
+    "columns of earlier measurements — only this measurement's values. Use the "
     "measurement date. If a field is unknown use null. Never invent metrics."
 )
 
@@ -92,13 +97,36 @@ def normalize_extracted(extracted: dict) -> list[dict]:
     """Pure: turn a raw vision dict into normalized, editable metric rows.
 
     Each row is ``{metric_key, label, value, unit, ref_low, ref_high, segment,
-    category}``. Unparseable rows (no label / non-numeric value) are dropped."""
+    category}``. Unparseable rows (no label / non-numeric value) are dropped,
+    repeats merged (see :func:`dedupe_rows`)."""
     rows: list[dict] = []
     for item in extracted.get("metrics") or []:
         row = _normalize_item(item)
         if row is not None:
             rows.append(row)
-    return rows
+    return dedupe_rows(rows)
+
+
+def dedupe_rows(rows: Sequence[dict]) -> list[dict]:
+    """Merge rows that state the same thing twice — one sheet prints the weight
+    in the header and again in the composition table, once with a unit and once
+    without. Same ``(metric_key, segment, value)`` is one row; the first keeps
+    its place and takes the unit/range the repeats carry. Rows that differ in
+    value are both kept: which one is right is not this function's guess."""
+    out: list[dict] = []
+    seen: dict[tuple, dict] = {}
+    for row in rows:
+        ident = (row["metric_key"], row.get("segment"), row["value"])
+        first = seen.get(ident)
+        if first is None:
+            first = dict(row)
+            seen[ident] = first
+            out.append(first)
+            continue
+        for field in ("unit", "ref_low", "ref_high"):
+            if first.get(field) is None and row.get(field) is not None:
+                first[field] = row[field]
+    return out
 
 
 def _normalize_item(item: dict) -> Optional[dict]:
@@ -112,7 +140,7 @@ def _normalize_item(item: dict) -> Optional[dict]:
         return None
     seg_in = item.get("segment")
     if label:
-        key, category, segment = normalize_metric(label, seg_in)
+        key, category, segment = normalize_metric(label, seg_in, item.get("unit"))
     else:
         key = item.get("metric_key")
         if not key:
@@ -169,7 +197,9 @@ async def save_scan(
     session.add(scan)
     await session.flush()
 
-    normalized = [n for n in (_normalize_item(m) for m in metrics) if n is not None]
+    normalized = dedupe_rows(
+        [n for n in (_normalize_item(m) for m in metrics) if n is not None]
+    )
     for n in normalized:
         session.add(BodyScanMetric(scan_id=scan.id, **n))
     await session.flush()
