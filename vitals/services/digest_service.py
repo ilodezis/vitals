@@ -649,6 +649,8 @@ async def assemble_context(
             "waist_cm": row.waist_cm,
             "hips_cm": row.hips_cm,
             "body_fat_pct": row.body_fat_pct,
+            "body_fat_pct_navy": row.body_fat_pct,
+            "method": "navy",
             "lbm_kg": row.lbm_kg,
             "note": row.note,
             "source": row.source,
@@ -1963,32 +1965,35 @@ async def assemble_context(
     milestone_context = []
     for row in active_milestones:
         current = None
+        method = None
         if row.domain == "weight" and row.target_value is not None and latest_weight:
             current = latest_weight.weight_kg
         elif row.domain == "body_comp" and row.target_value is not None:
             current = latest_bia_bf if latest_bia_bf is not None else latest_navy_bf
-        milestone_context.append(
-            {
-                "id": row.id,
-                "name": row.name,
-                "domain": row.domain,
-                "status": row.status,
-                "target_value": row.target_value,
-                "target_unit": row.target_unit,
-                "deadline": row.deadline.isoformat() if row.deadline else None,
-                "days_left": (
-                    (row.deadline - period_end).days if row.deadline else None
-                ),
-                "current": round(current, 2) if current is not None else None,
-                "remaining": (
-                    round(current - row.target_value, 2)
-                    if current is not None and row.target_value is not None
-                    else None
-                ),
-                "note": row.note,
-                "state_is_current_catalog": True,
-            }
-        )
+            method = "bia" if latest_bia_bf is not None else "navy"
+        m_item = {
+            "id": row.id,
+            "name": row.name,
+            "domain": row.domain,
+            "status": row.status,
+            "target_value": row.target_value,
+            "target_unit": row.target_unit,
+            "deadline": row.deadline.isoformat() if row.deadline else None,
+            "days_left": (
+                (row.deadline - period_end).days if row.deadline else None
+            ),
+            "current": round(current, 2) if current is not None else None,
+            "remaining": (
+                round(current - row.target_value, 2)
+                if current is not None and row.target_value is not None
+                else None
+            ),
+            "note": row.note,
+            "state_is_current_catalog": True,
+        }
+        if method:
+            m_item["method"] = method
+        milestone_context.append(m_item)
     ctx["milestones"] = milestone_context
     ctx["coverage"]["milestones"] = _coverage(
         module="milestones",

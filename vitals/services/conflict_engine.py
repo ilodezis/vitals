@@ -23,14 +23,16 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from datetime import date as date_type, datetime
 from typing import Any, Awaitable, Callable, Optional, Sequence
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from vitals.enums import RuleType, Severity
+from vitals.enums import Domain, RuleType, Severity
 from vitals.models.conflict_rule import ConflictRule
 from vitals.services import alerts_service
+from vitals.utils.timeutils import today_local
 
 logger = logging.getLogger(__name__)
 
@@ -318,12 +320,38 @@ async def evaluate(
         ):
             continue
 
+        message = rule.message
+        severity = rule.severity
+        lab_markers = []
+        for a, b in pairs:
+            if rule.domain_a == Domain.LABS.value and a.get("marker"):
+                lab_markers.append(a["marker"])
+            if rule.domain_b == Domain.LABS.value and b.get("marker"):
+                lab_markers.append(b["marker"])
+
+        if lab_markers:
+            from vitals.models.labs import LabResult
+            stmt = (
+                select(LabResult.date)
+                .where(LabResult.marker.in_(lab_markers))
+                .order_by(LabResult.date.desc())
+                .limit(1)
+            )
+            matched_date = (await session.execute(stmt)).scalars().first()
+            if matched_date:
+                days_old = (today_local() - matched_date).days
+                if days_old > 180:
+                    severity = Severity.NOTE.value
+                    date_str = matched_date.strftime("%d.%m.%Y")
+                    if "по анализу от" not in message:
+                        message = f"{message} (по анализу от {date_str})"
+
         violations.append(
             Violation(
                 rule_id=rule.id,
                 rule_type=rule.rule_type,
-                severity=rule.severity,
-                message=rule.message,
+                severity=severity,
+                message=message,
                 domain_a=rule.domain_a,
                 domain_b=rule.domain_b,
                 params=dict(rule.params or {}),

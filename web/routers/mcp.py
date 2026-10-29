@@ -117,11 +117,20 @@ def serialize_row(row) -> dict:
             d[column.name] = val.isoformat()
         else:
             d[column.name] = val
-    if hasattr(row, "__tablename__") and row.__tablename__ == "meal_logs":
-        if hasattr(row, "created_at") and row.created_at:
-            d["logged_at"] = format_iso(row.created_at, is_utc=True)
-        if "eaten_at" not in d:
-            d["eaten_at"] = None
+    if hasattr(row, "__tablename__"):
+        if row.__tablename__ == "meal_logs":
+            if hasattr(row, "created_at") and row.created_at:
+                d["logged_at"] = format_iso(row.created_at, is_utc=True)
+            if "eaten_at" not in d:
+                d["eaten_at"] = None
+        elif row.__tablename__ == "body_measurements":
+            if "body_fat_pct" in d:
+                d["body_fat_pct_navy"] = d["body_fat_pct"]
+                d["method"] = "navy"
+        elif row.__tablename__ == "body_scan_metrics":
+            if d.get("metric_key") == "body_fat_pct":
+                d["body_fat_pct_bia"] = d.get("value")
+                d["method"] = "bia"
     return d
 
 
@@ -465,11 +474,11 @@ _SLEEP_DETAIL_COLUMNS = ("sleep_stages", "breathing_events")
 
 
 def _fold_sleep_detail(row: dict) -> dict:
-    """Swap each present sleep-detail column for a count + how to get the real thing."""
+    """Swap each present sleep-detail column for an integer count."""
     for name in _SLEEP_DETAIL_COLUMNS:
-        value = row.get(name)
-        if value:
-            row[name] = f"{len(value)} entries — call again with sleep_detail=True"
+        value = row.pop(name, None)
+        if value is not None:
+            row[f"{name}_count"] = len(value) if isinstance(value, list) else 0
     return row
 
 
@@ -536,6 +545,18 @@ async def get_garmin_metrics(
         rows = [serialize_row(d) for d in daily]
         if not sleep_detail:
             rows = [_fold_sleep_detail(r) for r in rows]
+        else:
+            for r in rows:
+                for name in _SLEEP_DETAIL_COLUMNS:
+                    if name in r and r[name] is not None:
+                        r[f"{name}_count"] = len(r[name]) if isinstance(r[name], list) else 0
+
+        today_iso = today_local().isoformat()
+        for r in rows:
+            r["is_partial_day"] = (r.get("date") == today_iso)
+            if "sleep_need_actual" in r:
+                r["sleep_need_minutes"] = r.pop("sleep_need_actual")
+
         result = {
             "daily_recovery": rows,
             "activities": [serialize_row(a) for a in activities],
@@ -613,8 +634,7 @@ async def get_supplements_catalog() -> list[dict]:
         for s in supps:
             row = serialize_row(s)
             periods = supplements_service.periods_view(history.get(s.id, []))
-            if periods:
-                row["periods"] = periods
+            row["periods"] = periods or []
             out.append(row)
         return out
 
@@ -746,11 +766,15 @@ async def get_active_alerts(domain: Optional[str] = None) -> list[dict]:
     """Returns the currently active (unresolved) alerts — warnings, conflict
     blocks, overdue retests, the station's air — newest first, optionally for one
     ``domain``. ``override_at`` marks a block the owner already answered with
-    "doing it anyway". The same list as the app's attention panel."""
-    from vitals.services import alerts_service
+    "doing it anyway". Transient recovery observations (such as Garmin sleep/load advice)
+    appear on the day in get_today().attention rather than persistent system alerts."""
+    from vitals.services import alerts_service, labs_service
 
     session_factory = get_session_factory()
     async with session_factory() as session:
+        if domain is None or domain == Domain.LABS.value:
+            await labs_service.refresh_alerts(session)
+            await session.commit()
         alerts = await alerts_service.list_active(session, domain=domain)
         return [serialize_row(a) for a in alerts]
 
@@ -4062,7 +4086,8 @@ async def get_today() -> dict:
     with its forecast), and ``sync`` (when each source last delivered). Switched
     off modules contribute nothing, as on the screen. Use it for "как я сегодня" /
     "что у меня на сегодня" before drilling into a domain. READ tool."""
-    from vitals.services import modules_service, today_service
+    from vitals.i18n import current_lang
+    from vitals.services import language_service, modules_service, today_service
 
     session_factory = get_session_factory()
     try:
@@ -4070,6 +4095,7 @@ async def get_today() -> dict:
     except Exception:
         redis = None
     async with session_factory() as session:
+        current_lang.set(await language_service.get_language(session, redis))
         enabled = await modules_service.get_enabled_modules(session)
         data = await today_service.collect(session, enabled_modules=enabled, weigh_ins=True)
         data["sync"] = await _enrich_sync_rows(session, data.get("sync") or [], redis=redis)

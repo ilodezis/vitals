@@ -250,6 +250,23 @@ async def list_supplements(
     return result.scalars().all()
 
 
+async def find_by_key(session: AsyncSession, key: str) -> Optional[Supplement]:
+    """Look up a supplement by its ingredient key.
+
+    Raises ValueError if multiple rows match the key, instructing callers to
+    use supplement_id to disambiguate.
+    """
+    stmt = select(Supplement).where(Supplement.key == key)
+    rows = (await session.execute(stmt)).scalars().all()
+    if len(rows) > 1:
+        matched = [f"id={r.id} ('{r.name}', timing={r.timing})" for r in rows]
+        raise ValueError(
+            f"Ambiguous supplement key '{key}' matches multiple supplements: {', '.join(matched)}. "
+            f"Use supplement_id instead of key."
+        )
+    return rows[0] if rows else None
+
+
 async def add_supplement(
     session: AsyncSession,
     *,

@@ -14,6 +14,7 @@ from typing import Optional, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from vitals.config import load_config
 from vitals.enums import Domain, MilestoneStatus
 from vitals.models.milestones import Milestone
 from vitals.utils.timeutils import today_local
@@ -250,6 +251,8 @@ async def progress(session: AsyncSession, milestone: Milestone) -> dict:
             out["pct"] = weight_goal_pct(start, current, milestone.target_value)
     elif milestone.domain == Domain.BODY_COMPOSITION.value and milestone.target_value is not None and unit_ok:
         current = await _current_body_fat(session)
+        config = load_config()
+        out["method"] = config.body_fat_source or "latest"
         if current is not None:
             out["current"] = round(current, 2)
             out["remaining"] = round(current - milestone.target_value, 2)

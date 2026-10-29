@@ -65,13 +65,15 @@ async def test_sleep_detail_is_folded_by_default_but_announced(db_session):
 
     # The summary the question usually needs is untouched.
     assert row["sleep_score"] == 82
-    # The hypnogram is replaced by a count and the way to get it — the model must
-    # be able to tell "folded" from "this night was never measured".
-    assert row["sleep_stages"] == f"{len(stages)} entries — call again with sleep_detail=True"
-    assert row["breathing_events"] == "6 entries — call again with sleep_detail=True"
+    # The hypnogram is replaced by a count — the model can tell "folded" from "not measured"
+    assert row["sleep_stages_count"] == len(stages)
+    assert row["breathing_events_count"] == 6
+    assert "sleep_stages" not in row
+    assert "breathing_events" not in row
 
     full = await mcp_router.get_garmin_metrics(sleep_detail=True)
     assert full["daily_recovery"][0]["sleep_stages"] == stages
+    assert full["daily_recovery"][0]["sleep_stages_count"] == len(stages)
 
     # The point of the exercise: the default response is a fraction of the size.
     assert len(json.dumps(folded)) * 3 < len(json.dumps(full))
