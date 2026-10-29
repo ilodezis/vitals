@@ -392,6 +392,10 @@ def normalize_marker(name: str) -> str:
     lowered = cleaned.lower()
     if lowered in MARKER_ALIASES:
         return MARKER_ALIASES[lowered]
+    # Mixed-case abbreviations (pH, eGFR, hCG) are already written the way the lab means them
+    first_word = cleaned.split()[0]
+    if any(ch.isupper() for ch in first_word[1:]):
+        return cleaned
     # Fallback: capitalize first character, keep the rest
     return cleaned[0].upper() + cleaned[1:]
 
