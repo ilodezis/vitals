@@ -2728,27 +2728,51 @@ async def update_event(
 
 
 # ── Cross-domain + whole-lake tools ──────────────────────────────────────────
+DEFAULT_SNAPSHOT_SECTIONS = frozenset({"weight", "garmin", "nutrition", "hevy", "alerts", "glp1"})
+ALL_OPTIONAL_SNAPSHOT_SECTIONS = frozenset({
+    "labs", "body_comp", "genetics", "supplements", "skincare", "hrt",
+    "signals", "milestones", "timeline", "environment",
+})
+
+
 @mcp.tool()
 async def get_full_snapshot(
     on_date: Optional[str] = None,
     period_days: int = 7,
+    sections: Optional[list[str]] = None,
 ) -> dict:
-    """Returns context-v2 for a closed period (1..90 days): profile, coverage,
-    weight/body composition, GLP-1/HRT plans and facts, every lab result in the
-    period, Garmin recovery and activities, Hevy, nutrition, skincare, signals,
-    timeline and active goals. Every dated fact is bounded by the effective
-    period end. When ``on_date`` is today the closed period ends yesterday."""
+    """Returns context-v2 for a closed period (1..90 days).
+
+    By default returns only sections that actively change over the period: weight,
+    Garmin, nutrition, Hevy, active alerts, and GLP-1. Static or heavy sections
+    (genetics, body_comp scans, labs, supplements catalog, skincare, hrt, signals,
+    milestones, timeline, environment) are included only when explicitly requested
+    via ``sections=[...]`` (e.g. ``sections=["weight", "labs", "body_comp"]`` or
+    ``sections=["all"]`` for the unpruned full lake). Every dated fact is bounded
+    by the effective period end."""
     from vitals.services import digest_service
 
     session_factory = get_session_factory()
     parsed_date = _parse_date(on_date, field="on_date")
     async with session_factory() as session:
         try:
-            return await digest_service.assemble_context(
+            ctx = await digest_service.assemble_context(
                 session, on_date=parsed_date, period_days=period_days
             )
         except ValueError as exc:
             return {"error": str(exc)}
+
+        if sections is not None:
+            sec_set = set(sections)
+            if "all" not in sec_set:
+                for k in ALL_OPTIONAL_SNAPSHOT_SECTIONS | DEFAULT_SNAPSHOT_SECTIONS:
+                    if k not in sec_set and k in ctx:
+                        ctx[k] = None
+        else:
+            for k in ALL_OPTIONAL_SNAPSHOT_SECTIONS:
+                if k in ctx:
+                    ctx[k] = None
+        return ctx
 
 
 EXPORT_DEFAULT_DAYS = 90
@@ -3327,12 +3351,17 @@ async def get_trend(
     param: Optional[str] = None,
     target: Optional[float] = None,
     rolling_window_days: int = 7,
+    fit_window_days: Optional[int] = 56,
     exclude_noise: bool = True,
 ) -> dict:
     """Computes the trend for one metric instead of returning raw rows: linear slope
     (per day and per week), the latest rolling-mean value, and — if ``target`` is
     given — the projected date the trend reaches it. For weight metrics, noise-marked
     ranges are excluded (``exclude_noise``).
+
+    ``fit_window_days`` (default 56 days / 8 weeks) bounds the linear regression fit
+    to recent history so an ancient weight-loss rate does not distort the current trend.
+    When ``target`` is given, the date is projected from the latest rolling mean.
 
     ``metric_key`` is a registry key such as ``weight.weight_kg``,
     ``weight.body_fat_pct``, ``garmin.hrv_avg``, ``nutrition.calories``, or a
@@ -3341,7 +3370,7 @@ async def get_trend(
     (``param`` = ``metric_key`` or ``metric_key:segment``). Read-only."""
     from vitals.services import chart_data_service, weight_service
     from vitals.services.analytics import exclude_ranges
-    from vitals.services.analytics.regression import fit_trend, project_date_for_value
+    from vitals.services.analytics.regression import fit_trend
     from vitals.services.analytics.rolling import rolling_mean_by_date
     from vitals.services.analytics.chart_registry import get as get_metric
 
@@ -3350,7 +3379,15 @@ async def get_trend(
         try:
             field = get_metric(metric_key)
         except KeyError:
-            return {"error": f"Unknown metric '{metric_key}'"}
+            from difflib import get_close_matches
+            from vitals.services.analytics.chart_registry import REGISTRY
+            available = sorted(REGISTRY.keys())
+            matches = get_close_matches(metric_key, available, n=3, cutoff=0.4)
+            hint = f" Did you mean: {', '.join(matches)}?" if matches else ""
+            return {
+                "error": f"Unknown metric '{metric_key}'.{hint}",
+                "available_metrics": available,
+            }
         try:
             raw = await chart_data_service.series_for(
                 session, metric_key=metric_key, param=param
@@ -3372,7 +3409,15 @@ async def get_trend(
         if not points:
             return {"metric_key": metric_key, "param": param, "unit": field.unit, "points": 0}
 
-        trend = fit_trend(points)
+        fit_points = points
+        if fit_window_days and len(points) > 1:
+            end_date = points[-1][0]
+            start_date = end_date - timedelta(days=fit_window_days)
+            windowed = [p for p in points if p[0] >= start_date]
+            if len(windowed) >= 2:
+                fit_points = windowed
+
+        trend = fit_trend(fit_points)
         rolling = rolling_mean_by_date(points, window_days=rolling_window_days)
         result: dict = {
             "metric_key": metric_key,
@@ -3389,14 +3434,27 @@ async def get_trend(
                 "slope_per_day": round(trend.slope_per_day, 5),
                 "slope_per_week": round(trend.slope_per_week, 4),
                 "n": trend.n,
+                "fit_window_days": fit_window_days,
             },
             "noise_excluded": noise_applied,
         }
         if target is not None:
-            crossing = project_date_for_value(points, target)
+            projection_date = None
+            rolling_val = rolling[-1][1] if rolling else points[-1][1]
+            last_date = points[-1][0]
+            if trend and abs(trend.slope_per_day) >= 1e-9:
+                slope = trend.slope_per_day
+                moving_toward = (target < rolling_val and slope < 0) or (
+                    target > rolling_val and slope > 0
+                )
+                if moving_toward:
+                    days_needed = (target - rolling_val) / slope
+                    if 0 < days_needed <= 3650:
+                        projection_date = (last_date + timedelta(days=round(days_needed))).isoformat()
             result["projection"] = {
                 "target": target,
-                "date": crossing.isoformat() if crossing else None,
+                "projected_from": round(rolling_val, 3),
+                "date": projection_date,
             }
         return result
 

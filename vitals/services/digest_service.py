@@ -1032,8 +1032,8 @@ async def assemble_context(
             "activity_limit": _GARMIN_ACTIVITY_LIMIT,
             "activities_truncated": garmin_activities_truncated,
             "metric_samples": {
-                "current": garmin_metric_counts(period_start, period_end),
-                "previous": garmin_metric_counts(prev_start, prev_end),
+                "current": {k: v for k, v in garmin_metric_counts(period_start, period_end).items() if v > 0},
+                "previous": {k: v for k, v in garmin_metric_counts(prev_start, prev_end).items() if v > 0},
             },
         },
     )
@@ -1291,7 +1291,7 @@ async def assemble_context(
             if len(rows) >= 2
         ]
         or None,
-        "retest": retest_rows or None,
+        "retest": [r for r in retest_rows if r["due"] or r["retest_interval_days"] is not None] or None,
     }
     ctx["coverage"]["labs"] = _coverage(
         module="labs",
@@ -2541,7 +2541,7 @@ def _window_stats(
         "fat_per_day_g": _mean(row["fat_g"] for row in nutrition_days),
         "carbs_per_day_g": _mean(row["carbs_g"] for row in nutrition_days),
         "nutrition_days_logged": logged_days,
-        "sample_counts": sample_counts,
+        "sample_counts": {k: v for k, v in sample_counts.items() if v > 0},
     }
     return out
 
