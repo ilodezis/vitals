@@ -69,6 +69,12 @@ async def test_a_result_on_another_scale_gets_a_unit_qualified_marker(db_session
     assert mchc_gdl.marker == "Средняя концентрация гемоглобина в эритроците (г/дл)"
 
 
+async def test_the_same_quantity_in_a_convertible_unit_keeps_its_marker(db_session):
+    first = await _add(db_session, "Кортизол", 10, "мкг/дл", 3.5, 18.3)
+    second = await _add(db_session, "Кортизол", 300, "нмоль/л", 140, 600)
+    assert first.marker == second.marker == "Кортизол"
+
+
 async def test_a_unitless_result_keeps_its_name(db_session):
     await _add(db_session, "Эритроциты", 5.1, "10^12/л", 4.4, 5.6)
     row = await _add(db_session, "Эритроциты", 5.0, None, 4.4, 5.6)

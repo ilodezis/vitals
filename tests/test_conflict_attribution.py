@@ -241,3 +241,46 @@ async def test_editing_a_row_replaces_its_old_state(db_session):
     await db_session.commit()
 
     assert await _active_conflict_rows(db_session, rules["zinc_mg"]) == []
+
+
+async def test_lab_threshold_is_compared_in_the_rules_unit(db_session):
+    """"Кортизол < 140" is nmol/l: 10 µg/dl (~276 nmol/l) is normal, 3 µg/dl is not."""
+    from datetime import date
+    from vitals.services import labs_service
+
+    conflict_registrations.register_all_resolvers()
+    rules = await _seed_rules(db_session)
+    await supplements_service.add_supplement(db_session, name="Ashwagandha", key="ashwagandha", active=True)
+    await labs_service.add_result(
+        db_session, on_date=date(2026, 3, 1), marker="Кортизол", value=10, unit="мкг/дл",
+        ref_low=3.5, ref_high=18.3,
+    )
+    await db_session.commit()
+    assert await _active_conflict_rows(db_session, rules["cortisol"]) == []
+    assert not [v for v in await conflict_engine.evaluate(db_session, "supplements")
+                if v.rule_id == rules["cortisol"]]
+
+    await labs_service.add_result(
+        db_session, on_date=date(2026, 3, 2), marker="Кортизол", value=3.0, unit="мкг/дл",
+        ref_low=3.5, ref_high=18.3,
+    )
+    await db_session.commit()
+    assert len(await _active_conflict_rows(db_session, rules["cortisol"])) == 1
+
+    # A normal result afterwards ends the conflict.
+    await labs_service.add_result(
+        db_session, on_date=date(2026, 3, 3), marker="Кортизол", value=300, unit="нмоль/л",
+        ref_low=140, ref_high=600,
+    )
+    await db_session.commit()
+    assert await _active_conflict_rows(db_session, rules["cortisol"]) == []
+
+
+def test_rule_value_converts_or_refuses():
+    from vitals.services import labs_service
+
+    assert labs_service.rule_value("Кортизол", 10, "мкг/дл") == 275.9
+    assert labs_service.rule_value("Кортизол", 300, "нмоль/л") == 300
+    assert labs_service.rule_value("Кортизол", 300, None) == 300
+    assert labs_service.rule_value("Кортизол", 10, "мг/л") is None, "unknown scale: no comparison"
+    assert labs_service.rule_value("Калий", 5.5, "мэкв/л") == 5.5

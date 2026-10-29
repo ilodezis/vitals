@@ -105,7 +105,12 @@ _UNIT_CLASSES = {
     "10^9/л": "10^9/l", "10^9/l": "10^9/l", "тыс/мкл": "10^9/l", "10^3/мкл": "10^9/l",
     "10^12/л": "10^12/l", "10^12/l": "10^12/l", "млн/мкл": "10^12/l", "10^6/мкл": "10^12/l",
     "кл/мкл": "/мкл", "клеток/мкл": "/мкл", "количество/мкл": "/мкл", "ед/мкл": "/мкл", "/мкл": "/мкл",
-    "ммоль/л": "mmol/l", "mmol/l": "mmol/l",
+    "ммоль/л": "mmol/l", "mmol/l": "mmol/l", "мэкв/л": "mmol/l", "meq/l": "mmol/l",
+    "нмоль/л": "nmol/l", "nmol/l": "nmol/l",
+    "пмоль/л": "pmol/l", "pmol/l": "pmol/l",
+    "мг/дл": "mg/dl", "mg/dl": "mg/dl",
+    "мкг/дл": "ug/dl", "ug/dl": "ug/dl", "µg/dl": "ug/dl",
+    "пг/мл": "pg/ml", "pg/ml": "pg/ml",
     "мкмоль/л": "umol/l", "umol/l": "umol/l",
     "г/л": "g/l", "g/l": "g/l",
     "г/дл": "g/dl", "g/dl": "g/dl",
@@ -158,7 +163,7 @@ async def marker_for_unit(session: AsyncSession, marker: str, unit: Optional[str
         return f"{base} %" if unit_class(unit) == "%" else base
 
     catalog = await get_marker(session, name)
-    if catalog is None or units_compatible(catalog.unit, unit):
+    if catalog is None or units_compatible(catalog.unit, unit) or _convertible(name, catalog.unit, unit):
         return name
     result = await session.execute(
         select(LabMarker).where(LabMarker.name.startswith(f"{name} (")).order_by(LabMarker.id)
@@ -167,6 +172,52 @@ async def marker_for_unit(session: AsyncSession, marker: str, unit: Optional[str
         if units_compatible(variant.unit, unit):
             return variant.name
     return f"{name} ({unit.strip()})"
+
+
+# ── Values as conflict rules read them ───────────────────────────────────────
+# A rule's threshold is a bare number written in one unit ("Кортизол < 140" is
+# nmol/l). A lab that prints µg/dl (10 µg/dl ≈ 276 nmol/l, a normal morning
+# cortisol) must be converted before the comparison, or the rule fires on
+# every normal result. Per marker: the unit the catalog's rules use and the
+# factor from each other unit labs print.
+_RULE_SCALE: dict[str, tuple[str, dict[str, float]]] = {
+    "Кортизол": ("nmol/l", {"ug/dl": 27.59}),
+    "Глюкоза": ("mmol/l", {"mg/dl": 0.0555}),
+    "Креатинин": ("umol/l", {"mg/dl": 88.4}),
+    "Гемоглобин": ("g/l", {"g/dl": 10.0}),
+    "25-ОН витамин D": ("ng/ml", {"nmol/l": 0.4006}),
+    "Витамин B12": ("pg/ml", {"pmol/l": 1.355}),
+    "Холестерин-ЛПНП": ("mmol/l", {"mg/dl": 0.02586}),
+    "Кальций общий": ("mmol/l", {"mg/dl": 0.2495}),
+    "Магний": ("mmol/l", {"mg/dl": 0.4114}),
+}
+
+
+def _convertible(marker: str, a: Optional[str], b: Optional[str]) -> bool:
+    """True when both units are scales :data:`_RULE_SCALE` converts between for
+    ``marker`` — the same quantity in another unit (cortisol in µg/dl and nmol/l),
+    which stays one marker."""
+    scale = _RULE_SCALE.get(marker)
+    if scale is None:
+        return False
+    known = {scale[0], *scale[1]}
+    return unit_class(a) in known and unit_class(b) in known
+
+
+def rule_value(marker: str, value: float, unit: Optional[str]) -> Optional[float]:
+    """``value`` in the unit conflict rules for ``marker`` are written in, or
+    ``None`` when its unit is known but cannot be converted — a threshold must
+    never be compared across scales. Markers without a declared scale, and
+    results without a unit, are passed through as they are."""
+    scale = _RULE_SCALE.get(marker)
+    cls = unit_class(unit)
+    if scale is None or cls is None:
+        return value
+    canonical, factors = scale
+    if cls == canonical:
+        return value
+    factor = factors.get(cls)
+    return round(value * factor, 4) if factor is not None else None
 
 
 # ── Plausibility ──────────────────────────────────────────────────────────────
@@ -447,7 +498,11 @@ async def add_result(
         await conflict_engine.enforce(
             session,
             Domain.LABS.value,
-            {"marker": marker, "value": value, "flag": flag},
+            {
+                "marker": marker,
+                "value": rule_value(marker, value, unit or catalog.unit),
+                "flag": flag,
+            },
             override=override,
             entity_ref=f"labs:{marker}",
         )
@@ -468,6 +523,8 @@ async def add_result(
     )
     session.add(row)
     await session.flush()
+    # A new latest value can also end a conflict (cortisol back in range).
+    await conflict_engine.reconcile(session, Domain.LABS.value)
     return row
 
 
@@ -527,6 +584,7 @@ async def update_result(
 
     await session.flush()
     await refresh_alerts(session)
+    await conflict_engine.reconcile(session, Domain.LABS.value)
     return row
 
 
@@ -585,7 +643,8 @@ async def latest_per_marker(session: AsyncSession) -> list[LabResult]:
 async def resolve_latest(session: AsyncSession) -> list[dict]:
     """Conflict-engine resolver: the latest value+flag per marker as match items
     — lets a lab_safety rule reference e.g. {"marker": "Калий", "value": {"$gt":
-    5.0}} against the current panel, not just a freshly logged result."""
+    5.0}} against the current panel, not just a freshly logged result. Values are
+    in the unit the rules use (see :func:`rule_value`)."""
     latest = await latest_per_marker(session)
     catalog = {m.name: m for m in await list_markers(session)}
     items = []
@@ -593,7 +652,9 @@ async def resolve_latest(session: AsyncSession) -> list[dict]:
         flag = effective_flag(r, catalog.get(r.marker))
         if flag == LabFlag.SUSPECT.value:
             continue  # a misread value must not trip a safety rule
-        items.append({"marker": r.marker, "value": r.value, "flag": flag})
+        items.append({
+            "marker": r.marker, "value": rule_value(r.marker, r.value, r.unit), "flag": flag,
+        })
     return items
 
 
@@ -603,6 +664,7 @@ async def delete_result(session: AsyncSession, result_id: int) -> bool:
         return False
     await session.delete(row)
     await session.flush()
+    await conflict_engine.reconcile(session, Domain.LABS.value)
     return True
 
 
