@@ -900,6 +900,13 @@ async def check_conflicts(domain: str, payload: dict) -> list[dict]:
 
     session_factory = get_session_factory()
     async with session_factory() as session:
+        if (
+            domain == Domain.SUPPLEMENTS.value
+            and isinstance(payload, dict)
+            and payload.get("key")
+            and "ref" not in payload
+        ):
+            payload = {**payload, "ref": f"supplement:{payload['key']}"}
         violations = await conflict_engine.evaluate(session, domain, payload)
         return [_violation_view(v) for v in violations]
 

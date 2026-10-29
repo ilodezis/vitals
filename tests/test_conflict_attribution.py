@@ -198,6 +198,10 @@ async def test_mcp_check_conflicts_honours_key_and_active(db_session, session_fa
 
     assert await mcp_router.check_conflicts("supplements", {"key": "zinc", "active": False}) == []
     assert await mcp_router.check_conflicts("supplements", {"key": "maca", "active": True}) == []
+    on = await mcp_router.check_conflicts(
+        "supplements", {"key": "zinc", "active": True, "timing_slot": "AM"}
+    )
+    assert [v["entities"] for v in on] == [["supplement:magnesium", "supplement:zinc"]]
 
 
 async def test_unrelated_save_is_not_blocked_by_an_overridden_block(db_session):
