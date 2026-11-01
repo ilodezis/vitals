@@ -1,7 +1,7 @@
 #!/bin/sh
 # Periodic backup for Vitals: the PostgreSQL database + the Garmin token store.
 #
-# Runs as the vitals_backup sidecar (postgres:15-alpine, which ships pg_dump).
+# Runs as the vitals_backup sidecar (postgres:18-alpine, which ships pg_dump).
 # Dumps the database, verifies the dump, gzips it, writes atomically
 # (.tmp -> final) into /backups, archives the Garmin session volume next to it,
 # then prunes both older than the retention window. One pass on start, then once

@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/github/last-commit/ilodezis/vitals?style=flat-square" alt="Last Commit">
   <img src="https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI">
-  <img src="https://img.shields.io/badge/PostgreSQL-15-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/PostgreSQL-18-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis">
   <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker">
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React">
@@ -366,7 +366,7 @@ graph TD
     CE --> IL[InsightsMixin Layer]
     Scheduler[APScheduler] -->|Redis-локи| CE
 
-    IL --> DB[(PostgreSQL 15)]
+    IL --> DB[(PostgreSQL 18)]
     IL --> Cache[(Redis)]
 
     DB & Cache --> FastAPI[FastAPI Router + Auth + CSRF]
@@ -621,7 +621,7 @@ docker compose up -d --build
 ```
 
 > [!NOTE]
-> Миграции Alembic применяются автоматически при старте `vitals_app`. PostgreSQL 15 — внутри Docker-сети.
+> Миграции Alembic применяются автоматически при старте `vitals_app`. PostgreSQL 18 — внутри Docker-сети.
 
 #### 5. Проверьте
 
@@ -1229,7 +1229,7 @@ graph TD
     CE --> IL[InsightsMixin Layer]
     Scheduler[Scheduler Locks · Redis] --> CE
 
-    IL --> DB[(PostgreSQL 15)]
+    IL --> DB[(PostgreSQL 18)]
     IL --> Cache[(Redis)]
 
     DB & Cache --> FastAPI[FastAPI Router + Auth + CSRF]
@@ -1484,7 +1484,7 @@ docker compose up -d --build
 ```
 
 > [!NOTE]
-> Alembic migrations run automatically when `vitals_app` starts. PostgreSQL 15 runs inside the Docker network.
+> Alembic migrations run automatically when `vitals_app` starts. PostgreSQL 18 runs inside the Docker network.
 
 #### 5. Verify
 

@@ -15,7 +15,7 @@ docker run -d --rm --name "$CONTAINER" \
   -e POSTGRES_PASSWORD="$PASSWORD" \
   -e POSTGRES_DB="$DB" \
   -p "127.0.0.1:${PORT}:5432" \
-  postgres:15-alpine >/dev/null
+  postgres:18-alpine >/dev/null
 
 echo "→ waiting for Postgres to accept connections…"
 ready=0

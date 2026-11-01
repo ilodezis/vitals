@@ -70,7 +70,7 @@ hook that runs the unit suite and blocks a push when it is red.
 
 `scripts/test_postgres.sh` is only a convenience wrapper: the test suite reads
 `VITALS_TEST_DATABASE_URL` and switches to Postgres whenever it points at one.
-If Docker isn't available, any local Postgres 15 works — install it natively,
+If Docker isn't available, any local Postgres 18 works — install it natively,
 create an empty database, and run:
 
 ```bash

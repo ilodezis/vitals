@@ -1,13 +1,16 @@
 services:
   vitals_db:
-    image: postgres:15-alpine
+    image: postgres:18-alpine
     container_name: vitals_db
     environment:
       POSTGRES_USER: ${VITALS_DB_USER:-vitals}
       POSTGRES_PASSWORD: ${VITALS_DB_PASSWORD:?VITALS_DB_PASSWORD must be set}
       POSTGRES_DB: ${VITALS_DB_NAME:-vitals_db}
     volumes:
-      - vitals_pgdata:/var/lib/postgresql/data
+      # The 18+ image keeps the cluster in a versioned subdirectory, so the volume
+      # is mounted at the parent (not .../data). A fresh volume per major version
+      # keeps the previous cluster intact for rollback.
+      - vitals_pgdata18:/var/lib/postgresql
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-vitals} -d $${POSTGRES_DB:-vitals_db}"]
@@ -70,7 +73,7 @@ services:
       start_period: 120s
 
   vitals_backup:
-    image: postgres:15-alpine
+    image: postgres:18-alpine
     container_name: vitals_backup
     depends_on:
       vitals_db:
@@ -92,6 +95,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  vitals_pgdata:
+  vitals_pgdata18:
   vitals_redis_data:
   vitals_garmin_session:
