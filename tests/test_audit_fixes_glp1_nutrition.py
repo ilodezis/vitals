@@ -62,6 +62,7 @@ async def test_glp1_coverage_and_injections_in_snapshot(db_session):
 async def test_meal_eaten_at_nullable_and_logged_at(db_session, session_factory, monkeypatch):
     monkeypatch.setattr(mcp_router, "get_session_factory", lambda: session_factory)
     today = date(2026, 10, 28)
+    monkeypatch.setattr(digest_service, "today_local", lambda: today + timedelta(days=1))
 
     # Log meal without eaten_at
     meal = await nutrition_service.log_meal(
