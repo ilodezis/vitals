@@ -30,7 +30,8 @@ WORKDIR /app
 # Install dependencies. The pip cache lives in a build cache mount, not in the
 # image, so a requirements change re-downloads only the packages that changed.
 COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt \
+    && rm -rf /usr/local/lib/python3.14/ensurepip /usr/local/lib/python3.14/site-packages/pip*
 
 COPY . .
 COPY --from=frontend /build/web/static/app /app/web/static/app
