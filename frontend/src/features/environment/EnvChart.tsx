@@ -122,15 +122,15 @@ export function EnvChart({ model, start, end, label, styles, ruleLabels = {}, ba
                 </linearGradient>
                 <linearGradient id={`${gradientId}-area`} gradientUnits="userSpaceOnUse" x1="0" x2="0" y1={g.top} y2={g.bottom}>
                   {zoneStops(g, zones).map((s, i) => (
-                    <stop key={i} offset={s.offset} stopColor={s.color} stopOpacity={0.12 * (1 - s.offset * 0.75)} />
+                    <stop key={i} offset={s.offset} style={{ stopColor: s.color, stopOpacity: 0.25 * (1 - s.offset * 0.6) }} />
                   ))}
                 </linearGradient>
               </>
             )}
             {model.lines.map((l) => (
               <linearGradient key={`grad-${l.key}`} id={`${gradientId}-area-${l.key}`} x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={styles[l.key]?.color ?? COLOR.neutral} stopOpacity="0.10" />
-                <stop offset="100%" stopColor={styles[l.key]?.color ?? COLOR.neutral} stopOpacity="0" />
+                <stop offset="0%" style={{ stopColor: styles[l.key]?.color ?? COLOR.neutral, stopOpacity: 0.2 }} />
+                <stop offset="100%" style={{ stopColor: styles[l.key]?.color ?? COLOR.neutral, stopOpacity: 0 }} />
               </linearGradient>
             ))}
           </defs>
@@ -139,7 +139,7 @@ export function EnvChart({ model, start, end, label, styles, ruleLabels = {}, ba
             const areaD = g.areas[l.key]
             if (!showArea || !areaD) return null
             const fillUrl = zoned && l.key === first?.key ? `url(#${gradientId}-area)` : `url(#${gradientId}-area-${l.key})`
-            return <path key={`area-${l.key}`} d={areaD} fill={fillUrl} />
+            return <path key={`area-${l.key}`} d={areaD} fill={fillUrl} pointerEvents="none" />
           })}
           {g.leftTicks.map((tick) => (
             <g key={`l${tick.value}`}>

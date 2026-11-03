@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { autoTicks, chartGeometry, hourTicks, type ChartLine } from './chart'
+import { autoTicks, chartGeometry, decimatePoints, hourTicks, smoothPoints, type ChartLine } from './chart'
 
 const H = 3_600_000
 const MIN = 60_000
@@ -141,5 +141,40 @@ describe('clock labels', () => {
     expect(stepH(6)).toBe(2)
     expect(stepH(24)).toBe(6)
     expect(stepH(72)).toBe(24)
+  })
+})
+
+describe('smoothPoints & decimatePoints', () => {
+  it('smooths high frequency alternating jitter', () => {
+    const jitter = [
+      { t: 0, v: 20 },
+      { t: 1, v: 22 },
+      { t: 2, v: 20 },
+      { t: 3, v: 22 },
+      { t: 4, v: 20 },
+      { t: 5, v: 22 },
+      { t: 6, v: 20 },
+    ]
+    const smoothed = smoothPoints(jitter, 2)
+    expect(smoothed).toHaveLength(7)
+    // The middle point should be averaged close to 21, not swinging between 20 and 22.
+    expect(Math.abs(smoothed[3]!.v - 21)).toBeLessThan(0.4)
+  })
+
+  it('decimates points closer than minPixelStep while preserving endpoints', () => {
+    const dense: [number, number][] = [
+      [0, 10],
+      [0.5, 12],
+      [1.0, 11],
+      [1.5, 13],
+      [3.0, 15],
+      [3.2, 14],
+      [6.0, 18],
+    ]
+    const decimated = decimatePoints(dense, 2.0)
+    expect(decimated[0]).toEqual([0, 10])
+    expect(decimated.at(-1)).toEqual([6.0, 18])
+    // intermediate points closer than 2.0px should be dropped
+    expect(decimated.length).toBeLessThan(dense.length)
   })
 })

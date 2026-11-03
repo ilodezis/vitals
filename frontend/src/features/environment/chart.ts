@@ -151,6 +151,48 @@ function runsOf(points: readonly ChartPoint[], gapMs: number): ChartPoint[][] {
   return runs
 }
 
+/** Smooth out high-frequency sensor quantization chatter with a triangular moving window. */
+export function smoothPoints(points: readonly ChartPoint[], radius = 3): ChartPoint[] {
+  if (points.length <= 2 || radius <= 0) return [...points]
+  const r = Math.min(radius, Math.floor((points.length - 1) / 2))
+  const weights: number[] = []
+  for (let i = -r; i <= r; i++) {
+    weights.push(r + 1 - Math.abs(i))
+  }
+
+  const out: ChartPoint[] = []
+  for (let i = 0; i < points.length; i++) {
+    let sumV = 0
+    let sumW = 0
+    for (let d = -r; d <= r; d++) {
+      const idx = i + d
+      if (idx >= 0 && idx < points.length) {
+        const w = weights[d + r] as number
+        sumV += (points[idx] as ChartPoint).v * w
+        sumW += w
+      }
+    }
+    out.push({ t: (points[i] as ChartPoint).t, v: sumV / sumW })
+  }
+  return out
+}
+
+/** Keep at most 1 point per ~minPixelStep pixels, while preserving first and last points. */
+export function decimatePoints(pts: readonly Point[], minPixelStep = 2.5): Point[] {
+  if (pts.length <= 2) return [...pts]
+  const out: Point[] = [pts[0] as Point]
+  let lastX = (pts[0] as Point)[0]
+  for (let i = 1; i < pts.length - 1; i++) {
+    const p = pts[i] as Point
+    if (Math.abs(p[0] - lastX) >= minPixelStep) {
+      out.push(p)
+      lastX = p[0]
+    }
+  }
+  out.push(pts[pts.length - 1] as Point)
+  return out
+}
+
 export function chartGeometry({ width, height = 190, start, end, lines, rules = [], band, include = {}, minSpan = {}, gapMs, left = 40, ticks }: ChartInput): ChartGeometry {
   const hasRight = lines.some((l) => l.axis === 'right' && l.points.length > 0)
   const right = hasRight ? width - RIGHT_AXIS_W : width
@@ -195,15 +237,21 @@ export function chartGeometry({ width, height = 190, start, end, lines, rules = 
     const runs = runsOf(line.points, gapMs)
     paths[line.key] = runs
       .map((run) => {
-        const pts: Point[] = run.map((p) => [xOf(p.t), yOf(line.axis, p.v)])
-        const first = pts[0] as Point
-        return pts.length === 1 ? `M${first[0]},${first[1]}h0.01` : smoothPath(pts)
+        if (run.length === 1) {
+          const first = run[0] as ChartPoint
+          return `M${xOf(first.t)},${yOf(line.axis, first.v)}h0.01`
+        }
+        const smoothed = smoothPoints(run, 3)
+        const pts = decimatePoints(smoothed.map((p) => [xOf(p.t), yOf(line.axis, p.v)]))
+        return smoothPath(pts)
       })
       .join(' ')
     areas[line.key] = runs
       .map((run) => {
-        const pts: Point[] = run.map((p) => [xOf(p.t), yOf(line.axis, p.v)])
-        return pts.length > 1 ? areaPath(pts, bottom) : ''
+        if (run.length <= 1) return ''
+        const smoothed = smoothPoints(run, 3)
+        const pts = decimatePoints(smoothed.map((p) => [xOf(p.t), yOf(line.axis, p.v)]))
+        return areaPath(pts, bottom)
       })
       .filter(Boolean)
       .join(' ')
