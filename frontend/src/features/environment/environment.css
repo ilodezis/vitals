@@ -28,9 +28,9 @@
 .env-chart-box { min-width: 0; }
 .env-chart .env-rule line { stroke: var(--faint); stroke-width: 1.2; }
 .env-chart .env-rule .ax { fill: var(--faint); }
-.env-chart .env-rule[data-rule="co2_warn"] line { stroke: var(--warn); }
+.env-chart .env-rule[data-rule="co2_warn"] line { stroke: var(--warn); opacity: .75; }
 .env-chart .env-rule[data-rule="co2_warn"] .ax { fill: var(--warn); }
-.env-chart .env-rule[data-rule="co2_bad"] line { stroke: var(--bad); }
+.env-chart .env-rule[data-rule="co2_bad"] line { stroke: var(--bad); opacity: .75; }
 .env-chart .env-rule[data-rule="co2_bad"] .ax { fill: var(--bad); }
 .env-chart .env-rule[data-rule^="temp"] line { stroke: var(--violet); opacity: .55; }
 .env-chart .env-rule[data-rule^="rh"] line { stroke: var(--cool); opacity: .55; }

@@ -105,6 +105,18 @@ describe('chartGeometry', () => {
     })
     expect(g.band).toMatch(/^M.*Z$/)
   })
+
+  it('creates an area path closing down to the bottom baseline', () => {
+    const g = chartGeometry({
+      width: 300,
+      start,
+      end: start + 2 * H,
+      lines: [line('co2', 'left', [[0, 500], [60, 800]])],
+      gapMs: 2 * H,
+    })
+    expect(g.areas.co2).toBeDefined()
+    expect(g.areas.co2).toMatch(/^M[\d.]+,[\d.]+/)
+  })
 })
 
 describe('clock labels', () => {

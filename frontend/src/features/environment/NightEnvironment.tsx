@@ -75,8 +75,8 @@ function Body({ date, startMinutes, blocks }: NightEnvironmentProps) {
   }, [layer, points, th])
 
   const styles: Record<string, CurveStyle> = {
-    co2: { color: COLOR.co2, label: t('app.env.legend.co2'), name: t('app.env.co2'), unit: t('app.env.ppm'), digits: 0 },
-    temp: { color: COLOR.temp, label: t('app.env.legend.temp'), name: t('app.env.temperature'), unit: '°C', digits: 1 },
+    co2: { color: COLOR.co2, label: t('app.env.legend.co2'), name: t('app.env.co2'), unit: t('app.env.ppm'), digits: 0, area: true, strokeWidth: 2 },
+    temp: { color: COLOR.temp, label: t('app.env.legend.temp'), name: t('app.env.temperature'), unit: '°C', digits: 1, area: true, strokeWidth: 2 },
   }
   const ruleLabels: Record<string, string> =
     th === undefined

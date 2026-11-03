@@ -27,11 +27,11 @@ export function TodaySection({ thresholds, inView }: { thresholds: EnvThresholds
   const hasData = points.length > 0 && span !== null
 
   const co2Styles: Record<string, CurveStyle> = {
-    co2: { color: COLOR.co2, label: t('app.env.legend.co2'), name: t('app.env.co2'), unit: t('app.env.ppm'), digits: 0 },
+    co2: { color: COLOR.co2, label: t('app.env.legend.co2'), name: t('app.env.co2'), unit: t('app.env.ppm'), digits: 0, area: true, strokeWidth: 2 },
   }
   const climateStyles: Record<string, CurveStyle> = {
-    temp: { color: COLOR.temp, label: t('app.env.legend.temp'), name: t('app.env.temperature'), unit: '°C', digits: 1 },
-    rh: { color: COLOR.rh, label: t('app.env.legend.rh'), name: t('app.env.humidity'), unit: '%', digits: 0 },
+    temp: { color: COLOR.temp, label: t('app.env.legend.temp'), name: t('app.env.temperature'), unit: '°C', digits: 1, area: true, strokeWidth: 2 },
+    rh: { color: COLOR.rh, label: t('app.env.legend.rh'), name: t('app.env.humidity'), unit: '%', digits: 0, strokeWidth: 1.5 },
   }
   const ruleLabels = {
     co2_warn: t('app.env.legend.co2_warn', { v: formatInt(th.co2_warn, lang) }),

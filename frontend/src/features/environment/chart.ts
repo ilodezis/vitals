@@ -2,7 +2,7 @@
    for an hour's range, and a line that breaks where the station was silent instead of bridging it.
    Geometry only (positions and path strings at the box's pixel width); drawing is `EnvChart`. */
 
-import { linePath, niceTicks, type Point } from '@/components/charts/geometry'
+import { areaPath, niceTicks, type Point, smoothPath } from '@/components/charts/geometry'
 
 export type Axis = 'left' | 'right'
 
@@ -81,6 +81,7 @@ export interface ChartGeometry {
   xOf: (t: number) => number
   yOf: (axis: Axis, v: number) => number
   paths: Record<string, string>
+  areas: Record<string, string>
   band: string
   rules: ChartRuleOut[]
   leftTicks: ChartTick[]
@@ -164,6 +165,7 @@ export function chartGeometry({ width, height = 190, start, end, lines, rules = 
     xOf: () => left,
     yOf: () => bottom,
     paths: {},
+    areas: {},
     band: '',
     rules: [],
     leftTicks: [],
@@ -188,13 +190,22 @@ export function chartGeometry({ width, height = 190, start, end, lines, rules = 
   }
 
   const paths: Record<string, string> = {}
+  const areas: Record<string, string> = {}
   for (const line of lines) {
-    paths[line.key] = runsOf(line.points, gapMs)
+    const runs = runsOf(line.points, gapMs)
+    paths[line.key] = runs
       .map((run) => {
         const pts: Point[] = run.map((p) => [xOf(p.t), yOf(line.axis, p.v)])
         const first = pts[0] as Point
-        return pts.length === 1 ? `M${first[0]},${first[1]}h0.01` : linePath(pts)
+        return pts.length === 1 ? `M${first[0]},${first[1]}h0.01` : smoothPath(pts)
       })
+      .join(' ')
+    areas[line.key] = runs
+      .map((run) => {
+        const pts: Point[] = run.map((p) => [xOf(p.t), yOf(line.axis, p.v)])
+        return pts.length > 1 ? areaPath(pts, bottom) : ''
+      })
+      .filter(Boolean)
       .join(' ')
   }
 
@@ -278,6 +289,7 @@ export function chartGeometry({ width, height = 190, start, end, lines, rules = 
     xOf,
     yOf,
     paths,
+    areas,
     band: bandPath,
     rules: ruleOut,
     leftTicks: axisTicks('left'),
