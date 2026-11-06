@@ -28,14 +28,14 @@ substitutions:
   friendly_name: Станция среды
   # Version string reported in the snapshot as "fw". Bump on every change that
   # alters the snapshot or the measurement behaviour.
-  firmware_version: env-1.1.0
+  firmware_version: env-1.1.3
 
   # --- SCD41 tuning: PRELIMINARY values, to be settled during acceptance ---
   # Temperature offset in degrees C. Factory default is 4. The board and the
   # enclosure heat the sensor, so the real value is found by comparing against a
   # reference thermometer after ~2 hours of warm-up. The sign is inverted:
   # a LARGER offset gives a LOWER reported temperature.
-  scd41_temperature_offset: "4.0"
+  scd41_temperature_offset: "6.9"
   # Automatic self-calibration assumes the sensor sees fresh air (~420 ppm)
   # about once a week. In a bedroom that is not ventilated daily it drags the
   # baseline up and under-reports CO2, so it starts disabled. Calibrate by hand
@@ -52,6 +52,10 @@ esphome:
 esp32:
   board: esp32-c3-devkitm-1
   variant: esp32c3
+  # The lowest clock the C3 offers. The station only polls a sensor and serves
+  # a small page, and every watt saved is heat that never reaches the SCD41
+  # sharing the enclosure.
+  cpu_frequency: 80MHZ
   framework:
     type: esp-idf
 
@@ -73,6 +77,10 @@ ota:
 # No station credentials here on purpose, see the header. If the stored network
 # is unreachable the board opens this access point and the captive portal.
 wifi:
+  # Transmit power well below the default: the station sits close to the
+  # router, and the radio is the largest and most variable heat source on the
+  # board. Raise it if the signal reported in the snapshot drops below -70 dBm.
+  output_power: 10dB
   ap:
     ssid: "Environment Station Fallback"
     password: !secret ap_password
