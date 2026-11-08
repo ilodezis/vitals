@@ -108,10 +108,130 @@ async def _recovery_block(session: AsyncSession) -> Optional[dict[str, Any]]:
     return {
         "date": g.date.isoformat(),
         "sleep_score": g.sleep_score,
+        "sleep_seconds": g.sleep_seconds,
+        "deep_sleep_seconds": g.deep_sleep_seconds,
+        "rem_sleep_seconds": g.rem_sleep_seconds,
+        "light_sleep_seconds": g.light_sleep_seconds,
+        "awake_seconds": g.awake_seconds,
+        "awake_count": g.awake_count,
         "body_battery_high": g.body_battery_high,
         "training_readiness": g.training_readiness,
         "resting_hr": g.resting_hr,
         "hrv_avg": g.hrv_avg,
+        "hrv_status": g.hrv_status,
+        "avg_stress": g.avg_stress,
+        "max_stress": g.max_stress,
+        "avg_sleep_stress": g.avg_sleep_stress,
+    }
+
+
+async def _activity_today_block(session: AsyncSession) -> Optional[dict[str, Any]]:
+    """Today's activity snapshot from GarminDaily (or latest available)."""
+    from vitals.services import garmin_service
+
+    g = await garmin_service.get_daily(session, today_local())
+    if g is None:
+        g = await garmin_service.latest_daily(session)
+    if g is None:
+        return None
+    moderate = g.intensity_minutes_moderate or 0
+    vigorous = g.intensity_minutes_vigorous or 0
+    return {
+        "date": g.date.isoformat(),
+        "steps": g.steps,
+        "active_calories": g.active_calories,
+        "intensity_minutes": moderate + vigorous,
+    }
+
+
+async def _latest_workout_block(session: AsyncSession) -> Optional[dict[str, Any]]:
+    """Query the most recent HevyWorkout from vitals.models.hevy."""
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from vitals.models.hevy import HevyExercise, HevyWorkout
+
+    stmt = (
+        select(HevyWorkout)
+        .options(selectinload(HevyWorkout.exercises).selectinload(HevyExercise.sets))
+        .order_by(HevyWorkout.start_time.desc().nullslast(), HevyWorkout.date.desc())
+        .limit(1)
+    )
+    result = await session.execute(stmt)
+    workout = result.scalars().first()
+    if workout is None:
+        return None
+
+    date_str = (
+        workout.start_time.date().isoformat()
+        if workout.start_time
+        else (workout.date.isoformat() if workout.date else None)
+    )
+
+    duration_minutes = None
+    if workout.end_time and workout.start_time:
+        duration_minutes = int((workout.end_time - workout.start_time).total_seconds() / 60)
+    elif workout.duration_seconds:
+        duration_minutes = int(workout.duration_seconds / 60)
+
+    total_vol = 0.0
+    exercises_data = []
+    for ex in workout.exercises:
+        weights = [s.weight_kg for s in ex.sets if s.weight_kg is not None]
+        max_w = max(weights) if weights else None
+        top_set = (
+            next((s for s in ex.sets if s.weight_kg == max_w), None)
+            if max_w is not None
+            else (ex.sets[0] if ex.sets else None)
+        )
+        reps = top_set.reps if top_set and top_set.reps is not None else None
+        vol = sum((s.weight_kg or 0.0) * (s.reps or 0) for s in ex.sets)
+        total_vol += vol
+        exercises_data.append(
+            {
+                "name": ex.title,
+                "max_weight_kg": max_w,
+                "reps": reps,
+                "_vol": vol,
+            }
+        )
+
+    # Top exercises by volume (or max weight)
+    exercises_data.sort(key=lambda x: (x["_vol"], x["max_weight_kg"] or 0), reverse=True)
+    exercises = [
+        {"name": e["name"], "max_weight_kg": e["max_weight_kg"], "reps": e["reps"]}
+        for e in exercises_data[:5]
+    ]
+
+    volume_kg = getattr(workout, "volume_kg", None)
+    if volume_kg is None and total_vol > 0:
+        volume_kg = round(total_vol, 1)
+
+    return {
+        "id": str(workout.id),
+        "title": workout.title,
+        "date": date_str,
+        "duration_minutes": duration_minutes,
+        "volume_kg": volume_kg,
+        "exercises": exercises,
+    }
+
+
+async def _skincare_today_block(session: AsyncSession) -> dict[str, list[dict[str, Any]]]:
+    """Today's skincare routine from skincare_service."""
+    from vitals.services import skincare_service
+
+    plan = await skincare_service.plan_for(session, today_local())
+    morning = [
+        {"name": item["name"], "type": item.get("type"), "done": item.get("done", False)}
+        for item in plan.get("morning", [])
+    ]
+    evening = [
+        {"name": item["name"], "type": item.get("type"), "done": item.get("done", False)}
+        for item in plan.get("evening", [])
+    ]
+    return {
+        "morning": morning,
+        "evening": evening,
     }
 
 
@@ -144,7 +264,7 @@ async def _activity_block(session: AsyncSession) -> dict[str, list[str]]:
 
 @router.get("/summary", dependencies=[Depends(require_external_token)])
 async def external_summary(session: AsyncSession = Depends(get_session)) -> dict[str, Any]:
-    """One compact payload for the caller's four health glance cards."""
+    """One compact payload for the caller's health glance cards."""
     from vitals.services import nutrition_service
 
     cfg = load_config()
@@ -154,5 +274,8 @@ async def external_summary(session: AsyncSession = Depends(get_session)) -> dict
         "weight": await _weight_block(session),
         "nutrition_today": nutrition_today,
         "recovery": await _recovery_block(session),
+        "activity_today": await _activity_today_block(session),
+        "latest_workout": await _latest_workout_block(session),
+        "skincare_today": await _skincare_today_block(session),
         "activity": await _activity_block(session),
     }

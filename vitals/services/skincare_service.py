@@ -264,6 +264,7 @@ def _plan_from(
                 {
                     "product_id": p.id,
                     "name": p.name,
+                    "type": p.type,
                     "flag": _clean_flag(p.active_flag),
                     "how": how_to(p, slot),
                     "planned": True,
@@ -277,6 +278,7 @@ def _plan_from(
                 {
                     "product_id": check.product_id,
                     "name": check.product_name,
+                    "type": product.type if product is not None else None,
                     "flag": _clean_flag(check.active_flag),
                     "how": how_to(product, slot) if product is not None else None,
                     "planned": False,
