@@ -32,7 +32,7 @@ from vitals.config import load_config
 from vitals.enums import Domain, MilestoneStatus
 from vitals.utils.timeutils import today_local
 from web.config import get_web_config
-from web.deps import get_session
+from web.deps import get_redis, get_session
 
 router = APIRouter(prefix="/external", tags=["external"])
 
@@ -262,8 +262,41 @@ async def _activity_block(session: AsyncSession) -> dict[str, list[str]]:
     }
 
 
+async def _environment_block(
+    session: AsyncSession, redis: Optional[Any] = None
+) -> Optional[dict[str, Any]]:
+    """Latest indoor environment readings from the air station."""
+    from vitals.services.environment import live as env_live
+    from vitals.services.environment.types import STATUS_NEVER
+
+    try:
+        state = await env_live.get_live(session, redis)
+    except Exception:
+        return None
+
+    if state is None or state.station.status == STATUS_NEVER:
+        return None
+
+    now = state.now
+    if now.co2_ppm is None and now.temperature_c is None and now.humidity_pct is None:
+        return None
+
+    return {
+        "status": state.station.status,
+        "co2_ppm": now.co2_ppm,
+        "co2_zone": now.co2_zone,
+        "co2_trend_ppm_per_h": now.co2_trend_ppm_per_h,
+        "temperature_c": now.temperature_c,
+        "humidity_pct": now.humidity_pct,
+        "lux": now.lux,
+    }
+
+
 @router.get("/summary", dependencies=[Depends(require_external_token)])
-async def external_summary(session: AsyncSession = Depends(get_session)) -> dict[str, Any]:
+async def external_summary(
+    session: AsyncSession = Depends(get_session),
+    redis: Optional[Any] = Depends(get_redis),
+) -> dict[str, Any]:
     """One compact payload for the caller's health glance cards."""
     from vitals.services import nutrition_service
 
@@ -277,5 +310,6 @@ async def external_summary(session: AsyncSession = Depends(get_session)) -> dict
         "activity_today": await _activity_today_block(session),
         "latest_workout": await _latest_workout_block(session),
         "skincare_today": await _skincare_today_block(session),
+        "environment": await _environment_block(session, redis),
         "activity": await _activity_block(session),
     }

@@ -134,6 +134,13 @@ async def _seed(db_session):
         )
     )
 
+    # Environment sample
+    from env_support import sample
+    from vitals.utils.timeutils import now_utc
+
+    now = now_utc()
+    db_session.add(sample(now, 1, co2=650, temp=22.4, rh=45.0, lux_avg=12.0))
+
     await db_session.commit()
 
 
@@ -217,6 +224,15 @@ async def test_summary_returns_all_cards(client, db_session, _token):
     assert skincare["evening"][0]["type"] == "Ретиноид"
     assert skincare["evening"][0]["done"] is True
 
+    env = body["environment"]
+    assert env is not None
+    assert env["status"] == "online"
+    assert env["co2_ppm"] == 650
+    assert env["co2_zone"] == "good"
+    assert env["temperature_c"] == 22.4
+    assert env["humidity_pct"] == 45.0
+    assert env["lux"] == 12.0
+
     act = body["activity"]
     assert today_local().isoformat() in act["nutrition_days"]
     assert today_local().isoformat() in act["recovery_days"]
@@ -236,5 +252,6 @@ async def test_summary_empty_db_is_graceful(client, _token):
     assert body["latest_workout"] is None
     assert body["skincare_today"]["morning"] == []
     assert body["skincare_today"]["evening"] == []
+    assert body["environment"] is None
     assert body["nutrition_today"]["meal_count"] == 0
     assert body["activity"]["weight_days"] == []
