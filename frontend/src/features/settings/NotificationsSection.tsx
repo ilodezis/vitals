@@ -83,6 +83,8 @@ function BotSchedule({ settings }: NotificationsSectionProps) {
   const [quietStart, setQuietStart] = useState(p.quiet_start)
   const [quietEnd, setQuietEnd] = useState(p.quiet_end)
   const [dailyBudget, setDailyBudget] = useState(String(p.daily_budget))
+  const [botEnabled, setBotEnabled] = useState(p.bot_enabled ?? true)
+  const [weeklyDigestEnabled, setWeeklyDigestEnabled] = useState(p.weekly_digest_enabled ?? false)
 
   const dirty =
     briefTime !== p.brief_time ||
@@ -92,7 +94,9 @@ function BotSchedule({ settings }: NotificationsSectionProps) {
     dayEnd !== p.day_end ||
     quietStart !== p.quiet_start ||
     quietEnd !== p.quiet_end ||
-    dailyBudget !== String(p.daily_budget)
+    dailyBudget !== String(p.daily_budget) ||
+    botEnabled !== (p.bot_enabled ?? true) ||
+    weeklyDigestEnabled !== (p.weekly_digest_enabled ?? false)
 
   const saveSchedule = async () => {
     const read = readProactiveNumbers({ dailyBudget })
@@ -109,6 +113,8 @@ function BotSchedule({ settings }: NotificationsSectionProps) {
         day_end: dayEnd,
         quiet_start: quietStart,
         quiet_end: quietEnd,
+        bot_enabled: botEnabled,
+        weekly_digest_enabled: weeklyDigestEnabled,
         ...read.numbers,
       },
       'settings.saved.proactive',
@@ -151,6 +157,28 @@ function BotSchedule({ settings }: NotificationsSectionProps) {
           <input type="text" inputMode="numeric" className="input" value={dailyBudget} onChange={(e) => setDailyBudget(e.target.value)} />
         </label>
         <p className="fhint set-mt1">{t('settings.budget_hint')}</p>
+
+        <div className="set-switches set-mt3">
+          <button
+            type="button"
+            className={cx('tgl', botEnabled && 'on')}
+            aria-pressed={botEnabled}
+            onClick={() => setBotEnabled(!botEnabled)}
+          >
+            <i />
+            {t('settings.bot_enabled')}
+          </button>
+          <button
+            type="button"
+            className={cx('tgl', weeklyDigestEnabled && 'on')}
+            aria-pressed={weeklyDigestEnabled}
+            onClick={() => setWeeklyDigestEnabled(!weeklyDigestEnabled)}
+          >
+            <i />
+            {t('settings.weekly_digest_enabled')}
+          </button>
+        </div>
+        <p className="fhint set-mt1">{t('settings.weekly_digest_enabled_hint')}</p>
 
         <SaveRow dirty={dirty} onSave={saveSchedule}>
           {t('settings.save_proactive')}

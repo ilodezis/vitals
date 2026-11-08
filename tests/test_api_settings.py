@@ -355,6 +355,16 @@ async def test_settings_proactive(auth_client, db_session):
     assert r.status_code == 200
     assert r.json()["saved"] is True
 
+    # Verify toggle persistence for weekly digest and bot_enabled
+    r_toggle = await auth_client.post(
+        f"{URL}/proactive", json={"weekly_digest_enabled": True, "bot_enabled": False}
+    )
+    assert r_toggle.status_code == 200
+    r_check = await auth_client.get(URL)
+    proactive = r_check.json()["proactive"]
+    assert proactive["weekly_digest_enabled"] is True
+    assert proactive["bot_enabled"] is False
+
 
 async def test_settings_exports(auth_client):
     r_full = await auth_client.get(f"{URL}/export")

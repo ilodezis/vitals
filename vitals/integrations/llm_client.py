@@ -78,8 +78,8 @@ class LLMClient:
 
     @property
     def brief_model(self) -> str:
-        """Model for the daily brief; falls back to the digest model when unset."""
-        return self._config.llm_model_brief or self.digest_model
+        """Model for the daily brief; falls back to Gemini 2.5 Flash Lite when unset."""
+        return self._config.llm_model_brief or "google/gemini-2.5-flash-lite"
 
     # ── helpers ────────────────────────────────────────────────────────────────
     async def complete_text(

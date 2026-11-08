@@ -345,7 +345,8 @@ async def test_without_a_channel_the_badges_still_work(db_session):
 
 
 async def test_the_bot_master_switch_silences_the_messages_but_not_the_badge(db_session):
-    await modules_service.set_module_enabled(db_session, key="signals", enabled=False)
+    from vitals.services.proactive import prefs
+    await prefs.set_prefs(db_session, {"bot_enabled": False})
     notifier = FakeNotifier()
     await lay(db_session, NOW, co2=[(10, 1500)])
     assert await _evaluate(db_session, notifier, NOW) == []

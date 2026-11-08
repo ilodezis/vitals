@@ -205,7 +205,7 @@ async def send(
     # passes through this one function; a guard per job would leak the ones that
     # aren't jobs.
     if not await prefs.bot_enabled(session):
-        logger.info("skipping %s: the signals module is switched off", category)
+        logger.info("skipping %s: proactive bot is switched off", category)
         return None
 
     if dedupe_key and await already_sent(session, dedupe_key):

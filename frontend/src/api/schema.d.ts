@@ -2696,7 +2696,7 @@ export interface components {
         AiSettings: {
             /**
              * Llm Model Brief
-             * @default
+             * @default google/gemini-2.5-flash-lite
              */
             llm_model_brief: string;
             /**
@@ -5271,6 +5271,11 @@ export interface components {
         };
         /** ProactiveSettings */
         ProactiveSettings: {
+            /**
+             * Bot Enabled
+             * @default true
+             */
+            bot_enabled: boolean;
             /** Brief Time */
             brief_time: string;
             /** Daily Budget */
@@ -5309,9 +5314,16 @@ export interface components {
                     [key: string]: unknown;
                 };
             };
+            /**
+             * Weekly Digest Enabled
+             * @default false
+             */
+            weekly_digest_enabled: boolean;
         };
         /** ProactiveUpdate */
         ProactiveUpdate: {
+            /** Bot Enabled */
+            bot_enabled?: boolean | null;
             /** Brief Time */
             brief_time?: string | null;
             /** Daily Budget */
@@ -5348,6 +5360,8 @@ export interface components {
                     [key: string]: unknown;
                 };
             } | null;
+            /** Weekly Digest Enabled */
+            weekly_digest_enabled?: boolean | null;
         };
         /** ProfileSettings */
         ProfileSettings: {
@@ -14856,4 +14870,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: 5500e0e1c1956c2418020bb95f9ff8922e8b4f14d190d4560d8fd8f107b9441d
+// openapi.json sha256: f085326c391f4e043a2de12dba17fc22fb2833c989bf1c73193e0b23cb76710c

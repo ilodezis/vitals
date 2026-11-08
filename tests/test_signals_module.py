@@ -43,17 +43,33 @@ def test_signals_is_optional_and_off_by_default():
     assert modules_service.DEFAULT_STATE["signals"] is False
 
 
-async def test_disabled_module_makes_the_bot_silent(db_session):
-    """The switch has to reach *sending*, not just the nav — otherwise turning the
-    feature off still leaves the brief arriving every morning."""
+async def test_disabled_bot_makes_the_bot_silent(db_session):
+    """The proactive switch has to reach *sending*, not just the settings —
+    turning the bot off stops the brief and every outgoing message."""
     fake = FakeNotifier()
+
+    await prefs.set_prefs(db_session, {"bot_enabled": False})
+    await db_session.commit()
 
     assert await delivery.send(
         db_session, fake, text="бриф", category=delivery.CATEGORY_BRIEF
     ) is None
     assert fake.sent == []
 
-    await modules_service.set_module_enabled(db_session, key="signals", enabled=True)
+    await prefs.set_prefs(db_session, {"bot_enabled": True})
+    await db_session.commit()
+
+    assert await delivery.send(
+        db_session, fake, text="бриф", category=delivery.CATEGORY_BRIEF
+    ) is not None
+    assert fake.sent == ["бриф"]
+
+
+async def test_signals_module_off_does_not_silence_bot(db_session):
+    """Signals capture domain can be turned off without muting the Telegram bot."""
+    fake = FakeNotifier()
+    await modules_service.set_module_enabled(db_session, key="signals", enabled=False)
+    await prefs.set_prefs(db_session, {"bot_enabled": True})
     await db_session.commit()
 
     assert await delivery.send(
@@ -144,6 +160,20 @@ def test_switching_the_pulse_off_removes_the_job():
 
     register_all_jobs({"pulse_seconds": 0})
     assert "garmin_pulse" not in scheduler_mod._registry
+
+
+def test_weekly_digest_scheduler_registration():
+    """Weekly digest is registered only when weekly_digest_enabled is True."""
+    register_all_jobs({"weekly_digest_enabled": False})
+    assert "weekly_digest" not in scheduler_mod._registry
+
+    register_all_jobs({"weekly_digest_enabled": True})
+    assert "weekly_digest" in scheduler_mod._registry
+    assert scheduler_mod._registry["weekly_digest"].trigger_kwargs == {
+        "day_of_week": "mon",
+        "hour": 8,
+        "minute": 0,
+    }
 
 
 async def test_saving_reschedules_without_a_restart(auth_client, db_session):

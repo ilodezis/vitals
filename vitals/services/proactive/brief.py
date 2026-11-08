@@ -510,14 +510,17 @@ async def brief_job(session_factory, redis=None) -> None:
         # Second pass at yesterday's unparsed messages, in its own transaction and
         # behind its own guard: a recovered row belongs in the lake before the
         # brief reads it, and a model that is still down must not cost the brief.
-        try:
-            recovered = await inbound.reparse_pending(session)
-            await session.commit()
-            if recovered:
-                logger.info("re-parsed %d stored message(s) before the brief", len(recovered))
-        except Exception:
-            await session.rollback()
-            logger.warning("re-parse sweep before the brief failed", exc_info=True)
+        # Skipped when signals module is off.
+        from vitals.services import modules_service
+        if await modules_service.is_enabled(session, "signals"):
+            try:
+                recovered = await inbound.reparse_pending(session)
+                await session.commit()
+                if recovered:
+                    logger.info("re-parsed %d stored message(s) before the brief", len(recovered))
+            except Exception:
+                await session.rollback()
+                logger.warning("re-parse sweep before the brief failed", exc_info=True)
 
         # An earlier fire already built today's brief and its send failed (the
         # journal said "not sent" above): send that one again. Building a new one

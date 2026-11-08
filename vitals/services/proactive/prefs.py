@@ -97,6 +97,8 @@ DEFAULTS: dict[str, Any] = {
     "pulse_start_hour": 8,
     "pulse_end_hour": 24,
     "nudges": {c: True for c in NUDGE_CATEGORIES},
+    "weekly_digest_enabled": False,
+    "bot_enabled": True,
 }
 
 
@@ -165,6 +167,10 @@ def sanitize(raw: Any) -> dict[str, Any]:
         "pulse_start_hour": start_hour,
         "pulse_end_hour": end_hour,
         "nudges": {c: bool(stored_nudges.get(c, True)) for c in NUDGE_CATEGORIES},
+        "weekly_digest_enabled": bool(
+            src.get("weekly_digest_enabled", DEFAULTS["weekly_digest_enabled"])
+        ),
+        "bot_enabled": bool(src.get("bot_enabled", DEFAULTS["bot_enabled"])),
     }
 
 
@@ -211,11 +217,8 @@ async def routine_today(session: AsyncSession, now: Optional[datetime] = None) -
 async def bot_enabled(session: AsyncSession) -> bool:
     """Is the proactive layer switched on at all (the emergency switch)?
 
-    Deliberately reads the module registry rather than a setting of its own:
-    "выключить модуль signals" is one action in the UI and must silence the bot,
-    hide ``/signals`` and stop the capture domain together.
+    Controlled by `bot_enabled` in proactive settings (default True), independent
+    of the `signals` capture domain module.
     """
-    from vitals.services import modules_service
-
-    state = await modules_service.get_enabled_modules(session)
-    return bool(state.get(MODULE_KEY))
+    settings = await get_prefs(session)
+    return bool(settings.get("bot_enabled", True))

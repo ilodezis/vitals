@@ -226,7 +226,7 @@
       "AiSettings": {
         "properties": {
           "llm_model_brief": {
-            "default": "",
+            "default": "google/gemini-2.5-flash-lite",
             "title": "Llm Model Brief",
             "type": "string"
           },
@@ -7713,6 +7713,11 @@
       },
       "ProactiveSettings": {
         "properties": {
+          "bot_enabled": {
+            "default": true,
+            "title": "Bot Enabled",
+            "type": "boolean"
+          },
           "brief_time": {
             "title": "Brief Time",
             "type": "string"
@@ -7783,6 +7788,11 @@
             },
             "title": "Week Template",
             "type": "object"
+          },
+          "weekly_digest_enabled": {
+            "default": false,
+            "title": "Weekly Digest Enabled",
+            "type": "boolean"
           }
         },
         "required": [
@@ -7806,6 +7816,17 @@
       },
       "ProactiveUpdate": {
         "properties": {
+          "bot_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bot Enabled"
+          },
           "brief_time": {
             "anyOf": [
               {
@@ -7988,6 +8009,17 @@
               }
             ],
             "title": "Week Template"
+          },
+          "weekly_digest_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekly Digest Enabled"
           }
         },
         "title": "ProactiveUpdate",

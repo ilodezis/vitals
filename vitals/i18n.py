@@ -1550,6 +1550,10 @@ _EN: dict[str, str] = {
     # ── Settings: proactive layer ─────────────────────────────────────────
     "settings.proactive_off_chip": "module off",
     "settings.proactive_adjusted": "Some values were adjusted to the allowed range.",
+    "settings.bot_enabled": "Telegram bot messages",
+    "settings.bot_enabled_hint": "Allow the bot to initiate messages (morning brief, evening block, reminders).",
+    "settings.weekly_digest_enabled": "Weekly AI digest",
+    "settings.weekly_digest_enabled_hint": "Automatic weekly cross-domain narrative every Monday at 08:00.",
     "settings.brief_time": "Morning brief",
     "settings.brief_time_hint": "Syncs Garmin first, so last night's sleep is in it.",
     "settings.evening_time": "Evening block",
@@ -4334,6 +4338,10 @@ _RU: dict[str, str] = {
     # ── Настройки: проактивный слой ───────────────────────────────────────
     "settings.proactive_off_chip": "модуль выключен",
     "settings.proactive_adjusted": "Некоторые значения скорректированы под допустимый диапазон.",
+    "settings.bot_enabled": "Сообщения Telegram-бота",
+    "settings.bot_enabled_hint": "Разрешить боту писать первому (утренний бриф, вечерний блок, напоминания).",
+    "settings.weekly_digest_enabled": "Еженедельный AI-дайджест",
+    "settings.weekly_digest_enabled_hint": "Автоматический разбор недели каждый понедельник в 08:00.",
     "settings.brief_time": "Утренний бриф",
     "settings.brief_time_hint": "Сначала синкает Garmin, чтобы ночной сон был внутри.",
     "settings.evening_time": "Вечерний блок",

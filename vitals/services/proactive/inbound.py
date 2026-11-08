@@ -257,6 +257,11 @@ async def _handle_callback(
     data = str(callback.get("data") or "")
     callback_id = str(callback.get("id") or "")
 
+    from vitals.services import modules_service
+    if (data.startswith(CB_MISPARSE) or data.startswith(CB_CONTEXT)) and not await modules_service.is_enabled(session, "signals"):
+        logger.info("ignoring tap: signals module is switched off")
+        return
+
     # The tap itself is data too — which button, when — so it lands in the lake
     # like everything else, and doubles as this update's idempotency record.
     if external_id:
@@ -428,6 +433,13 @@ async def handle_text(
             session, text=text, external_id=external_id, source=SOURCE, processed=True
         )
         await _answer_reply(session, text, answered, notifier=notifier, message_id=message_id)
+        return
+
+    from vitals.services import modules_service
+    if not await modules_service.is_enabled(session, "signals"):
+        await signals_service.store_raw_text(
+            session, text=text, external_id=external_id, source=SOURCE
+        )
         return
 
     rows = await signals_service.ingest_text(

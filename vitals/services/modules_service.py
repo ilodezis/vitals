@@ -292,6 +292,14 @@ async def get_enabled_modules(
     return dict(DEFAULT_STATE)
 
 
+async def is_enabled(
+    session: AsyncSession, key: str, redis: Optional[Redis] = None
+) -> bool:
+    """Check if a module is currently enabled. Safe: never raises."""
+    state = await get_enabled_modules(session, redis=redis)
+    return bool(state.get(key, False))
+
+
 async def set_module_enabled(
     session: AsyncSession, *, key: str, enabled: bool
 ) -> dict[str, bool]:

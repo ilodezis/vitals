@@ -2668,14 +2668,21 @@ async def list_digests(
 
 # ── Scheduler job ─────────────────────────────────────────────────────────────
 async def digest_job(session_factory, redis=None) -> None:
-    """Weekly digest generation. No-ops when no OpenRouter key is configured so the
-    scheduler never logs spurious failures."""
+    """Weekly digest generation. No-ops when no OpenRouter key is configured or
+    when weekly digest is disabled in settings so the scheduler never logs
+    spurious failures."""
     from vitals.config import load_config
     from vitals.integrations.llm_client import LLMClient
+    from vitals.services.proactive import prefs
 
     if not load_config().openrouter_api_key:
         return
     async with session_factory() as session:
+        p = await prefs.get_prefs(session)
+        if not p.get("weekly_digest_enabled", False):
+            logger.info("weekly digest job skipped: weekly_digest_enabled is false")
+            return
+
         from vitals.services.language_service import get_language
         from vitals.i18n import current_lang
         lang = await get_language(session, redis)

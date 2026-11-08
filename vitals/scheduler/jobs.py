@@ -269,12 +269,13 @@ def register_all_jobs(settings: Optional[dict[str, Any]] = None) -> None:
             lock_ttl=60,
         )
 
-    # Weekly AI digest — Mondays at 08:00 local. No-ops when no OpenRouter key.
-    register_job(
-        "weekly_digest",
-        digest_job,
-        trigger="cron",
-        day_of_week="mon",
-        hour=8,
-        minute=0,
-    )
+    # Weekly AI digest — Mondays at 08:00 local. Registered only when enabled in settings.
+    if settings.get("weekly_digest_enabled", False):
+        register_job(
+            "weekly_digest",
+            digest_job,
+            trigger="cron",
+            day_of_week="mon",
+            hour=8,
+            minute=0,
+        )

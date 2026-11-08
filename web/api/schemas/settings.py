@@ -84,7 +84,7 @@ class AiSettings(BaseModel):
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     llm_model_digest: str = "anthropic/claude-sonnet-4.6"
     llm_model_parser: str = "google/gemini-2.5-flash"
-    llm_model_brief: str = ""
+    llm_model_brief: str = "google/gemini-2.5-flash-lite"
 
 
 class AiUpdate(BaseModel):
@@ -204,6 +204,8 @@ class ProactiveSettings(BaseModel):
     pulse_end_hour: int
     nudges: dict[str, bool] = Field(default_factory=dict)
     week_template: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    weekly_digest_enabled: bool = False
+    bot_enabled: bool = True
 
 
 class ProactiveUpdate(BaseModel):
@@ -223,6 +225,8 @@ class ProactiveUpdate(BaseModel):
     pulse_end_hour: Optional[int] = None
     nudges: Optional[list[str]] = None
     week_template: Optional[dict[str, dict[str, Any]]] = None
+    weekly_digest_enabled: Optional[bool] = None
+    bot_enabled: Optional[bool] = None
 
 
 class SettingsView(BaseModel):

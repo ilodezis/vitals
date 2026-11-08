@@ -242,6 +242,10 @@ async def read_settings(
         pulse_end_hour=proactive.get("pulse_end_hour", prefs.DEFAULTS["pulse_end_hour"]),
         nudges=proactive.get("nudges", {}),
         week_template=week_template,
+        weekly_digest_enabled=proactive.get(
+            "weekly_digest_enabled", prefs.DEFAULTS["weekly_digest_enabled"]
+        ),
+        bot_enabled=proactive.get("bot_enabled", prefs.DEFAULTS["bot_enabled"]),
     )
 
     return SettingsView(
@@ -631,6 +635,10 @@ async def update_proactive(
         raw_prefs["pulse_end_hour"] = body.pulse_end_hour
     if body.nudges is not None:
         raw_prefs["nudges"] = {c: c in body.nudges for c in prefs.NUDGE_CATEGORIES}
+    if body.weekly_digest_enabled is not None:
+        raw_prefs["weekly_digest_enabled"] = body.weekly_digest_enabled
+    if body.bot_enabled is not None:
+        raw_prefs["bot_enabled"] = body.bot_enabled
 
     settings = await prefs.set_prefs(db, raw_prefs)
 
