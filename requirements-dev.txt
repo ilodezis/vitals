@@ -18,7 +18,7 @@ annotated-types==0.8.0
     # via
     #   -c requirements.txt
     #   pydantic
-anyio==4.15.1
+anyio==4.16.0
     # via
     #   -c requirements.txt
     #   httpx
@@ -44,7 +44,7 @@ attrs==26.1.0
     #   jsonschema
     #   jsonschema-path
     #   referencing
-authlib==1.9.1
+authlib==1.9.5
     # via
     #   -c requirements.txt
     #   fastmcp-slim
@@ -56,7 +56,7 @@ beartype==0.23.1
     # via
     #   -c requirements.txt
     #   py-key-value-aio
-cachetools==7.2.6
+cachetools==7.3.0
     # via
     #   -c requirements.txt
     #   py-key-value-aio
@@ -64,7 +64,7 @@ caio==0.12.10
     # via
     #   -c requirements.txt
     #   aiofile
-cbor2==6.1.5
+cbor2==6.2.0.post2
     # via
     #   -c requirements.txt
     #   webauthn
@@ -89,7 +89,7 @@ click==8.5.0
     # via
     #   -c requirements.txt
     #   uvicorn
-coverage==7.17.0
+coverage==7.17.2
     # via
     #   -r requirements-dev.in
     #   pytest-cov
@@ -106,11 +106,11 @@ curl-cffi==0.17.0
     # via
     #   -c requirements.txt
     #   garminconnect
-cyclopts==5.3.2
+cyclopts==5.3.3
     # via
     #   -c requirements.txt
     #   fastmcp-slim
-dnspython==2.9.0
+dnspython==2.9.2
     # via
     #   -c requirements.txt
     #   email-validator
@@ -132,11 +132,11 @@ fastapi==0.162.0
     # via
     #   -c requirements.txt
     #   -r requirements.in
-fastmcp==4.1.3
+fastmcp==4.1.6
     # via
     #   -c requirements.txt
     #   -r requirements.in
-fastmcp-slim==4.1.3
+fastmcp-slim==4.1.6
     # via
     #   -c requirements.txt
     #   fastmcp
@@ -146,7 +146,7 @@ flatbuffers==25.12.19
     #   onnxruntime
 freezegun==1.5.5
     # via -r requirements-dev.in
-garminconnect==0.3.19
+garminconnect==0.3.20
     # via
     #   -c requirements.txt
     #   -r requirements.in
@@ -225,7 +225,7 @@ jiter==0.18.0
     # via
     #   -c requirements.txt
     #   openai
-joserfc==1.7.7
+joserfc==1.8.0
     # via
     #   -c requirements.txt
     #   authlib
@@ -295,7 +295,7 @@ onnxruntime==1.31.1
     # via
     #   -c requirements.txt
     #   pymupdf
-openai==3.40.0
+openai==3.46.0
     # via
     #   -c requirements.txt
     #   -r requirements.in
@@ -303,7 +303,7 @@ openapi-pydantic==0.6.0
     # via
     #   -c requirements.txt
     #   fastmcp-slim
-opentelemetry-api==1.45.1
+opentelemetry-api==1.45.2
     # via
     #   -c requirements.txt
     #   fastapi
@@ -324,7 +324,7 @@ pillow==13.0.0
     #   -c requirements.txt
     #   -r requirements.in
     #   -r requirements-dev.in
-platformdirs==4.14.0
+platformdirs==4.14.5
     # via
     #   -c requirements.txt
     #   fastmcp-slim
@@ -357,7 +357,7 @@ pycparser==3.12
     # via
     #   -c requirements.txt
     #   cffi
-pydantic==2.14.1
+pydantic==2.14.3
     # via
     #   -c requirements.txt
     #   fastapi
@@ -367,7 +367,7 @@ pydantic==2.14.1
     #   openai
     #   openapi-pydantic
     #   pydantic-settings
-pydantic-core==2.50.1
+pydantic-core==2.50.4
     # via
     #   -c requirements.txt
     #   pydantic
@@ -385,15 +385,15 @@ pyjwt==2.15.1
     # via
     #   -c requirements.txt
     #   mcp
-pymupdf==2.0
+pymupdf==2.1
     # via
     #   -c requirements.txt
     #   -r requirements.in
-pymupdf-layout==2.0
+pymupdf-layout==2.1
     # via
     #   -c requirements.txt
     #   pymupdf
-pymupdf4llm==2.0
+pymupdf4llm==2.1
     # via
     #   -c requirements.txt
     #   pymupdf
@@ -410,7 +410,7 @@ pytest==9.2.0
     #   -r requirements-dev.in
     #   pytest-asyncio
     #   pytest-cov
-pytest-asyncio==1.4.1
+pytest-asyncio==1.4.1.post1
     # via -r requirements-dev.in
 pytest-cov==7.1.0
     # via -r requirements-dev.in
@@ -423,7 +423,7 @@ python-dotenv==1.2.4
     #   fastmcp-slim
     #   pydantic-settings
     #   uvicorn
-python-multipart==0.0.32
+python-multipart==0.0.33
     # via
     #   -c requirements.txt
     #   -r requirements.in
@@ -483,7 +483,7 @@ sniffio==1.3.1
     #   openai
 sortedcontainers==2.4.0
     # via fakeredis
-sqlalchemy==2.1.6
+sqlalchemy==2.1.8
     # via
     #   -c requirements.txt
     #   -r requirements.in
@@ -525,14 +525,14 @@ typing-extensions==4.16.0
     #   pydantic-settings
     #   sqlalchemy
     #   typing-inspection
-typing-inspection==0.4.4
+typing-inspection==0.4.5
     # via
     #   -c requirements.txt
     #   fastapi
     #   mcp
     #   pydantic
     #   pydantic-settings
-tzdata==2026.5
+tzdata==2026.6
     # via
     #   -c requirements.txt
     #   -r requirements.in
@@ -541,11 +541,11 @@ tzlocal==5.4.5
     # via
     #   -c requirements.txt
     #   apscheduler
-ua-generator==2.1.7
+ua-generator==2.1.8
     # via
     #   -c requirements.txt
     #   garminconnect
-uncalled-for==0.4.1
+uncalled-for==0.6.0
     # via
     #   -c requirements.txt
     #   fastmcp-slim
@@ -572,7 +572,7 @@ webauthn==3.0.1
     # via
     #   -c requirements.txt
     #   -r requirements.in
-websockets==17.3
+websockets==17.4
     # via
     #   -c requirements.txt
     #   fastmcp-slim
