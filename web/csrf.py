@@ -72,6 +72,10 @@ _SECURITY_HEADERS = {
     "Content-Security-Policy": _CSP,
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
+    # A private health dashboard: nothing on it belongs in a search index. Header,
+    # not robots.txt: a Disallow would stop crawlers from ever seeing this and
+    # already-indexed pages would linger.
+    "X-Robots-Tag": "noindex, nofollow, noarchive",
 }
 
 
