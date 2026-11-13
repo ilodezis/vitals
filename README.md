@@ -1,29 +1,12 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Vitals-Personal_Health_Dashboard-F5A623?style=for-the-badge&labelColor=1a1a2e">
-    <img alt="Vitals" src="https://img.shields.io/badge/Vitals-Personal_Health_Dashboard-F5A623?style=for-the-badge&labelColor=1a1a2e">
-  </picture>
+  <img src="./web/static/icons/icon-192.png" alt="Vitals" width="64" height="64">
 </p>
 
-<p align="center">
-  <strong>Self-hosted personal health data lake & dashboard with 103 MCP tools for Claude.ai</strong><br>
-  <sub>React PWA · EN/RU interface · 15 Domains · Weight & BIA · HRT/TRT · GLP-1 · Garmin · Hevy · Nutrition · Labs · Genetics · Skincare · Timeline · Signals & Telegram · AI Digests · Doctor Report</sub>
-</p>
+<h1 align="center">Vitals</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/github/stars/ilodezis/vitals?style=flat-square" alt="Stars">
-  <img src="https://img.shields.io/github/last-commit/ilodezis/vitals?style=flat-square" alt="Last Commit">
-  <img src="https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI">
-  <img src="https://img.shields.io/badge/PostgreSQL-18-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
-  <img src="https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis">
-  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker">
-  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React">
-  <img src="https://img.shields.io/badge/TypeScript-7-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript">
-  <img src="https://img.shields.io/badge/Vite-PWA-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite">
-  <img src="https://img.shields.io/badge/MCP-Claude_AI-D4A574?style=flat-square" alt="MCP">
-  <img src="https://img.shields.io/badge/PWA-Mobile_First-5A0FC8?style=flat-square&logo=pwa&logoColor=white" alt="PWA">
-  <img src="https://img.shields.io/badge/License-PolyForm_NC-green?style=flat-square" alt="License">
+  Self-hosted personal health data lake &amp; dashboard with 103 MCP tools for Claude.ai<br>
+  <sub>React PWA (EN/RU) · 15 health domains · PolyForm Noncommercial 1.0.0</sub>
 </p>
 
 <p align="center">
@@ -31,29 +14,26 @@
 </p>
 
 <p align="center">
-  <a href="#lang-ru"><img src="https://raw.githubusercontent.com/lipis/flag-icons/main/flags/4x3/ru.svg" width="20" valign="middle" alt="ru"> Русский</a> &nbsp;·&nbsp;
-  <a href="#lang-en"><img src="https://raw.githubusercontent.com/lipis/flag-icons/main/flags/4x3/us.svg" width="20" valign="middle" alt="en"> English</a>
+  <a href="#lang-ru">Русский</a> &nbsp;·&nbsp; <a href="#lang-en">English</a>
 </p>
 
 ---
 
 <a id="lang-ru"></a>
 
-## Vitals - Личный кабинет здоровья и data lake
+## Vitals — личный дашборд здоровья и data lake
 
-**Vitals** — персональный дашборд здоровья и полноценное «озеро данных» (data lake) для одного пользователя. Система спроектирована для долгосрочного отслеживания биомаркеров, рекомпозиции тела, контроля терапии GLP-1, прохождения курсов гормональной терапии (ГЗТ / TRT), анализа спортивных показателей и построения еженедельных AI-отчётов с помощью языковых моделей через OpenRouter.
+**Vitals** — однопользовательское хранилище и дашборд для долгосрочного трекинга биомаркеров, состава тела, терапии GLP-1, курсов ГЗТ/TRT, тренировок, сна и недельных AI-отчётов через OpenRouter.
 
-Интерфейс — React-приложение (PWA) с тёплой сливово-угольной темой, а не «клинический терминал»: поверхности никогда не чисто-чёрные и не белые, янтарный акцент (`#F5A623`) тратится только на «сейчас / ты здесь / главное действие», шрифты — Geologica и Golos Text (кириллица из коробки, без моноширинных). Тревоги идут лесенкой `note → info → warn → block`, а не стеной красного. Дизайн-система целиком описана в [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
+Интерфейс — React PWA на тёплых тёмных поверхностях (сливово-угольная палитра, без чистого чёрного и белого). Янтарный акцент (`#F5A623`) используется только для текущего состояния и главного действия, шрифты — Geologica и Golos Text, предупреждения разделены на уровни `note → info → warn → block`. Полная спецификация: [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
 
-Главное отличие от фитнес-трекеров — **принцип максимального сохранения сырых данных**. Vitals — умный навигатор здоровья, который подсвечивает неочевидные взаимосвязи между сном, тренировками, медикаментами и весом, помогая принимать взвешенные решения. Не надзиратель — штурман.
-
-С недавних пор у Vitals есть **голос**: проактивный слой в Telegram присылает утренний бриф, вечером спрашивает про завтра и ловит свободный текст («голова раскалывается», «кофе в 22») в отдельный домен сигналов. Дашборд больше не ждёт, пока в него зайдут.
+Все внешние данные (Garmin, Hevy, анализы, BIA-бланки, VCF, входящие сообщения бота) сохраняются в сыром виде параллельно с нормализованными таблицами, чтобы их можно было перепарсить без повторной загрузки и находить связи между сном, тренировками, терапией и весом. Проактивный канал в Telegram присылает утренний бриф, вечером уточняет контекст на завтра и принимает свободный текст («голова раскалывается», «кофе в 22») в домен сигналов.
 
 ### Зачем я это сделал
 
-Мои данные были разбросаны по многим приложениям: Garmin, Hevy, заметки по GLP-1 и ГЗТ, таблица с анализами, файл с добавками. Ни одно из них не умело сопоставлять сон с восстановлением после тренировки или связывать побочные эффекты терапии с питанием — всё приходилось держать в голове.
+Данные были разбросаны по отдельным приложениям: Garmin, Hevy, заметки по GLP-1 и ГЗТ, таблица с анализами, список добавок. Ни одно из них не связывало сон с восстановлением после тренировки или побочные эффекты терапии с питанием — всё приходилось держать в голове.
 
-Vitals написан с Claude в качестве основного инструмента разработки — но модель данных, архитектура и доменная структура мои. MCP-слой — ключевая часть: Claude может в реальном времени читать и записывать данные по всем 15 доменам, отвечая на вопросы вроде «как мой сон за последнюю неделю влияет на восстановление?» с конкретными цифрами.
+Код написан вместе с Claude, но модель данных, доменная структура и правила — мои. Ключевой слой — встроенный MCP-сервер: Claude читает и записывает данные по всем 15 доменам и отвечает на вопросы по реальной истории из базы.
 
 ### Что умеет
 
@@ -67,53 +47,42 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 <tr>
 <td width="50%">
 
-**📊 Данные и аналитика**
-- 15 независимых доменов здоровья, терапии и хронологии
+**Данные и аналитика**
+- 15 модульных доменов здоровья, терапии и хронологии
 - Автосинк Garmin Connect + Hevy API
-- OCR-парсинг анализов через LLM (Gemini)
-- Vision-парсинг бланков состава тела InBody / МедАсс (BIA)
-- Движок конфликтов: 116 курируемых правил (усвоение, фармакогенетика, дерматология, безопасность анализов, GLP-1, ГЗТ, противопоказания)
-- 7-дневное скользящее среднее + линейная регрессия
-- Детекция плато на GLP-1
-- Кросс-доменная хронология событий (Timeline) + флажки-аннотации на графиках
-- Кастомные графики: наложение любых метрик друг на друга
+- OCR-парсинг анализов и vision-разбор бланков InBody / МедАсс (BIA) через LLM
+- Движок конфликтов: 116 курируемых правил (усвоение, фармакогенетика, дерматология, безопасность анализов, GLP-1, ГЗТ)
+- 7-дневное скользящее среднее, линейная регрессия, детекция плато на GLP-1
+- Лента событий (Timeline), аннотации на графиках и наложение любых метрик друг на друга
 
 </td>
 <td width="50%">
 
-**🤖 AI и интеграции**
-- Еженедельные AI-дайджесты (Claude / GPT) из версионированного контекста за закрытый период: Garmin и Hevy, GLP-1 и ГЗТ, состав тела, анализы, питание и остальные включённые домены
-- Проактивный канал в Telegram: утренний бриф, вечерний блок, подсказки по условию
-- 103 MCP-инструмента для Claude.ai (чтение + запись + override)
-- OAuth 2.0 + PKCE авторизация MCP
-- Полный экспорт данных для LLM (copy-paste ready)
-- Атомарный бэкап и восстановление БД
-- Настраиваемые модели через OpenRouter
+**AI и интеграции**
+- Еженедельные AI-дайджесты (OpenRouter) из версионированного контекста за закрытый период по всем включённым доменам
+- Проактивный канал в Telegram: утренний бриф, вечерний опрос, подсказки по условиям
+- 103 MCP-инструмента для Claude.ai (чтение, запись, override) с OAuth 2.0 + PKCE
+- Текстовый экспорт истории для LLM-чатов и атомарный бэкап/восстановление БД
 
 </td>
 </tr>
 <tr>
 <td>
 
-**📱 Мобильный опыт**
-- PWA с установкой на Home Screen (iOS/Android)
-- Двуязычный интерфейс (русский / английский) — переключение в настройках
-- Адаптация под все размеры (Mobile / Tablet / Desktop)
-- React + TanStack Router — мгновенные переходы между экранами, жесты назад на телефоне
-- Офлайн-кэш последних данных и установка как приложение (Service Worker)
-- Собственные SVG-графики, отрисованные под ширину экрана
+**Мобильный опыт**
+- PWA с установкой на экран (iOS/Android), адаптив под телефон, планшет и десктоп
+- Двуязычный интерфейс (RU/EN), переключение в настройках
+- React + TanStack Router с жестом назад и офлайн-кэшем последних данных (Service Worker)
+- Собственные SVG-графики под ширину экрана
 
 </td>
 <td>
 
-**🔒 Приватность и контроль**
-- Self-hosted, single-user, behind VPN
-- Bcrypt-авторизация + подписанные сессии
-- Двухфакторный вход (TOTP) — по желанию, включается в настройках
-- CSRF + Origin Guard + CSP
-- Модульный дашборд — включай/выключай домены в настройках
-- Никаких внешних CDN — шрифты и стили полностью локальные
-- Отчёт для врача: снимок за период по ссылке с паролем и сроком жизни
+**Приватность и контроль**
+- Self-hosted, single-user, рассчитан на работу за VPN
+- Bcrypt-пароль + подписанные сессионные куки, опциональный TOTP и passkeys (Face ID / Touch ID / ключ безопасности)
+- CSRF + Origin Guard + строгий CSP без внешних CDN (шрифты и ассеты локальные)
+- Отключаемые модули и снимок отчёта для врача по временной ссылке с паролем
 
 </td>
 </tr>
@@ -121,10 +90,10 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 
 ---
 
-### 📖 Содержание
+### Содержание
 
 - [Экраны приложения](#ru-screens)
-- [Философия и ключевые принципы](#ru-principles)
+- [Принципы работы](#ru-principles)
 - [Домены данных (15 модулей)](#ru-domains)
 - [Архитектура системы](#ru-architecture)
 - [MCP-интеграция с Claude.ai (103 инструмента)](#ru-mcp)
@@ -139,7 +108,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 
 <a id="ru-screens"></a>
 
-### 🧭 Экраны приложения
+### Экраны приложения
 
 Приложение живёт на собственных адресах — `/today`, `/weight`, `/recovery` и так далее. Экран выключенного модуля отправляет на «Сегодня»; старые адреса (`/app/...`, `/garmin`, `/hevy`) постоянно перенаправляются, так что закладки и установленное PWA не ломаются.
 
@@ -161,40 +130,35 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 
 <a id="ru-principles"></a>
 
-### 🧠 Философия и ключевые принципы
+### Принципы работы
 
-> [!NOTE]
-> **1. Сохранность сырых данных (Raw Payloads Store)**
-> Все интеграции сохраняют исходные ответы API в JSONB-таблицу `raw_payloads` параллельно со структурированными записями: Garmin, Hevy, анализы, BIA-бланки, исходный VCF и входящие сообщения бота. Если завтра обновится парсер — вся история перепарсится без потерь, и это не обещание на словах: ночная задача `raw_payload_sweep` (03:30) заново разбирает всё, что помечено «нужен перепарс», по каждому домену независимо.
+#### 1. Сохранность сырых данных (`raw_payloads`)
+Все интеграции сохраняют исходные ответы API в JSONB-таблицу `raw_payloads` параллельно со структурированными записями: Garmin, Hevy, анализы, BIA-бланки, исходный VCF и входящие сообщения бота. Если парсер обновится, история переразбирается без повторной загрузки — ночная задача `raw_payload_sweep` в 03:30 заново обрабатывает всё, что помечено к перепарсу, по каждому домену независимо.
 
-> [!TIP]
-> **2. Движок конфликтов (Conflict Engine)**
-> Данные, не код: **116 курируемых правил** с источниками и уровнем доказательности (A/B/C) в `vitals/data/conflict_rules.yaml`, покрывающих усвоение нутриентов, фармакогенетику, дерматологию, безопасность по анализам, GLP-1, ГЗТ/TRT и противопоказания. Правила понимают не только точное совпадение, но и диапазоны (`доза ≥ 2 мг`), списки, «любое из», и разносят предупреждение по времени приёма (утро/вечер/с едой), а не только по факту совместности. Несовместимая добавка с генетикой или анализом вернёт `409 Conflict`; можно нажать «Записать всё равно (Override)» — причина запишется в лог. Каталог просматривается и включается/выключается на странице `/interactions`.
+#### 2. Движок конфликтов
+Правила описаны данными, а не зашиты в код: **116 курируемых правил** с источниками и уровнем доказательности (A/B/C) в `vitals/data/conflict_rules.yaml`. Они покрывают усвоение нутриентов, фармакогенетику, дерматологию, безопасность по анализам, GLP-1, ГЗТ/TRT и противопоказания; поддерживают диапазоны (`доза ≥ 2 мг`), списки, «любое из» и разносят предупреждения по времени приёма (утро/вечер/с едой). Конфликт добавки с генетикой или анализом возвращает `409 Conflict` с возможностью нажать «Записать всё равно (Override)» — причина сохраняется в лог. Весь каталог можно просматривать и переключать на `/interactions`.
 
-> [!IMPORTANT]
-> **3. Локализованное время (Timezone Engine)**
-> Время «сегодня» и границы дат строго в зоне пользователя (`VITALS_TIMEZONE`). Никаких сбитых графиков при вечерних тренировках. Всё время через `vitals/utils/timeutils`.
+#### 3. Локализованное время
+Границы дня и «сегодня» считаются строго в часовом поясе пользователя (`VITALS_TIMEZONE`), чтобы вечерние тренировки и ночной сон не разваливались по разным датам. Всё время в логике идёт через `vitals/utils/timeutils`.
 
-> [!CAUTION]
-> **4. Self-hosted & Single-User Privacy**
-> Биометрические данные принадлежат только вам. Деплой на собственный сервер за VPN. Сессионные куки, bcrypt-пароль, CSRF-защита.
+#### 4. Приватность и однопользовательская модель
+Приложение рассчитано на одного владельца и разворачивается на собственном сервере за VPN. Сессионные куки подписаны секретом, вход защищён bcrypt-паролем, CSRF-проверкой, опциональным TOTP и passkeys.
 
-> [!TIP]
-> **5. Полная переносимость данных (Data Portability)**
-> Система не запирает данные. Полная резервная копия БД (включая сырые ответы API) для миграции. Компактный текстовый экспорт (LLM-ready) для вставки в чат с Claude/ChatGPT. Атомарное восстановление из бэкапа в одной транзакции.
->
-> Отдельная дорога наружу — **отчёт для врача** (`/share`): выбираешь разделы и период, приложение замораживает снимок и отдаёт ссылку с паролем. Ссылка живёт заданное число дней, отзывается в один клик, считает открытия и в бэкап не попадает. Тот же документ скачивается одним самодостаточным HTML-файлом — без скриптов и внешних запросов, открывается офлайн двойным кликом и печатается. Снимок неизменяемый: данные поменялись — создаёшь новый отчёт, а не подменяешь тот, что уже у врача на руках.
+#### 5. Экспорт и отчёт для врача
+Полный дамп БД (включая `raw_payloads`) восстанавливается атомарно в одной транзакции, а компактный текстовый экспорт без секретов готов для вставки в LLM-чаты.
+
+Отдельный канал — **отчёт для врача** (`/share`): выбор разделов и периода создаёт замороженный снимок по временной ссылке с паролем. Ссылка отзывается в один клик, считает открытия и не попадает в бэкап. Тот же отчёт скачивается одним автономным HTML-файлом без скриптов и внешних запросов (открывается офлайн и печатается). Снимок неизменяемый: при новых данных создаётся новый отчёт, а не подменяется уже выданный.
 
 ---
 
 <a id="ru-domains"></a>
 
-### 📊 Домены данных
+### Домены данных
 
 Все домены объединены общим интерфейсом `InsightsMixin` (`date`, `domain`, `source` + составной индекс):
 
 <details>
-<summary><strong>⚖️ 1. Вес и состав тела</strong></summary>
+<summary><strong>1. Вес и состав тела</strong></summary>
 
 - **Модели**: `WeightLog`, `BodyMeasurement`, `NoiseMarker`, `ProgressPhoto`
 - Расчёт % жира по формуле Navy (шея, талия, бёдра) и безжировой массы тела (LBM)
@@ -205,7 +169,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 </details>
 
 <details>
-<summary><strong>📊 2. Состав тела InBody / МедАсс (BIA-сканы)</strong></summary>
+<summary><strong>2. Состав тела InBody / МедАсс (BIA-сканы)</strong></summary>
 
 - **Модели**: `BodyScan`, `BodyScanMetric`
 - Загрузка PDF / фото листка анализатора (InBody / МедАсс) → LLM vision-модель распознаёт **все** доступные метрики (скелетная мускулатура, минералы, белок, висцеральный жир, внеклеточная вода, фазовый угол, сегментарный анализ, общий балл)
@@ -215,7 +179,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 </details>
 
 <details>
-<summary><strong>⚗️ 3. Гормональная терапия (ГЗТ / TRT)</strong></summary>
+<summary><strong>3. Гормональная терапия (ГЗТ / TRT)</strong></summary>
 
 - **Модели**: `HrtCompound`, `HrtDose`, `HrtCycle`, `HrtCycleItem`, `HrtCycleTemplate`, `HrtSideEffect`
 - Курируемый каталог из **73 препаратов** (`hrt_compounds.yaml`): эфиры тестостерона, 19-норы, оральные ААС, ингибиторы ароматазы / SERM, ХГЧ, ГР / IGF-1 / пептиды — с эфиром, путём введения, периодом полураспада и долей активного гормона
@@ -227,7 +191,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 </details>
 
 <details>
-<summary><strong>💉 4. Протокол GLP-1</strong></summary>
+<summary><strong>4. Протокол GLP-1</strong></summary>
 
 - **Модели**: `Injection`, `DosePhase`, `SideEffect`
 - Хронологический лог инъекций (Semaglutide / Tirzepatide) с интерактивной картой точек инъекции (ротация мест для избежания липогипертрофии)
@@ -236,7 +200,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 </details>
 
 <details>
-<summary><strong>⌚ 5. Garmin Connect</strong></summary>
+<summary><strong>5. Garmin Connect</strong></summary>
 
 - **Модели**: `GarminDaily`, `GarminActivity`, `GarminIntraday`, `GarminWeightExport`
 - Автосинк: сон, фазы сна, HRV (вариабельность пульса), пульс покоя, стресс, Body Battery, Training Readiness + внутридневные кривые стресса и Body Battery
@@ -251,7 +215,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 </details>
 
 <details>
-<summary><strong>🏋️ 6. Тренировки Hevy</strong></summary>
+<summary><strong>6. Тренировки Hevy</strong></summary>
 
 - **Модели**: `HevyWorkout`, `HevyExercise`, `HevySet`
 - Синхронизация силовых тренировок по API (упражнения, веса, подходы, повторения)
@@ -260,7 +224,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 </details>
 
 <details>
-<summary><strong>🍏 7. Питание</strong></summary>
+<summary><strong>7. Питание</strong></summary>
 
 - **Модели**: `MealLog`
 - Учёт приёмов пищи с калориями и макронутриентами (Б/Ж/У)
@@ -269,7 +233,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 </details>
 
 <details>
-<summary><strong>💊 8. Каталог добавок</strong></summary>
+<summary><strong>8. Каталог добавок</strong></summary>
 
 - **Модели**: `Supplement`
 - Каталог витаминов и ноотропов: дозировка, время приёма, уровень доказательности (A/B/C)
@@ -279,7 +243,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 </details>
 
 <details>
-<summary><strong>🧴 9. Уход за кожей</strong></summary>
+<summary><strong>9. Уход за кожей</strong></summary>
 
 - **Модели**: `SkincareProduct`, `SkincareLog`, `SkincareObservation`
 - Дневник утреннего / вечернего ухода с указанием активов (ретиноид, азелаиновая кислота, пилинг, ниацинамид+SPF, витамин C, бензоилпероксид)
@@ -288,7 +252,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 </details>
 
 <details>
-<summary><strong>🧪 10. Анализы и OCR</strong></summary>
+<summary><strong>10. Анализы и OCR</strong></summary>
 
 - **Модели**: `LabResult`, `LabMarker`
 - Загрузка PDF / фото анализов → LLM-парсинг биомаркеров (рекомендуется `gemini-2.5-flash`)
@@ -297,7 +261,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 </details>
 
 <details>
-<summary><strong>🧬 11. Генетика (VCF)</strong></summary>
+<summary><strong>11. Генетика (VCF)</strong></summary>
 
 - **Модели**: `GeneticVariant`
 - Парсер VCF-файлов → сопоставление SNP с каталогом предрасположенностей (HFE, MTHFR, G6PD, CYP1A2, COMT и др.)
@@ -306,14 +270,14 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 </details>
 
 <details>
-<summary><strong>📈 12. Кастомные графики</strong></summary>
+<summary><strong>12. Кастомные графики</strong></summary>
 
 - Инструмент-конструктор для гибкого сопоставления любых числовых метрик из разных доменов на одной шкале
 - Оверлеи событий из хронологии (Timeline)
 </details>
 
 <details>
-<summary><strong>📅 13. Хронология (Timeline)</strong></summary>
+<summary><strong>13. Хронология (Timeline)</strong></summary>
 
 - **Модели**: `Annotation`
 - Единый кросс-доменный лог событий: ручные аннотации (болезнь, поездка, смена протокола) + автоматически извлекаемые события (смена дозы GLP-1, дозы ГЗТ, сдачи анализов, BIA-сканы, шумные периоды, закрытые цели)
@@ -321,7 +285,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 </details>
 
 <details>
-<summary><strong>🎯 14. Цели и вехи</strong></summary>
+<summary><strong>14. Цели и вехи</strong></summary>
 
 - **Модели**: `Milestone`
 - Интерактивные карточки с целевыми значениями и дедлайнами
@@ -329,7 +293,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 </details>
 
 <details>
-<summary><strong>💬 15. Сигналы и проактивный канал (Telegram)</strong></summary>
+<summary><strong>15. Сигналы и проактивный канал (Telegram)</strong></summary>
 
 - **Модели**: `Signal`, `DayContext`, `NotificationLog` (журнал отправок)
 - Домен, который **объясняет** цифры остальных четырнадцати: всё, что случилось «в моменте» и не имеет формы — «спать хочу», «голова болит», «кофе в 22». Свободный текст в Telegram → сырое сообщение в `raw_payloads` → разбор в строки `Signal` трёх видов (`state` / `symptom` / `exposure`) с эхо-подтверждением и кнопкой «не то» для отката всей пачки
@@ -351,7 +315,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 
 <a id="ru-architecture"></a>
 
-### 🏗️ Архитектура системы
+### Архитектура системы
 
 ```mermaid
 graph TD
@@ -414,7 +378,7 @@ graph TD
 
 <a id="ru-mcp"></a>
 
-### 🔗 MCP-интеграция с Claude.ai
+### MCP-интеграция с Claude.ai
 
 Встроенный сервер [FastMCP](https://github.com/jlowin/fastmcp) server доступен на `/mcp/` (транспорт streamable HTTP). Авторизация: OAuth 2.0 с верификацией Bearer-токенов. PKCE (`S256`) **обязателен** — запрос на `/oauth/authorize` без `code_challenge` отклоняется, а не проходит мимо проверки. Метаданные защищённого ресурса отдаются на `/.well-known/oauth-protected-resource` (RFC 9728), и ответ `401` указывает на них через `WWW-Authenticate: Bearer resource_metadata="..."`, чтобы клиент сам нашёл, где авторизоваться. Настраивается в веб-интерфейсе (раздел настроек).
 
@@ -580,7 +544,7 @@ Claude: [вызывает get_weight_logs, get_hevy_workouts, get_garmin_metrics
 
 <a id="ru-quickstart"></a>
 
-### 🚀 Быстрый старт
+### Быстрый старт
 
 #### 1. Клонируйте и настройте окружение
 
@@ -620,8 +584,7 @@ VITALS_MCP_CLIENT_SECRET="ещё-один-случайный-секрет"
 docker compose up -d --build
 ```
 
-> [!NOTE]
-> Миграции Alembic применяются автоматически при старте `vitals_app`. PostgreSQL 18 — внутри Docker-сети.
+Миграции Alembic применяются автоматически при старте `vitals_app`. PostgreSQL 18 работает внутри Docker-сети.
 
 #### 5. Проверьте
 
@@ -652,12 +615,12 @@ curl -s http://127.0.0.1:8000/health
 
 <a id="ru-deploy"></a>
 
-### 🛡️ Безопасный деплой (Сетап автора)
+### Безопасный деплой (сетап автора)
 
-Поскольку Vitals содержит чувствительные медицинские, генетические и персональные биометрические данные, **категорически не рекомендуется оставлять приложение открытым для всего интернета**. По умолчанию в `docker-compose.yml` порты привязаны только к локальному адресу (`127.0.0.1:8000`), чтобы никто извне не мог получить доступ напрямую.
+В `docker-compose.yml` приложение по умолчанию привязано только к `127.0.0.1:8000` и не слушает внешний интерфейс: хранить медицинские и генетические данные в открытом доступе без дополнительного периметра не стоит.
 
-#### Вариант А: Cloudflare Tunnel (Рекомендуется автором)
-Это самый простой и надежный способ опубликовать приложение с SSL-сертификатом без необходимости открывать порты наружу (ваш сервер остается невидимым для сканеров портов).
+#### Вариант А: Cloudflare Tunnel (рекомендуется)
+Публикация с SSL-сертификатом без открытия входящих портов на сервере или роутере.
 
 1. **Регистрация домена**: Добавьте свой домен в Cloudflare.
 2. **Создание туннеля**: В панели [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) перейдите в **Access -> Tunnels** и создайте новый туннель (например, `vitals-tunnel`).
@@ -728,7 +691,7 @@ curl -s http://127.0.0.1:8000/health
 
 <a id="ru-config"></a>
 
-### ⚙️ Параметры конфигурации
+### Параметры конфигурации
 
 <details>
 <summary><strong>Инфраструктура</strong></summary>
@@ -818,7 +781,7 @@ curl -s http://127.0.0.1:8000/health
 
 <a id="ru-dev"></a>
 
-### 🛠️ Разработка и тесты
+### Разработка и тесты
 
 #### Локальное окружение
 
@@ -874,21 +837,18 @@ npm --prefix frontend run check
 
 <a id="ru-support"></a>
 
-### ☕ Поддержать проект
+### Поддержать проект
 
-> [!TIP]
-> Если **Vitals** помогает вам отслеживать показатели здоровья и облегчает жизнь, вы можете поддержать проект:
->
-> * **Карты РФ (CloudTips)**: [pay.cloudtips.ru/p/5bb82648](https://pay.cloudtips.ru/p/5bb82648)
-> * **Международные карты (Ko-fi)**: [ko-fi.com/ilodezis](https://ko-fi.com/ilodezis)
-> * **USDT (TRC-20)**: `TV6bMburcEjgkinkZBvt9DonkyiaP7TqHG`
-> * **USDT (Arbitrum One)**: `0x3eac15f5d07bba100d4038cad603e420a84753bb`
+* **Карты РФ (CloudTips)**: [pay.cloudtips.ru/p/5bb82648](https://pay.cloudtips.ru/p/5bb82648)
+* **Международные карты (Ko-fi)**: [ko-fi.com/ilodezis](https://ko-fi.com/ilodezis)
+* **USDT (TRC-20)**: `TV6bMburcEjgkinkZBvt9DonkyiaP7TqHG`
+* **USDT (Arbitrum One)**: `0x3eac15f5d07bba100d4038cad603e420a84753bb`
 
 ---
 
 <a id="ru-license"></a>
 
-### 📄 Лицензия
+### Лицензия
 
 **PolyForm Noncommercial License 1.0.0** — использование и модификация разрешены в некоммерческих целях. Коммерческое использование запрещено. Подробности: [LICENSE](LICENSE).
 
@@ -897,25 +857,19 @@ npm --prefix frontend run check
 
 <a id="lang-en"></a>
 
-## Vitals - Personal Health Dashboard and Data Lake
+## Vitals — Personal Health Dashboard & Data Lake
 
-**Vitals** is a personal health dashboard and data lake designed for a single user. Built for long-term tracking of biomarkers, body recomposition, GLP-1 therapy, hormone replacement therapy (HRT / TRT) cycles, athletic performance, and AI-powered weekly analytical digests via OpenRouter LLMs.
+**Vitals** is a single-user health dashboard and data lake built for long-term tracking of biomarkers, body recomposition, GLP-1 protocols, hormone replacement therapy (HRT / TRT) cycles, workouts, sleep, and weekly AI digests via OpenRouter.
 
-The interface is a React app (PWA) with a warm plum-charcoal theme — a health companion, not a clinical terminal: surfaces are never pure black or white, the honey-amber accent (`#F5A623`) is spent only on "now / you are here / the one action", and type is Geologica + Golos Text (Cyrillic out of the box, no monospace). Alerts climb a ladder, `note → info → warn → block`, instead of a wall of red. The full design system is documented in [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
+The interface is a React PWA built on warm plum-charcoal surfaces rather than pure black or white. The amber accent (`#F5A623`) is reserved for current state and the primary action, type uses Geologica and Golos Text, and alerts follow a severity ladder (`note → info → warn → block`). Full design tokens and layout rules are in [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
 
-Unlike typical fitness trackers, Vitals prioritizes **preserving raw historical data**. It serves as a smart wellness navigator — uncovering correlations between sleep, workouts, supplements, and body composition. Not a watchdog — a co-pilot.
-
-Vitals now has a **voice**: a proactive layer over Telegram delivers a morning brief, asks about tomorrow in the evening, and catches free text ("headache", "coffee at 22:00") into its own signals domain. The dashboard no longer waits to be opened.
+All inbound payloads (Garmin, Hevy, lab PDFs, BIA scans, VCF files, Telegram messages) are stored raw alongside normalized tables so parsers can be re-run without re-uploading, making it possible to correlate sleep, training load, therapy, and weight. A proactive Telegram layer sends a morning brief, checks tomorrow's context in the evening, and captures free-text messages ("headache", "coffee at 22:00") into the signals domain.
 
 ### Why I built this
 
-My data was scattered across many apps: Garmin, Hevy, GLP-1 and HRT notes, a spreadsheet with lab results, a file with supplements. None of them could cross-reference sleep with training recovery or link therapy side effects to nutrition — I had to keep it all in my head.
+My data was scattered across Garmin, Hevy, GLP-1 and HRT notes, a lab-results spreadsheet, and a supplements list. None of them linked sleep to training recovery or side effects to nutrition — I had to keep all of it in my head.
 
-Built with Claude as the primary coding tool — but the data model, architecture, and domain design are mine. The MCP layer is the key part: Claude can read and write data across all 15 domains in real time, answering questions like "how did my sleep this week affect my recovery?" with actual numbers.
-
-<p align="center">
-  <img src="./gifs/MCP_en.gif" alt="Claude querying Vitals via MCP" width="100%">
-</p>
+Written with Claude; the data model, domain boundaries, and rule catalog are mine. The built-in MCP server exposes all 15 domains so Claude can read and log directly against real history.
 
 ### What it does
 
@@ -929,54 +883,42 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 <tr>
 <td width="50%">
 
-**📊 Data & Analytics**
-- 15 independent health, therapy and event domains
-- Auto-sync Garmin Connect + Hevy API
-- OCR lab report parsing via LLM (Gemini)
-- Vision-parsing of InBody / МедАсс (BIA) body composition reports
-- Conflict engine: 116 curated rules (absorption, pharmacogenomics, dermatology, lab safety, GLP-1, HRT, contraindications)
-- 7-day moving average + linear regression
-- GLP-1 plateau detection
-- Cross-domain event timeline (Timeline) + chart annotation flags
-- Custom charts: overlay any metrics across domains on a single chart
+**Data & Analytics**
+- 15 modular health, therapy, and timeline domains
+- Auto-sync with Garmin Connect and Hevy API
+- LLM OCR parsing for lab PDFs/photos and InBody / МедАсс (BIA) sheets
+- Conflict engine with 116 curated rules (absorption, pharmacogenomics, dermatology, lab safety, GLP-1, HRT)
+- 7-day moving average, linear regression, and GLP-1 plateau detection
+- Cross-domain Timeline, chart event flags, and custom multi-metric chart overlays
 
 </td>
 <td width="50%">
 
-**🤖 AI & Integrations**
-- Weekly AI digests (Claude / GPT via OpenRouter) from versioned closed-period context: Garmin and Hevy, GLP-1 and HRT, body composition, labs, nutrition, and the other enabled domains
-- Proactive Telegram channel: morning brief, evening block, condition-driven nudges
-- 103 MCP tools for Claude.ai (read + write + override)
-- OAuth 2.0 + PKCE authorization for MCP
-- Full data export for LLM (copy-paste ready)
-- Atomic database backup & restore
-- Configurable models via OpenRouter
+**AI & Integrations**
+- Weekly AI digests (OpenRouter) built from versioned closed-period context across enabled domains
+- Proactive Telegram channel: morning brief, evening check-in, condition-based nudges
+- 103 MCP tools for Claude.ai (read, write, override) over OAuth 2.0 + PKCE
+- Secret-free text export for LLM chats and atomic database backup/restore
 
 </td>
 </tr>
 <tr>
 <td>
 
-**📱 Mobile Experience**
-- PWA with Home Screen install (iOS/Android)
-- Bilingual interface (English / Russian) — switchable in Settings
-- Fully responsive across Mobile / Tablet / Desktop
-- React + TanStack Router — instant screen changes, swipe-back on the phone
-- An offline copy of the latest data and install-as-app (Service Worker)
-- Hand-drawn SVG charts laid out at the screen's width
+**Mobile Experience**
+- Installable PWA (iOS/Android) responsive across phone, tablet, and desktop
+- Bilingual interface (EN/RU), switchable in Settings
+- React + TanStack Router with swipe-back navigation and offline Service Worker cache
+- Custom SVG charts sized to the viewport
 
 </td>
 <td>
 
-**🔒 Privacy & Control**
-- Self-hosted, single-user, behind VPN
-- Bcrypt auth + signed session cookies
-- Optional two-factor sign-in (TOTP), switched on in Settings
-- Passkeys: sign in with Face ID / Touch ID / a security key
-- CSRF + Origin Guard + CSP
-- Modular dashboard — toggle domains on/off in Settings
-- No external CDNs — fonts and assets are hosted locally
-- Doctor report: a snapshot for a period, behind a password-protected link that expires
+**Privacy & Control**
+- Self-hosted, single-user, designed to run behind a VPN
+- Bcrypt auth, signed session cookies, optional TOTP 2FA, and passkeys (Face ID / Touch ID / security key)
+- CSRF + Origin Guard + strict CSP with zero external CDNs (all fonts and assets served locally)
+- Toggleable modules and expiring password-protected doctor report links
 
 </td>
 </tr>
@@ -984,10 +926,10 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 
 ---
 
-### 📖 Table of Contents
+### Table of Contents
 
 - [App Screens](#en-screens)
-- [Core Philosophy](#en-principles)
+- [Core Principles](#en-principles)
 - [Supported Domains (15 modules)](#en-domains)
 - [Technical Architecture](#en-architecture)
 - [MCP Integration with Claude.ai (103 tools)](#en-mcp)
@@ -1002,7 +944,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 
 <a id="en-screens"></a>
 
-### 🧭 App Screens
+### App Screens
 
 The app lives on its own addresses — `/today`, `/weight`, `/recovery`, and so on. A screen of a switched-off module sends you to Today; the old addresses (`/app/...`, `/garmin`, `/hevy`) redirect permanently, so bookmarks and an installed PWA keep working.
 
@@ -1024,40 +966,35 @@ The app lives on its own addresses — `/today`, `/weight`, `/recovery`, and so 
 
 <a id="en-principles"></a>
 
-### 🧠 Core Philosophy
+### Core Principles
 
-> [!NOTE]
-> **1. Raw Data Preservation**
-> All API integrations preserve original JSON payloads in a JSONB `raw_payloads` table alongside normalized records: Garmin, Hevy, lab reports, BIA sheets, the source VCF, and every inbound bot message. If a parser changes — the entire history can be re-processed with zero loss, and that isn't only a promise: a nightly `raw_payload_sweep` (03:30) re-derives everything flagged for re-parsing, each domain committing independently.
+#### 1. Raw Payloads Store
+All API integrations preserve original JSON payloads in a JSONB `raw_payloads` table alongside normalized records: Garmin, Hevy, lab reports, BIA sheets, the source VCF, and every inbound bot message. If a parser changes, history can be re-processed without re-uploading — a nightly `raw_payload_sweep` (03:30) re-derives everything flagged for re-parsing, each domain committing independently.
 
-> [!TIP]
-> **2. Resilient Conflict Engine**
-> Data, not code: **116 curated rules** with sources and an evidence tier (A/B/C) in `vitals/data/conflict_rules.yaml`, covering nutrient absorption, pharmacogenomics, dermatology, lab safety, GLP-1, HRT, and contraindications. Rules understand more than exact matches — comparisons (`dose ≥ 2mg`), lists, "any of", and time-of-day separation (morning/evening/with food), not just simultaneous presence. A supplement clashing with genetics or a lab result returns `409 Conflict`; users can explicitly override with an audit note. Browse and toggle the whole catalog on `/interactions`.
+#### 2. Conflict Engine
+Data, not code: **116 curated rules** with sources and an evidence tier (A/B/C) in `vitals/data/conflict_rules.yaml`, covering nutrient absorption, pharmacogenomics, dermatology, lab safety, GLP-1, HRT, and contraindications. Rules support range comparisons (`dose ≥ 2mg`), lists, "any of", and time-of-day separation (morning/evening/with food). A supplement clashing with genetics or a lab result returns `409 Conflict`, with an explicit override and audit note. Browse and toggle the whole catalog on `/interactions`.
 
-> [!IMPORTANT]
-> **3. Localized Time Boundaries**
-> Daily resets and calendar math resolve against the user's timezone (`VITALS_TIMEZONE`), not the server clock. No more split days from late-night workouts. All time via `vitals/utils/timeutils`.
+#### 3. Timezone Boundaries
+Daily resets and calendar math resolve against the user's timezone (`VITALS_TIMEZONE`), not the server clock, preventing split days from late-night workouts or sleep. All time goes through `vitals/utils/timeutils`.
 
-> [!CAUTION]
-> **4. Single-User Self-Hosted Privacy**
-> Your biometrics belong to you. Designed for deployment behind a VPN. Secure session cookies, bcrypt passwords, CSRF protection, and an optional TOTP second factor for installs that face the open internet.
+#### 4. Single-User Privacy
+Built for one user on a self-hosted server behind a VPN. Signed session cookies, bcrypt passwords, CSRF protection, optional TOTP 2FA, and passkeys.
 
-> [!TIP]
-> **5. End-to-End Data Portability**
-> Full database backup (including raw API payloads) for migration. Curated, secret-free text export designed for pasting into LLM chats (Claude, ChatGPT). Atomic restore within a single database transaction.
->
-> A separate way out is the **doctor report** (`/share`): pick the sections and the period, and the app freezes a snapshot behind a password-protected link. The link expires on a schedule you set, is revocable in one click, counts its openings, and never reaches a backup. The same document downloads as a single self-contained HTML file — no scripts, no outside requests — which opens offline on a double-click and prints. The snapshot is immutable: when the data changes you create a new report rather than swapping the one already in a doctor's hands.
+#### 5. Data Export & Doctor Report
+Full database backup (including `raw_payloads`) restores atomically in a single transaction, and a secret-free text export is formatted for pasting into LLM chats.
+
+A separate way out is the **doctor report** (`/share`): pick the sections and period to freeze a snapshot behind a password-protected link. The link expires on schedule, revokes in one click, counts openings, and never enters a backup. The same document downloads as a self-contained HTML file with no scripts or external requests — open it offline and print. Snapshots are immutable: when data changes, you generate a new report rather than mutating one already shared.
 
 ---
 
 <a id="en-domains"></a>
 
-### 📊 Supported Domains
+### Supported Domains
 
 All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + composite index):
 
 <details>
-<summary><strong>⚖️ 1. Weight & Body Composition</strong></summary>
+<summary><strong>1. Weight & Body Composition</strong></summary>
 
 - **Models**: `WeightLog`, `BodyMeasurement`, `NoiseMarker`, `ProgressPhoto`
 - US Navy body fat % formula (neck, waist, hips) + Lean Body Mass (LBM)
@@ -1068,7 +1005,7 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 </details>
 
 <details>
-<summary><strong>📊 2. InBody / МедАсс (BIA scans)</strong></summary>
+<summary><strong>2. InBody / МедАсс (BIA scans)</strong></summary>
 
 - **Models**: `BodyScan`, `BodyScanMetric`
 - Upload InBody/МедАсс analyzer sheets (PDF/photo) → LLM vision model extracts **every** biomarker (skeletal muscle, minerals, protein, visceral fat, extracellular water, phase angle, segmental analysis, score)
@@ -1078,7 +1015,7 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 </details>
 
 <details>
-<summary><strong>⚗️ 3. Hormone Therapy (HRT / TRT)</strong></summary>
+<summary><strong>3. Hormone Therapy (HRT / TRT)</strong></summary>
 
 - **Models**: `HrtCompound`, `HrtDose`, `HrtCycle`, `HrtCycleItem`, `HrtCycleTemplate`, `HrtSideEffect`
 - Curated catalog of **73 compounds** (`hrt_compounds.yaml`): testosterone esters, 19-nors, oral AAS, aromatase inhibitors / SERMs, HCG, GH / IGF-1 / peptides — each with ester, route, half-life and active-hormone fraction
@@ -1090,7 +1027,7 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 </details>
 
 <details>
-<summary><strong>💉 4. GLP-1 Protocol</strong></summary>
+<summary><strong>4. GLP-1 Protocol</strong></summary>
 
 - **Models**: `Injection`, `DosePhase`, `SideEffect`
 - Chronological injection log (Semaglutide / Tirzepatide) with interactive injection site body map
@@ -1099,7 +1036,7 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 </details>
 
 <details>
-<summary><strong>⌚ 5. Garmin Connect</strong></summary>
+<summary><strong>5. Garmin Connect</strong></summary>
 
 - **Models**: `GarminDaily`, `GarminActivity`, `GarminIntraday`, `GarminWeightExport`
 - Auto-sync: sleep, sleep stages, HRV, resting HR, stress, Body Battery, Training Readiness + intraday stress / Body Battery curves
@@ -1114,7 +1051,7 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 </details>
 
 <details>
-<summary><strong>🏋️ 6. Hevy Workouts</strong></summary>
+<summary><strong>6. Hevy Workouts</strong></summary>
 
 - **Models**: `HevyWorkout`, `HevyExercise`, `HevySet`
 - API sync: exercises, sets, reps, weights
@@ -1123,7 +1060,7 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 </details>
 
 <details>
-<summary><strong>🍏 7. Nutrition</strong></summary>
+<summary><strong>7. Nutrition</strong></summary>
 
 - **Models**: `MealLog`
 - Meal logging with calories and macros (protein, fat, carbs)
@@ -1132,7 +1069,7 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 </details>
 
 <details>
-<summary><strong>💊 8. Supplements Catalog</strong></summary>
+<summary><strong>8. Supplements Catalog</strong></summary>
 
 - **Models**: `Supplement`
 - Supplement database with dosages, timing, evidence tiers (A/B/C)
@@ -1142,7 +1079,7 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 </details>
 
 <details>
-<summary><strong>🧴 9. Skincare Log</strong></summary>
+<summary><strong>9. Skincare Log</strong></summary>
 
 - **Models**: `SkincareProduct`, `SkincareLog`, `SkincareObservation`
 - Morning / evening routine logs with product actives (retinoid, azelaic acid, peel, niacinamide+SPF, vitamin C, benzoyl peroxide)
@@ -1151,7 +1088,7 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 </details>
 
 <details>
-<summary><strong>🧪 10. Lab Results & OCR</strong></summary>
+<summary><strong>10. Lab Results & OCR</strong></summary>
 
 - **Models**: `LabResult`, `LabMarker`
 - Upload PDF / image → LLM parses biomarkers (recommended: `gemini-2.5-flash`)
@@ -1160,7 +1097,7 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 </details>
 
 <details>
-<summary><strong>🧬 11. Genetics (VCF)</strong></summary>
+<summary><strong>11. Genetics (VCF)</strong></summary>
 
 - **Models**: `GeneticVariant`
 - VCF file parser → health-relevant SNPs (HFE, MTHFR, G6PD, CYP1A2, COMT, and more)
@@ -1169,14 +1106,14 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 </details>
 
 <details>
-<summary><strong>📈 12. Custom Charts</strong></summary>
+<summary><strong>12. Custom Charts</strong></summary>
 
 - Chart builder/studio to overlay any metrics across domains on a single timeline
 - Overlaid annotations from the Timeline
 </details>
 
 <details>
-<summary><strong>📅 13. Timeline</strong></summary>
+<summary><strong>13. Timeline</strong></summary>
 
 - **Models**: `Annotation`
 - Central event timeline combining manual life logs (trips, sickness, protocols) and automated system events (dose changes, HRT doses, lab draws, BIA scans, achieved goals)
@@ -1184,7 +1121,7 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 </details>
 
 <details>
-<summary><strong>🎯 14. Milestones & Goals</strong></summary>
+<summary><strong>14. Milestones & Goals</strong></summary>
 
 - **Models**: `Milestone`
 - Interactive goal cards with numeric targets and deadlines
@@ -1192,7 +1129,7 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 </details>
 
 <details>
-<summary><strong>💬 15. Signals & Proactive Channel (Telegram)</strong></summary>
+<summary><strong>15. Signals & Proactive Channel (Telegram)</strong></summary>
 
 - **Models**: `Signal`, `DayContext`, `NotificationLog` (the send journal)
 - The domain that **explains** the numbers in the other fourteen: everything that happens "in the moment" and has no shape — "can't keep my eyes open", "headache", "coffee at 22:00". Free text in Telegram → the raw message into `raw_payloads` → parsed into `Signal` rows of three kinds (`state` / `symptom` / `exposure`), echoed back with a "wrong" button that undoes the whole batch
@@ -1214,7 +1151,7 @@ All domains share the `InsightsMixin` interface (`date`, `domain`, `source` + co
 
 <a id="en-architecture"></a>
 
-### 🏗️ Technical Architecture
+### Technical Architecture
 
 ```mermaid
 graph TD
@@ -1277,7 +1214,7 @@ Brief time, evening time, the Garmin poll rate, the weight-export interval and i
 
 <a id="en-mcp"></a>
 
-### 🔗 MCP Integration with Claude.ai
+### MCP Integration with Claude.ai
 
 Built-in [FastMCP](https://github.com/jlowin/fastmcp) server at `/mcp/` (streamable HTTP transport). Authorization: OAuth 2.0 with signed Bearer token verification. PKCE (`S256`) is **mandatory** — an `/oauth/authorize` request without a `code_challenge` is rejected rather than skipping the check. Protected-resource metadata is served at `/.well-known/oauth-protected-resource` (RFC 9728), and a `401` points at it via `WWW-Authenticate: Bearer resource_metadata="..."` so the client can discover where to authorize. Configured in the web dashboard settings.
 
@@ -1443,7 +1380,7 @@ Recommendation: recovery looks sufficient, next session is fine to proceed.
 
 <a id="en-quickstart"></a>
 
-### 🚀 Quick Start
+### Quick Start
 
 #### 1. Clone and configure
 
@@ -1483,8 +1420,7 @@ VITALS_MCP_CLIENT_SECRET="another-random-secret"
 docker compose up -d --build
 ```
 
-> [!NOTE]
-> Alembic migrations run automatically when `vitals_app` starts. PostgreSQL 18 runs inside the Docker network.
+Alembic migrations run automatically when `vitals_app` starts. PostgreSQL 18 runs inside the Docker network.
 
 #### 5. Verify
 
@@ -1515,14 +1451,12 @@ Leave these four empty and the app behaves exactly as before: the bot never send
 
 <a id="en-deploy"></a>
 
-### 🛡️ Secure Deployment (Creator's Setup)
+### Secure Deployment (Creator's Setup)
 
-Since Vitals stores sensitive medical history, genetic profiles, and personal biometric logs, **it is strongly advised not to leave the application exposed to the public internet**. By default, the port mapping in `docker-compose.yml` binds only to the loopback interface (`127.0.0.1:8000`), keeping the application hidden from outside traffic.
-
-The project creator deploys Vitals on an **Ubuntu VPS** and secures access using one of two methods:
+By default, `docker-compose.yml` binds only to `127.0.0.1:8000` so the app is never exposed directly — avoid putting raw health, genetic, and biometric data on the open internet without an outer access boundary.
 
 #### Option A: Cloudflare Tunnel (Recommended)
-This is the simplest and most secure method to publish the app with a valid SSL certificate without exposing any ports on your firewall or router (your server's IP remains hidden).
+Exposes the app with TLS without opening inbound ports on your firewall or router.
 
 1. **Add Domain**: Set up your domain in Cloudflare.
 2. **Create Tunnel**: In the [Cloudflare Zero Trust Dashboard](https://one.dash.cloudflare.com/), navigate to **Access -> Tunnels** and create a new tunnel (e.g., `vitals-tunnel`).
@@ -1593,7 +1527,7 @@ A traditional setup using Nginx as a reverse proxy.
 
 <a id="en-config"></a>
 
-### ⚙️ Configuration
+### Configuration
 
 <details>
 <summary><strong>Infrastructure</strong></summary>
@@ -1683,7 +1617,7 @@ Two-factor sign-in has no variable: it is off by default and switched on in the 
 
 <a id="en-dev"></a>
 
-### 🛠️ Development & Testing
+### Development & Testing
 
 #### Local environment
 
@@ -1739,20 +1673,17 @@ npm --prefix frontend run check
 
 <a id="en-support"></a>
 
-### ☕ Support the Project
+### Support the Project
 
-> [!TIP]
-> If **Vitals** helps you track your health markers and makes your life better, consider supporting its development. Contributions go toward keeping the creator caffeinated:
->
-> * **Russian Cards (CloudTips)**: [pay.cloudtips.ru/p/5bb82648](https://pay.cloudtips.ru/p/5bb82648)
-> * **International Cards (Ko-fi)**: [ko-fi.com/ilodezis](https://ko-fi.com/ilodezis)
-> * **USDT (TRC-20)**: `TV6bMburcEjgkinkZBvt9DonkyiaP7TqHG`
-> * **USDT (Arbitrum One)**: `0x3eac15f5d07bba100d4038cad603e420a84753bb`
+* **Russian Cards (CloudTips)**: [pay.cloudtips.ru/p/5bb82648](https://pay.cloudtips.ru/p/5bb82648)
+* **International Cards (Ko-fi)**: [ko-fi.com/ilodezis](https://ko-fi.com/ilodezis)
+* **USDT (TRC-20)**: `TV6bMburcEjgkinkZBvt9DonkyiaP7TqHG`
+* **USDT (Arbitrum One)**: `0x3eac15f5d07bba100d4038cad603e420a84753bb`
 
 ---
 
 <a id="en-license"></a>
 
-### 📄 License
+### License
 
 **PolyForm Noncommercial License 1.0.0** — free for personal and private use. Commercial use prohibited. See [LICENSE](LICENSE).
