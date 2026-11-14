@@ -19,9 +19,33 @@ interface SectionTabsProps {
   sub?: boolean
 }
 
+interface InkStyle {
+  transform: string
+  transition: string
+}
+
+/** Puts the underline under the active tab. Each screen draws its own row, so on the row's first
+ *  placement the underline jumps straight there: sliding from where it was born (the first tab)
+ *  reads as the page flicking back to the first section. Later moves slide. Returns whether the
+ *  ink is placed; a hidden row (no width yet) waits for its resize. */
+export function placeInk(ink: { style: InkStyle; readonly offsetWidth: number }, on: { offsetLeft: number; offsetWidth: number }, first: boolean): boolean {
+  if (on.offsetWidth === 0) return false
+  const transform = `translateX(${on.offsetLeft}px) scaleX(${on.offsetWidth / 100})`
+  if (!first) {
+    ink.style.transform = transform
+    return true
+  }
+  ink.style.transition = 'none'
+  ink.style.transform = transform
+  void ink.offsetWidth // commit the jump before the transition comes back
+  ink.style.transition = ''
+  return true
+}
+
 /** "Where you are": text with an amber underline that slides to the active tab. */
 export function SectionTabs({ items, active, onSelect, onPreload, sub = false }: SectionTabsProps) {
   const nav = useRef<HTMLElement>(null)
+  const placed = useRef(false)
   const { desktop } = useLayout()
 
   useLayoutEffect(() => {
@@ -31,7 +55,8 @@ export function SectionTabs({ items, active, onSelect, onPreload, sub = false }:
       const on = el.querySelector<HTMLElement>('.chip.on')
       const ink = el.querySelector<HTMLElement>('.ink')
       if (on === null || ink === null) return
-      ink.style.transform = `translateX(${on.offsetLeft}px) scaleX(${on.offsetWidth / 100})`
+      if (!placeInk(ink, on, !placed.current)) return
+      placed.current = true
       // On a phone the row scrolls: keep the active tab in view.
       if (!desktop) el.scrollLeft = on.offsetLeft + on.offsetWidth > el.clientWidth - 20 ? on.offsetLeft - 20 : 0
     }
