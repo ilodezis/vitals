@@ -1,12 +1,12 @@
 # ── Core (vitals/) ───────────────────────────────────────────────────────────
-SQLAlchemy==2.1.6
+SQLAlchemy==2.1.8
 asyncpg==0.32.0
 alembic==1.20.1
 python-dotenv==1.2.4
 APScheduler==3.11.3
 redis>=8.1,<9.0
 greenlet==3.5.6
-tzdata==2026.5
+tzdata==2026.6
 numpy>=1.26,<3.0
 # Conflict-engine catalog (vitals/data/*.yaml) — was previously only a
 # transitive dependency (uvicorn[standard]); now imported directly.
@@ -41,14 +41,14 @@ openai>=3.36,<4.0
 # machinery underneath a working token. 0.3.x already dropped garth and changed
 # the token format once — the client code is written against 0.3.19, and
 # tests/test_garmin_client_resume.py pins the session guarantees on each bump.
-garminconnect==0.3.19
+garminconnect==0.3.20
 
 # Labs: render a PDF page to an image for the vision LLM (no system deps,
 # lazy-imported in labs_service).
 PyMuPDF>=2.0,<3.0
 
 # ── Model Context Protocol (MCP) ─────────────────────────────────────────────
-fastmcp==4.1.3
+fastmcp>=4.2.0,<5.0
 
 # ── Hardware & Displays ───────────────────────────────────────────────────────
 Pillow>=13.0,<14.0
