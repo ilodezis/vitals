@@ -6,7 +6,7 @@
 
 <p align="center">
   Self-hosted personal health data lake &amp; dashboard with 103 MCP tools for Claude.ai<br>
-  <sub>React PWA (EN/RU) · 15 health domains · PolyForm Noncommercial 1.0.0</sub>
+  <sub>React PWA (EN/RU) · 15 health domains · Elastic License 2.0</sub>
 </p>
 
 <p align="center">
@@ -850,7 +850,7 @@ npm --prefix frontend run check
 
 ### Лицензия
 
-**PolyForm Noncommercial License 1.0.0** — использование и модификация разрешены в некоммерческих целях. Коммерческое использование запрещено. Подробности: [LICENSE](LICENSE).
+**Elastic License 2.0** — свободное использование, модификация и распространение, в том числе внутри организаций. Предоставление третьим лицам как hosted/managed-сервиса (SaaS) запрещено. Подробности: [LICENSE](LICENSE).
 
 ---
 ---
@@ -1686,4 +1686,4 @@ npm --prefix frontend run check
 
 ### License
 
-**PolyForm Noncommercial License 1.0.0** — free for personal and private use. Commercial use prohibited. See [LICENSE](LICENSE).
+**Elastic License 2.0** — free to use, modify, and distribute, including for internal business use. Offering the software to third parties as a hosted or managed service (SaaS) is prohibited. See [LICENSE](LICENSE).
