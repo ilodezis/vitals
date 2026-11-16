@@ -10,7 +10,7 @@ alembic==1.20.1
     # via
     #   -c requirements.txt
     #   -r requirements.in
-annotated-doc==0.0.5
+annotated-doc==0.0.6
     # via
     #   -c requirements.txt
     #   fastapi
@@ -56,7 +56,7 @@ beartype==0.23.1
     # via
     #   -c requirements.txt
     #   py-key-value-aio
-cachetools==7.3.0
+cachetools==7.3.1
     # via
     #   -c requirements.txt
     #   py-key-value-aio
@@ -64,7 +64,7 @@ caio==0.12.10
     # via
     #   -c requirements.txt
     #   aiofile
-cbor2==6.2.0.post2
+cbor2==6.2.1
     # via
     #   -c requirements.txt
     #   webauthn
@@ -85,11 +85,11 @@ charset-normalizer==3.5.2
     # via
     #   -c requirements.txt
     #   requests
-click==8.5.0
+click==8.5.1
     # via
     #   -c requirements.txt
     #   uvicorn
-coverage==7.17.2
+coverage==7.17.3
     # via
     #   -r requirements-dev.in
     #   pytest-cov
@@ -105,7 +105,7 @@ curl-cffi==0.17.0
     # via
     #   -c requirements.txt
     #   garminconnect
-cyclopts==5.3.3
+cyclopts==5.4.2
     # via
     #   -c requirements.txt
     #   fastmcp-slim
@@ -127,7 +127,7 @@ exceptiongroup==1.3.1
     #   fastmcp-slim
 fakeredis==2.40.0
     # via -r requirements-dev.in
-fastapi==0.162.0
+fastapi==0.162.5
     # via
     #   -c requirements.txt
     #   -r requirements.in
@@ -203,7 +203,7 @@ jinja2==3.1.6
     # via
     #   -c requirements.txt
     #   -r requirements.in
-jiter==0.18.0
+jiter==0.19.0
     # via
     #   -c requirements.txt
     #   openai
@@ -233,7 +233,7 @@ mako==1.4.3
     # via
     #   -c requirements.txt
     #   alembic
-markdown-it-py==4.2.0
+markdown-it-py==4.3.0
     # via
     #   -c requirements.txt
     #   rich
@@ -269,7 +269,7 @@ onnxruntime==1.31.1
     # via
     #   -c requirements.txt
     #   pymupdf
-openai==3.46.0
+openai==3.50.0
     # via
     #   -c requirements.txt
     #   -r requirements.in
@@ -388,7 +388,7 @@ pytest==9.2.0
     #   -r requirements-dev.in
     #   pytest-asyncio
     #   pytest-cov
-pytest-asyncio==1.4.1.post1
+pytest-asyncio==1.5.0
     # via -r requirements-dev.in
 pytest-cov==7.1.0
     # via -r requirements-dev.in
@@ -460,7 +460,7 @@ sqlalchemy==2.1.8
     #   -c requirements.txt
     #   -r requirements.in
     #   alembic
-sse-starlette==3.6.0
+sse-starlette==3.7.0
     # via
     #   -c requirements.txt
     #   mcp
