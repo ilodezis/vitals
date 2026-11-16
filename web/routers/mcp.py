@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import hmac
 import importlib
 import json
 import logging
@@ -4633,6 +4634,18 @@ class MCPAuthMiddleware:
                     authenticated = True
             except (SignatureExpired, BadSignature):
                 pass
+
+            # Optional static agent token (VITALS_MCP_AGENT_TOKEN) for clients that
+            # cannot run the OAuth flow. Off when unset; this middleware only guards
+            # /mcp, so the token opens nothing else. Constant-time comparison.
+            if not authenticated:
+                from web.config import get_web_config
+
+                agent_token = get_web_config().mcp_agent_token
+                if agent_token and hmac.compare_digest(
+                    token.encode("utf-8"), agent_token.encode("utf-8")
+                ):
+                    authenticated = True
 
         if not authenticated:
             response_body = b'{"detail":"Unauthorized. Invalid or missing MCP access token."}'

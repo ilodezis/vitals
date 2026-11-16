@@ -86,3 +86,93 @@ async def test_mcp_calls_a_tool_over_http(client):
         result = await session.call_tool("get_modules", {})
 
     assert result.data["enabled"]["nutrition"] is True
+
+
+# ── Static agent token (VITALS_MCP_AGENT_TOKEN) ───────────────────────────────
+
+AGENT_TOKEN = "agent-token-" + "x" * 32  # comfortably over the 32-char minimum
+_INIT_BODY = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {},
+        "clientInfo": {"name": "agent-test", "version": "0"},
+    },
+}
+_MCP_HEADERS = {"Accept": "application/json, text/event-stream"}
+
+
+@asynccontextmanager
+async def _connect_lifespan():
+    from web.main import app
+
+    async with app.state.mcp_lifespan(app):
+        yield
+
+
+async def _initialize(client, bearer: str | None):
+    headers = dict(_MCP_HEADERS)
+    if bearer is not None:
+        headers["Authorization"] = f"Bearer {bearer}"
+    return await client.post("/mcp/", json=_INIT_BODY, headers=headers)
+
+
+async def test_agent_token_authorizes_mcp_initialize(client, monkeypatch):
+    monkeypatch.setenv("VITALS_MCP_AGENT_TOKEN", AGENT_TOKEN)
+    async with _connect_lifespan():
+        response = await _initialize(client, AGENT_TOKEN)
+
+    assert response.status_code == 200
+    assert "serverInfo" in response.text
+
+
+async def test_wrong_agent_token_is_rejected(client, monkeypatch):
+    monkeypatch.setenv("VITALS_MCP_AGENT_TOKEN", AGENT_TOKEN)
+
+    response = await _initialize(client, AGENT_TOKEN[:-1] + "y")
+
+    assert response.status_code == 401
+    assert "resource_metadata" in response.headers["www-authenticate"]
+
+
+@pytest.mark.parametrize("bearer", ["", "anything", AGENT_TOKEN])
+async def test_agent_path_is_closed_when_token_unset(client, monkeypatch, bearer):
+    monkeypatch.delenv("VITALS_MCP_AGENT_TOKEN", raising=False)
+
+    response = await _initialize(client, bearer)
+
+    assert response.status_code == 401
+    assert "resource_metadata" in response.headers["www-authenticate"]
+
+
+async def test_empty_agent_token_setting_is_off(client, monkeypatch):
+    monkeypatch.setenv("VITALS_MCP_AGENT_TOKEN", "")
+
+    assert (await _initialize(client, "")).status_code == 401
+
+
+async def test_agent_token_does_not_open_non_mcp_routes(client, monkeypatch):
+    monkeypatch.setenv("VITALS_MCP_AGENT_TOKEN", AGENT_TOKEN)
+    headers = {"Authorization": f"Bearer {AGENT_TOKEN}"}
+
+    rest = await client.get("/api/v1/settings", headers=headers)
+    page = await client.get("/today", headers=headers)
+    oauth = await client.post("/oauth/token", headers=headers, data={})
+
+    assert rest.status_code == 401
+    assert page.status_code in (302, 303, 307, 401)  # login redirect or refusal, never the page
+    assert oauth.status_code in (400, 401, 403, 422)  # never an issued token
+    assert "access_token" not in oauth.text
+
+
+def test_short_agent_token_fails_startup(monkeypatch):
+    from web.config import get_web_config
+
+    monkeypatch.setenv("VITALS_MCP_AGENT_TOKEN", "x" * 31)
+    with pytest.raises(RuntimeError, match="VITALS_MCP_AGENT_TOKEN"):
+        get_web_config()
+
+    monkeypatch.setenv("VITALS_MCP_AGENT_TOKEN", "x" * 32)
+    assert get_web_config().mcp_agent_token == "x" * 32

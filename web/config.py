@@ -42,6 +42,10 @@ DEFAULT_MCP_REDIRECT_HOSTS: tuple[str, ...] = (
 )
 
 
+# A static token is guessable if it is short; refuse anything below this at startup.
+MIN_MCP_AGENT_TOKEN_LENGTH = 32
+
+
 @dataclass(frozen=True)
 class WebConfig:
     session_secret: str
@@ -53,6 +57,10 @@ class WebConfig:
     mcp_client_id: str = "vitals-claude-connector"
     mcp_client_secret: str = ""
     mcp_redirect_hosts: tuple[str, ...] = DEFAULT_MCP_REDIRECT_HOSTS
+    # Optional static Bearer token for MCP clients that cannot run the OAuth flow
+    # (a local agent on the same host). Empty = off. Honoured by the MCP endpoint
+    # only; see ``MCPAuthMiddleware``.
+    mcp_agent_token: str = ""
     # Shared secret for the read-only /external JSON API (a separate personal
     # dashboard app reads a few health glance cards from here server-to-server).
     # Empty = feature off: the endpoint fails closed with 503, never a
@@ -98,6 +106,13 @@ def get_web_config() -> WebConfig:
 
     password_hash = os.getenv("VITALS_AUTH_PASSWORD_HASH", "")
 
+    agent_token = os.getenv("VITALS_MCP_AGENT_TOKEN", "").strip()
+    if agent_token and len(agent_token) < MIN_MCP_AGENT_TOKEN_LENGTH:
+        raise RuntimeError(
+            f"VITALS_MCP_AGENT_TOKEN must be at least {MIN_MCP_AGENT_TOKEN_LENGTH} "
+            "characters (or leave it empty to disable it)"
+        )
+
     return WebConfig(
         session_secret=session_secret,
         auth_username=username,
@@ -110,6 +125,7 @@ def get_web_config() -> WebConfig:
         mcp_redirect_hosts=tuple(
             h.lower() for h in _env_csv("VITALS_MCP_REDIRECT_HOSTS", DEFAULT_MCP_REDIRECT_HOSTS)
         ),
+        mcp_agent_token=agent_token,
         external_api_token=os.getenv("VITALS_EXTERNAL_API_TOKEN", ""),
         public_origin=os.getenv("VITALS_PUBLIC_ORIGIN", "").strip(),
     )

@@ -53,7 +53,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 
 ### MCP Server (104 Tools)
 
-Built-in FastMCP server at `/mcp/` (streamable HTTP) with OAuth 2.0, mandatory PKCE (`S256`), and RFC 9728 metadata. To connect Claude.ai, ChatGPT, or Gemini as a custom connector, point the client to `https://<your-host>/mcp/` with `VITALS_MCP_CLIENT_ID` and `VITALS_MCP_CLIENT_SECRET` from `.env` (allowed callback hosts live in `VITALS_MCP_REDIRECT_HOSTS`, defaulting to `claude.ai`, `chatgpt.com`, and `oauth-redirect.googleusercontent.com`).
+Built-in FastMCP server at `/mcp/` (streamable HTTP) with OAuth 2.0, mandatory PKCE (`S256`), and RFC 9728 metadata. To connect Claude.ai, ChatGPT, or Gemini as a custom connector, point the client to `https://<your-host>/mcp/` with `VITALS_MCP_CLIENT_ID` and `VITALS_MCP_CLIENT_SECRET` from `.env` (allowed callback hosts live in `VITALS_MCP_REDIRECT_HOSTS`, defaulting to `claude.ai`, `chatgpt.com`, and `oauth-redirect.googleusercontent.com`). Optionally, `VITALS_MCP_AGENT_TOKEN` (32+ characters) lets an MCP client that cannot run the OAuth flow, such as a local agent on the same host, connect with `Authorization: Bearer <token>`; it works for `/mcp/` only.
 
 Exposes reads, writes, conflict overrides, photo inspection, charts, doctor shares, and rate-limited `sync_garmin` / `sync_hevy` (3/day), plus 2 resources (`vitals://profile`, `vitals://digest/latest`) and the `weekly_review` prompt. Disabled modules are omitted from `tools/list`, and responses strip `null` and internal columns to save context tokens. Full surface in [web/routers/mcp.py](web/routers/mcp.py).
 
@@ -160,7 +160,7 @@ Licensed under **Elastic License 2.0** — free to use, modify, and distribute, 
 
 ### MCP-сервер (104 инструмента)
 
-Встроенный FastMCP на `/mcp/` (streamable HTTP) с OAuth 2.0, обязательным PKCE (`S256`) и RFC 9728. Чтобы подключить Claude.ai, ChatGPT или Gemini, укажите в настройках коннектора адрес `https://<ваш-хост>/mcp/` и пару `VITALS_MCP_CLIENT_ID` / `VITALS_MCP_CLIENT_SECRET` из `.env` (разрешённые хосты обратного вызова задаются в `VITALS_MCP_REDIRECT_HOSTS`, по умолчанию — `claude.ai`, `chatgpt.com`, `oauth-redirect.googleusercontent.com`).
+Встроенный FastMCP на `/mcp/` (streamable HTTP) с OAuth 2.0, обязательным PKCE (`S256`) и RFC 9728. Чтобы подключить Claude.ai, ChatGPT или Gemini, укажите в настройках коннектора адрес `https://<ваш-хост>/mcp/` и пару `VITALS_MCP_CLIENT_ID` / `VITALS_MCP_CLIENT_SECRET` из `.env` (разрешённые хосты обратного вызова задаются в `VITALS_MCP_REDIRECT_HOSTS`, по умолчанию — `claude.ai`, `chatgpt.com`, `oauth-redirect.googleusercontent.com`). Необязательная переменная `VITALS_MCP_AGENT_TOKEN` (32+ символа) нужна MCP-клиентам, которые не умеют проходить OAuth, например локальному агенту на том же хосте: он подключается с `Authorization: Bearer <токен>`; токен действует только на `/mcp/`.
 
 Через MCP доступны чтение, запись, override конфликтов, просмотр фото, графики, отчёты для врача и лимитированная синхронизация (`sync_garmin` / `sync_hevy`, 3 вызова в сутки), а также 2 ресурса (`vitals://profile`, `vitals://digest/latest`) и промпт `weekly_review`. Выключенные модули скрываются из `tools/list`, а ответы вырезают `null` и служебные поля, чтобы не тратить контекст. Весь список — в [web/routers/mcp.py](web/routers/mcp.py).
 
