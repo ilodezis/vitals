@@ -34,7 +34,7 @@ bcrypt==5.0.0
     # via -r requirements.in
 beartype==0.23.1
     # via py-key-value-aio
-cachetools==7.3.1
+cachetools==8.0.0
     # via py-key-value-aio
 caio==0.12.10
     # via aiofile
