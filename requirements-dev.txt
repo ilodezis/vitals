@@ -56,7 +56,7 @@ beartype==0.23.1
     # via
     #   -c requirements.txt
     #   py-key-value-aio
-cachetools==7.3.1
+cachetools==8.0.0
     # via
     #   -c requirements.txt
     #   py-key-value-aio
