@@ -164,6 +164,9 @@ def chat_id_of(update: dict) -> Optional[str]:
         update.get("message"),
         update.get("edited_message"),
         (update.get("callback_query") or {}).get("message"),
+        # A widget request names its chat directly; a forwarded copy has none and
+        # so never matches the owner's chat.
+        update.get("widget_query"),
     ):
         chat = (holder or {}).get("chat") or {}
         if chat.get("id") is not None:
@@ -202,6 +205,11 @@ async def handle_update(
     # "потерял", and the re-parse sweep picks the text up whenever it comes back
     # on. What it cannot do is answer, which is enforced in ``delivery.send`` too.
     enabled = await prefs.bot_enabled(session)
+
+    widget_query = update.get("widget_query")
+    if isinstance(widget_query, dict):
+        await _handle_widget_query(session, update, widget_query, notifier=notifier, external_id=external_id)
+        return
 
     callback = update.get("callback_query")
     if callback:
@@ -244,6 +252,38 @@ async def handle_update(
         reply_to_message_id=(message.get("reply_to_message") or {}).get("message_id"),
         parse=parse,
     )
+
+
+# ── Widget requests ──────────────────────────────────────────────────────────
+async def _handle_widget_query(
+    session: AsyncSession,
+    update: dict,
+    widget_query: dict,
+    *,
+    notifier: Optional[Notifier],
+    external_id: Optional[str],
+) -> None:
+    from vitals.services.proactive.widgets import handler
+
+    # Same door as every tap: only the owner's own chat gets this far (the webhook
+    # router checks it too); the handler checks the tapping user again.
+    if external_id:
+        # The request itself is the idempotency record — id and data only: no
+        # profile fields of the sender are kept.
+        await upsert_raw_payload(
+            session,
+            domain=DOMAIN,
+            source=SOURCE,
+            external_id=external_id,
+            payload={
+                "widget_query": {
+                    "id": widget_query.get("id"),
+                    "message_id": widget_query.get("message_id"),
+                    "data": widget_query.get("data"),
+                }
+            },
+        )
+    await handler.handle_widget_query(session, update, notifier=notifier)
 
 
 # ── Taps ──────────────────────────────────────────────────────────────────────

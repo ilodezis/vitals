@@ -1,0 +1,34 @@
+<style>
+body{margin:0;padding:8px 12px}
+h4{margin:0 0 6px}
+button{display:block;width:100%;margin:4px 0;padding:9px 10px;border:0;border-radius:8px;text-align:left;font-size:1em;background:var(--tg-theme-secondary-bg-color);color:var(--tg-theme-text-color)}
+button.d{color:var(--tg-theme-hint-color)}
+button.a{text-align:center;background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)}
+#e{margin:4px 0 0;color:var(--tg-theme-destructive-text-color);font-size:.9em}
+</style>
+<h4 id=t></h4><div id=l></div><button class=a id=a hidden>Всё сделал</button><div id=e></div>
+<script>
+const W=TelegramWidget,$=i=>document.getElementById(i);
+let S={r:0,i:[]},busy=0;
+const P=s=>{try{return JSON.parse(s)}catch(x){return null}};
+function draw(){
+$('t').textContent=S.t||'';
+const l=$('l');l.textContent='';
+let open=0;
+for(const it of S.i){
+const b=document.createElement('button');
+b.textContent=(it[2]?'✅ ':'⬜ ')+it[1];
+if(it[2])b.className='d';else open++;
+b.onclick=()=>send('sk:'+(it[2]?0:1)+':'+it[0]);
+l.appendChild(b)}
+$('a').hidden=open<2;
+$('e').textContent=S.e||''}
+function take(s){if(s&&s.r>=S.r){S=s;draw()}}
+function send(d){
+if(busy)return;busy=1;
+W.request(d).then(a=>{busy=0;take(P(a.result))},
+e=>{busy=0;S.e='Ошибка: '+e.code;draw()})}
+$('a').onclick=()=>send('sk:a');
+W.onEvent('chatDataChanged',()=>take(P(W.chatData)));
+take(P(W.chatData));
+</script>

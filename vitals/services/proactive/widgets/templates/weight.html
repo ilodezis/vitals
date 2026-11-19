@@ -1,0 +1,44 @@
+<style>
+body{margin:0;padding:8px 12px}
+.r{display:flex;align-items:center;gap:6px;margin:6px 0}
+.r button{flex:1;padding:9px 0;border:0;border-radius:8px;font-size:1em;background:var(--tg-theme-secondary-bg-color);color:var(--tg-theme-text-color)}
+#v{flex:2;text-align:center;font-size:1.7em;font-weight:600}
+#g{width:100%;height:auto;display:block}
+#g polyline{fill:none;stroke:var(--tg-theme-link-color);stroke-width:2}
+#s{display:block;width:100%;padding:10px;border:0;border-radius:8px;font-size:1em;background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)}
+#s[disabled]{opacity:1;background:var(--tg-theme-secondary-bg-color);color:var(--tg-theme-hint-color)}
+#e{margin:4px 0 0;color:var(--tg-theme-destructive-text-color);font-size:.9em}
+.h{color:var(--tg-theme-hint-color);font-size:.85em}
+</style>
+<div class=h id=h></div>
+<svg id=g viewBox="0 0 200 40"><polyline id=p points=""/></svg>
+<div class=r><button id=m5>−0.5</button><button id=m1>−0.1</button><div id=v></div><button id=p1>+0.1</button><button id=p5>+0.5</button></div>
+<button id=s>Записать</button><div id=e></div>
+<script>
+const W=TelegramWidget,$=i=>document.getElementById(i);
+let S={r:0,w:[]},x=0,busy=0;
+const P=s=>{try{return JSON.parse(s)}catch(e){return null}};
+const f=n=>(n/10).toFixed(1);
+function spark(){
+const a=S.w.map((n,i)=>[i,n]).filter(q=>q[1]>0);
+if(a.length<2){$('p').setAttribute('points','');return}
+const lo=Math.min(...a.map(q=>q[1])),hi=Math.max(...a.map(q=>q[1])),k=Math.max(hi-lo,1),n=S.w.length-1;
+$('p').setAttribute('points',a.map(q=>(q[0]*200/n).toFixed(1)+','+(36-(q[1]-lo)*32/k).toFixed(1)).join(' '))}
+function draw(){
+$('v').textContent=f(x)+' кг';
+const l=S.l>0;
+$('s').textContent=l?'Записано '+f(S.l)+(x===S.l?' ✓':' · обновить'):'Записать';
+$('s').disabled=l&&x===S.l;
+$('h').textContent=S.d?'Вес · '+S.d:'';
+$('e').textContent=S.e||'';spark()}
+function take(s){if(s&&s.r>=S.r){S=s;if(!busy)x=S.l>0?S.l:S.c;draw()}}
+function step(d){x=Math.max(200,Math.min(4000,x+d));draw()}
+$('m5').onclick=()=>step(-5);$('m1').onclick=()=>step(-1);
+$('p1').onclick=()=>step(1);$('p5').onclick=()=>step(5);
+$('s').onclick=()=>{
+if(busy)return;busy=1;
+W.request('wt:'+x).then(a=>{busy=0;take(P(a.result))},
+e=>{busy=0;S.e='Ошибка: '+e.code;draw()})};
+W.onEvent('chatDataChanged',()=>take(P(W.chatData)));
+take(P(W.chatData));
+</script>

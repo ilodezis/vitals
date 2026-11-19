@@ -565,3 +565,9 @@ async def brief_job(session_factory, redis=None) -> None:
         )
         await alerts_service.resolve_by_key(session, alert_key=EMPTY_DAY_ALERT_KEY)
         await session.commit()
+        # Experimental widget (flag off by default, never raises): a card to log
+        # today's weight in two taps, only while it is still missing.
+        from vitals.services.proactive.widgets import cards
+
+        await cards.send_weight_card(session, notifier)
+        await session.commit()

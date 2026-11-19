@@ -18,6 +18,7 @@ this Telegram?" back up the stack.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Optional, Protocol, Sequence, runtime_checkable
 
 from vitals.config import Config, load_config
@@ -34,6 +35,40 @@ _MAX_TEXT = 4096
 # per row, which is all the current messages need; grouping into rows can be
 # added the day a message actually wants it.
 Buttons = Sequence[tuple[str, str]]
+
+
+# Caption limit for a media message (the widget's caption is what the chat list,
+# notifications and clients without widget support show).
+_MAX_CAPTION = 1024
+
+
+@dataclass(frozen=True)
+class WidgetSpec:
+    """A widget to send instead of plain text: static HTML plus its first state.
+
+    ``kind`` names the template (stored in the journal so a later redraw knows the
+    message is a widget). ``chat_data`` is the only part that ever changes."""
+
+    kind: str
+    html: str
+    chat_data: str
+    width: int = 0
+    height: int = 0
+
+
+@runtime_checkable
+class WidgetNotifier(Protocol):
+    """Optional second face of a channel: widget messages. Kept apart from
+    :class:`Notifier` so channels (and test fakes) without widgets stay valid."""
+
+    async def send_widget(self, caption: str, widget: WidgetSpec) -> str:
+        """Send ``widget``; return the message id. Raises when refused."""
+
+    async def edit_widget_data(self, message_id: str, chat_data: str) -> None:
+        """Replace a sent widget's chat state. A no-change edit is not an error."""
+
+    async def answer_widget_query(self, query_id: str, data: str = "") -> None:
+        """Answer a widget request (must happen within 15 s of the tap)."""
 
 
 def _clip(text: str) -> str:
@@ -147,6 +182,49 @@ class TelegramNotifier:
                 "reply_markup": _keyboard(buttons),
             },
         )
+
+
+    # ── Widgets (Bot API 10.4) ──────────────────────────────────────────────────
+    async def send_widget(self, caption: str, widget: WidgetSpec) -> str:
+        payload: dict = {
+            "chat_id": self._chat_id,
+            "html": widget.html,
+            "caption": caption[: _MAX_CAPTION - 1] + "…"
+            if len(caption) > _MAX_CAPTION
+            else caption,
+            "allow_queries": True,
+            "chat_data": widget.chat_data,
+            # Widget code and state live on Telegram's servers; never forwardable.
+            "protect_content": True,
+        }
+        if widget.width:
+            payload["width"] = widget.width
+        if widget.height:
+            payload["height"] = widget.height
+        result = await self._call("sendWidget", payload)
+        return str(result.get("message_id") or "")
+
+    async def edit_widget_data(self, message_id: str, chat_data: str) -> None:
+        try:
+            await self._call(
+                "editMessageWidgetData",
+                {
+                    "chat_id": self._chat_id,
+                    "message_id": int(message_id),
+                    "chat_data": chat_data,
+                },
+            )
+        except RuntimeError as exc:
+            # Same state twice: nothing to redraw, which is the goal state.
+            if "not modified" in str(exc).lower():
+                return
+            raise
+
+    async def answer_widget_query(self, query_id: str, data: str = "") -> None:
+        payload: dict = {"widget_query_id": query_id}
+        if data:
+            payload["data"] = data
+        await self._call("answerWidgetQuery", payload)
 
 
 def build_notifier(config: Optional[Config] = None) -> Optional[Notifier]:

@@ -47,6 +47,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from vitals.config import load_config
 from vitals.enums import Source
 from vitals.models.proactive import Notification
 from vitals.services import skincare_service
@@ -141,6 +142,11 @@ async def send_slot(
     if not any(not i["done"] for i in plan[slot]):
         return None
     text, buttons = _render_plan(on_date, slot, plan)
+    widget = None
+    if load_config().telegram_widgets:
+        from vitals.services.proactive.widgets import state as widget_state
+
+        widget = widget_state.skincare_spec(slot, plan[slot])
     return await delivery.send(
         session,
         notifier,
@@ -149,6 +155,7 @@ async def send_slot(
         dedupe_key=dedupe_key(on_date, slot),
         buttons=buttons,
         now=now,
+        widget=widget,
     )
 
 
@@ -220,7 +227,24 @@ async def redraw(
     """Rebuild one sent reminder from what is stored for its day. Never raises:
     the tick is already saved, and a refused edit (the text didn't change, the
     message is too old) is not worth failing the update over."""
-    text, buttons = _render_plan(on_date, slot, await skincare_service.plan_for(session, on_date))
+    plan = await skincare_service.plan_for(session, on_date)
+    sent = await delivery.find_sent(session, message_id)
+    if (
+        sent is not None
+        and (sent.payload or {}).get("widget") == "skincare"
+        and isinstance(notifier, channels.WidgetNotifier)
+    ):
+        # A widget message has no text to edit: its state is what gets redrawn.
+        from vitals.services.proactive.widgets import state as widget_state
+
+        try:
+            await notifier.edit_widget_data(
+                message_id, widget_state.skincare_state(slot, plan[slot])
+            )
+        except Exception:
+            logger.warning("could not redraw skincare widget %s", message_id, exc_info=True)
+        return
+    text, buttons = _render_plan(on_date, slot, plan)
     try:
         await notifier.edit(message_id, text, buttons=buttons or None)
     except Exception:

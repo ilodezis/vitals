@@ -138,6 +138,10 @@ class Config:
     telegram_chat_id: str = ""
     telegram_webhook_path: str = ""
     telegram_webhook_secret: str = ""
+    # Experimental: send the skincare checklist and the weight card as Telegram
+    # widgets (an HTML mini-UI inside the bubble) instead of text + buttons. Off by
+    # default; a failed widget send falls back to the plain message either way.
+    telegram_widgets: bool = False
 
     # ── Environment station (ESPHome sensor box on the LAN) ─────────────────────
     # Empty URL = no station connected: the poll job returns on its first line and
@@ -229,6 +233,8 @@ def load_config() -> Config:
         telegram_chat_id=os.getenv("VITALS_TELEGRAM_CHAT_ID", "").strip(),
         telegram_webhook_path=os.getenv("VITALS_TELEGRAM_WEBHOOK_PATH", "").strip(),
         telegram_webhook_secret=os.getenv("VITALS_TELEGRAM_WEBHOOK_SECRET", "").strip(),
+        telegram_widgets=os.getenv("VITALS_TELEGRAM_WIDGETS", "").strip().lower()
+        in ("1", "true", "yes", "on"),
         env_station_url=os.getenv("VITALS_ENV_STATION_URL", "").strip(),
         env_station_user=os.getenv("VITALS_ENV_STATION_USER", ""),
         env_station_password=os.getenv("VITALS_ENV_STATION_PASSWORD", ""),
