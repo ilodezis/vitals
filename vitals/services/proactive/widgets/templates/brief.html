@@ -1,0 +1,80 @@
+<style>
+:root{color-scheme:light dark;--h:var(--tg-theme-hint-color);--s:var(--tg-theme-secondary-bg-color);--a:var(--tg-theme-button-color);--sep:var(--tg-theme-section-separator-color);--up:var(--tg-theme-accent-text-color);--dn:light-dark(#b25e09,#f2a54e)}
+body{margin:0;padding:12px 12px max(12px,env(safe-area-inset-bottom));font-variant-numeric:tabular-nums}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 2px 10px}
+header b{font-weight:600;font-size:1.05em}
+header span{color:var(--h);font-size:.84em}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.t{background:var(--s);border-radius:14px;padding:10px 11px 11px;min-width:0}
+.t.p{grid-column:1/-1;color:var(--h);font-size:.9em}
+.l{font-size:.74em;letter-spacing:.02em;color:var(--h);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v{font-size:1.75em;font-weight:600;line-height:1.1;margin-top:3px;letter-spacing:-.01em;white-space:nowrap}
+.v small{font-size:.42em;font-weight:500;color:var(--h);margin-left:4px;letter-spacing:0}
+.b{position:relative;height:4px;border-radius:2px;background:var(--tg-theme-bg-color);margin:9px 0 7px}
+.b i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--a);transform-origin:left}
+.dn .b i{background:var(--dn)}
+.b b{position:absolute;top:-3px;width:2px;height:10px;margin-left:-1px;border-radius:1px;background:var(--tg-theme-text-color)}
+.m,.n{font-size:.74em;color:var(--h)}
+.n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.up .n{color:var(--up)}
+.dn .n{color:var(--dn)}
+.o{margin:8px 2px 0}
+.r{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--sep)}
+.r:first-child{border-top:0}
+.k{flex:0 0 4.4em;color:var(--h);font-size:.84em}
+.x{flex:1;min-width:0;font-size:.92em}
+.z{font-size:.8em;color:var(--h);margin-top:1px}
+.dn .z{color:var(--dn)}
+#sp{flex:0 0 64px;height:22px;display:block}
+#sl{fill:none;stroke:var(--a);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+#sd{fill:var(--a)}
+.d{margin-top:8px;padding:9px 11px;border-radius:12px;background:var(--s);font-size:.92em}
+.f{color:var(--h);font-size:.8em;margin-top:2px}
+.a .b i{animation:g .8s cubic-bezier(.2,.8,.2,1) both}
+.a .t:nth-child(2) .b i{animation-delay:.07s}
+.a .t:nth-child(3) .b i{animation-delay:.14s}
+.a .t:nth-child(4) .b i{animation-delay:.21s}
+@keyframes g{from{transform:scaleX(0)}}
+@media (prefers-reduced-motion:reduce){.a .b i{animation:none}}
+</style>
+<header><b>Утро</b><span id=h></span></header>
+<div class=g id=g></div>
+<div class=o id=o></div>
+<div class=d id=d hidden><div id=dl></div><div class=f id=df hidden>Не так? Поправь кнопками ниже.</div></div>
+<div id=k hidden><svg id=sp viewBox="0 0 64 22"><path id=sl /><circle id=sd r="2.4" /></svg></div>
+<script>
+const W=window.TelegramWidget,$=i=>document.getElementById(i);
+let S={r:-1};
+const P=s=>{try{return JSON.parse(s)}catch(e){return null}};
+const T=n=>n>0?' up':n<0?' dn':'';
+function E(t,c,x,p){const e=document.createElement(t);if(c)e.className=c;if(x)e.textContent=x;if(p)p.appendChild(e);return e}
+function spark(r){
+const w=S.w,pts=[];let lo=1e9,hi=0;
+w.forEach((n,i)=>{if(n>0){pts.push([i,n]);lo=Math.min(lo,n);hi=Math.max(hi,n)}});
+if(pts.length<2)return;
+const X=i=>(3+i*58/(w.length-1)).toFixed(1),Y=n=>(hi>lo?18-(n-lo)/(hi-lo)*14:11).toFixed(1);
+$('sl').setAttribute('d','M'+pts.map(p=>X(p[0])+' '+Y(p[1])).join('L'));
+const e=pts[pts.length-1];$('sd').setAttribute('cx',X(e[0]));$('sd').setAttribute('cy',Y(e[1]));
+r.appendChild($('sp'))}
+function draw(){
+$('h').textContent=S.h||'';
+$('k').appendChild($('sp'));
+const g=$('g'),o=$('o');g.textContent='';o.textContent='';
+for(const [l,v,u,m,n,t,f,k] of S.t||[]){
+const c=E('div','t'+T(t),'',g);E('div','l',l,c);
+const q=E('div','v',v,c);if(u)E('small','',u,q);
+if(f>=0){const b=E('div','b','',c);E('i','','',b).style.width=f+'%';if(k>=0)E('b','','',b).style.left=k+'%'}
+if(m)E('div','m',m,c);if(n)E('div','n',n,c)}
+if(S.p)E('div','t p',S.p,g);
+g.hidden=!g.firstChild;
+for(const [l,x,t,z] of S.o||[]){
+const r=E('div','r'+T(t),'',o);E('div','k',l,r);
+const c=E('div','x','',r);E('div','',x,c);if(z)E('div','z',z,c);
+if(l==='Вес'&&S.w)spark(r)}
+o.hidden=!o.firstChild;
+$('d').hidden=!S.d;$('dl').textContent=S.d||'';$('df').hidden=!S.f}
+function take(s){if(s&&s.v===1&&s.r>=S.r){S=s;draw()}}
+document.body.className='a';
+setTimeout(()=>{document.body.className=''},1500);
+if(W){W.onEvent('chatDataChanged',()=>take(P(W.chatData)));take(P(W.chatData));if(W.ready)W.ready()}
+</script>

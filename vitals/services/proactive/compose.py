@@ -311,8 +311,20 @@ def environment_block(night: Optional[dict]) -> Optional[Block]:
     his own recent nights (``baseline``) the way the recovery line reads against
     his norm.
     """
+    parts = environment_parts(night)
+    if parts is None:
+        return None
+    return Block(KIND_ENVIRONMENT, "Спальня ночью: " + parts[0], 15)
+
+
+def environment_parts(night: Optional[dict]) -> Optional[tuple[str, bool]]:
+    """The night's air as one line, and whether anything in it was off.
+
+    The flag is the same call the line makes in words (CO2 or temperature called
+    out), so a card that colours the line can never disagree with the text."""
     if not night:
         return None
+    off = False
     co2 = night.get("co2") or {}
     temp = night.get("temperature") or {}
     thresholds = night.get("thresholds") or {}
@@ -325,6 +337,7 @@ def environment_block(night: Optional[dict]) -> Optional[Block]:
         median is not None and usual and (median - usual) / usual >= _CO2_ABOVE_BASELINE
     )
     if above_warn >= _CO2_MINUTES_NOTABLE or above_usual:
+        off = True
         co2_parts = []
         if above_warn >= _CO2_MINUTES_NOTABLE and thresholds.get("co2_warn") is not None:
             co2_parts.append(f"CO₂ выше {_num(thresholds['co2_warn'])} — {_duration(above_warn)}")
@@ -340,6 +353,7 @@ def environment_block(night: Optional[dict]) -> Optional[Block]:
     mean, low, high = temp.get("mean"), thresholds.get("temp_sleep_min"), thresholds.get("temp_sleep_max")
     if mean is not None:
         if low is not None and high is not None and not low <= mean <= high:
+            off = True
             side = "выше" if mean > high else "ниже"
             parts.append(f"{_decimal(mean)} °C — {side} твоих {_num(low)}–{_num(high)}")
         else:
@@ -351,7 +365,7 @@ def environment_block(night: Optional[dict]) -> Optional[Block]:
 
     if not parts:
         return None
-    return Block(KIND_ENVIRONMENT, "Спальня ночью: " + " · ".join(parts), 15)
+    return " · ".join(parts), off
 
 
 def yesterday_block(day: Optional[dict]) -> Optional[Block]:

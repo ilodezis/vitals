@@ -138,7 +138,7 @@ class Config:
     telegram_chat_id: str = ""
     telegram_webhook_path: str = ""
     telegram_webhook_secret: str = ""
-    # Experimental: send the skincare checklist and the weight card as Telegram
+    # Experimental: send the morning brief and the skincare checklist as Telegram
     # widgets (an HTML mini-UI inside the bubble) instead of text + buttons. Off by
     # default; a failed widget send falls back to the plain message either way.
     telegram_widgets: bool = False

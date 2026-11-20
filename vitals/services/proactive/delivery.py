@@ -74,9 +74,6 @@ CATEGORY_ENVIRONMENT = "environment"
 # quiet hours, and unlike it it does not spend the budget either — a checklist a
 # busy day of nudges could cancel is not a checklist.
 CATEGORY_SKINCARE = "skincare"
-# The weight card widget (``widgets.cards``): offered after the brief while today's
-# weight is missing. Off-budget like the checklist — it is a tool, not a nudge.
-CATEGORY_WEIGHT = "weight"
 
 INITIATIVE_CATEGORIES = frozenset({CATEGORY_BRIEF, CATEGORY_EVENING, CATEGORY_NUDGE})
 # Messages the evening block sends (recap + tomorrow's plan, see
@@ -253,7 +250,10 @@ async def send(
     external_id = ""
     if widget is not None and isinstance(notifier, WidgetNotifier):
         try:
-            external_id = await notifier.send_widget(text, widget)
+            caption = text if widget.caption is None else widget.caption
+            external_id = await notifier.send_widget(
+                caption, widget, buttons=buttons if widget.keyboard else None
+            )
             sent_widget = True
         except Exception:
             logger.warning(
@@ -291,7 +291,13 @@ async def send(
             "text": text,
             "buttons": [list(b) for b in buttons] if buttons else None,
             **({"meta": meta} if meta else {}),
-            **({"widget": widget.kind} if sent_widget and widget else {}),
+            # The kind tells a later redraw this message is a card; the state is
+            # what that redraw starts from instead of rebuilding the whole card.
+            **(
+                {"widget": widget.kind, "widget_state": widget.chat_data}
+                if sent_widget and widget
+                else {}
+            ),
         },
     )
     session.add(row)

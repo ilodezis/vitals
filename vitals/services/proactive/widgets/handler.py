@@ -18,7 +18,7 @@ The path in, in the order it is checked:
 Every request is answered (the widget's promise would otherwise end in a timeout),
 with the card's new state as the answer, and the same state is then written to the
 message so a second device shows it too. Replays are harmless: the ticks carry the
-wanted state (not a toggle), a repeated weight is the same row, and Telegram's own
+wanted state (not a toggle), and Telegram's own
 retries are dropped upstream by ``update_id``.
 """
 from __future__ import annotations
@@ -31,12 +31,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.config import load_config
 from vitals.enums import Source
-from vitals.services import modules_service, skincare_service, weight_service
+from vitals.services import modules_service, skincare_service
 from vitals.services.conflict_engine import ConflictBlocked
 from vitals.services.proactive import delivery, prefs
 from vitals.services.proactive.channels import Notifier, WidgetNotifier
-from vitals.services.proactive.widgets import cards, payload, state
-from vitals.utils.timeutils import today_local
+from vitals.services.proactive.widgets import payload, state
 
 logger = logging.getLogger(__name__)
 
@@ -120,8 +119,6 @@ async def handle_widget_query(
         action, (payload.SkincareTick, payload.SkincareAll)
     ):
         chat_data = await _skincare(session, row.dedupe_key, action)
-    elif row is not None and kind == state.KIND_WEIGHT and isinstance(action, payload.WeightLog):
-        chat_data = await _weight(session, row.dedupe_key, action)
     else:
         logger.warning("widget query refused: no matching widget message")
 
@@ -182,36 +179,3 @@ async def _skincare(
     items = (await skincare_service.plan_for(session, on_date))[slot]
     return state.skincare_state(slot, items, error=error)
 
-
-async def _weight(
-    session: AsyncSession, dedupe_key: Optional[str], action: "payload.WeightLog"
-) -> Optional[str]:
-    pieces = _split_key(dedupe_key, "weight", 2)
-    if pieces is None:
-        return None
-    try:
-        card_date = date_type.fromisoformat(pieces[1])
-    except ValueError:
-        return None
-    today = today_local()
-
-    error = ""
-    if card_date != today:
-        # A card from another day is a snapshot; logging today's weight into it
-        # (or a past day from today's tap) would be a guess.
-        error = "Карточка устарела"
-    else:
-        try:
-            await weight_service.log_weight(
-                session,
-                on_date=today,
-                weight_kg=action.kg,
-                source=Source.MANUAL.value,
-                note="telegram widget",
-                override=False,
-            )
-        except ConflictBlocked as blocked:
-            error = f"Конфликт: {blocked}. Запиши в приложении"
-        except ValueError:
-            error = "Вес вне диапазона"
-    return await cards.weight_card_state(session, today, error=error)

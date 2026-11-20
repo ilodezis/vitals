@@ -10,7 +10,6 @@ from the message the request came from.
     sk:1:<product id>   tick one skincare product
     sk:0:<product id>   untick it            (explicit state, so a replay is a no-op)
     sk:a                tick everything still open in the slot
-    wt:<tenths of kg>   log today's weight, e.g. ``wt:823`` = 82.3 kg
 """
 from __future__ import annotations
 
@@ -20,13 +19,8 @@ from typing import Optional, Union
 
 MAX_BYTES = 64
 
-# Plausible human weight in tenths of a kilogram. The service has its own (wider)
-# bounds; this one keeps a fat-fingered stepper from ever reaching it.
-WEIGHT_TENTHS_RANGE = (200, 4000)
-
 _TICK = re.compile(r"sk:([01]):([1-9][0-9]{0,8})", re.ASCII)
 _ALL = re.compile(r"sk:a", re.ASCII)
-_WEIGHT = re.compile(r"wt:([1-9][0-9]{2,3})", re.ASCII)
 
 
 @dataclass(frozen=True)
@@ -40,16 +34,7 @@ class SkincareAll:
     pass
 
 
-@dataclass(frozen=True)
-class WeightLog:
-    tenths: int
-
-    @property
-    def kg(self) -> float:
-        return self.tenths / 10
-
-
-Action = Union[SkincareTick, SkincareAll, WeightLog]
+Action = Union[SkincareTick, SkincareAll]
 
 
 def parse(data: object) -> Optional[Action]:
@@ -65,8 +50,4 @@ def parse(data: object) -> Optional[Action]:
         return SkincareTick(product_id=int(m.group(2)), done=m.group(1) == "1")
     if _ALL.fullmatch(data):
         return SkincareAll()
-    if m := _WEIGHT.fullmatch(data):
-        tenths = int(m.group(1))
-        if WEIGHT_TENTHS_RANGE[0] <= tenths <= WEIGHT_TENTHS_RANGE[1]:
-            return WeightLog(tenths=tenths)
     return None

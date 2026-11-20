@@ -555,6 +555,16 @@ async def brief_job(session_factory, redis=None) -> None:
         # buttons that aren't there is worse than no line at all.
         text = f"{row.content}\n\n{day_plan.HINT_FIX}" if buttons else row.content
 
+        # Experimental (flag off by default): the same brief drawn as a card, the
+        # model's words as its caption. ``text`` stays the fallback and the record.
+        widget = None
+        from vitals.config import load_config
+
+        if load_config().telegram_widgets:
+            from vitals.services.proactive.widgets import brief_card
+
+            widget = await brief_card.spec_for(session, row, today, has_buttons=bool(buttons))
+
         await delivery.send(
             session,
             notifier,
@@ -562,12 +572,7 @@ async def brief_job(session_factory, redis=None) -> None:
             category=delivery.CATEGORY_BRIEF,
             dedupe_key=dedupe_key(today),
             buttons=buttons,
+            widget=widget,
         )
         await alerts_service.resolve_by_key(session, alert_key=EMPTY_DAY_ALERT_KEY)
-        await session.commit()
-        # Experimental widget (flag off by default, never raises): a card to log
-        # today's weight in two taps, only while it is still missing.
-        from vitals.services.proactive.widgets import cards
-
-        await cards.send_weight_card(session, notifier)
         await session.commit()

@@ -360,13 +360,20 @@ async def _redraw(
     message = callback.get("message") or {}
     message_id = message.get("message_id")
     text = message.get("text") or ""
-    if not message_id or not text:
+    if not message_id:
         return
 
     answers, answered = await day_plan.resolve(session, on_date)
     buttons = day_plan.exception_buttons(
         answers, on_date, answered, day_plan.questions_for(key)
     )
+    if not text:
+        # A card has no text to edit: its day line lives in the widget's state.
+        from vitals.services.proactive.widgets import brief_card
+
+        sent = await delivery.find_sent(session, str(message_id))
+        await brief_card.redraw_day(notifier, sent, str(message_id), answers, buttons)
+        return
     try:
         await notifier.edit(
             str(message_id),
