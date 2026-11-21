@@ -58,7 +58,7 @@ async def upload_genetics_vcf(
         fields = interpret(variant)
         if only_interpreted and not fields.get("marker"):
             continue
-        await genetics_service.upsert_by_rsid(db, **fields)
+        await genetics_service.upsert_by_rsid(db, **fields, replace_marker=True)
         imported += 1
         if fields.get("marker"):
             markers += 1

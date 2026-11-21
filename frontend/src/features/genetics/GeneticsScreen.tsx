@@ -14,7 +14,7 @@ import { useGeneticsView } from './useGeneticsView'
 import './genetics.css'
 
 /** The modules a variant can bear on — the domain is free text, these are only suggestions. */
-const GENE_DOMAINS = ['supplements', 'workouts', 'weight', 'glp1', 'labs', 'skincare', 'system', 'health'] as const
+const GENE_DOMAINS = ['supplements', 'workouts', 'weight', 'glp1', 'labs', 'hrt', 'skincare', 'system', 'health'] as const
 
 export default function GeneticsScreen() {
   const { t, tOr } = useT()
@@ -47,7 +47,7 @@ export default function GeneticsScreen() {
     if (tab === 'all') return view.variants
     if (tab === 'supplements') return view.variants.filter((v) => v.impactDomain === 'supplements')
     if (tab === 'workouts') return view.variants.filter((v) => ['workouts', 'weight', 'glp1'].includes(v.impactDomain ?? ''))
-    if (tab === 'health') return view.variants.filter((v) => ['system', 'labs', 'skincare', 'health'].includes(v.impactDomain ?? ''))
+    if (tab === 'health') return view.variants.filter((v) => ['system', 'labs', 'hrt', 'skincare', 'health'].includes(v.impactDomain ?? ''))
     return view.variants
   }, [view.variants, tab])
 

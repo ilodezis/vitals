@@ -71,9 +71,15 @@ async def upsert_by_rsid(
     interpretation: Optional[str] = None,
     action_notes: Optional[str] = None,
     source: str = Source.VCF_IMPORT.value,
+    replace_marker: bool = False,
 ) -> GeneticVariant:
     """Insert or update a variant keyed by rsid (used by the VCF importer so a
-    re-import refreshes genotypes instead of duplicating)."""
+    re-import refreshes genotypes instead of duplicating).
+
+    When ``replace_marker=True`` (VCF import / raw re-parse), an authoritative
+    re-interpretation that produces ``marker=None`` clears any stale marker left
+    by an older catalog version.
+    """
     result = await session.execute(
         select(GeneticVariant).where(GeneticVariant.rsid == rsid)
     )
@@ -93,7 +99,7 @@ async def upsert_by_rsid(
         )
     row.gene = gene
     row.genotype = genotype
-    if marker is not None:
+    if replace_marker or marker is not None:
         row.marker = marker
     if impact is not None:
         row.impact = impact
@@ -106,6 +112,55 @@ async def upsert_by_rsid(
     row.source = source
     await session.flush()
     return row
+
+
+async def reparse_raw_vcfs(
+    session: AsyncSession,
+    *,
+    only_interpreted: bool = False,
+) -> dict[str, int]:
+    """Re-interpret every stored VCF snapshot in ``raw_payloads`` against the
+    current ``genetics_snps.yaml`` catalog without requiring a file re-upload."""
+    from vitals.models.raw_payload import RawPayload
+    from vitals.services.genetics_vcf import INTERPRETATIONS, ParsedVariant, interpret
+
+    result = await session.execute(
+        select(RawPayload).where(
+            RawPayload.domain == DOMAIN,
+            RawPayload.source == Source.VCF_IMPORT.value,
+        )
+    )
+    raw_rows = result.scalars().all()
+
+    imported = 0
+    markers = 0
+    for raw in raw_rows:
+        variants = (raw.payload or {}).get("variants") or []
+        for entry in variants:
+            if not isinstance(entry, (list, tuple)) or len(entry) < 4:
+                continue
+            rsid = str(entry[0]).strip().lower()
+            if rsid not in INTERPRETATIONS:
+                continue
+            variant = ParsedVariant(
+                rsid=rsid,
+                ref=str(entry[1]).strip().upper(),
+                alt=str(entry[2]).strip().upper(),
+                genotype=str(entry[3]).strip().upper(),
+            )
+            fields = interpret(variant)
+            if only_interpreted and not fields.get("marker"):
+                continue
+            await upsert_by_rsid(
+                session,
+                **fields,
+                source=Source.VCF_IMPORT.value,
+                replace_marker=True,
+            )
+            imported += 1
+            if fields.get("marker"):
+                markers += 1
+    return {"files": len(raw_rows), "imported": imported, "markers": markers}
 
 
 async def store_raw_vcf(

@@ -1,285 +1,133 @@
-"""VCF parsing core for the genetics module (pure, no DB / no I/O).
+"""VCF parsing core and curated SNP catalog for the genetics module (pure, no DB).
 
 Parses a ``.vcf`` line into a :class:`ParsedVariant`, derives the genotype from the
-sample column, and maps clinically actionable rsIDs to conflict-engine ``marker``
-slugs via the curated :data:`INTERPRETATIONS` table. This lives in
-``vitals/services`` (not ``scripts/``) so both the web router and the CLI importer
-call the same domain logic — ``web/`` must never depend on ``scripts/``.
+sample column, and maps clinically and nutritionally relevant rsIDs to curated
+interpretations and conflict-engine ``marker`` slugs from
+``vitals/data/genetics_snps.yaml``.
 
-The CLI wrapper (``scripts/import_vcf.py``) re-exports these names and adds the
-DB/argparse layer; ``web/routers/genetics.py`` imports directly from here.
+This lives in ``vitals/services`` (not ``scripts/``) so both the web API and the
+CLI importer share one implementation — ``web/`` must never depend on ``scripts/``.
+
+Allele & strand model
+---------------------
+Every entry in ``genetics_snps.yaml`` defines an explicit forward (+) strand
+``effect_allele`` verified against GRCh38 dbSNP (plus ``ref_grch38`` and
+``chrom``). Counting copies of ``effect_allele`` directly — instead of assuming
+"any ALT allele is risk" — prevents two classic bioinformatics bugs:
+
+1. **Reference-allele risk** (e.g. ``CYP1A2 rs762551`` has ``REF=C`` slow and
+   ``ALT=A`` fast on both GRCh37 and GRCh38; ``MCM6 rs4988235`` has ``REF=G``
+   lactase non-persistent and ``ALT=A`` persistent).
+2. **GRCh37 vs GRCh38 reference flips** (e.g. Factor V Leiden ``rs6025``,
+   ``ACTN3 rs1815739``, ``CYP3A5 rs776746`` flip REF/ALT between builds).
+
+For non-palindromic SNPs (not A/T or C/G), if a consumer export or test fixture
+reports coding/reverse-strand alleles (e.g. ``MTHFR rs1801133`` as ``C>T``
+instead of genomic ``G>A``), the effect allele is safely complemented when
+neither genomic allele appears in the VCF record. Haploid calls on chromosome X
+(hemizygous males, e.g. ``G6PD``) carrying ``effect_allele`` are scored as full
+penetrance (2 effect copies).
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 from typing import Optional
 
-from vitals.enums import Domain
+import yaml
 
-# Curated interpretations of well-studied SNPs, organised by domain. Each entry
-# fills the genetic_variants fields; ``marker`` + ``risk_alt`` are set ONLY where
-# a non-reference allele has a concrete supplement-safety consequence worth
-# feeding the conflict engine (currently iron + G6PD). Everything else is
-# informational — gene/impact/interpretation/action are always populated so the
-# catalog row is useful, and the genotype is shown alongside so the user sees
-# carrier vs homozygous. Not medical advice; a navigator, not an enforcer.
-#
-# Allele conventions: ``risk_alt=True`` means the marker is stamped when the
-# sample carries at least one ALT allele (carrier or homozygous). For purely
-# informational rows the effect allele is described in the text, since consumer
-# VCFs report the genotype relative to the reference build.
-INTERPRETATIONS: dict[str, dict] = {
-    # ── Iron / minerals ──────────────────────────────────────────────────────
-    "rs1800562": {  # HFE C282Y
-        "gene": "HFE",
-        "marker": "hemochromatosis_carrier",
-        "impact": "Накопление железа (гемохроматоз, C282Y)",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "C282Y — главный вариант наследственного гемохроматоза. Гомозигота резко повышает риск перегрузки железом, носительство — умеренно.",
-        "action_notes": "Не принимать препараты железа без подтверждённого дефицита (ферритин/трансферрин). Осторожно с высокими дозами витамина C вместе с железом.",
-        "risk_alt": True,
-    },
-    "rs1799945": {  # HFE H63D
-        "gene": "HFE",
-        "marker": "hemochromatosis_carrier",
-        "impact": "Накопление железа (гемохроматоз, H63D)",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "H63D — более мягкий вклад в перегрузку железом; клинически значим в основном в сочетании с C282Y.",
-        "action_notes": "Осторожно с препаратами железа; ориентироваться на ферритин.",
-        "risk_alt": True,
-    },
-    # ── Folate / methylation / B-vitamins ────────────────────────────────────
-    "rs1801133": {  # MTHFR C677T — ref=C, alt=T (confirmed dbSNP/ClinVar)
-        "gene": "MTHFR",
-        "impact": "Метаболизм фолата (C677T)",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "T-аллель снижает активность MTHFR (CT ~65%, TT ~30%), хуже превращается фолиевая кислота в активную форму; может расти гомоцистеин.",
-        "action_notes": "При T-аллеле предпочтительна метильная форма (L-метилфолат) вместо фолиевой кислоты; следить за B12/B6 и гомоцистеином.",
-        "marker_by_zygosity": {"het": "mthfr_heterozygous", "hom_alt": "mthfr_c677t_homozygous"},
-    },
-    "rs1801131": {  # MTHFR A1298C
-        "gene": "MTHFR",
-        "impact": "Метаболизм фолата (A1298C)",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "A1298C слабее влияет на активность фермента, чем C677T; значим в комбинации с ним.",
-        "action_notes": "Учитывать вместе с C677T при выборе формы фолата.",
-    },
-    "rs602662": {  # FUT2 secretor
-        "gene": "FUT2",
-        "impact": "Статус витамина B12 (секреторный статус)",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "Варианты FUT2 влияют на сывороточный B12 и состав микробиоты (секретор/несекретор).",
-        "action_notes": "Контролировать B12 (актив. B12/голотранскобаламин), особенно на растительном рационе.",
-    },
-    "rs7946": {  # PEMT
-        "gene": "PEMT",
-        "impact": "Потребность в холине",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "Сниженная активность PEMT повышает потребность в пищевом холине (особенно актуально без яиц/печени).",
-        "action_notes": "Обеспечить достаточный холин (яйца, лецитин); при дефиците рассмотреть добавку.",
-    },
-    # ── Vitamin D ─────────────────────────────────────────────────────────────
-    "rs2282679": {  # GC (vitamin D binding protein)
-        "gene": "GC",
-        "impact": "Уровень витамина D (транспортный белок)",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "Минорный аллель GC ассоциирован с более низким 25(OH)D — труднее держать нормальный уровень.",
-        "action_notes": "Контролировать 25(OH)D; вероятна потребность в более высокой поддерживающей дозе D3 + K2.",
-    },
-    "rs10741657": {  # CYP2R1
-        "gene": "CYP2R1",
-        "impact": "Синтез витамина D (25-гидроксилаза)",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "Вариант CYP2R1 влияет на превращение витамина D в 25(OH)D.",
-        "action_notes": "Учитывать при подборе дозы D3 по анализам.",
-    },
-    # ── Fatty acids / vitamin A ───────────────────────────────────────────────
-    "rs174537": {  # FADS1
-        "gene": "FADS1",
-        "impact": "Конверсия омега-3/6 (ALA→EPA/DHA)",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "Минорный аллель снижает активность десатуразы — растительная ALA хуже превращается в EPA/DHA.",
-        "action_notes": "Предпочесть прямые EPA/DHA (рыбий жир/водорослевое масло), а не льняное масло.",
-    },
-    "rs7501331": {  # BCO1 (beta-carotene → retinol)
-        "gene": "BCO1",
-        "impact": "Конверсия бета-каротина в витамин A",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "T-аллель снижает превращение бета-каротина в ретинол — «плохой конвертер».",
-        "action_notes": "Не полагаться только на бета-каротин; рассмотреть преформированный витамин A (ретинол) из пищи.",
-    },
-    # ── Antioxidant / detox ───────────────────────────────────────────────────
-    "rs4880": {  # SOD2 A16V
-        "gene": "SOD2",
-        "impact": "Антиоксидантная защита митохондрий",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "Вариант SOD2 влияет на транспорт супероксиддисмутазы в митохондрии и окислительный стресс.",
-        "action_notes": "Поддерживать кофакторы (Mn, Zn, Cu в балансе); богатый антиоксидантами рацион.",
-    },
-    "rs1695": {  # GSTP1
-        "gene": "GSTP1",
-        "impact": "Детоксикация (глутатион-S-трансфераза)",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "Вариант снижает активность GSTP1 — детоксикация ксенобиотиков/оксидативный клиренс.",
-        "action_notes": "Поддержка глутатиона (сон, белок, серосодержащие овощи, NAC по показаниям).",
-    },
-    "rs1050828": {  # G6PD (A- Val68Met)
-        "gene": "G6PD",
-        "marker": "g6pd_deficiency",
-        "impact": "Дефицит G6PD (риск гемолиза)",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "Дефицит G6PD повышает риск гемолиза при окислительном стрессе. Сцеплен с X-хромосомой.",
-        "action_notes": "Избегать высоких доз витамина C (в/в), менадиона (вит. K3), бобов фава и ряда препаратов. Обсудить с врачом.",
-        "risk_alt": True,
-    },
-    # ── Caffeine / stimulants / sleep ─────────────────────────────────────────
-    "rs762551": {  # CYP1A2 — ref=A (fast/*1F), alt=C (slow/*1A) (confirmed SNPedia)
-        "gene": "CYP1A2",
-        "impact": "Скорость метаболизма кофеина",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "AA — «быстрый» метаболизатор кофеина; носители C — «медленные», у них кофеин дольше действует и сильнее влияет на давление/сон.",
-        "action_notes": "Медленным — ограничить кофеин, не пить во второй половине дня; следить за давлением.",
-        "marker": "cyp1a2_slow_metabolizer",
-        "risk_alt": True,
-    },
-    "rs5751876": {  # ADORA2A
-        "gene": "ADORA2A",
-        "impact": "Тревожность и сон от кофеина",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "Вариант ADORA2A повышает чувствительность к кофеину — тревога и нарушение сна даже от умеренных доз.",
-        "action_notes": "Снизить дозу кофеина; избегать стимуляторов вечером.",
-    },
-    # ── Alcohol ──────────────────────────────────────────────────────────────
-    "rs671": {  # ALDH2
-        "gene": "ALDH2",
-        "impact": "Метаболизм алкоголя (ацетальдегид)",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "A-аллель (ALDH2*2) резко снижает расщепление ацетальдегида — «флаш-реакция», выше риск при употреблении алкоголя.",
-        "action_notes": "Минимизировать алкоголь — повышенный канцерогенный риск при флаш-реакции.",
-    },
-    "rs1229984": {  # ADH1B
-        "gene": "ADH1B",
-        "impact": "Скорость окисления алкоголя",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "Вариант ADH1B ускоряет превращение этанола в ацетальдегид (быстрее наступает дискомфорт).",
-        "action_notes": "Учитывать индивидуальную переносимость алкоголя.",
-    },
-    # ── Metabolic / weight / GLP-1 relevant ───────────────────────────────────
-    "rs9939609": {  # FTO
-        "gene": "FTO",
-        "impact": "Аппетит и склонность к набору веса",
-        "impact_domain": Domain.WEIGHT.value,
-        "interpretation": "A-аллель FTO ассоциирован с повышенным аппетитом и риском ожирения, но эффект хорошо корректируется белком и нагрузкой.",
-        "action_notes": "Акцент на белок, контроль порций, регулярные тренировки; вариант не приговор.",
-    },
-    "rs17782313": {  # MC4R
-        "gene": "MC4R",
-        "impact": "Насыщение и аппетит",
-        "impact_domain": Domain.WEIGHT.value,
-        "interpretation": "Вблизи MC4R — путь регуляции насыщения; C-аллель ассоциирован с большим аппетитом/ИМТ.",
-        "action_notes": "Структурировать приёмы пищи, белок и клетчатка для насыщения.",
-    },
-    "rs7903146": {  # TCF7L2
-        "gene": "TCF7L2",
-        "impact": "Риск диабета 2 типа, секреция инсулина",
-        "impact_domain": Domain.GLP1.value,
-        "interpretation": "T-аллель — один из сильнейших общих факторов риска СД2, влияет на секрецию инсулина (важно в контексте GLP-1/метаболизма).",
-        "action_notes": "Контроль гликемии (HbA1c, глюкоза натощак); поддерживать чувствительность к инсулину нагрузкой и составом тела.",
-    },
-    "rs1801282": {  # PPARG Pro12Ala
-        "gene": "PPARG",
-        "impact": "Чувствительность к инсулину",
-        "impact_domain": Domain.GLP1.value,
-        "interpretation": "Ala-аллель (Pro12Ala) обычно ассоциирован с лучшей чувствительностью к инсулину и меньшим риском СД2.",
-        "action_notes": "Информативно; поддерживать метаболическое здоровье общими мерами.",
-    },
-    # ── Fitness / performance ─────────────────────────────────────────────────
-    "rs1815739": {  # ACTN3 R577X
-        "gene": "ACTN3",
-        "impact": "Мышечный тип (сила/спринт vs выносливость)",
-        "impact_domain": Domain.WORKOUTS.value,
-        "interpretation": "RR/RX — есть альфа-актинин-3 (наклон к силе/спринту); XX («ген стоп») — нет белка, чаще профиль выносливости.",
-        "action_notes": "Информативно для акцентов в тренировках; не ограничивает прогресс.",
-    },
-    "rs8192678": {  # PPARGC1A
-        "gene": "PPARGC1A",
-        "impact": "Аэробная выносливость (биогенез митохондрий)",
-        "impact_domain": Domain.WORKOUTS.value,
-        "interpretation": "Вариант PGC-1α влияет на митохондриальный биогенез и отклик на аэробные нагрузки.",
-        "action_notes": "Информативно для планирования кардио/выносливости.",
-    },
-    # ── Neuro / stress / mood ─────────────────────────────────────────────────
-    "rs4680": {  # COMT Val158Met — ref=G (Val, fast), alt=A (Met, slow) (confirmed)
-        "gene": "COMT",
-        "impact": "Дофамин, стресс-устойчивость, болевая чувствительность",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "Val (быстрый клиренс дофамина) — «воин»: устойчивее к стрессу, но ниже базовый дофамин; Met (медленный) — «волнующийся»: выше когнитивный тонус, чувствительнее к стрессу/боли.",
-        "action_notes": "Информативно для управления стрессом/восстановлением; при Met/Met — осторожнее со стимуляторами (кофеин, высокие дозы EGCG).",
-        # Only the homozygous-Met genotype gets a firm marker — heterozygotes are
-        # genuinely intermediate, not clearly "slow", so left informational-only.
-        "marker_by_zygosity": {"hom_alt": "comt_slow_metabolizer"},
-    },
-    "rs6265": {  # BDNF Val66Met
-        "gene": "BDNF",
-        "impact": "Нейропластичность, настроение, отклик на нагрузку",
-        "impact_domain": Domain.SYSTEM.value,
-        "interpretation": "Met-аллель снижает секрецию BDNF — может влиять на память, настроение и нейропластический ответ на упражнения.",
-        "action_notes": "Регулярная аэробная нагрузка и сон поддерживают BDNF.",
-    },
-    # ── Lactose ──────────────────────────────────────────────────────────────
-    "rs4988235": {  # MCM6/LCT
-        "gene": "MCM6",
-        "impact": "Переносимость лактозы",
-        "impact_domain": Domain.SUPPLEMENTS.value,
-        "interpretation": "T-аллель обеспечивает персистенцию лактазы (переносимость молока во взрослом возрасте); CC — вероятна непереносимость лактозы.",
-        "action_notes": "При CC — ограничить лактозу или использовать лактазу; следить за источниками кальция.",
-    },
-    # ── Pharmacogenetics (informational — обсуждать с врачом) ──────────────────
-    "rs4244285": {  # CYP2C19*2
-        "gene": "CYP2C19",
-        "impact": "Метаболизм препаратов (клопидогрел, ИПП)",
-        "impact_domain": Domain.SYSTEM.value,
-        "interpretation": "*2 — нефункциональный аллель: снижен метаболизм ряда лекарств (клопидогрел — слабее эффект; ИПП — выше концентрация).",
-        "action_notes": "Фармакогенетика — учитывать врачу при назначении соответствующих препаратов.",
-    },
-    "rs9923231": {  # VKORC1
-        "gene": "VKORC1",
-        "impact": "Чувствительность к варфарину",
-        "impact_domain": Domain.SYSTEM.value,
-        "interpretation": "Вариант VKORC1 повышает чувствительность к варфарину (нужна меньшая доза).",
-        "action_notes": "Релевантно только при терапии варфарином — решает врач.",
-    },
-    "rs1057910": {  # CYP2C9*3
-        "gene": "CYP2C9",
-        "impact": "Метаболизм препаратов (варфарин, НПВП)",
-        "impact_domain": Domain.SYSTEM.value,
-        "interpretation": "*3 заметно снижает активность CYP2C9 — медленнее метаболизм варфарина и некоторых НПВП.",
-        "action_notes": "Фармакогенетика — учитывать врачу.",
-    },
-    # ── Lipids / cardio (APOE требует двух SNP вместе) ────────────────────────
-    "rs429358": {  # APOE
-        "gene": "APOE",
-        "impact": "ApoE-генотип (липиды, риск; часть пары)",
-        "impact_domain": Domain.LABS.value,
-        "interpretation": "Один из двух SNP, определяющих ApoE (E2/E3/E4). Полная интерпретация требует и rs7412. E4 ассоциирован с худшим липидным профилем и рисками — но это вероятность, не диагноз.",
-        "action_notes": "Интерпретировать только вместе с rs7412; не делать выводов по одному SNP.",
-    },
-    "rs7412": {  # APOE
-        "gene": "APOE",
-        "impact": "ApoE-генотип (липиды, риск; часть пары)",
-        "impact_domain": Domain.LABS.value,
-        "interpretation": "Второй SNP пары ApoE. Совместно с rs429358 определяет изоформу E2/E3/E4.",
-        "action_notes": "Интерпретировать вместе с rs429358; ориентироваться на реальный липидный профиль.",
-    },
-    # ── Skin barrier ──────────────────────────────────────────────────────────
-    "rs61816761": {  # FLG R501X
-        "gene": "FLG",
-        "impact": "Барьер кожи (филаггрин)",
-        "impact_domain": Domain.SKINCARE.value,
-        "interpretation": "Нулевые мутации FLG нарушают кожный барьер — выше риск сухости, атопического дерматита, трансэпидермальной потери воды.",
-        "action_notes": "Акцент на восстановление барьера: церамиды, увлажнение, мягкое очищение; осторожнее с агрессивными активами.",
-    },
-}
+from vitals.enums import Domain, Evidence
+
+_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+_SNPS_PATH = _DATA_DIR / "genetics_snps.yaml"
+
+_RSID_RE = re.compile(r"^rs\d+$")
+_VALID_BASES = frozenset({"A", "C", "G", "T"})
+_VALID_STRANDS = frozenset({"+", "-"})
+_VALID_DOMAINS = frozenset(d.value for d in Domain)
+_VALID_EVIDENCE = frozenset(e.value for e in Evidence)
+_VALID_MARKER_ON = frozenset({"any", "hom"})
+_COMPLEMENT = {"A": "T", "T": "A", "C": "G", "G": "C"}
+_PALINDROMIC_PAIRS = (frozenset({"A", "T"}), frozenset({"C", "G"}))
+
+_REQUIRED_KEYS = (
+    "gene",
+    "chrom",
+    "strand",
+    "ref_grch38",
+    "effect_allele",
+    "category",
+    "impact_domain",
+    "evidence",
+    "source",
+    "impact",
+    "interpretation",
+    "action_notes",
+)
+
+
+def _validate_entry(rsid: str, entry: dict) -> None:
+    if not isinstance(rsid, str) or not _RSID_RE.match(rsid):
+        raise ValueError(f"genetics_snps.yaml: invalid rsID key {rsid!r}")
+    if not isinstance(entry, dict):
+        raise ValueError(f"genetics_snps.yaml: {rsid} is not a mapping")
+    missing = [k for k in _REQUIRED_KEYS if not entry.get(k)]
+    if missing:
+        raise ValueError(f"genetics_snps.yaml: {rsid} missing required keys {missing}")
+    if len(entry["gene"]) > 64:
+        raise ValueError(f"genetics_snps.yaml: {rsid} gene exceeds 64 chars")
+    if len(entry["impact"]) > 128:
+        raise ValueError(f"genetics_snps.yaml: {rsid} impact exceeds 128 chars")
+    if entry["strand"] not in _VALID_STRANDS:
+        raise ValueError(f"genetics_snps.yaml: {rsid} invalid strand {entry['strand']!r}")
+    if entry["ref_grch38"] not in _VALID_BASES:
+        raise ValueError(f"genetics_snps.yaml: {rsid} invalid ref_grch38 {entry['ref_grch38']!r}")
+    if entry["effect_allele"] not in _VALID_BASES:
+        raise ValueError(f"genetics_snps.yaml: {rsid} invalid effect_allele {entry['effect_allele']!r}")
+    if entry["impact_domain"] not in _VALID_DOMAINS:
+        raise ValueError(f"genetics_snps.yaml: {rsid} invalid impact_domain {entry['impact_domain']!r}")
+    if entry["evidence"] not in _VALID_EVIDENCE:
+        raise ValueError(f"genetics_snps.yaml: {rsid} invalid evidence {entry['evidence']!r}")
+
+    has_marker = "marker" in entry
+    has_by_copies = "marker_by_effect_copies" in entry
+    if has_marker and has_by_copies:
+        raise ValueError(f"genetics_snps.yaml: {rsid} cannot define both marker and marker_by_effect_copies")
+    if has_marker:
+        marker = entry["marker"]
+        if not isinstance(marker, str) or not marker or len(marker) > 64:
+            raise ValueError(f"genetics_snps.yaml: {rsid} invalid marker {marker!r}")
+        if entry.get("marker_on") not in _VALID_MARKER_ON:
+            raise ValueError(f"genetics_snps.yaml: {rsid} invalid marker_on {entry.get('marker_on')!r}")
+    if has_by_copies:
+        mapping = entry["marker_by_effect_copies"]
+        if not isinstance(mapping, dict) or not mapping:
+            raise ValueError(f"genetics_snps.yaml: {rsid} marker_by_effect_copies must be a non-empty map")
+        for copies, slug in mapping.items():
+            if copies not in (0, 1, 2):
+                raise ValueError(f"genetics_snps.yaml: {rsid} invalid copy count key {copies!r}")
+            if not isinstance(slug, str) or not slug or len(slug) > 64:
+                raise ValueError(f"genetics_snps.yaml: {rsid} invalid marker slug {slug!r}")
+
+
+@lru_cache(maxsize=1)
+def load_snp_catalog() -> dict[str, dict]:
+    """Load and validate the curated SNP catalog from ``genetics_snps.yaml``."""
+    with open(_SNPS_PATH, encoding="utf-8") as fh:
+        raw = yaml.safe_load(fh) or {}
+    if not isinstance(raw, dict):
+        raise ValueError("genetics_snps.yaml: top-level object must be a mapping")
+    catalog: dict[str, dict] = {}
+    for rsid, entry in raw.items():
+        _validate_entry(rsid, entry)
+        catalog[rsid] = dict(entry)
+    return catalog
+
+
+# Module-level dict preserved for backward compatibility with callers/tests.
+INTERPRETATIONS: dict[str, dict] = load_snp_catalog()
 
 
 @dataclass(frozen=True)
@@ -287,11 +135,11 @@ class ParsedVariant:
     rsid: str
     ref: str
     alt: str
-    genotype: str  # e.g. "A/G"; "./." when missing
+    genotype: str  # e.g. "A/G", "T" (haploid chrX), or "./." when missing
 
 
 def _genotype_from_gt(gt_field: str, ref: str, alts: list[str]) -> str:
-    """Map a GT subfield (e.g. '0/1', '1|1') to an allele string ('A/G')."""
+    """Map a GT subfield (e.g. '0/1', '1|1', '1') to an allele string ('A/G', 'T')."""
     raw = gt_field.replace("|", "/").split("/")
     alleles = [ref] + alts
     out: list[str] = []
@@ -307,57 +155,106 @@ def _genotype_from_gt(gt_field: str, ref: str, alts: list[str]) -> str:
 def parse_vcf_line(line: str) -> Optional[ParsedVariant]:
     """Parse one VCF data line into a ParsedVariant, or None for headers/blanks/
     lines without an rsID or genotype."""
-    line = line.rstrip("\n")
+    line = line.rstrip("\r\n")
     if not line or line.startswith("#"):
         return None
     cols = line.split("\t")
     if len(cols) < 10:
         return None
-    rsid = cols[2].strip()
+    rsid = cols[2].strip().lower()
     if not rsid or rsid == "." or not rsid.startswith("rs"):
         return None
-    ref = cols[3].strip()
-    alts = [a.strip() for a in cols[4].split(",") if a.strip() and a.strip() != "."]
+    ref = cols[3].strip().upper()
+    alts = [a.strip().upper() for a in cols[4].split(",") if a.strip() and a.strip() != "."]
     fmt = cols[8].split(":")
     sample = cols[9].split(":")
     if "GT" not in fmt:
         return None
-    gt = sample[fmt.index("GT")] if fmt.index("GT") < len(sample) else "./."
+    gt_idx = fmt.index("GT")
+    gt = sample[gt_idx] if gt_idx < len(sample) else "./."
     genotype = _genotype_from_gt(gt, ref, alts)
     return ParsedVariant(rsid=rsid, ref=ref, alt=",".join(alts) or ".", genotype=genotype)
 
 
-def _zygosity(genotype: str, ref: str) -> Optional[str]:
-    """Classify a two-allele genotype relative to the VCF's REF allele:
-    ``"hom_ref"`` (e.g. C/C), ``"het"`` (C/T), ``"hom_alt"`` (T/T), or ``None``
-    for anything else (missing/haploid/multi-allelic)."""
-    alleles = [a for a in genotype.split("/") if a and a != "."]
-    if len(alleles) != 2:
+def _extract_gt_alleles(genotype: str) -> list[str]:
+    """Split a genotype string ('G/A', 'G|A', 'T', 'CT') into uppercase bases,
+    ignoring missing calls ('.')."""
+    gt = (genotype or "").strip().upper()
+    if not gt:
+        return []
+    if "/" in gt or "|" in gt:
+        tokens = gt.replace("|", "/").split("/")
+        return [t.strip() for t in tokens if t.strip() and t.strip() != "."]
+    # Compact two-base genotypes (e.g. 'CT') or haploid single-base ('T')
+    if len(gt) in (1, 2) and all(ch in _VALID_BASES for ch in gt):
+        return list(gt)
+    return []
+
+
+def _resolve_target_effect_allele(variant: ParsedVariant, info: dict) -> str:
+    """Return the allele letter to match against ``variant.genotype``.
+
+    Normally this is the forward (+) strand ``effect_allele`` directly. When a
+    non-palindromic SNP is supplied in coding/reverse-strand orientation (e.g.
+    MTHFR ``C>T`` instead of GRCh38 ``G>A``) and neither the genomic ref nor the
+    genomic effect allele appears anywhere in the VCF record, complement the
+    effect allele if its complement is present.
+    """
+    effect = info["effect_allele"]
+    ref_g = info["ref_grch38"]
+
+    alts = {a.strip().upper() for a in (variant.alt or "").split(",") if a.strip() and a.strip() != "."}
+    gt_alleles = set(_extract_gt_alleles(variant.genotype))
+    observed = ({variant.ref.upper()} if variant.ref and variant.ref != "." else set()) | alts | gt_alleles
+
+    if effect in observed or ref_g in observed:
+        return effect
+
+    # Never complement palindromic (A/T or C/G) SNPs — strand cannot be inferred
+    # from allele letters alone.
+    if frozenset({ref_g, effect}) in _PALINDROMIC_PAIRS:
+        return effect
+
+    comp_effect = _COMPLEMENT.get(effect)
+    comp_ref = _COMPLEMENT.get(ref_g)
+    if comp_effect and (comp_effect in observed or (comp_ref and comp_ref in observed)):
+        return comp_effect
+    return effect
+
+
+def _count_effect_copies(variant: ParsedVariant, info: dict) -> Optional[int]:
+    """Count copies (0, 1, or 2) of ``effect_allele`` in ``variant.genotype``.
+
+    Returns ``None`` when the genotype is missing or unparseable. Haploid calls
+    on chromosome X (hemizygous males) map to 2 when carrying the effect allele
+    and 0 otherwise.
+    """
+    gt_alleles = _extract_gt_alleles(variant.genotype)
+    if not gt_alleles:
         return None
-    ref_count = sum(1 for a in alleles if a == ref)
-    if ref_count == 2:
-        return "hom_ref"
-    if ref_count == 1:
-        return "het"
-    return "hom_alt"
+    target = _resolve_target_effect_allele(variant, info)
+    if len(gt_alleles) == 1:
+        if str(info.get("chrom", "")).upper() == "X":
+            return 2 if gt_alleles[0] == target else 0
+        return None
+    if len(gt_alleles) == 2:
+        return sum(1 for a in gt_alleles if a == target)
+    return None
 
 
 def interpret(variant: ParsedVariant) -> dict:
-    """Build the genetic_variants field dict for a parsed variant, applying a
-    curated interpretation/marker when the rsID is known and the risk allele is
-    present."""
+    """Build the ``genetic_variants`` field dict for a parsed variant, applying
+    the curated interpretation and conflict-engine marker when the rsID is known
+    and the sample genotype carries the required copies of ``effect_allele``."""
+    rsid = variant.rsid.lower()
     fields: dict = {
         "gene": "unknown",
-        "rsid": variant.rsid,
+        "rsid": rsid,
         "genotype": variant.genotype,
     }
-    info = INTERPRETATIONS.get(variant.rsid)
+    info = INTERPRETATIONS.get(rsid)
     if info is None:
         return fields
-
-    alleles = set(variant.genotype.replace("/", " ").split())
-    ref_alleles = {variant.ref}
-    has_alt = bool(alleles - ref_alleles - {"."})
 
     fields["gene"] = info["gene"]
     fields["impact"] = info.get("impact")
@@ -365,21 +262,26 @@ def interpret(variant: ParsedVariant) -> dict:
     fields["interpretation"] = info.get("interpretation")
     fields["action_notes"] = info.get("action_notes")
 
-    zygosity_markers = info.get("marker_by_zygosity")
-    if zygosity_markers:
-        # Zygosity-aware entries (e.g. MTHFR het vs hom) — a distinct marker per
-        # genotype, only for whichever zygosities the entry actually maps.
-        zyg = _zygosity(variant.genotype, variant.ref)
-        marker = zygosity_markers.get(zyg) if zyg else None
+    copies = _count_effect_copies(variant, info)
+    if copies is None:
+        return fields
+
+    by_copies = info.get("marker_by_effect_copies")
+    if by_copies:
+        marker = by_copies.get(copies)
         if marker:
             fields["marker"] = marker
-    else:
-        # Only stamp the conflict marker when the entry defines one AND the risk
-        # allele is actually present (carrier or homozygous) — the simpler,
-        # zygosity-blind case (e.g. HFE, G6PD, CYP1A2).
-        marker = info.get("marker")
-        if marker and info.get("risk_alt") and has_alt:
-            fields["marker"] = marker
+        return fields
+
+    marker = info.get("marker")
+    if not marker:
+        return fields
+
+    marker_on = info.get("marker_on", "any")
+    if marker_on == "any" and copies >= 1:
+        fields["marker"] = marker
+    elif marker_on == "hom" and copies >= 2:
+        fields["marker"] = marker
     return fields
 
 

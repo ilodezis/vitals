@@ -1,0 +1,3604 @@
+# Curated SNP catalog for Vitals (GRCh38 forward-strand verified).
+#
+# Every rsID, chromosome, reference allele, and effect allele is cross-checked
+# against NCBI dbSNP (GRCh38), MyVariant.info (hg19 + hg38 + gnomAD + SnpEff),
+# and EBI GWAS Catalog / CPIC / PharmGKB.
+#
+# Schema per rsID:
+#   gene:            Official HGNC gene symbol
+#   chrom:           GRCh38 chromosome ('1'..'22', 'X')
+#   strand:          Gene transcript strand ('+' or '-')
+#   ref_grch38:      GRCh38 forward (+) strand reference allele
+#   effect_allele:   Forward (+) strand allele associated with the described trait/risk
+#   category:        Functional panel slug
+#   impact_domain:   Vitals Domain enum value
+#   evidence:        Evidence tier ('A' = CPIC/ClinVar/replicated clinical guideline,
+#                    'B' = PharmGKB 2A-2B / replicated meta-analyses, 'C' = moderate GWAS)
+#   source:          Primary scientific reference
+#   impact:          Short summary (<= 128 chars)
+#   interpretation:  Detailed physiological & zygosity interpretation
+#   action_notes:    Practical navigator guidance (not medical advice)
+#   marker:          Optional conflict-engine marker slug
+#   marker_on:       'any' (1-2 copies or chrX hemizygous) | 'hom' (2 copies or chrX hemizygous)
+#   marker_by_effect_copies: Optional {1: slug, 2: slug} zygosity-specific map
+
+# ── Iron & Minerals (14 SNPs) ─────────────────────────────────────────────────
+rs1800562:
+  gene: HFE
+  chrom: '6'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: iron_minerals
+  impact_domain: supplements
+  evidence: A
+  source: ClinVar (Pathogenic); EASL Hemochromatosis Guidelines 2022
+  impact: Накопление железа (гемохроматоз, C282Y)
+  interpretation: Вариант C282Y (G>A, p.Cys282Tyr) — главный генетический фактор наследственного гемохроматоза.
+    Гомозигота A/A резко повышает риск перегрузки железом (особенно у мужчин), носительство G/A — умеренно,
+    но усиливается в сочетании с H63D.
+  action_notes: Не принимать препараты железа без подтверждённого дефицита (ферритин + насыщение трансферрина).
+    Осторожнее с высокими дозами витамина C вместе с железосодержащей пищей.
+  marker: hemochromatosis_carrier
+  marker_on: any
+
+rs1799945:
+  gene: HFE
+  chrom: '6'
+  strand: +
+  ref_grch38: C
+  effect_allele: G
+  category: iron_minerals
+  impact_domain: supplements
+  evidence: A
+  source: ClinVar; EASL Hemochromatosis Guidelines 2022
+  impact: Накопление железа (гемохроматоз, H63D)
+  interpretation: Вариант H63D (C>G, p.His63Asp) слабее влияет на накопление железа, чем C282Y; сам по
+    себе редко вызывает тяжёлую перегрузку, но значим в гомозиготе G/G и особенно в составной гетерозиготе
+    с C282Y.
+  action_notes: Не пить железо профилактически; ориентироваться на ферритин и насыщение трансферрина.
+  marker: hemochromatosis_carrier
+  marker_on: any
+
+rs1800730:
+  gene: HFE
+  chrom: '6'
+  strand: +
+  ref_grch38: A
+  effect_allele: T
+  category: iron_minerals
+  impact_domain: supplements
+  evidence: B
+  source: ClinVar; EASL Hemochromatosis Guidelines
+  impact: Накопление железа (вариант HFE S65C)
+  interpretation: Вариант S65C (A>T, p.Ser65Cys) — редкий мягкий аллель HFE; повышает склонность к накоплению
+    железа преимущественно в сочетании с C282Y.
+  action_notes: Учитывать совместно с C282Y/H63D; контролировать ферритин перед приёмом железа.
+  marker: hemochromatosis_carrier
+  marker_on: any
+
+rs855791:
+  gene: TMPRSS6
+  chrom: '22'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: A
+  category: iron_minerals
+  impact_domain: labs
+  evidence: A
+  source: Benyamin et al. (Nat Genet 2009); GWAS iron homeostasis meta-analysis
+  impact: Склонность к низкому ферритину и железу (V736A)
+  interpretation: Аллель A на прямой цепи (кодирующий T, 736Val) в гене матриптазы-2 (TMPRSS6) повышает
+    уровень гепсидина, снижая всасывание железа в кишечнике и ассоциирован с более низким ферритином и
+    гемоглобином.
+  action_notes: Регулярно проверять ферритин, ОАК и сывороточное железо — особенно при интенсивных тренировках
+    или низком потреблении красного мяса.
+  marker: tmprss6_low_iron
+  marker_on: hom
+
+rs4820268:
+  gene: TMPRSS6
+  chrom: '22'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: G
+  category: iron_minerals
+  impact_domain: labs
+  evidence: A
+  source: EBI GWAS Catalog; Soranzo et al. (Nat Genet 2009)
+  impact: Уровень сывороточного железа и гемоглобина (TMPRSS6)
+  interpretation: Аллель G в сильном сцеплении с rs855791 и ассоциирован с более низким уровнем сывороточного
+    железа, гемоглобина и MCV.
+  action_notes: Учитывать при интерпретации погранично низкого ферритина; оценивать вместе с rs855791.
+
+rs3811647:
+  gene: TF
+  chrom: '3'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: iron_minerals
+  impact_domain: labs
+  evidence: A
+  source: Benyamin et al. (Am J Hum Genet 2009); EBI GWAS Catalog
+  impact: Уровень трансферрина (транспорт железа)
+  interpretation: Аллель A ассоциирован с более высокой базовой концентрацией трансферрина и ОЖСС в крови,
+    а аллель G — с более низким сывороточным железом.
+  action_notes: 'Учитывать при чтении панели железа: слегка повышенный трансферрин может частично отражать
+    генетический фон, а не только дефицит.'
+
+rs7385804:
+  gene: TFR2
+  chrom: '7'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: C
+  category: iron_minerals
+  impact_domain: labs
+  evidence: B
+  source: Pichler et al. (Hum Mol Genet 2011); EBI GWAS Catalog
+  impact: Рецептор трансферрина-2 и запасы железа
+  interpretation: Аллель C ассоциирован с более низким уровнем сывороточного железа и MCHC за счёт влияния
+    на регуляцию гепсидина через TFR2.
+  action_notes: Информативно в контексте полной панели железа (ферритин + трансферрин + ОАК).
+
+rs13266634:
+  gene: SLC30A8
+  chrom: '8'
+  strand: +
+  ref_grch38: C
+  effect_allele: C
+  category: iron_minerals
+  impact_domain: glp1
+  evidence: A
+  source: Sladek et al. (Nature 2007); DIAGRAM T2D GWAS
+  impact: Транспорт цинка в бета-клетках (ZnT8) и секреция инсулина
+  interpretation: 'Вариант Arg325Trp (C>T) в транспортёре цинка ZnT8: частый аллель C (Arg325) ассоциирован
+    с более высоким риском СД2, а редкий T (Trp325) — с защитным эффектом и лучшей сохранностью секреции
+    инсулина.'
+  action_notes: При генотипе C/C следить за адекватностью цинка в рационе и контролировать гликемию/HbA1c.
+
+rs13107325:
+  gene: SLC39A8
+  chrom: '4'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: iron_minerals
+  impact_domain: labs
+  evidence: A
+  source: Speliotes et al. / UK Biobank pleiotropy GWAS (Ala391Thr)
+  impact: Транспорт марганца/цинка (ZIP8), липиды и давление
+  interpretation: 'Плейотропный миссенс-вариант Ala391Thr (C>T на прямой цепи): аллель T снижает транспорт
+    марганца в клетки и ассоциирован с более низким ЛПВП, но чуть более низким артериальным давлением.'
+  action_notes: Учитывать при оценке ЛПВП; не принимать высокие дозы марганца без показаний.
+
+rs2274924:
+  gene: TRPM6
+  chrom: '9'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: iron_minerals
+  impact_domain: supplements
+  evidence: C
+  source: Song et al. (Hum Mol Genet 2009); TRPM6 K1584E studies
+  impact: Всасывание магния (канал TRPM6, K1584E)
+  interpretation: 'Миссенс-вариант Lys1584Glu (T>C на прямой цепи, кодирующий A>G): аллель C ассоциирован
+    с чуть менее эффективной регуляцией канала TRPM6 и более высокой потребностью в магнии при низком
+    его поступлении.'
+  action_notes: При нагрузках и стрессе обеспечивать стабильное поступление магния (питание или хелатные
+    формы — глицинат/цитрат).
+
+rs11144134:
+  gene: TRPM6
+  chrom: '9'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: T
+  category: iron_minerals
+  impact_domain: supplements
+  evidence: B
+  source: Meyer et al. (PLoS Genet 2010); EBI GWAS Catalog
+  impact: Базовый уровень магния в сыворотке (TRPM6)
+  interpretation: По данным GWAS, аллель T ассоциирован с чуть более низким уровнем магния в сыворотке
+    крови (эффект умеренный, около 0.01 ммоль/л на аллель).
+  action_notes: Информативно; при симптомах дефицита ориентироваться на рацион и форму магния, помня что
+    сывороточный Mg отражает <1% запасов.
+
+rs1801725:
+  gene: CASR
+  chrom: '3'
+  strand: +
+  ref_grch38: G
+  effect_allele: T
+  category: iron_minerals
+  impact_domain: labs
+  evidence: A
+  source: Kapur et al. (PLoS Genet 2010); CASR A986S GWAS
+  impact: Кальций-чувствительный рецептор (уровень кальция)
+  interpretation: 'Вариант Ala986Ser (G>T): носители аллеля T имеют физиологически чуть более высокий
+    базовый уровень общего и ионизированного кальция в крови.'
+  action_notes: Учитывать при погранично высоком кальции в анализах; избегать избыточных доз добавок кальция
+    без контроля ПТГ и 25(OH)D.
+
+rs3877899:
+  gene: SELENOP
+  chrom: '5'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: iron_minerals
+  impact_domain: supplements
+  evidence: B
+  source: Méplan et al. (FASEB J 2007); SELENOP Ala234Thr
+  impact: Транспорт селена (селенопротеин P, Ala234Thr)
+  interpretation: Вариант Ala234Thr (C>T на прямой цепи, кодирующий G>A) влияет на изоформы селенопротеина
+    P и эффективность распределения селена по тканям.
+  action_notes: При низком потреблении рыбы/бразильских орехов поддерживать адекватный селен без превышения
+    200 мкг/сут.
+
+rs7579:
+  gene: SELENOP
+  chrom: '5'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: iron_minerals
+  impact_domain: supplements
+  evidence: B
+  source: Méplan et al. (AJCN 2009); SELENOP 3'UTR studies
+  impact: Усвоение и соотношение изоформ селенопротеина P
+  interpretation: 'Вариант в 3''-UTR SELENOP (C>T на прямой цепи): носители T иначе отвечают на пищевой
+    селен и синтез глутатионпероксидаз.'
+  action_notes: Информативно в паре с rs3877899 и GPX1 (rs1050450); приём селена не должен превышать безопасный
+    верхний предел.
+
+# ── Folate, B-Vitamins & Methylation (15 SNPs) ────────────────────────────────
+rs1801133:
+  gene: MTHFR
+  chrom: '1'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: A
+  source: ClinVar; PharmGKB; Frosst et al. (Nat Genet 1995)
+  impact: Метаболизм фолата (MTHFR C677T)
+  interpretation: 'Вариант C677T (на прямой цепи GRCh38: G>A, кодирующий C>T, p.Ala222Val). Аллель A (677T)
+    снижает активность фермента MTHFR (~65% у гетерозигот, ~30% у гомозигот), ухудшая превращение фолиевой
+    кислоты в 5-MTHF и повышая склонность к росту гомоцистеина при дефиците фолата/B2.'
+  action_notes: При аллеле A (677T) предпочтителен L-метилфолат (5-MTHF) вместо синтетической фолиевой
+    кислоты; полезно проверить гомоцистеин, B12 и поддерживать рибофлавин (B2).
+  marker_by_effect_copies:
+    1: mthfr_heterozygous
+    2: mthfr_c677t_homozygous
+
+rs1801131:
+  gene: MTHFR
+  chrom: '1'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: G
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: B
+  source: PharmGKB; van der Put et al. (Am J Hum Genet 1998)
+  impact: Метаболизм фолата (MTHFR A1298C)
+  interpretation: Вариант A1298C (на прямой цепи T>G, кодирующий A>C, p.Glu429Ala) слабее снижает активность
+    MTHFR, чем C677T; клинически интересен главным образом в составной гетерозиготе с C677T.
+  action_notes: Оценивать совместно с rs1801133 (C677T) и реальным уровнем гомоцистеина.
+
+rs1805087:
+  gene: MTR
+  chrom: '1'
+  strand: +
+  ref_grch38: A
+  effect_allele: G
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: B
+  source: PharmGKB; folate-homocysteine pathway meta-analyses
+  impact: Метионинсинтаза (MTR A2756G, зависима от B12)
+  interpretation: Вариант A2756G (p.Asp919Gly) затрагивает B12-зависимый фермент реметилирования гомоцистеина
+    в метионин; эффект умеренный и проявляется при дефиците B12/фолата.
+  action_notes: Поддерживать адекватный статус B12 и фолата; ориентироваться на гомоцистеин.
+
+rs1801394:
+  gene: MTRR
+  chrom: '5'
+  strand: +
+  ref_grch38: A
+  effect_allele: G
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: B
+  source: Wilson et al. (Mol Genet Metab 1999); MTRR A66G meta-analyses
+  impact: Реактивация B12 (MTRR A66G)
+  interpretation: 'Вариант A66G (p.Ile22Met / p.Ile49Met): аллель G снижает сродство MTRR к метионинсинтазе,
+    что замедляет регенерацию активного метилкобаламина (B12).'
+  action_notes: При гомозиготе G/G следить за активным B12 (голотранскобаламином) и гомоцистеином.
+
+rs3733890:
+  gene: BHMT
+  chrom: '5'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: C
+  source: Li et al. (Hum Mol Genet 2008); choline/betaine pathway studies
+  impact: Бетаин-гомоцистеин-метилтрансфераза (BHMT R239Q)
+  interpretation: Вариант R239Q (G>A) влияет на альтернативный холин/бетаин-зависимый путь снижения гомоцистеина
+    в печени.
+  action_notes: Информативно в связке с MTHFR и PEMT; обеспечивать достаточный холин/бетаин из пищи.
+
+rs234706:
+  gene: CBS
+  chrom: '21'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: C
+  source: Fredriksen et al. (Hum Mutat 2007); CBS C699T cohort studies
+  impact: Транссульфурация гомоцистеина (CBS C699T)
+  interpretation: Синонимичный вариант C699T (на прямой цепи G>A) ассоциирован с чуть более быстрым оттоком
+    гомоцистеина в путь синтеза цистеина/глутатиона (зависим от витамина B6).
+  action_notes: Информативно; реальный статус отражает гомоцистеин и B6, а не сам полиморфизм.
+
+rs1979277:
+  gene: SHMT1
+  chrom: '17'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: C
+  source: Heil et al. (Mol Genet Metab 2001); SHMT1 C1420T studies
+  impact: Распределение фолата (SHMT1 L474F / C1420T)
+  interpretation: Вариант Leu474Phe (G>A на прямой цепи, кодирующий C>T) умеренно модулирует распределение
+    одноуглеродных групп между синтезом ДНК и циклом метилирования.
+  action_notes: Учитывать лишь в комплексе с MTHFR и анализами на фолат/гомоцистеин.
+
+rs1051266:
+  gene: SLC19A1
+  chrom: '21'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: T
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: B
+  source: PharmGKB (methotrexate/folate); Chango et al. (Mol Genet Metab 2000)
+  impact: Транспорт фолата в клетки (RFC1 G80A)
+  interpretation: Вариант His27Arg (на прямой цепи T=80A/His27, C=80G/Arg27) влияет на транспорт восстановленных
+    фолатов в клетки и фармакокинетику метотрексата.
+  action_notes: Поддерживать достаточный пищевой фолат; значим в клинической фармакогенетике метотрексата.
+
+rs601338:
+  gene: FUT2
+  chrom: '19'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: A
+  source: Hazra et al. (Nat Genet 2008); Tanaka et al. (AJHG 2009)
+  impact: Статус «несекретор» FUT2 (W143X) и уровень B12
+  interpretation: Стоп-кодон W143X (G>A, p.Trp154*) — главный европейский вариант «несекреторного» статуса
+    (гомозигота A/A не экспрессирует антигены ABH в слизистых). Связан с особенностями микробиоты, повышенным/изменённым
+    сывороточным B12 и устойчивостью к ряду штаммов норовируса.
+  action_notes: При гомозиготе A/A проверять активный B12 (голотранскобаламин) и гомоцистеин, а не только
+    общий сывороточный B12.
+  marker: fut2_nonsecretor
+  marker_on: hom
+
+rs602662:
+  gene: FUT2
+  chrom: '19'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: A
+  source: Hazra et al. (Nat Genet 2008); GWAS serum B12
+  impact: Статус витамина B12 (FUT2 Gly258Ser)
+  interpretation: Миссенс-вариант Gly258Ser (G>A) в сильном сцеплении с rs601338; один из сильнейших генетических
+    предикторов концентрации витамина B12 в сыворотке крови.
+  action_notes: Контролировать активный B12/голотранскобаламин, особенно на рационе с малым количеством
+    животных продуктов.
+  marker: fut2_nonsecretor
+  marker_on: hom
+
+rs1801198:
+  gene: TCN2
+  chrom: '22'
+  strand: +
+  ref_grch38: G
+  effect_allele: G
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: B
+  source: Miller et al. (AJCN 2002); TCN2 C776G meta-analyses
+  impact: Доставка B12 в клетки (транскобаламин II, P259R)
+  interpretation: 'Вариант C776G (p.Arg259Pro): аллель G (259Arg) ассоциирован с более низким уровнем
+    голотранскобаламина (активного B12), даже когда общий B12 в крови выглядит нормальным.'
+  action_notes: При гомозиготе G/G оценивать статус B12 по голотранскобаламину и гомоцистеину/ММК.
+
+rs1801222:
+  gene: CUBN
+  chrom: '10'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: A
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: B
+  source: Grarup et al. (PLoS Genet 2013); CUBN B12 GWAS
+  impact: Кишечное всасывание B12 (кубилин, F253S)
+  interpretation: Вариант Phe253Ser (A>G на прямой цепи, кодирующий T>C) в рецепторе кубилина влияет на
+    всасывание комплекса «внутренний фактор — B12» в подвздошной кишке.
+  action_notes: Учитывать при необъяснимо низком B12; при дефиците обсудить сублингвальные или высокие
+    пероральные дозы B12.
+
+rs7946:
+  gene: PEMT
+  chrom: '17'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: B
+  source: Song et al. (FASEB J 2005); Zeisel choline nutrigenomics
+  impact: Эндогенный синтез холина (PEMT V175M)
+  interpretation: Вариант V175M (C>T на прямой цепи, кодирующий G>A) снижает активность PEMT примерно
+    на треть, повышая зависимость от пищевого холина (особенно для печени и синтеза фосфатидилхолина).
+  action_notes: Обеспечивать достаточный холин из пищи (яйца, печень, рыба) или рассмотреть добавку холина/лецитина
+    при низком поступлении.
+  marker: pemt_choline_need
+  marker_on: hom
+
+rs12325817:
+  gene: PEMT
+  chrom: '17'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: G
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: B
+  source: da Costa et al. (AJCN 2006); Fischer et al. (AJCN 2010)
+  impact: Потребность в холине (промотор PEMT -744G>C)
+  interpretation: 'Промоторный вариант PEMT (на прямой цепи C>G, кодирующий -744G>C): аллель G (кодирующий
+    C) ослабляет эстроген-зависимую индукцию PEMT и повышает риск субклинического дефицита холина на бедной
+    холином диете.'
+  action_notes: Следить за регулярным поступлением холина из рациона (яйца, мясо, соевый/подсолнечный
+    лецитин).
+  marker: pemt_choline_need
+  marker_on: hom
+
+rs4654748:
+  gene: NBPF3
+  chrom: '1'
+  strand: +
+  ref_grch38: C
+  effect_allele: C
+  category: folate_methylation
+  impact_domain: supplements
+  evidence: A
+  source: Tanaka et al. (AJHG 2009); Hazra et al. (Hum Mol Genet 2009)
+  impact: Уровень витамина B6 (локус NBPF3/ALPL)
+  interpretation: 'Сильнейший GWAS-локус для циркулирующего витамина B6 (PLP): каждая копия аллеля C ассоциирована
+    со снижением сывороточного PLP примерно на 1.45 нг/мл из-за ускоренного клиренса щелочной фосфатазой.'
+  action_notes: Учитывать потребность в адекватном пищевом B6 (мясо, рыба, нут); при приёме добавок B6
+    не превышать безопасные дозы (избегать >50–100 мг/сут длительно из-за нейропатии).
+
+# ── Vitamins D, A, C, E, K (16 SNPs) ──────────────────────────────────────────
+rs2282679:
+  gene: GC
+  chrom: '4'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: G
+  category: vitamins
+  impact_domain: supplements
+  evidence: A
+  source: Wang et al. (Lancet 2010); SUNLIGHT Vitamin D GWAS
+  impact: Уровень витамина D (транспортный белок GC/DBP)
+  interpretation: 'Один из сильнейших генетических предикторов дефицита витамина D: аллель G (на прямой
+    цепи T>G) связан со сниженным уровнем связывающего белка DBP и более низким общим 25(OH)D.'
+  action_notes: Контролировать 25(OH)D в крови; вероятна потребность в более высокой поддерживающей дозе
+    D3 (с подбором по анализам).
+  marker: vitd_low_genetic
+  marker_on: hom
+
+rs4588:
+  gene: GC
+  chrom: '4'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: T
+  category: vitamins
+  impact_domain: supplements
+  evidence: A
+  source: Wang et al. (Lancet 2010); GC isoform (Gc2) studies
+  impact: Изоформа белка витамина D (GC Thr436Lys)
+  interpretation: 'Миссенс-вариант Thr436Lys (на прямой цепи G>T, кодирующий C>A): аллель T формирует
+    изоформу Gc2 с меньшим сродством к метаболитам витамина D и более низким 25(OH)D.'
+  action_notes: Подбирать дозу D3 по реальному 25(OH)D, особенно в зимний сезон.
+
+rs7041:
+  gene: GC
+  chrom: '4'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: A
+  category: vitamins
+  impact_domain: supplements
+  evidence: A
+  source: Wang et al. (Lancet 2010); GC Gc1F/Gc1S studies
+  impact: Изоформа белка витамина D (GC Asp432Glu)
+  interpretation: 'Второй функциональный SNP белка DBP (на прямой цепи A>C, кодирующий T>G): вместе с
+    rs4588 задаёт изоформы Gc1F/Gc1S/Gc2, влияющие на общий и биодоступный 25(OH)D.'
+  action_notes: Интерпретировать в паре с rs4588 и анализом 25(OH)D.
+
+rs10741657:
+  gene: CYP2R1
+  chrom: '11'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: G
+  category: vitamins
+  impact_domain: supplements
+  evidence: A
+  source: Wang et al. (Lancet 2010); EBI GWAS Catalog
+  impact: Активация витамина D в печени (CYP2R1)
+  interpretation: CYP2R1 — главная 25-гидроксилаза печени, переводящая холекальциферол в 25(OH)D. Аллель
+    G ассоциирован с более низким 25(OH)D, тогда как аллель A — с более высоким.
+  action_notes: При генотипе G/G контролировать 25(OH)D на фоне приёма D3 — отклик на стандартные дозы
+    может быть слабее.
+  marker: vitd_low_genetic
+  marker_on: hom
+
+rs12794714:
+  gene: CYP2R1
+  chrom: '11'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: vitamins
+  impact_domain: supplements
+  evidence: A
+  source: Jiang et al. (Nat Commun 2018); EBI GWAS Catalog
+  impact: 25-гидроксилирование витамина D (CYP2R1)
+  interpretation: Аллель A ассоциирован с более низким циркулирующим уровнем 25(OH)D и чуть более высоким
+    риском его дефицита.
+  action_notes: Учитывать совместно с rs10741657 при подборе дозы D3 по анализам.
+
+rs12785878:
+  gene: NADSYN1
+  chrom: '11'
+  strand: +
+  ref_grch38: G
+  effect_allele: G
+  category: vitamins
+  impact_domain: supplements
+  evidence: A
+  source: Wang et al. (Lancet 2010); DHCR7/NADSYN1 Vitamin D GWAS
+  impact: Кожный синтез витамина D (локус DHCR7/NADSYN1)
+  interpretation: Аллель G ассоциирован с повышенной активностью 7-дегидрохолестерин-редуктазы (DHCR7),
+    которая отводит предшественник витамина D в синтез холестерина — из-за этого под солнцем образуется
+    меньше D3.
+  action_notes: Не полагаться только на солнце; контролировать 25(OH)D и при необходимости использовать
+    добавку D3.
+
+rs6013897:
+  gene: CYP24A1
+  chrom: '20'
+  strand: +
+  ref_grch38: T
+  effect_allele: A
+  category: vitamins
+  impact_domain: supplements
+  evidence: A
+  source: Wang et al. (Lancet 2010); EBI GWAS Catalog
+  impact: Распад витамина D (24-гидроксилаза CYP24A1)
+  interpretation: Локус рядом с CYP24A1 — ферментом инактивации витамина D. Аллель A ассоциирован с чуть
+    более низким 25(OH)D и минеральной плотностью кости.
+  action_notes: Учитывать в общем профиле витамина D; проверять 25(OH)D 1–2 раза в год.
+
+rs2228570:
+  gene: VDR
+  chrom: '12'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: A
+  category: vitamins
+  impact_domain: supplements
+  evidence: B
+  source: Uitterlinden et al. (Gene 2004); VDR FokI meta-analyses
+  impact: Рецептор витамина D (VDR FokI)
+  interpretation: 'Функциональный вариант старт-кодона (на прямой цепи A>G, кодирующий c.2T>C): аллель
+    A (f-аллель) даёт на 3 аминокислоты более длинный белок VDR со сниженной транскрипционной активностью
+    по сравнению с коротким F-аллелем (G).'
+  action_notes: При гомозиготе A/A ориентироваться на целевой 25(OH)D в средней-верхней части референса,
+    а не на минимальную поддерживающую дозу.
+  marker: vdr_reduced_sensitivity
+  marker_on: hom
+
+rs1544410:
+  gene: VDR
+  chrom: '12'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: vitamins
+  impact_domain: supplements
+  evidence: C
+  source: Uitterlinden et al. (Gene 2004); VDR BsmI meta-analyses
+  impact: Рецептор витамина D (VDR BsmI)
+  interpretation: Интронный полиморфизм VDR (на прямой цепи C>T, кодирующий G>A) в сильном сцеплении с
+    TaqI/ApaI; модулирует стабильность мРНК VDR и отклик костной ткани на витамин D.
+  action_notes: Информативно в сочетании с FokI и уровнем 25(OH)D.
+  marker: vdr_reduced_sensitivity
+  marker_on: hom
+
+rs731236:
+  gene: VDR
+  chrom: '12'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: G
+  category: vitamins
+  impact_domain: supplements
+  evidence: C
+  source: Uitterlinden et al. (Gene 2004); VDR TaqI studies
+  impact: Рецептор витамина D (VDR TaqI)
+  interpretation: Синонимичный вариант в экзоне 9 VDR (A>G на прямой цепи, кодирующий T>C), сцепленный
+    с гаплотипом BsmI–ApaI–TaqI, влияющим на экспрессию VDR.
+  action_notes: Оценивать вместе с FokI/BsmI и анализом 25(OH)D.
+
+rs7975232:
+  gene: VDR
+  chrom: '12'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: C
+  category: vitamins
+  impact_domain: supplements
+  evidence: C
+  source: Uitterlinden et al. (Gene 2004); VDR ApaI studies
+  impact: Рецептор витамина D (VDR ApaI)
+  interpretation: Интронный вариант (C>A на прямой цепи), часть 3'-гаплотипа VDR; умеренно влияет на экспрессию
+    рецептора витамина D.
+  action_notes: Информативно; практический ориентир — 25(OH)D в крови.
+
+rs7501331:
+  gene: BCO1
+  chrom: '16'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: vitamins
+  impact_domain: supplements
+  evidence: B
+  source: Leung et al. (FASEB J 2009); BCO1 A379V intervention studies
+  impact: Конверсия бета-каротина в витамин A (BCO1 A379V)
+  interpretation: 'Вариант Ala379Val (C>T): аллель T снижает каталитическую активность BCO1 на ~32% (а
+    в паре с rs12934922 — до ~69%), ухудшая превращение растительного бета-каротина в активный ретинол.'
+  action_notes: Не полагаться только на бета-каротин; получать преформированный витамин A (ретинол) из
+    пищи (яйца, печень, молочное), но не превышать дозу из-за токсичности ретинола.
+  marker: bco1_poor_converter
+  marker_on: any
+
+rs12934922:
+  gene: BCO1
+  chrom: '16'
+  strand: +
+  ref_grch38: A
+  effect_allele: T
+  category: vitamins
+  impact_domain: supplements
+  evidence: B
+  source: Leung et al. (FASEB J 2009); BCO1 R267S intervention studies
+  impact: Конверсия бета-каротина в витамин A (BCO1 R267S)
+  interpretation: 'Вариант Arg267Ser (A>T): аллель T дополнительно снижает превращение бета-каротина в
+    ретинол, особенно в сочетании с rs7501331.'
+  action_notes: Учитывать форму витамина A в рационе и добавках (ретинол vs бета-каротин).
+  marker: bco1_poor_converter
+  marker_on: hom
+
+rs33972313:
+  gene: SLC23A1
+  chrom: '5'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: vitamins
+  impact_domain: supplements
+  evidence: A
+  source: Timpson et al. (AJCN 2010); Mendelian randomization plasma ascorbate
+  impact: Транспортёр витамина C (SVCT1, V264M)
+  interpretation: 'Редкий функциональный вариант (C>T на прямой цепи, кодирующий G>A, p.Val268Met): каждая
+    копия T снижает плазменную концентрацию витамина C примерно на 20–25% из-за сниженной реабсорбции
+    в почках и всасывания.'
+  action_notes: При носительстве T обеспечивать стабильное ежедневное поступление витамина C (фрукты/овощи
+    или умеренная добавка дробно в течение дня).
+
+rs6994076:
+  gene: TTPA
+  chrom: '8'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: A
+  category: vitamins
+  impact_domain: supplements
+  evidence: C
+  source: Wright et al. (AJCN 2009); TTPA promoter -980T>A
+  impact: Транспорт витамина E (белок TTPA)
+  interpretation: 'Промоторный вариант белка переноса альфа-токоферола (TTPA, A/T): ассоциирован с вариабельностью
+    базового уровня альфа-токоферола в крови и отклика на добавки витамина E.'
+  action_notes: Предпочитать пищевые источники витамина E (орехи, семена, масла), избегая мегадоз синтетического
+    альфа-токоферола.
+
+rs2108622:
+  gene: CYP4F2
+  chrom: '19'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: vitamins
+  impact_domain: system
+  evidence: A
+  source: CPIC Warfarin Guideline 2017; PharmGKB 1A
+  impact: Метаболизм витамина K и E (CYP4F2*3, V433M)
+  interpretation: Вариант Val433Met (C>T на прямой цепи, кодирующий G>A) снижает разрушение витамина K1
+    в печени — в результате требуется чуть более высокая доза варфарина (+8–11% на аллель), а также меняется
+    клиренс токоферолов.
+  action_notes: Значимый фармакогенетический маркер при подборе дозы варфарина (решает врач совместно
+    с VKORC1 и CYP2C9).
+
+# ── Pharmacogenetics (CPIC / PharmGKB) (43 SNPs) ──────────────────────────────
+rs4244285:
+  gene: CYP2C19
+  chrom: '10'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Guidelines (Clopidogrel, PPI, SSRI); PharmGKB 1A
+  impact: Метаболизм лекарств (CYP2C19*2 — нет функции)
+  interpretation: 'Нефункциональный сплайсинг-аллель CYP2C19*2 (G>A): снижает активацию клопидогрела (слабее
+    антиагрегантный эффект) и замедляет выведение ИПП (омепразол/лансопразол) и ряда СИОЗС (циталопрам,
+    эсциталопрам, сертралин).'
+  action_notes: 'Важный фармакогенетический маркер: обязательно показывать врачу при назначении клопидогрела,
+    ИПП или СИОЗС.'
+  marker: cyp2c19_poor_metabolizer
+  marker_on: any
+
+rs4986893:
+  gene: CYP2C19
+  chrom: '10'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Guidelines (CYP2C19); PharmGKB 1A
+  impact: Метаболизм лекарств (CYP2C19*3 — стоп-кодон)
+  interpretation: 'Нефункциональный стоп-аллель CYP2C19*3 (G>A, p.Trp212*): полностью выключает активность
+    копии гена, аналогично *2 (чаще встречается в азиатских популяциях).'
+  action_notes: Передавать врачу перед назначением клопидогрела, ИПП, вориконазола и СИОЗС.
+  marker: cyp2c19_poor_metabolizer
+  marker_on: any
+
+rs12248560:
+  gene: CYP2C19
+  chrom: '10'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Guidelines (PPI, SSRI, Voriconazole); PharmGKB 1A
+  impact: Ускоренный метаболизм лекарств (CYP2C19*17)
+  interpretation: 'Промоторный аллель CYP2C19*17 (C>T) усиливает транскрипцию фермента: быстрые/ультрабыстрые
+    метаболизаторы быстрее выводят ИПП (омепразол может хуже держать pH) и некоторые СИОЗС.'
+  action_notes: Обсуждать с врачом при слабом ответе на стандартные дозы омепразола/эсциталопрама (при
+    отсутствии *2/*3 на второй хромосоме).
+  marker: cyp2c19_ultrarapid_metabolizer
+  marker_on: any
+
+rs1799853:
+  gene: CYP2C9
+  chrom: '10'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Guidelines (NSAIDs, Warfarin, Statins); PharmGKB 1A
+  impact: Метаболизм НПВП и варфарина (CYP2C9*2)
+  interpretation: 'Вариант CYP2C9*2 (C>T, Arg144Cys) снижает активность фермента на ~30–50%: замедляется
+    клиренс варфарина, ибупрофена, целекоксиба, мелоксикама, флувастатина.'
+  action_notes: 'Фармакогенетика: избегать длительных высоких доз НПВП без контроля, при терапии варфарином
+    — подбор строго по МНО с врачом.'
+  marker: cyp2c9_poor_metabolizer
+  marker_on: any
+
+rs1057910:
+  gene: CYP2C9
+  chrom: '10'
+  strand: +
+  ref_grch38: A
+  effect_allele: C
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Guidelines (NSAIDs, Warfarin, Phenytoin); PharmGKB 1A
+  impact: Метаболизм НПВП и варфарина (CYP2C9*3)
+  interpretation: 'Вариант CYP2C9*3 (A>C, Ile359Leu) резко снижает активность CYP2C9 (~80–90% потери функции):
+    значительно замедляет выведение варфарина и ряда НПВП (ибупрофен, пироксикам, мелоксикам), повышая
+    риск ЖКТ-кровотечений.'
+  action_notes: При терапии НПВП начинать с минимальной эффективной дозы; при варфарине — обязательный
+    учёт врачом.
+  marker: cyp2c9_poor_metabolizer
+  marker_on: any
+
+rs3892097:
+  gene: CYP2D6
+  chrom: '22'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Guidelines (Opioids, SSRIs, TCAs, Tamoxifen); PharmGKB 1A
+  impact: Метаболизм ~25% лекарств (CYP2D6*4 — нет функции)
+  interpretation: 'Главный европейский нефункциональный аллель CYP2D6*4 (на прямой цепи C>T, сплайсинг
+    c.506-1G>A): нарушает активацию кодеина/трамадола/тамоксифена и замедляет выведение многих СИОЗС,
+    трицикликов и бета-блокаторов.'
+  action_notes: Критичный фармакогенетический маркер — фиксировать в медкарте для врача (учитывать, что
+    полная оценка CYP2D6 требует и анализа числа копий CNV).
+  marker: cyp2d6_reduced_function
+  marker_on: any
+
+rs1065852:
+  gene: CYP2D6
+  chrom: '22'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Guidelines (CYP2D6); PharmGKB 1A
+  impact: Сниженная активность CYP2D6 (*10 / *4, P34S)
+  interpretation: Вариант c.100C>T (на прямой цепи G>A) входит в состав сниженного аллеля *10 (очень част
+    в Азии) и нефункционального *4; уменьшает стабильность фермента CYP2D6.
+  action_notes: Оценивать вместе с rs3892097 (*4) и передавать врачу при подборе препаратов, метаболизируемых
+    CYP2D6.
+  marker: cyp2d6_reduced_function
+  marker_on: hom
+
+rs28371725:
+  gene: CYP2D6
+  chrom: '22'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Guidelines (CYP2D6*41); PharmGKB 1A
+  impact: Сниженная активность CYP2D6 (*41)
+  interpretation: Интронный сплайсинг-вариант CYP2D6*41 (C>T на прямой цепи) снижает уровень функционального
+    фермента (частичная функция).
+  action_notes: Учитывать в суммарном профиле CYP2D6 (activity score) при обсуждении с врачом.
+  marker: cyp2d6_reduced_function
+  marker_on: hom
+
+rs16947:
+  gene: CYP2D6
+  chrom: '22'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: B
+  source: PharmVar / CPIC CYP2D6 allele definitions
+  impact: Гаплотип CYP2D6 (R296C, маркер *2/*41)
+  interpretation: 'Вариант c.886C>T (на прямой цепи G>A, внимание: в hg19 REF=A, в hg38 REF=G) — сам по
+    себе *2 имеет нормальную функцию, но входит в каркас сниженного *41 и других гаплотипов.'
+  action_notes: Интерпретировать только в связке с rs28371725 (*41) и rs3892097 (*4).
+
+rs59421388:
+  gene: CYP2D6
+  chrom: '22'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Guidelines (CYP2D6*29); PharmVar
+  impact: Сниженная активность CYP2D6 (*29, V338M)
+  interpretation: Вариант Val338Met (на прямой цепи C>T, кодирующий G>A) определяет сниженный по функции
+    аллель CYP2D6*29.
+  action_notes: Учитывать в фармакогенетическом профиле CYP2D6.
+  marker: cyp2d6_reduced_function
+  marker_on: hom
+
+rs28371706:
+  gene: CYP2D6
+  chrom: '22'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Guidelines (CYP2D6*17); PharmVar
+  impact: Сниженная активность CYP2D6 (*17, T107I)
+  interpretation: Вариант Thr107Ile (на прямой цепи G>A, кодирующий C>T) определяет сниженный аллель CYP2D6*17.
+  action_notes: Учитывать в фармакогенетическом профиле CYP2D6.
+  marker: cyp2d6_reduced_function
+  marker_on: hom
+
+rs1135840:
+  gene: CYP2D6
+  chrom: '22'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: G
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: B
+  source: PharmVar CYP2D6 allele catalog
+  impact: Структурный маркер CYP2D6 (S486T)
+  interpretation: Вариант Ser486Thr (C>G на прямой цепи) присутствует во многих гаплотипах (*2, *4, *10,
+    *41); сам по себе не выключает фермент, но помогает определять звёздные аллели.
+  action_notes: Интерпретировать только вместе с ключевыми аллелями CYP2D6.
+
+rs776746:
+  gene: CYP3A5
+  chrom: '7'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Tacrolimus Guideline; PharmGKB 1A
+  impact: Экспрессия CYP3A5 (*3 — неэкспрессор vs *1)
+  interpretation: Сплайсинг-вариант CYP3A5*3 (на прямой цепи C=*3 неэкспрессор ~85–95% у европейцев, T=*1
+    функциональный экспрессор; в hg19 REF=C, в hg38 REF=T). У носителей *1 (T) быстрее выводится такролимус
+    и ряд субстратов CYP3A.
+  action_notes: Значимо для иммуносупрессантов (такролимус) и ряда лекарств — учитывать врачу.
+
+rs35599367:
+  gene: CYP3A4
+  chrom: '7'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: B
+  source: PharmGKB 2A; Wang et al. (Pharmacogenet Genomics 2011)
+  impact: Сниженная активность CYP3A4 (*22)
+  interpretation: Интронный вариант CYP3A4*22 (на прямой цепи G>A, кодирующий C>T) снижает экспрессию
+    главного печёночного фермента CYP3A4 (~50% у носителей), замедляя клиренс многих статинов (аторвастатин/симвастатин),
+    стероидов и кальциевых блокаторов.
+  action_notes: При носительстве A может требоваться меньшая доза субстратов CYP3A4; осторожнее с ингибиторами
+    CYP3A4 (грейпфрут, часть противогрибковых).
+  marker: cyp3a4_reduced_activity
+  marker_on: any
+
+rs4149056:
+  gene: SLCO1B1
+  chrom: '12'
+  strand: +
+  ref_grch38: T
+  effect_allele: C
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Statin-Associated Musculoskeletal Symptoms Guideline 2022; PharmGKB 1A
+  impact: Риск статин-индуцированной миопатии (SLCO1B1*5)
+  interpretation: Вариант Val174Ala (T>C) снижает захват статинов (особенно симвастатина, в меньшей степени
+    аторвастатина/розувастатина) клетками печени, повышая их концентрацию в крови и риск мышечных болей/миопатии
+    (у C/C риск выше в разы).
+  action_notes: 'Обязательно сообщить врачу при назначении статинов: по CPIC для носителей C предпочтительны
+    альтернативы или сниженные дозы и контроль КФК при миалгии.'
+  marker: slco1b1_decreased_function
+  marker_on: any
+
+rs9923231:
+  gene: VKORC1
+  chrom: '16'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Warfarin Guideline 2017; PharmGKB 1A
+  impact: Повышенная чувствительность к варфарину (VKORC1 -1639G>A)
+  interpretation: 'Промоторный вариант VKORC1 (на прямой цепи C>T, кодирующий -1639G>A): аллель T снижает
+    экспрессию мишени варфарина, поэтому для целевого МНО требуется заметно меньшая доза препарата (до
+    -50% у гомозигот T/T).'
+  action_notes: Критично при терапии варфарином — стартовую дозу подбирает врач по фармакогенетическому
+    алгоритму.
+  marker: vkorc1_high_sensitivity
+  marker_on: any
+
+rs887829:
+  gene: UGT1A1
+  chrom: '2'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: labs
+  evidence: A
+  source: CPIC Atazanavir/UGT1A1 Guideline; PharmGKB 1A; EBI GWAS Catalog
+  impact: Синдром Жильбера и билирубин (UGT1A1*80, тег *28)
+  interpretation: Вариант C>T находится в почти полном сцеплении (r²≈0.99) с промоторной вставкой UGT1A1*28
+    (TA7). Гомозигота T/T резко снижает конъюгацию непрямого билирубина — классическая доброкачественная
+    основа синдрома Жильбера, а также риск токсичности иринотекана/атазанавира.
+  action_notes: При T/T изолированный умеренный рост непрямого билирубина (особенно натощак/при стрессе/нагрузках)
+    чаще доброкачественный, но требует подтверждения фракций и нормальных АЛТ/АСТ/ГГТ. Сообщать онкологу
+    при химиотерапии.
+  marker: ugt1a1_gilbert_variant
+  marker_on: hom
+
+rs4148323:
+  gene: UGT1A1
+  chrom: '2'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: labs
+  evidence: A
+  source: PharmGKB 1A (UGT1A1*6); ClinVar
+  impact: Конъюгация билирубина и лекарств (UGT1A1*6, G71R)
+  interpretation: Миссенс-вариант Gly71Arg (G>A) снижает активность UGT1A1 (~30–60%), вызывая склонность
+    к гипербилирубинемии (синдром Жильбера) и повышая риск токсичности иринотекана.
+  action_notes: Учитывать при интерпретации повышенного непрямого билирубина и при назначении субстратов
+    UGT1A1.
+  marker: ugt1a1_gilbert_variant
+  marker_on: hom
+
+rs1801280:
+  gene: NAT2
+  chrom: '8'
+  strand: +
+  ref_grch38: T
+  effect_allele: C
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: PharmGKB 1B (NAT2*5); Hein et al. NAT2 nomenclature
+  impact: Медленное ацетилирование (NAT2*5, I114T)
+  interpretation: Аллель C (Ile114Thr) — наиболее частый европейский маркер «медленного ацетилятора» NAT2;
+    влияет на выведение изониазида, гидралазина, сульфасалазина и детоксикацию ароматических аминов.
+  action_notes: Оценивать вместе с rs1799930 (*6) и rs1799931 (*7); учитывать врачу при назначении субстратов
+    NAT2.
+
+rs1799930:
+  gene: NAT2
+  chrom: '8'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: PharmGKB 1B (NAT2*6); Hein et al.
+  impact: Медленное ацетилирование (NAT2*6, R197Q)
+  interpretation: Аллель A (Arg197Gln) — второй ключевой аллель медленного ацетилирования NAT2; в гомозиготе
+    или в паре с *5 формирует фенотип медленного ацетилятора.
+  action_notes: Учитывать вместе с rs1801280 и rs1799931 при терапии изониазидом/сульфаниламидами.
+
+rs1799931:
+  gene: NAT2
+  chrom: '8'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: PharmGKB 1B (NAT2*7); Hein et al.
+  impact: Медленное ацетилирование (NAT2*7, G286E)
+  interpretation: Аллель A (Gly286Glu) снижает стабильность NAT2 и формирует аллель медленного ацетилирования
+    *7.
+  action_notes: Оценивать в составе полной панели NAT2 (*5/*6/*7/*14).
+
+rs1801279:
+  gene: NAT2
+  chrom: '8'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: PharmGKB (NAT2*14); Hein et al.
+  impact: Медленное ацетилирование (NAT2*14, R64Q)
+  interpretation: Аллель A (Arg64Gln) — аллель медленного ацетилирования NAT2*14.
+  action_notes: Оценивать в составе панели NAT2.
+
+rs1041983:
+  gene: NAT2
+  chrom: '8'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: B
+  source: PharmGKB; EBI GWAS Catalog (NAT2 C282T)
+  impact: Сцепленный маркер ацетилирования (NAT2 C282T)
+  interpretation: Синонимичный вариант C282T (C>T), тесно сцепленный с *6/*7 и ассоциированный со снижением
+    метаболита кофеина AFMU по данным GWAS.
+  action_notes: Дополнительный маркер к *5/*6/*7 для определения фенотипа NAT2.
+
+rs1142345:
+  gene: TPMT
+  chrom: '6'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Thiopurine Guideline 2018; PharmGKB 1A
+  impact: Токсичность тиопуринов (TPMT*3C / *3A)
+  interpretation: 'Нефункциональный аллель (на прямой цепи T>C, кодирующий c.719A>G, Tyr240Cys): резко
+    повышает риск тяжёлой миелосупрессии при приёме азатиоприна, 6-меркаптопурина и тиогуанина.'
+  action_notes: 'Критичный фармакогенетический маркер: обязательно сообщать врачу перед назначением любых
+    тиопуринов.'
+
+rs1800460:
+  gene: TPMT
+  chrom: '6'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Thiopurine Guideline 2018; PharmGKB 1A
+  impact: Токсичность тиопуринов (TPMT*3B / *3A)
+  interpretation: 'Нефункциональный вариант Ala154Thr (на прямой цепи C>T, кодирующий c.460G>A): обычно
+    наследуется вместе с rs1142345 (*3A) и резко снижает активность TPMT.'
+  action_notes: Сообщать врачу перед назначением тиопуринов (азатиоприн и др.).
+
+rs116855232:
+  gene: NUDT15
+  chrom: '13'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Thiopurine Guideline 2018; PharmGKB 1A
+  impact: Токсичность тиопуринов (NUDT15*3, R139C)
+  interpretation: 'Нефункциональный вариант Arg139Cys (C>T): вызывает тяжёлую лейкопению при стандартных
+    дозах азатиоприна и 6-меркаптопурина (ключевой маркер наравне с TPMT).'
+  action_notes: Критичный фармакогенетический маркер при назначении тиопуринов — решает врач.
+
+rs3918290:
+  gene: DPYD
+  chrom: '1'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Fluoropyrimidines Guideline; EMA/FDA; PharmGKB 1A
+  impact: Токсичность фторпиримидинов (DPYD*2A)
+  interpretation: Сплайсинг-мутация c.1905+1G>A (на прямой цепи C>T) полностью выключает дигидропиримидиндегидрогеназу
+    (DPD), создавая угрозу жизнеугрожающей токсичности 5-фторурацила и капецитабина.
+  action_notes: Обязательно указывать в медкарте для онколога перед любой химиотерапией фторпиримидинами.
+
+rs67376798:
+  gene: DPYD
+  chrom: '1'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Fluoropyrimidines Guideline; PharmGKB 1A
+  impact: Сниженная активность DPYD (D949V)
+  interpretation: Вариант Asp949Val (T>A, c.2846A>T на минус-цепи) снижает активность DPD на ~50%, требуя
+    коррекции стартовой дозы 5-ФУ/капецитабина по CPIC.
+  action_notes: Важный фармакогенетический маркер для онколога.
+
+rs55886062:
+  gene: DPYD
+  chrom: '1'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: C
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Fluoropyrimidines Guideline (DPYD*13); PharmGKB 1A
+  impact: Отсутствие функции DPYD (*13, I560S)
+  interpretation: Редкий нефункциональный вариант Ile560Ser (на прямой цепи A>C, кодирующий T>G) входит
+    в обязательную четвёрку DPYD по рекомендациям CPIC/EMA.
+  action_notes: Обязательно фиксировать для врача при планировании терапии фторпиримидинами.
+
+rs1801159:
+  gene: DPYD
+  chrom: '1'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: B
+  source: PharmGKB (DPYD*5, I543V)
+  impact: Вариант DPYD*5 (Ile543Val)
+  interpretation: 'Частый вариант Ile543Val (T>C на прямой цепи): по современным данным CPIC считается
+    вариантом с сохранённой/нормальной функцией (не требует снижения дозы сам по себе).'
+  action_notes: Информативно — не путать с высокорисковыми вариантами DPYD (*2A, *13, D949V).
+
+rs12979860:
+  gene: IFNL4
+  chrom: '19'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Peginterferon/IFNL3 Guideline; Ge et al. (Nature 2009)
+  impact: Иммунный ответ и интерферон (IFNL3/IFNL4)
+  interpretation: 'Вариант C>T в локусе IL28B/IFNL4: генотип C/C связан с заметно более высоким спонтанным
+    клиренсом вируса гепатита C и лучшим ответом на интерфероновую терапию, а носители T — с более слабым
+    ответом.'
+  action_notes: Чисто клинико-информативный фармакогенетический маркер (для инфекциониста).
+
+rs1799971:
+  gene: OPRM1
+  chrom: '6'
+  strand: +
+  ref_grch38: A
+  effect_allele: G
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: B
+  source: PharmGKB 2A/2B (OPRM1 A118G); naltrexone/opioid meta-analyses
+  impact: Мю-опиоидный рецептор (боль, опиоиды, налтрексон)
+  interpretation: 'Вариант A118G (Asn40Asp): носители G часто имеют чуть иную болевую чувствительность,
+    потребность в более высокой дозе опиоидных анальгетиков после операций и более выраженный ответ на
+    налтрексон при алкогольной зависимости.'
+  action_notes: Информативно для анестезиолога/врача при послеоперационном обезболивании.
+
+rs1045642:
+  gene: ABCB1
+  chrom: '7'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: B
+  source: PharmGKB (ABCB1 C3435T); P-glycoprotein studies
+  impact: Транспортёр P-гликопротеин (ABCB1 C3435T)
+  interpretation: 'Вариант C3435T (на прямой цепи A=3435T, G=3435C): аллель A (3435T) ассоциирован со
+    сниженной экспрессией P-гликопротеина в кишечнике и ГЭБ, что может повышать биодоступность части препаратов
+    (дигоксин и др.).'
+  action_notes: Учитывать совместно с другими фармакогенами; не менять дозы лекарств без врача.
+
+rs2032582:
+  gene: ABCB1
+  chrom: '7'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: C
+  source: PharmGKB (ABCB1 G2677T/A)
+  impact: Транспортёр P-гликопротеин (ABCB1 G2677T/A)
+  interpretation: Триаллельный миссенс-вариант Ala893Ser/Thr (на прямой цепи C=2677G, A=2677T, T=2677A),
+    образующий гаплотип с C3435T (rs1045642).
+  action_notes: Информативно в связке с rs1045642.
+
+rs12208357:
+  gene: SLC22A1
+  chrom: '6'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: glp1
+  evidence: B
+  source: PharmGKB 2B; Dujic et al. (Diabetes 2015) OCT1/metformin
+  impact: Захват и переносимость метформина (OCT1 R61C)
+  interpretation: 'Вариант Arg61Cys (C>T) снижает функцию печёночного транспортёра OCT1: у носителей T
+    может быть выше риск ЖКТ-непереносимости метформина и слегка изменён его гликемический эффект.'
+  action_notes: При назначении метформина начинать с пролонгированной формы (XR) и плавного титрования
+    с врачом.
+  marker: slc22a1_reduced_uptake
+  marker_on: any
+
+rs1050828:
+  gene: G6PD
+  chrom: X
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: supplements
+  evidence: A
+  source: CPIC G6PD Guideline 2022; WHO; ClinVar (Pathogenic)
+  impact: Дефицит G6PD (вариант A-, Val68Met, риск гемолиза)
+  interpretation: 'X-сцепленный вариант Val68Met (на прямой цепи C>T, кодирующий c.202G>A): вызывает дефицит
+    G6PD (у мужчин-гемизигот и женщин-гомозигот) — риск гемолиза при окислительном стрессе. Также искусственно
+    занижает HbA1c на ~0.3–0.8% из-за более короткой жизни эритроцитов!'
+  action_notes: Избегать высоких доз витамина C (≥1 г и особенно в/в), менадиона (вит. K3), бобов фава
+    и противопоказанных препаратов (список CPIC). Гликемию перепроверять по глюкозе/фруктозамину.
+  marker: g6pd_deficiency
+  marker_on: any
+
+rs1050829:
+  gene: G6PD
+  chrom: X
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: pharmacogenetics
+  impact_domain: supplements
+  evidence: A
+  source: CPIC G6PD Guideline 2022; ClinVar
+  impact: Вариант G6PD A+ (Asn126Asp)
+  interpretation: 'X-сцепленный вариант Asn126Asp (на прямой цепи T>C, кодирующий c.376A>G): сам по себе
+    имеет почти нормальную активность (~85%), но в цис-комбинации с rs1050828 формирует дефицитный гаплотип
+    G6PD A-.'
+  action_notes: Оценивать строго вместе с rs1050828; изолированно без rs1050828 дефицит обычно не вызывает.
+
+rs5030868:
+  gene: G6PD
+  chrom: X
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: supplements
+  evidence: A
+  source: CPIC G6PD Guideline 2022; ClinVar (Pathogenic — Mediterranean)
+  impact: Дефицит G6PD Средиземноморский (S188F, класс II)
+  interpretation: X-сцепленный вариант Ser188Phe (на прямой цепи G>A, кодирующий c.563C>T) — один из самых
+    тяжёлых и распространённых в Средиземноморье и Восточной Европе вариантов дефицита G6PD (активность
+    <10%), высокий риск острого гемолиза.
+  action_notes: Строго избегать триггеров гемолиза (высокие дозы витамина C, бобы фава, дапсон, расбуриказа,
+    примахин и др. по CPIC); подтвердить ферментативной активностью G6PD с врачом.
+  marker: g6pd_deficiency
+  marker_on: any
+
+rs1799807:
+  gene: BCHE
+  chrom: '3'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: ClinVar (Drug response); PharmGKB 1B (BCHE A-variant)
+  impact: Атипичная бутирилхолинэстераза (риск при анестезии)
+  interpretation: 'Вариант Asp70Gly / Asp98Gly (на прямой цепи T>C, кодирующий A>G): у гомозигот C/C резко
+    замедляется разрушение миорелаксантов сукцинилхолина и мивакурия (длительное апноэ после наркоза).'
+  action_notes: При гомозиготе C/C обязательно предупреждать анестезиолога перед любыми операциями.
+
+rs2395029:
+  gene: HCP5
+  chrom: '6'
+  strand: +
+  ref_grch38: T
+  effect_allele: G
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Abacavir/HLA-B*57:01 Guideline; PharmGKB 1A
+  impact: Тег-маркер HLA-B*57:01 (гиперчувствительность к абакавиру)
+  interpretation: Аллель G в европейских популяциях находится в почти полном сцеплении с HLA-B*57:01 —
+    высоким риском тяжёлой реакции гиперчувствительности на абакавир и лекарственного поражения печени
+    на флуклоксациллин.
+  action_notes: Клинический фармакогенетический маркер (подтверждается прямым HLA-типированием при необходимости).
+
+rs3745274:
+  gene: CYP2B6
+  chrom: '19'
+  strand: +
+  ref_grch38: G
+  effect_allele: T
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: A
+  source: CPIC Efavirenz/Sertraline CYP2B6 Guideline; PharmGKB 1A
+  impact: Сниженная активность CYP2B6 (*6 / *9, Q172H)
+  interpretation: 'Вариант c.516G>T (G>T) снижает активность CYP2B6: влияет на метаболизм эфавиренца,
+    сертралина (совместно с CYP2C19), бупропиона и метадона.'
+  action_notes: Сообщать врачу при подборе сертралина, бупропиона и других субстратов CYP2B6.
+
+rs1042713:
+  gene: ADRB2
+  chrom: '5'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: pharmacogenetics
+  impact_domain: workouts
+  evidence: B
+  source: PharmGKB (ADRB2 Gly16Arg); exercise & bronchodilator studies
+  impact: Бета-2 адренорецептор (липолиз и бронходилататоры)
+  interpretation: 'Вариант Gly16Arg (G>A): аллель A (Arg16) влияет на десенситизацию бета-2 рецепторов,
+    отклик на короткодействующие бронходилататоры и адренергическую мобилизацию жиров при нагрузке.'
+  action_notes: Информативно; клинически обсуждается в контексте астмы и тренировочного ответа.
+
+rs1801253:
+  gene: ADRB1
+  chrom: '10'
+  strand: +
+  ref_grch38: G
+  effect_allele: G
+  category: pharmacogenetics
+  impact_domain: system
+  evidence: B
+  source: PharmGKB 2B (ADRB1 Arg389Gly); beta-blocker response studies
+  impact: Бета-1 адренорецептор (ЧСС и отклик на бета-блокаторы)
+  interpretation: 'Вариант Gly389Arg (G=Gly389, C=Arg389): носители Arg389 (C/C) обычно сильнее реагируют
+    снижением ЧСС и давления на бета-блокаторы (метопролол, карведилол), чем носители Gly389 (G).'
+  action_notes: Информативно для кардиолога при подборе бета-блокаторов.
+
+# ── Lipids, Cardio & Coagulation (22 SNPs) ────────────────────────────────────
+rs429358:
+  gene: APOE
+  chrom: '19'
+  strand: +
+  ref_grch38: T
+  effect_allele: C
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: A
+  source: ClinVar; ESC/EAS Dyslipidemia Guidelines; APOE e4 meta-analyses
+  impact: ApoE ε4-аллель (липиды, ЛПНП, когнитивный риск; пара с rs7412)
+  interpretation: 'Ключевой SNP изоформы ApoE ε4 (T>C, Cys112Arg): аллель C определяет ε4 (в паре с rs7412
+    C/C: T/C → ε3/ε4, C/C → ε4/ε4). Связан с более высоким ЛПНП/ApoB, усиленным подъёмом ЛПНП на насыщенные
+    жиры и повышенным долгосрочным риском болезни Альцгеймера — это вероятность, не приговор.'
+  action_notes: Обязательно интерпретировать в паре с rs7412. При наличии C держать ApoB/ЛПНП под строгим
+    контролем, ограничивать насыщенные жиры и не злоупотреблять высокими дозами ретинола.
+  marker_by_effect_copies:
+    1: apoe_e3e4
+    2: apoe_e4_homozygous
+
+rs7412:
+  gene: APOE
+  chrom: '19'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: A
+  source: ClinVar; ESC/EAS Dyslipidemia Guidelines
+  impact: ApoE ε2-аллель (липиды, ремнанты; пара с rs429358)
+  interpretation: 'Второй SNP пары ApoE (C>T, Arg158Cys): аллель T определяет ε2. Гетерозигота (ε2/ε3)
+    обычно даёт более низкий ЛПНП, но гомозигота T/T (ε2/ε2) предрасполагает к гиперлипопротеинемии III
+    типа (рост триглицеридов и ремнантов) при лишнем весе/инсулинорезистентности.'
+  action_notes: Интерпретировать строго вместе с rs429358; при T/T контролировать триглицериды и не-ЛПВП
+    холестерин.
+  marker: apoe_e2_homozygous
+  marker_on: hom
+
+rs10455872:
+  gene: LPA
+  chrom: '6'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: G
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: A
+  source: Clarke et al. (NEJM 2009); ESC/EAS Lp(a) Consensus 2022
+  impact: Генетически повышенный липопротеин(а) [Lp(a)]
+  interpretation: Аллель G — один из сильнейших генетических маркеров высокого Lp(a) и повышенного сердечно-сосудистого
+    риска, независимого от обычного ЛПНП (объясняет значимую долю вариации Lp(a)).
+  action_notes: Обязательно сдать анализ крови на Lp(a) хотя бы один раз в жизни! Если Lp(a) повышен —
+    держать ApoB/ЛПНП и давление максимально оптимальными.
+  marker: lpa_elevated_risk
+  marker_on: any
+
+rs3798220:
+  gene: LPA
+  chrom: '6'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: A
+  source: Clarke et al. (NEJM 2009); ESC/EAS Lp(a) Consensus 2022
+  impact: Высокий липопротеин(а) [Lp(a)] и риск ИБС (I4399M)
+  interpretation: 'Миссенс-вариант в гене аполипопротеина(а) (на прямой цепи T>C): аллель C тесно связан
+    с резко повышенным Lp(a) и ускоренным атерогенезом.'
+  action_notes: Сдать анализ на Lp(a) и ApoB; обсудить с кардиологом стратегию контроля всех модифицируемых
+    факторов риска.
+  marker: lpa_elevated_risk
+  marker_on: any
+
+rs11591147:
+  gene: PCSK9
+  chrom: '1'
+  strand: +
+  ref_grch38: G
+  effect_allele: T
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: A
+  source: Cohen et al. (NEJM 2006); ClinVar (Protective)
+  impact: Защитный вариант PCSK9 R46L (пожизненно ниже ЛПНП)
+  interpretation: 'Вариант Arg46Leu (G>T) снижает активность PCSK9, ускоряя очищение крови от ЛПНП: носители
+    T имеют в среднем на ~15% ниже ЛПНП и почти вдвое ниже пожизненный риск ИБС.'
+  action_notes: Благоприятный защитный маркер; при этом базовую липидограмму всё равно стоит контролировать.
+
+rs505151:
+  gene: PCSK9
+  chrom: '1'
+  strand: +
+  ref_grch38: G
+  effect_allele: G
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: B
+  source: Qiu et al. (Lipids Health Dis 2015); PCSK9 E670G meta-analysis
+  impact: Повышение ЛПНП (PCSK9 E670G)
+  interpretation: 'Вариант Glu670Gly (A>G, в GRCh38 REF=G): аллель G ассоциирован с чуть более высокой
+    активностью PCSK9 и более высоким ЛПНП в ряде популяций.'
+  action_notes: Ориентироваться на реальный ЛПНП и ApoB в анализах.
+
+rs6511720:
+  gene: LDLR
+  chrom: '19'
+  strand: +
+  ref_grch38: G
+  effect_allele: T
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: A
+  source: Global Lipids Genetics Consortium (Nat Genet 2013); EBI GWAS Catalog
+  impact: Защитный вариант рецептора ЛПНП (LDLR)
+  interpretation: 'Интронный вариант LDLR (G>T): минорный аллель T усиливает экспрессию рецепторов ЛПНП
+    и стабильно ассоциирован с более низким ЛПНП/ApoB и меньшим риском ИБС.'
+  action_notes: Благоприятный липидный маркер.
+
+rs599839:
+  gene: PSRC1
+  chrom: '1'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: G
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: A
+  source: Musunuru et al. (Nature 2010); GLGC GWAS (SORT1/CELSR2/PSRC1)
+  impact: Локус SORT1/PSRC1 и уровень ЛПНП
+  interpretation: 'Сильнейший общий GWAS-локус для ЛПНП: аллель G (минорный) снижает ЛПНП и риск ИБС,
+    тогда как частый аллель A ассоциирован с более высоким ЛПНП.'
+  action_notes: Информативно в контексте липидограммы (ApoB, ЛПНП).
+
+rs646776:
+  gene: CELSR2
+  chrom: '1'
+  strand: +
+  ref_grch38: C
+  effect_allele: C
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: A
+  source: Kathiresan et al. (Nat Genet 2008); GLGC GWAS
+  impact: Локус CELSR2/SORT1 и уровень ЛПНП
+  interpretation: 'Тесно сцеплен с rs599839: аллель C ассоциирован со снижением ЛПНП и риска ИБС, а частый
+    аллель T — с более высоким ЛПНП.'
+  action_notes: Ориентироваться на реальную липидограмму.
+
+rs662799:
+  gene: APOA5
+  chrom: '11'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: G
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: A
+  source: Sarwar et al. (Lancet 2010); GLGC Triglycerides GWAS
+  impact: Повышенные триглицериды (APOA5 -1131T>C)
+  interpretation: 'Один из сильнейших общих генетических вариантов для триглицеридов: аллель G на прямой
+    цепи (кодирующий -1131C) повышает триглицериды натощак и после еды и снижает ЛПВП.'
+  action_notes: При наличии G особенно важны контроль простых углеводов/фруктозы, алкоголя, омега-3 (EPA/DHA)
+    и регулярная проверка триглицеридов.
+
+rs328:
+  gene: LPL
+  chrom: '8'
+  strand: +
+  ref_grch38: C
+  effect_allele: G
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: A
+  source: GLGC GWAS; Rip et al. (ATVB 2006) LPL S447X
+  impact: Защитный вариант липопротеинлипазы (LPL S447X)
+  interpretation: 'Вариант Ser447* (C>G) укорачивает фермент на 2 аминокислоты, повышая его активность:
+    носители G стабильно имеют более низкие триглицериды, более высокий ЛПВП и сниженный риск ИБС.'
+  action_notes: Благоприятный липидный маркер.
+
+rs708272:
+  gene: CETP
+  chrom: '16'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: A
+  source: Thompson et al. (JAMA 2008); CETP TaqIB meta-analysis
+  impact: Уровень ЛПВП (CETP TaqIB)
+  interpretation: Аллель A (B2) снижает активность белка переноса эфиров холестерина CETP, повышая уровень
+    ЛПВП и чуть снижая риск ИБС.
+  action_notes: Информативно при интерпретации ЛПВП в липидограмме.
+
+rs5882:
+  gene: CETP
+  chrom: '16'
+  strand: +
+  ref_grch38: G
+  effect_allele: G
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: B
+  source: Barzilai et al. (JAMA 2003); GLGC CETP I405V
+  impact: Размер частиц ЛПВП/ЛПНП (CETP I405V)
+  interpretation: 'Вариант Ile405Val (A>G, в GRCh38 REF=G): аллель G (Val) ассоциирован со снижением активности
+    CETP и более крупными частицами ЛПВП.'
+  action_notes: Информативно в контексте липидограммы.
+
+rs4299376:
+  gene: ABCG8
+  chrom: '2'
+  strand: +
+  ref_grch38: G
+  effect_allele: G
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: A
+  source: Teupser et al. (Circ Cardiovasc Genet 2010); EBI GWAS Catalog
+  impact: Кишечное всасывание холестерина и стеролов (ABCG8)
+  interpretation: Аллель G ассоциирован с более высоким кишечным всасыванием холестерина и фитостеролов,
+    а также более высоким ЛПНП и риском желчнокаменной болезни (у «гиперабсорберов» обычно лучше отклик
+    на эзетимиб).
+  action_notes: При высоком ЛПНП и носительстве G стоит больше внимания уделять пищевому холестерину/клетчатке
+    (псиллиуму).
+
+rs1333049:
+  gene: CDKN2B-AS1
+  chrom: '9'
+  strand: +
+  ref_grch38: G
+  effect_allele: C
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: A
+  source: WTCCC (Nature 2007); CARDIoGRAMplusC4D 9p21
+  impact: Сердечно-сосудистый риск (локус 9p21)
+  interpretation: 'Один из самых воспроизводимых общих локусов риска ИБС (независимо от липидов): каждая
+    копия аллеля C повышает относительный риск ИБС примерно на 20–30% через сосудистое ремоделирование.'
+  action_notes: 'Веский повод держать идеальными модифицируемые факторы: ApoB/ЛПНП, давление, отсутствие
+    курения, регулярное кардио.'
+
+rs10757278:
+  gene: CDKN2B-AS1
+  chrom: '9'
+  strand: +
+  ref_grch38: A
+  effect_allele: G
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: A
+  source: Helgadottir et al. (Science 2007); CARDIoGRAMplusC4D 9p21
+  impact: Сердечно-сосудистый риск (9p21, пара с rs1333049)
+  interpretation: 'Второй классический маркер локуса 9p21 (в сильном сцеплении с rs1333049): аллель G
+    ассоциирован с повышенным риском инфаркта миокарда и аневризм.'
+  action_notes: Оценивать вместе с rs1333049; акцент на контроль давления и липидов.
+
+rs6025:
+  gene: F5
+  chrom: '1'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: lipids_cardio
+  impact_domain: hrt
+  evidence: A
+  source: ClinVar (Pathogenic); ACMG/ASH Thrombophilia Guidelines
+  impact: Фактор V Лейдена (наследственная тромбофилия)
+  interpretation: 'Мутация Factor V Leiden (на прямой цепи C>T, кодирующий c.1601G>A, p.Arg534Gln; внимание:
+    в hg19 REF=T!). Вызывает резистентность к активированному протеину C и повышает риск венозных тромбозов
+    (в ~3–7 раз у гетерозигот, до ~25–50 раз у гомозигот).'
+  action_notes: 'Критично для врача: резкий рост риска тромбоза при эстрогенах/КОК, длительных перелётах,
+    обездвиживании и росте гематокрита на ГЗТ/TRT.'
+  marker: factor_v_leiden
+  marker_on: any
+
+rs1799963:
+  gene: F2
+  chrom: '11'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: lipids_cardio
+  impact_domain: hrt
+  evidence: A
+  source: ClinVar (Pathogenic); ACMG/ASH Thrombophilia Guidelines
+  impact: Мутация протромбина G20210A (тромбофилия)
+  interpretation: 'Вариант в 3''-UTR гена фактора II (G>A): повышает уровень протромбина в плазме примерно
+    на 30% и увеличивает риск венозных тромбозов в ~2–4 раза (особенно в сочетании с фактором V Лейдена
+    или гормонами).'
+  action_notes: 'Важно для врача: учитывать при эстрогенах/КОК, хирургии, перелётах и при мониторинге
+    гематокрита на ГЗТ/TRT.'
+  marker: prothrombin_g20210a
+  marker_on: any
+
+rs699:
+  gene: AGT
+  chrom: '1'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: G
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: B
+  source: Jeunemaitre et al. (Cell 1992); AGT M235T BP meta-analyses
+  impact: Ангиотензиноген (солечувствительное давление, M235T)
+  interpretation: 'Вариант Met235Thr (на прямой цепи A>G, кодирующий T>C): аллель G (235Thr) ассоциирован
+    с на ~10–20% более высоким ангиотензиногеном и повышенной чувствительностью давления к избытку натрия.'
+  action_notes: При склонности к повышенному давлению уделять внимание балансу натрия и калия (DASH-принцип).
+
+rs4343:
+  gene: ACE
+  chrom: '17'
+  strand: +
+  ref_grch38: G
+  effect_allele: G
+  category: lipids_cardio
+  impact_domain: workouts
+  evidence: B
+  source: Abdollahi et al. (Eur J Hum Genet 2008); ACE I/D tag SNP
+  impact: 'Активность АПФ (тег-маркер ACE I/D: давление и сила/выносливость)'
+  interpretation: 'У европейцев rs4343 — надёжный SNV-тег для классической делеции/инсерции ACE I/D: аллель
+    G соответствует аллелю D (выше активность АПФ — чаще силовой/спринтерский профиль и чуть выше риск
+    гипертензии), аллель A соответствует I (выносливость).'
+  action_notes: Информативно для кардио/силового профиля и контроля артериального давления.
+
+rs1799983:
+  gene: NOS3
+  chrom: '7'
+  strand: +
+  ref_grch38: T
+  effect_allele: T
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: B
+  source: Casas et al. (Heart 2004); NOS3 Glu298Asp meta-analyses
+  impact: Синтез оксида азота NO (NOS3 Glu298Asp)
+  interpretation: 'Вариант Glu298Asp (G>T, в GRCh38 REF=T): аллель T (298Asp) ассоциирован с более быстрым
+    протеолизом эндотелиальной NO-синтазы, чуть более высоким риском эндотелиальной дисфункции и гипертензии.'
+  action_notes: Поддерживать эндотелиальную функцию аэробной нагрузкой, пищевыми нитратами (свёкла, руккола)
+    и контролем давления.
+
+rs5186:
+  gene: AGTR1
+  chrom: '3'
+  strand: +
+  ref_grch38: A
+  effect_allele: C
+  category: lipids_cardio
+  impact_domain: labs
+  evidence: B
+  source: Bonnardeaux et al. (Hypertension 1994); AGTR1 A1166C meta-analyses
+  impact: Рецептор ангиотензина II (AGTR1 A1166C, давление)
+  interpretation: 'Вариант в 3''-UTR рецептора AT1 (A>C): аллель C ослабляет ингибирование микроРНК miR-155,
+    повышая экспрессию рецептора и склонность к росту давления/сосудистой жёсткости.'
+  action_notes: Контролировать артериальное давление, особенно при избытке натрия или стимуляторов.
+
+# ── Fatty Acids & Nutrigenomics (7 SNPs) ──────────────────────────────────────
+rs174537:
+  gene: FADS1
+  chrom: '11'
+  strand: +
+  ref_grch38: G
+  effect_allele: T
+  category: fatty_acids
+  impact_domain: supplements
+  evidence: A
+  source: Tanaka et al. (PLoS Genet 2009); Mathias et al. FADS1 GWAS
+  impact: Конверсия омега-3/6 (FADS1 кластер, ALA→EPA/DHA)
+  interpretation: 'Сильный GWAS-маркер активности дельта-5-десатуразы (расположен в кластере MYRF/FADS1):
+    аллель T снижает превращение растительной альфа-линоленовой кислоты (ALA) в длинноцепочечные EPA и
+    DHA.'
+  action_notes: При носительстве T получать готовые EPA/DHA напрямую из жирной рыбы или добавки омега-3
+    (рыбий жир/масло водорослей), не рассчитывая на льняное масло.
+  marker: fads1_low_conversion
+  marker_on: hom
+
+rs174546:
+  gene: FADS1
+  chrom: '11'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: fatty_acids
+  impact_domain: supplements
+  evidence: A
+  source: GLGC / CHARGE PUFA GWAS; EBI GWAS Catalog
+  impact: Метаболизм ПНЖК и липидов (FADS1 3'-UTR)
+  interpretation: 'В тесном сцеплении с rs174537: аллель T снижает активность десатуразы FADS1 (ниже конверсия
+    в арахидоновую кислоту и EPA/DHA, при этом чуть ниже ЛПНП и выше триглицериды).'
+  action_notes: Предпочитать прямые источники EPA/DHA (жирная рыба / омега-3).
+
+rs174547:
+  gene: FADS1
+  chrom: '11'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: fatty_acids
+  impact_domain: supplements
+  evidence: A
+  source: CHARGE Consortium PUFA GWAS; EBI GWAS Catalog
+  impact: Активность дельта-5-десатуразы (FADS1)
+  interpretation: 'Интронный маркер гаплотипа FADS1: аллель C соответствует сниженной конверсии ALA→EPA/DHA
+    и LA→AA.'
+  action_notes: Оценивать вместе с rs174537; фокус на прямые EPA/DHA.
+
+rs1535:
+  gene: FADS2
+  chrom: '11'
+  strand: +
+  ref_grch38: A
+  effect_allele: G
+  category: fatty_acids
+  impact_domain: supplements
+  evidence: A
+  source: Lemaitre et al. (PLoS Genet 2011); CHARGE Omega-3 GWAS
+  impact: Дельта-6-десатураза (FADS2, омега-3/6)
+  interpretation: Аллель G ассоциирован со сниженной активностью FADS2 и более низкими уровнями длинноцепочечных
+    омега-3/6 при растительном рационе.
+  action_notes: Обеспечивать прямые EPA/DHA в рационе.
+
+rs3734398:
+  gene: ELOVL2
+  chrom: '6'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: fatty_acids
+  impact_domain: supplements
+  evidence: A
+  source: Lemaitre et al. (PLoS Genet 2011); CHARGE Omega-3 GWAS
+  impact: Удлинение EPA в DHA (элонгаза ELOVL2)
+  interpretation: Аллель C ассоциирован с более высоким уровнем EPA/DPA и сниженным превращением в конечную
+    DHA — скорость этого звена лимитирует синтез DHA.
+  action_notes: При выборе омега-3 обращать внимание, чтобы в составе была достаточная доля готовой DHA,
+    а не только EPA.
+
+rs5082:
+  gene: APOA2
+  chrom: '1'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: G
+  category: fatty_acids
+  impact_domain: weight
+  evidence: B
+  source: Corella et al. (Arch Intern Med 2009; J Nutr 2011) APOA2 -265T>C
+  impact: Чувствительность веса к насыщенным жирам (APOA2)
+  interpretation: 'Промоторный вариант -265T>C (на прямой цепи G=кодирующий C, A=кодирующий T): в нескольких
+    когортах гомозиготы G/G (кодирующие C/C) демонстрировали значимо более высокий ИМТ именно при высоком
+    потреблении насыщенных жиров (>22 г/сут).'
+  action_notes: При G/G держать насыщенные жиры в умеренных рамках, заменяя их на моно- и полиненасыщенные
+    (оливковое масло, рыба, орехи).
+
+rs1799883:
+  gene: FABP2
+  chrom: '4'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: T
+  category: fatty_acids
+  impact_domain: weight
+  evidence: B
+  source: Baier et al. (JCI 1995); FABP2 Ala54Thr meta-analyses
+  impact: Всасывание пищевых жиров (FABP2 Ala54Thr)
+  interpretation: 'Вариант Ala54Thr (на прямой цепи T=Thr54, C=Ala54): белок Thr54 связывает длинноцепочечные
+    жирные кислоты примерно вдвое сильнее, что ассоциировано с более высокой постпрандиальной липемией
+    и инсулинорезистентностью на высокожировой диете.'
+  action_notes: При T/T избегать тяжёлых насыщенно-жирных приёмов пищи; следить за триглицеридами.
+
+# ── Metabolism, Weight, Insulin & GLP-1 (24 SNPs) ─────────────────────────────
+rs9939609:
+  gene: FTO
+  chrom: '16'
+  strand: +
+  ref_grch38: T
+  effect_allele: A
+  category: metabolism_glp1
+  impact_domain: weight
+  evidence: A
+  source: Frayling et al. (Science 2007); Kilpeläinen et al. (PLoS Med 2011)
+  impact: Аппетит и склонность к набору веса (FTO)
+  interpretation: 'Классический вариант FTO (T>A): каждая копия A связана с более высоким аппетитом (снижение
+    подавления грелина после еды) и в среднем +0.35 кг/м² к ИМТ. Мета-анализы показывают, что регулярная
+    физическая активность снижает этот эффект ~на 30%.'
+  action_notes: Акцент на белок (1.6–2.0 г/кг), клетчатку, структурированные приёмы пищи и регулярные
+    тренировки; вариант хорошо компенсируется средой.
+
+rs1558902:
+  gene: FTO
+  chrom: '16'
+  strand: +
+  ref_grch38: T
+  effect_allele: A
+  category: metabolism_glp1
+  impact_domain: weight
+  evidence: A
+  source: Speliotes et al. (Nat Genet 2010); GIANT BMI GWAS
+  impact: Сильнейший общий локус ИМТ (FTO)
+  interpretation: 'Тесно сцеплен с rs9939609: аллель A — один из самых сильных общих генетических факторов
+    склонности к избыточному весу; в исследовании POUNDS LOST носители A лучше реагировали на высокобелковый
+    дефицит калорий.'
+  action_notes: Высокобелковый рацион и контроль калорийности дают максимальный эффект; оценивать вместе
+    с rs9939609.
+
+rs17782313:
+  gene: MC4R
+  chrom: '18'
+  strand: +
+  ref_grch38: T
+  effect_allele: C
+  category: metabolism_glp1
+  impact_domain: weight
+  evidence: A
+  source: Loos et al. (Nat Genet 2008); GIANT BMI GWAS
+  impact: Центральная регуляция насыщения (рядом с MC4R)
+  interpretation: 'Второй по силе общий локус ожирения после FTO: аллель C ассоциирован с ослабленным
+    сигналом насыщения в гипоталамусе, тягой к перекусам и более высоким ИМТ.'
+  action_notes: Делать ставку на объёмную еду с высоким белком и клетчаткой; не держать триггерные снеки
+    под рукой.
+
+rs7903146:
+  gene: TCF7L2
+  chrom: '10'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: metabolism_glp1
+  impact_domain: glp1
+  evidence: A
+  source: Grant et al. (Nat Genet 2006); Schäfer et al. (Diabetologia 2007) GLP-1
+  impact: Риск СД2 и инкретиновый ответ GLP-1 (TCF7L2)
+  interpretation: 'Сильнейший общий генетический фактор риска диабета 2 типа (C>T): аллель T ухудшает
+    секрецию инсулина в ответ на глюкозу и ослабляет эндогенный инкретиновый эффект GLP-1 (при этом экзогенные
+    агонисты GLP-1 остаются эффективны).'
+  action_notes: Регулярно контролировать HbA1c и глюкозу натощак; поддерживать мышечную массу и низкий
+    висцеральный жир.
+  marker: tcf7l2_t2d_risk
+  marker_on: hom
+
+rs12255372:
+  gene: TCF7L2
+  chrom: '10'
+  strand: +
+  ref_grch38: G
+  effect_allele: T
+  category: metabolism_glp1
+  impact_domain: glp1
+  evidence: A
+  source: DIAGRAM Consortium T2D GWAS
+  impact: Секреция инсулина и риск СД2 (TCF7L2)
+  interpretation: 'Второй классический маркер TCF7L2 (G>T, сцеплен с rs7903146): аллель T ассоциирован
+    со сниженной секрецией инсулина и повышенным риском СД2.'
+  action_notes: Оценивать вместе с rs7903146; следить за гликемическим профилем.
+
+rs6923761:
+  gene: GLP1R
+  chrom: '6'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: metabolism_glp1
+  impact_domain: glp1
+  evidence: B
+  source: Sathananthan et al. (Diabetes 2010); Chedid et al. (Obesity 2018) GLP-1 RA
+  impact: Рецептор GLP-1 (Gly168Ser — отклик на агонисты GLP-1)
+  interpretation: 'Функциональный миссенс-вариант рецептора GLP-1 (G>A, p.Gly168Ser): в фармакогенетических
+    исследованиях аллель A (Ser168) ассоциирован с вариабельностью задержки опорожнения желудка и отклика
+    на лираглутид/семаглутид/ингибиторы ДПП-4.'
+  action_notes: 'Информативно для контекста терапии GLP-1: реальную дозу и темп титрования всегда подбирать
+    по переносимости и динамике веса.'
+
+rs10305420:
+  gene: GLP1R
+  chrom: '6'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: metabolism_glp1
+  impact_domain: glp1
+  evidence: C
+  source: Jensterle et al. (Pharmacogenomics 2015); GLP1R Pro7Leu studies
+  impact: Рецептор GLP-1 (Pro7Leu — вариабельность ответа)
+  interpretation: 'Вариант Pro7Leu (C>T) в сигнальном пептиде рецептора GLP-1: в отдельных исследованиях
+    аллель T ассоциировался с более скромным снижением веса на ранних агонистах GLP-1 (данные умеренные).'
+  action_notes: Информативно; оценивать эффективность терапии по фактическому тренду веса и аппетита.
+
+rs1801282:
+  gene: PPARG
+  chrom: '3'
+  strand: +
+  ref_grch38: C
+  effect_allele: G
+  category: metabolism_glp1
+  impact_domain: glp1
+  evidence: A
+  source: Altshuler et al. (Nat Genet 2000); DIAGRAM T2D GWAS
+  impact: Чувствительность к инсулину (PPARG Pro12Ala)
+  interpretation: 'Вариант Pro12Ala (C>G): минорный аллель G (Ala12) стабильно ассоциирован с лучшей чувствительностью
+    к инсулину и примерно на 15–20% более низким риском СД2.'
+  action_notes: Благоприятный метаболический маркер; поддерживать чувствительность к инсулину силовыми
+    тренировками и сном.
+
+rs5219:
+  gene: KCNJ11
+  chrom: '11'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: T
+  category: metabolism_glp1
+  impact_domain: glp1
+  evidence: A
+  source: Gloyn et al. (Diabetes 2003); DIAGRAM T2D GWAS
+  impact: Калиевый канал бета-клеток (KCNJ11 E23K, инсулин)
+  interpretation: 'Миссенс-вариант Glu23Lys (на прямой цепи C>T, в GRCh38 REF=T=Lys23): аллель T (23Lys)
+    снижает чувствительность K_ATP-канала бета-клеток к АТФ, умеренно ослабляя выброс инсулина и повышая
+    риск СД2.'
+  action_notes: Контролировать HbA1c и глюкозу натощак; избегать избытка быстрых углеводов на фоне лишнего
+    веса.
+
+rs2943641:
+  gene: IRS1
+  chrom: '2'
+  strand: +
+  ref_grch38: T
+  effect_allele: C
+  category: metabolism_glp1
+  impact_domain: weight
+  evidence: A
+  source: Rung et al. (Nat Genet 2009); Qi et al. (Circulation 2011) POUNDS LOST
+  impact: Инсулинорезистентность (локус IRS1)
+  interpretation: Аллель C ассоциирован с более высокой инсулинорезистентностью и риском СД2 (тогда как
+    аллель T — защитный, выше ЛПВП и чувствительность к инсулину). В POUNDS LOST носители C/C лучше снижали
+    инсулин на рационе с более низкой долей жира/умеренными углеводами.
+  action_notes: Проверять инсулин/HOMA-IR и триглицериды; силовые тренировки напрямую улучшают сигналинг
+    IRS1 в мышцах.
+
+rs17300539:
+  gene: ADIPOQ
+  chrom: '3'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: metabolism_glp1
+  impact_domain: weight
+  evidence: A
+  source: Dastani et al. (PLoS Genet 2012); EBI GWAS Catalog
+  impact: Уровень адипонектина (ADIPOQ промотор)
+  interpretation: 'Промоторный вариант (G>A): аллель A стабильно ассоциирован с более высоким уровнем
+    адипонектина (гормона чувствительности к инсулину).'
+  action_notes: Благоприятный метаболический маркер; адипонектин дополнительно растёт при снижении висцерального
+    жира.
+
+rs2241766:
+  gene: ADIPOQ
+  chrom: '3'
+  strand: +
+  ref_grch38: T
+  effect_allele: G
+  category: metabolism_glp1
+  impact_domain: weight
+  evidence: C
+  source: Li et al. ADIPOQ +45T>G meta-analyses
+  impact: Метаболизм и адипонектин (ADIPOQ +45T>G)
+  interpretation: 'Синонимичный вариант (+45T>G): в ряде популяций аллель G умеренно ассоциирован с вариабельностью
+    адипонектина и инсулинорезистентности.'
+  action_notes: Информативно; реальный статус показывают глюкоза, инсулин и окружность талии.
+
+rs1260326:
+  gene: GCKR
+  chrom: '2'
+  strand: +
+  ref_grch38: T
+  effect_allele: T
+  category: metabolism_glp1
+  impact_domain: labs
+  evidence: A
+  source: Beer et al. (Hum Mol Genet 2009); GLGC & MASLD GWAS
+  impact: Глюкоза vs триглицериды и жир в печени (GCKR P446L)
+  interpretation: 'Функциональный вариант Pro446Leu (на прямой цепи T=Leu446, C=Pro446): аллель T усиливает
+    захват глюкозы печенью (ниже глюкоза натощак!), но направляет её в липогенез — выше триглицериды,
+    мочевая кислота и риск стеатоза печени (MASLD).'
+  action_notes: При T/T особенно ограничивать фруктозу/сладкие напитки и алкоголь; контролировать триглицериды
+    и АЛТ.
+
+rs738409:
+  gene: PNPLA3
+  chrom: '22'
+  strand: +
+  ref_grch38: C
+  effect_allele: G
+  category: metabolism_glp1
+  impact_domain: labs
+  evidence: A
+  source: Romeo et al. (Nat Genet 2008); EASL-EASD-EASO MASLD Guidelines 2024
+  impact: Риск жировой болезни печени и роста АЛТ (PNPLA3 I148M)
+  interpretation: 'Сильнейший генетический драйвер стеатоза печени (MASLD/NAFLD) и фиброза (C>G, p.Ile148Met):
+    аллель G нарушает мобилизацию триглицеридов из липидных капель гепатоцитов, сильно усиливая накопление
+    жира в печени на фоне лишнего веса, сахара и алкоголя.'
+  action_notes: 'При наличии G (особенно G/G): минимизировать алкоголь и фруктозу, держать вес в норме
+    и регулярно контролировать АЛТ/АСТ/ГГТ (похудение работает на носителях G даже эффективнее!).'
+  marker: pnpla3_i148m_risk
+  marker_on: any
+
+rs58542926:
+  gene: TM6SF2
+  chrom: '19'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: metabolism_glp1
+  impact_domain: labs
+  evidence: A
+  source: Kozlitina et al. (Nat Genet 2014); EASL MASLD Guidelines 2024
+  impact: Жир в печени vs низкий ЛПНП (TM6SF2 E167K)
+  interpretation: 'Вариант Glu167Lys (на прямой цепи C>T, кодирующий G>A): аллель T снижает секрецию ЛПОНП
+    из печени — в крови ЛПНП и триглицериды ниже (защита от ИБС!), но жир задерживается в печени (выше
+    риск стеатоза и роста АЛТ).'
+  action_notes: Регулярно контролировать АЛТ/АСТ, избегать избытка алкоголя и поддерживать нормальный
+    вес.
+  marker: tm6sf2_liver_fat_risk
+  marker_on: any
+
+rs6834314:
+  gene: HSD17B13
+  chrom: '4'
+  strand: +
+  ref_grch38: A
+  effect_allele: G
+  category: metabolism_glp1
+  impact_domain: labs
+  evidence: A
+  source: Abul-Husn et al. (NEJM 2018); EBI GWAS Catalog
+  impact: Защита печени от стеатогепатита и фиброза (HSD17B13)
+  interpretation: 'Надёжный SNV-тег для защитного сплайсинг-варианта HSD17B13 (rs72613567): аллель G ассоциирован
+    с более низкими АЛТ/АСТ и заметным снижением риска прогрессирования стеатоза печени в воспаление и
+    фиброз (частично компенсирует PNPLA3).'
+  action_notes: Благоприятный печёночный маркер; базовую гигиену печени всё равно соблюдать.
+
+rs16890979:
+  gene: SLC2A9
+  chrom: '4'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: metabolism_glp1
+  impact_domain: labs
+  evidence: A
+  source: Dehghan et al. (Lancet 2008); Global Urate Genetics Consortium
+  impact: Уровень мочевой кислоты (SLC2A9 Val282Ile)
+  interpretation: 'Один из сильнейших генов обмена мочевой кислоты (почечный транспортёр GLUT9, C>T на
+    прямой цепи): минорный аллель T стабильно снижает мочевую кислоту и риск подагры, а частый C связан
+    с более высоким уровнем уратов.'
+  action_notes: Учитывать при интерпретации мочевой кислоты в биохимии (особенно на высокобелковом рационе
+    или при быстром похудении).
+
+rs7442295:
+  gene: SLC2A9
+  chrom: '4'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: A
+  category: metabolism_glp1
+  impact_domain: labs
+  evidence: A
+  source: Döring et al. (Nat Genet 2008); EBI GWAS Catalog
+  impact: Склонность к повышенной мочевой кислоте (SLC2A9)
+  interpretation: Аллель A ассоциирован с более высокой мочевой кислотой в крови (аллель G снижает ураты
+    и риск подагры).
+  action_notes: При высоком уровне уратов в анализах ограничивать фруктозу, пиво/алкоголь и пить достаточно
+    воды.
+
+rs2231142:
+  gene: ABCG2
+  chrom: '4'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: T
+  category: metabolism_glp1
+  impact_domain: labs
+  evidence: A
+  source: CPIC Statin Guideline 2022 (Rosuvastatin); Dehghan et al. (Lancet 2008) Gout
+  impact: Мочевая кислота/подагра и клиренс розувастатина (ABCG2 Q141K)
+  interpretation: 'Двойное клиническое значение (на прямой цепи G>T, кодирующий c.421C>A, p.Gln141Lys):
+    аллель T резко снижает выведение мочевой кислоты (сильнейший риск-фактор подагры!) и замедляет выведение
+    розувастатина (по CPIC у гомозигот T/T стартовая доза розувастатина ограничена).'
+  action_notes: Контролировать мочевую кислоту в анализах; сообщать врачу при назначении розувастатина
+    или аллопуринола.
+  marker: abcg2_q141k_variant
+  marker_on: any
+
+rs1137101:
+  gene: LEPR
+  chrom: '1'
+  strand: +
+  ref_grch38: A
+  effect_allele: G
+  category: metabolism_glp1
+  impact_domain: weight
+  evidence: C
+  source: LEPR Gln223Arg obesity/leptin cohort studies
+  impact: Рецептор лептина (LEPR Gln223Arg)
+  interpretation: 'Миссенс-вариант рецептора лептина (A>G): ассоциирован с умеренной вариабельностью лептинового
+    сигналинга и регуляции сытости (эффект слабее FTO/MC4R).'
+  action_notes: Информативно; базовые рычаги сытости — сон, белок и клетчатка.
+
+rs1800592:
+  gene: UCP1
+  chrom: '4'
+  strand: +
+  ref_grch38: T
+  effect_allele: C
+  category: metabolism_glp1
+  impact_domain: weight
+  evidence: C
+  source: Brondani et al. (Obesity Rev 2012) UCP1 -3826A>G meta-analysis
+  impact: Термогенез бурого жира (UCP1 -3826A>G)
+  interpretation: 'Вариант в регуляторной области UCP1 (на прямой цепи T>C, кодирующий -3826A>G): аллель
+    C в ряде исследований ассоциирован со слегка более низким базовым термогенезом и чуть более медленным
+    расходом энергии в покое.'
+  action_notes: Эффект небольшой; компенсируется бытовой активностью (NEAT) и силовыми тренировками.
+
+rs4994:
+  gene: ADRB3
+  chrom: '8'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: G
+  category: metabolism_glp1
+  impact_domain: weight
+  evidence: C
+  source: Kurokawa et al. (Int J Obes 2008) ADRB3 Trp64Arg meta-analysis
+  impact: Липолиз жировой ткани (ADRB3 Trp64Arg)
+  interpretation: 'Вариант Trp64Arg (на прямой цепи A>G, кодирующий T>C): аллель G ассоциирован с чуть
+    менее интенсивным бета-3-адренергическим липолизом и небольшим вкладом в риск набора веса.'
+  action_notes: Информативно; практический фокус — устойчивый дефицит калорий и активность.
+
+rs10811661:
+  gene: CDKN2B-AS1
+  chrom: '9'
+  strand: +
+  ref_grch38: T
+  effect_allele: T
+  category: metabolism_glp1
+  impact_domain: glp1
+  evidence: A
+  source: Saxena et al. (Science 2007); DIAGRAM T2D GWAS
+  impact: Риск СД2 и функция бета-клеток (локус CDKN2A/B)
+  interpretation: 'Один из самых воспроизводимых GWAS-локусов риска диабета 2 типа: частый аллель T ассоциирован
+    с чуть более высоким HbA1c и риском СД2, а минорный C — защитный.'
+  action_notes: Учитывать в суммарном гликемическом риске; следить за HbA1c и составом тела.
+
+rs1800629:
+  gene: TNF
+  chrom: '6'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: metabolism_glp1
+  impact_domain: labs
+  evidence: B
+  source: TNF -308G>A meta-analyses (inflammation / metabolic syndrome)
+  impact: Провоспалительный цитокин ФНО-альфа (TNF -308G>A)
+  interpretation: 'Промоторный вариант (G>A): аллель A связан с более высокой транскрипционной активностью
+    ФНО-α и более выраженным воспалительным откликом.'
+  action_notes: Приоритет сна, омега-3, контроля висцерального жира и hs-CRP в анализах.
+
+# ── Caffeine, Alcohol & Oxidative / Detox (12 SNPs) ───────────────────────────
+rs762551:
+  gene: CYP1A2
+  chrom: '15'
+  strand: +
+  ref_grch38: C
+  effect_allele: C
+  category: caffeine_alcohol_detox
+  impact_domain: supplements
+  evidence: A
+  source: Cornelis et al. (JAMA 2006); Guest et al. (MSSE 2018); PharmGKB
+  impact: Скорость метаболизма кофеина (CYP1A2*1F)
+  interpretation: 'Интронный вариант CYP1A2 (на прямой цепи GRCh37/GRCh38: REF=C медленный *1A, ALT=A
+    быстрый *1F). Только гомозигота A/A — «быстрый» метаболизатор кофеина; носители C (A/C и C/C) выводят
+    кофеин заметно медленнее, он дольше бьёт по сну и давлению.'
+  action_notes: При наличии аллеля C ограничить кофеин (обычно до 100–200 мг/сут), убрать его из второй
+    половины дня и следить за сном/давлением.
+  marker: cyp1a2_slow_metabolizer
+  marker_on: any
+
+rs5751876:
+  gene: ADORA2A
+  chrom: '22'
+  strand: +
+  ref_grch38: T
+  effect_allele: T
+  category: caffeine_alcohol_detox
+  impact_domain: supplements
+  evidence: B
+  source: Alsene et al. (Neuropsychopharmacology 2003); Rétey et al. (Clin Pharmacol Ther 2007)
+  impact: Тревожность и нарушение сна от кофеина (ADORA2A)
+  interpretation: 'Синонимичный вариант рецептора аденозина A2A (1976T>C): гомозиготы T/T более чувствительны
+    к анксиогенному действию кофеина и чаще испытывают фрагментацию сна даже от умеренных доз.'
+  action_notes: При T/T ограничивать дозу кофеина, избегать предтреников вечером; L-теанин может смягчать
+    субъективную нервозность.
+  marker: adora2a_caffeine_sensitive
+  marker_on: hom
+
+rs4410790:
+  gene: AHR
+  chrom: '7'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: caffeine_alcohol_detox
+  impact_domain: supplements
+  evidence: A
+  source: Cornelis et al. (Mol Psychiatry 2015) Coffee & Caffeine Genetics Consortium
+  impact: Индукция CYP1A2 и толерантность к кофеину (локус AHR)
+  interpretation: 'Межгенный регуляторный вариант рядом с AHR (T>C): аллель C усиливает индукцию CYP1A2
+    и стабильно ассоциирован с более быстрым клиренсом кофеина и более высоким привычным потреблением
+    кофе.'
+  action_notes: Оценивать вместе с CYP1A2 (rs762551); высокая переносимость кофе не отменяет влияние позднего
+    кофеина на глубокий сон.
+
+rs671:
+  gene: ALDH2
+  chrom: '12'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: caffeine_alcohol_detox
+  impact_domain: supplements
+  evidence: A
+  source: ClinVar; Brooks et al. (PLoS Med 2009); IARC/WHO ALDH2*2
+  impact: Метаболизм алкоголя и ацетальдегида (ALDH2*2)
+  interpretation: Вариант Glu504Lys (G>A, ALDH2*2) резко снижает расщепление токсичного ацетальдегида
+    (~80–90% потери активности у гетерозигот, почти 0% у гомозигот) — вызывает покраснение лица, тахикардию
+    и многократно повышает риск рака пищевода при употреблении алкоголя.
+  action_notes: Максимально избегать алкоголя — доказанный канцерогенный риск ацетальдегида при носительстве
+    A.
+  marker: aldh2_alcohol_flush
+  marker_on: any
+
+rs1229984:
+  gene: ADH1B
+  chrom: '4'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: T
+  category: caffeine_alcohol_detox
+  impact_domain: supplements
+  evidence: A
+  source: Edenberg (Alcohol Res Health 2007); Bierut et al. (Mol Psychiatry 2012)
+  impact: Быстрое окисление этанола в ацетальдегид (ADH1B*2)
+  interpretation: 'Вариант His48Arg (на прямой цепи T=48His/*2 быстрый, C=48Arg/*1 обычный): носители
+    T превращают этанол в ацетальдегид в десятки раз быстрее, что вызывает ранний дискомфорт и снижает
+    риск алкогольной зависимости.'
+  action_notes: Учитывать сниженную комфортную переносимость алкоголя (особенно в паре с ALDH2).
+
+rs698:
+  gene: ADH1C
+  chrom: '4'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: caffeine_alcohol_detox
+  impact_domain: supplements
+  evidence: B
+  source: Edenberg (Alcohol Res Health 2007); ADH1C*2 studies
+  impact: Скорость окисления алкоголя (ADH1C Ile350Val)
+  interpretation: Вариант Ile350Val (на прямой цепи T=Ile/*1 быстрее, C=Val/*2 примерно в 2 раза медленнее
+    окисляет этанол).
+  action_notes: Информативно в комплексе с ADH1B и ALDH2.
+
+rs4880:
+  gene: SOD2
+  chrom: '6'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: A
+  category: caffeine_alcohol_detox
+  impact_domain: supplements
+  evidence: B
+  source: Sutton et al. (Pharmacogenetics 2003); SOD2 Val16Ala studies
+  impact: Антиоксидантная защита митохондрий (SOD2 Val16Ala)
+  interpretation: 'Вариант в митохондриальном сигнальном пептиде (на прямой цепи A=16Val, G=16Ala): аллель
+    A (Val) чуть хуже транспортируется в матрикс митохондрий, а G (Ala) обеспечивает более высокий импорт
+    MnSOD.'
+  action_notes: Поддерживать базовые кофакторы (марганец, цинк, медь из пищи) и богатый полифенолами рацион.
+
+rs1695:
+  gene: GSTP1
+  chrom: '11'
+  strand: +
+  ref_grch38: A
+  effect_allele: G
+  category: caffeine_alcohol_detox
+  impact_domain: supplements
+  evidence: B
+  source: PharmGKB (GSTP1 Ile105Val); detox enzyme studies
+  impact: Конъюгация глутатионом — фаза II детоксикации (GSTP1)
+  interpretation: Вариант Ile105Val (A>G) меняет субстратную специфичность и термостабильность глутатион-S-трансферазы
+    P1, влияя на обезвреживание электрофильных ксенобиотиков и продуктов окисления.
+  action_notes: Поддерживать синтез глутатиона (достаточный белок, сон, крестоцветные; NAC по показаниям).
+
+rs1050450:
+  gene: GPX1
+  chrom: '3'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: caffeine_alcohol_detox
+  impact_domain: supplements
+  evidence: B
+  source: Hu & Diamond (Cancer Res 2003); GPX1 Pro198Leu studies
+  impact: Селен-зависимая глутатионпероксидаза (GPX1 Pro198Leu)
+  interpretation: 'Вариант Pro198Leu (на прямой цепи G>A, кодирующий C>T): аллель A (Leu) снижает активность
+    антиоксидантного фермента GPX1 и его чувствительность к селену.'
+  action_notes: Обеспечивать адекватное поступление селена из пищи (рыба, яйца, 1–2 бразильских ореха)
+    без передозировки.
+
+rs1001179:
+  gene: CAT
+  chrom: '11'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: caffeine_alcohol_detox
+  impact_domain: supplements
+  evidence: C
+  source: Forsberg et al. (Free Radic Biol Med 2001); CAT -262C>T
+  impact: Активность каталазы (CAT -262C>T)
+  interpretation: Промоторный вариант (C>T) модулирует уровень каталазы в эритроцитах — фермента, нейтрализующего
+    перекись водорода.
+  action_notes: Информативно; акцент на антиоксидантный рацион и восстановление.
+
+rs1800566:
+  gene: NQO1
+  chrom: '16'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: caffeine_alcohol_detox
+  impact_domain: supplements
+  evidence: B
+  source: Siegel et al. (Pharmacogenetics 1999); NQO1*2 Pro187Ser
+  impact: Восстановление CoQ10 и хинонов (NQO1*2 Pro187Ser)
+  interpretation: 'Вариант Pro187Ser (на прямой цепи G>A, кодирующий C>T): у гомозигот A/A активность
+    NQO1 почти отсутствует, что снижает восстановление убихинона (CoQ10) в активный убихинол и детоксикацию
+    хинонов.'
+  action_notes: При A/A и желании принимать CoQ10 разумнее выбирать восстановленную форму — убихинол;
+    избегать контакта с бензолом/табачным дымом.
+
+rs662:
+  gene: PON1
+  chrom: '7'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: caffeine_alcohol_detox
+  impact_domain: labs
+  evidence: B
+  source: Mackness et al. (Circulation 2001); PON1 Q192R
+  impact: Антиоксидантная защита ЛПВП (PON1 Q192R)
+  interpretation: Вариант Gln192Arg (на прямой цепи T=192Gln, C=192Arg) меняет каталитическую активность
+    параоксоназы-1 на частицах ЛПВП (защита ЛПНП от окисления и гидролиз фосфорорганических соединений).
+  action_notes: Информативно; полифенолы оливкового масла и отсутствие курения поддерживают активность
+    PON1.
+
+# ── Fitness, Strength, Endurance & Tendon Recovery (16 SNPs) ──────────────────
+rs1815739:
+  gene: ACTN3
+  chrom: '11'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: A
+  source: Yang et al. (AJHG 2003); North et al. ACTN3 R577X reviews
+  impact: 'Тип мышечных волокон (ACTN3 R577X: сила vs выносливость)'
+  interpretation: 'Стоп-кодон R577X (на прямой цепи C=577R функциональный, T=577X стоп; внимание: в hg19
+    REF=T, в hg38 REF=C). У C/C и C/T есть альфа-актинин-3 в быстрых волокнах (преимущество в спринте/взрывной
+    силе); у T/T (XX) белка нет — чаще лучше аэробная экономичность, но чуть выше чувствительность к эксцентрическим
+    микроповреждениям.'
+  action_notes: Не ограничивает прогресс в зале; при T/T (XX) уделять чуть больше внимания плавному наращиванию
+    объёма эксцентрических нагрузок и восстановлению.
+
+rs8192678:
+  gene: PPARGC1A
+  chrom: '4'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: B
+  source: Ahmetov et al. (Sports Med 2016); PPARGC1A Gly482Ser meta-analyses
+  impact: Биогенез митохондрий и аэробный отклик (PGC-1α)
+  interpretation: 'Вариант Gly482Ser (на прямой цепи C=482Gly, T=482Ser): аллель C (Gly) чаще встречается
+    у выносливых атлетов, тогда как аллель T (Ser) ассоциирован с чуть более скромным приростом VO2max
+    и требует больше объёма аэробной работы.'
+  action_notes: При T/T стабильная зона-2 кардио особенно ценна для митохондриальной адаптации.
+
+rs4253778:
+  gene: PPARA
+  chrom: '22'
+  strand: +
+  ref_grch38: G
+  effect_allele: C
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: B
+  source: Ahmetov et al. (Eur J Appl Physiol 2006); PPARA intron 7 G/C
+  impact: Окисление жиров в мышцах (PPARA интрон 7)
+  interpretation: Аллель G ассоциирован с более высокой экспрессией PPARα и окислением жирных кислот (выносливость),
+    тогда как аллель C чаще встречается у силовых/скоростных атлетов и связан с большей гипертрофией левого
+    желудочка при нагрузке.
+  action_notes: Информативно для баланса силовых и аэробных блоков.
+
+rs2010963:
+  gene: VEGFA
+  chrom: '6'
+  strand: +
+  ref_grch38: C
+  effect_allele: C
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: B
+  source: Prior et al. (J Appl Physiol 2006); Ahmetov et al. VEGFA
+  impact: Капилляризация мышц и VO2max (VEGFA -634G>C)
+  interpretation: 'Вариант фактора роста эндотелия сосудов (G>C, в GRCh38 REF=C): аллель C ассоциирован
+    с более высокой экспрессией VEGF и лучшим приростом аэробной мощности (VO2max) на тренировках.'
+  action_notes: Информативно для планирования кардио-прогрессии.
+
+rs1042714:
+  gene: ADRB2
+  chrom: '5'
+  strand: +
+  ref_grch38: G
+  effect_allele: G
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: B
+  source: Ahmetov et al. (Sports Med); ADRB2 Gln27Glu studies
+  impact: Метаболический отклик на нагрузку (ADRB2 Gln27Glu)
+  interpretation: 'Вариант Glu27Gln (G=Glu27, C=Gln27): аллель G (Glu27) устойчивее к даунрегуляции рецептора
+    и в ряде исследований ассоциирован с лучшим липолизом при физической нагрузке.'
+  action_notes: Информативно в связке с ADRB2 Gly16Arg (rs1042713).
+
+rs1800795:
+  gene: IL6
+  chrom: '7'
+  strand: +
+  ref_grch38: C
+  effect_allele: C
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: B
+  source: Ruiz et al. / Ahmetov et al. IL6 -174G>C exercise recovery
+  impact: Воспалительный отклик и восстановление (IL6 -174G>C)
+  interpretation: 'Промоторный вариант интерлейкина-6 (G>C, в GRCh38 REF=C): аллель G связан с более высоким
+    пиком IL-6 (чаще силовой профиль, но сильнее воспалительный ответ на стресс), аллель C — с более умеренным
+    базовым воспалением.'
+  action_notes: Отслеживать субъективное восстановление и HRV после тяжёлых тренировок.
+
+rs1205:
+  gene: CRP
+  chrom: '1'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: fitness_recovery
+  impact_domain: labs
+  evidence: A
+  source: Dehghan et al. (Circulation 2011) CRP GWAS
+  impact: Базовый уровень С-реактивного белка (CRP)
+  interpretation: 'Один из главных генетических модификаторов базового hs-CRP: аллель T ассоциирован с
+    более низким базовым CRP (~15–20% на аллель), а аллель C — с чуть более высоким фоном без острого
+    воспаления.'
+  action_notes: 'Учитывать при чтении hs-CRP в анализах: отслеживать личную динамику, а не только абсолютную
+    цифру.'
+
+rs1800012:
+  gene: COL1A1
+  chrom: '17'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: A
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: B
+  source: Posthumus et al. (AJSM 2009); Collins et al. COL1A1 Sp1 meta-analyses
+  impact: Прочность связок и сухожилий (коллаген I, COL1A1 Sp1)
+  interpretation: 'Вариант сайта связывания Sp1 (на прямой цепи C>A, кодирующий G>T): редкий гомозиготный
+    генотип A/A (кодирующий T/T) ассоциирован с более низким риском разрыва ПКС/вывихов плеча, тогда как
+    частый C/C не даёт этой защиты (при этом T-аллель в ряде работ связан с чуть меньшей МПК в пожилом
+    возрасте).'
+  action_notes: Для профилактики травм связок ключевы прогрессивная силовая работа, эксцентрика и разминка.
+
+rs12722:
+  gene: COL5A1
+  chrom: '9'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: B
+  source: Mokone et al. (Br J Sports Med 2006); September et al. COL5A1
+  impact: Риск тендинопатий и эластичность сухожилий (COL5A1)
+  interpretation: 'Вариант в 3''-UTR коллагена V типа (C>T): аллель T (особенно T/T) стабилизирует мРНК
+    COL5A1, меняет диаметр коллагеновых фибрилл и ассоциирован с повышенным риском тендинопатии ахилла
+    и меньшей гибкостью.'
+  action_notes: При T/T плавно наращивать беговой/прыжковый объём, делать изометрию/эксцентрику на икры
+    и сухожилия, не пропускать разминку.
+  marker: col5a1_tendon_risk
+  marker_on: hom
+
+rs679620:
+  gene: MMP3
+  chrom: '11'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: T
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: B
+  source: Raleigh et al. (Br J Sports Med 2009); MMP3 E45K tendinopathy
+  impact: Ремоделирование сухожилий (MMP3 Lys45Glu)
+  interpretation: 'Вариант матриксной металлопротеиназы-3 (на прямой цепи T=45Lys, C=45Glu): в сочетании
+    с COL5A1 (rs12722) влияет на скорость обновления внеклеточного матрикса сухожилий и риск тендинопатий
+    при перегрузке.'
+  action_notes: Учитывать совместно с COL5A1 при планировании объёма ударных нагрузок.
+
+rs143383:
+  gene: GDF5
+  chrom: '20'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: A
+  source: Miyamoto et al. (Nat Genet 2007); EBI GWAS Catalog (OA)
+  impact: Здоровье хряща и суставов (GDF5 промотор)
+  interpretation: 'Один из самых воспроизводимых локусов остеоартрита коленного/тазобедренного сустава
+    и травм сухожилий (на прямой цепи G>A, кодирующий C>T; внимание: в hg19 REF=A, в hg38 REF=G): аллель
+    A снижает экспрессию ростового фактора GDF5 в хрящевой ткани.'
+  action_notes: 'Беречь суставы: поддерживать здоровый вес, сильные стабилизаторы и чистую технику в приседе/выпадах.'
+
+rs8111989:
+  gene: CKM
+  chrom: '19'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: C
+  source: Heled et al. (J Appl Physiol 2007); CKM NcoI studies
+  impact: Мышечная креатинкиназа и отклик на нагрузку (CKM)
+  interpretation: 'Вариант в 3''-UTR мышечной креатинкиназы (на прямой цепи T>C, кодирующий A>G): ассоциирован
+    с вариабельностью подъёма КФК после тяжёлых тренировок и аэробного/силового профиля.'
+  action_notes: Учитывать, что высокий КФК после тяжёлой силовой — нормальная реакция; не сдавать КФК/АСТ
+    на следующий день после рекордов.
+
+rs1049434:
+  gene: SLC16A1
+  chrom: '1'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: A
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: B
+  source: Cupeiro et al. (Eur J Appl Physiol 2010); Sawczuk et al. MCT1 A1470T
+  impact: Выведение лактата из мышц (MCT1 Asp490Glu)
+  interpretation: 'Миссенс-вариант монокарбоксилатного транспортёра MCT1 (на прямой цепи A=490Asp/кодирующий
+    T, T=490Glu/кодирующий A): аллель A (кодирующий T) ассоциирован с чуть более медленным транспортом
+    лактата из быстрых волокон во время высокоинтенсивных интервалов.'
+  action_notes: При A/A давать достаточные интервалы отдыха между тяжёлыми подходами и развивать аэробную
+    базу для клиренса лактата.
+
+rs11549465:
+  gene: HIF1A
+  chrom: '14'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: B
+  source: Ahmetov et al. (Med Sci Sports Exerc 2008); HIF1A Pro582Ser
+  impact: Анаэробный гликолиз и гипоксическая адаптация (HIF1A)
+  interpretation: 'Вариант Pro582Ser (C>T): аллель T повышает стабильность фактора HIF-1α и чаще встречается
+    у силовых и спринтерских атлетов (усиленный гликолиз).'
+  action_notes: Информативно для понимания переносимости интенсивных анаэробных сетов.
+
+rs17602729:
+  gene: AMPD1
+  chrom: '1'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: A
+  source: ClinVar; Rubio et al. / Rico-Sanz et al. AMPD1 C34T
+  impact: Дефицит миоаденилатдезаминазы (AMPD1 C34T — быстрая утомляемость)
+  interpretation: 'Стоп-мутация Gln12* / Gln45* (на прямой цепи G>A, кодирующий C34T): у гомозигот A/A
+    (~2% европейцев) резко снижена активность AMPD1 в скелетных мышцах — возможны более ранняя мышечная
+    усталость, спазмы и более медленное восстановление после спринтов/тяжёлых сетов.'
+  action_notes: При A/A не пугаться более быстрого закисления; хорошо работают длинные разминки, креатин
+    и адекватный отдых между подходами.
+  marker: ampd1_deficiency
+  marker_on: hom
+
+rs7832552:
+  gene: TRHR
+  chrom: '8'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: fitness_recovery
+  impact_domain: workouts
+  evidence: B
+  source: Liu et al. (AJHG 2009); EBI GWAS Catalog (Lean Body Mass)
+  impact: Мышечная масса тела (локус TRHR)
+  interpretation: 'GWAS-маркер рецептора тиреотропин-рилизинг-гормона (C>T): аллель T ассоциирован с чуть
+    большей базовой сухой мышечной массой (~+0.1–0.5 кг на копию в когортах).'
+  action_notes: Информативно; главные драйверы сухой массы — прогрессия нагрузок и белок.
+
+# ── Neuro, Stress, Circadian Rhythm & Sleep (15 SNPs) ─────────────────────────
+rs4680:
+  gene: COMT
+  chrom: '22'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: neuro_sleep
+  impact_domain: supplements
+  evidence: A
+  source: Stein et al. (Biol Psychiatry 2006); PharmGKB (COMT Val158Met)
+  impact: Дофамин префронтальной коры и стресс-устойчивость (COMT Val158Met)
+  interpretation: Функциональный вариант Val158Met (G=Val быстрый, A=Met медленный, активность фермента
+    ниже в ~3–4 раза у A/A). G/G — «воин» (устойчивее к острому стрессу, быстрее выводит дофамин); A/A
+    — «мыслитель» (выше базовый дофамин в префронтальной коре, но выше чувствительность к стрессу, боли
+    и стимуляторам).
+  action_notes: При A/A осторожнее со стимуляторами (кофеин, высокие дозы EGCG/зелёного чая, тирозин);
+    приоритет сна и практик сброса стресса.
+  marker: comt_slow_metabolizer
+  marker_on: hom
+
+rs6265:
+  gene: BDNF
+  chrom: '11'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: neuro_sleep
+  impact_domain: system
+  evidence: B
+  source: Egan et al. (Cell 2003); BDNF Val66Met neuroplasticity reviews
+  impact: Нейропластичность и отклик на аэробные нагрузки (BDNF Val66Met)
+  interpretation: 'Вариант Val66Met (на прямой цепи C=Val, T=Met): аллель T (Met) снижает активность-зависимую
+    секрецию BDNF в синапсах, что умеренно влияет на моторное обучение, память и стресс-ответ.'
+  action_notes: Регулярная аэробная нагрузка и качественный сон — сильнейшие естественные стимуляторы
+    BDNF.
+
+rs228697:
+  gene: PER3
+  chrom: '1'
+  strand: +
+  ref_grch38: C
+  effect_allele: G
+  category: neuro_sleep
+  impact_domain: system
+  evidence: B
+  source: Hida et al. (PLoS ONE 2014); UK Biobank Chronotype GWAS
+  impact: Циркадный хронотип — склонность к «сове» (PER3 P864A)
+  interpretation: 'Миссенс-вариант Pro864Ala (C>G) в часовом гене PER3: аллель G ассоциирован со сдвигом
+    к вечернему хронотипу и более поздней фазой засыпания.'
+  action_notes: Яркий утренний свет сразу после пробуждения и жёсткий отбой синего света вечером хорошо
+    стабилизируют ритм.
+
+rs1801260:
+  gene: CLOCK
+  chrom: '4'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: G
+  category: neuro_sleep
+  impact_domain: system
+  evidence: C
+  source: Katzenberg et al. (Sleep 1998); Garaulet et al. CLOCK 3111T>C
+  impact: Вечерний хронотип и поздний ужин (CLOCK 3111T>C)
+  interpretation: 'Вариант в 3''-UTR гена CLOCK (на прямой цепи A>G, кодирующий 3111T>C): носители G (кодирующий
+    C) чаще имеют вечерние предпочтения, позже ложатся и в ряде работ хуже худели при поздних основных
+    приёмах пищи.'
+  action_notes: Держать стабильное время сна и смещать основной калораж ближе к первой половине дня.
+
+rs10830963:
+  gene: MTNR1B
+  chrom: '11'
+  strand: +
+  ref_grch38: C
+  effect_allele: G
+  category: neuro_sleep
+  impact_domain: supplements
+  evidence: A
+  source: Prokopenko et al. (Nat Genet 2009); Garaulet et al. (Diabetes Care 2022) RCT
+  impact: Рецептор мелатонина MTNR1B — глюкоза при поздней еде и мелатонине
+  interpretation: 'Сильнейший мост между сном и глюкозой (C>G): аллель G повышает экспрессию рецепторов
+    мелатонина на бета-клетках поджелудочной. Когда мелатонин высок (поздно вечером или после таблетки
+    мелатонина), секреция инсулина сильнее тормозится → выше пик глюкозы после еды и выше риск СД2.'
+  action_notes: При наличии G не есть плотно и не употреблять углеводы за 2.5–3 часа до сна и НЕ принимать
+    добавку мелатонина рядом с едой!
+  marker: mtnr1b_melatonin_risk
+  marker_on: any
+
+rs121912617:
+  gene: BHLHE41
+  chrom: '12'
+  strand: +
+  ref_grch38: G
+  effect_allele: C
+  category: neuro_sleep
+  impact_domain: system
+  evidence: A
+  source: He et al. (Science 2009); ClinVar DEC2 P384R
+  impact: Редкий вариант «короткого сна» (DEC2 / BHLHE41 P384R)
+  interpretation: 'Ультраредкая доминантная мутация Pro384Arg (на прямой цепи G>C, кодирующий c.1151C>G;
+    не путать с G>T!): позволяет носителям полноценно высыпаться за ~6 часов без когнитивного дефицита.'
+  action_notes: Встречается крайне редко; у 99.9%+ людей (G/G) потребность во сне стандартная — 7–9 часов.
+
+rs73598374:
+  gene: ADA
+  chrom: '20'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: neuro_sleep
+  impact_domain: system
+  evidence: B
+  source: Rétey et al. (PNAS 2005); Mazzotti et al. (Sleep 2012) ADA G22A
+  impact: Глубокий сон и аденозиновое давление (ADA G22A)
+  interpretation: 'Вариант Asp8Asn (на прямой цепи C>T, кодирующий c.22G>A): аллель T снижает активность
+    аденозиндезаминазы на ~20–30%, усиливая накопление аденозина — носители чаще имеют более глубокий
+    медленноволновой сон (SWS), но сильнее чувствуют недосып.'
+  action_notes: При носительстве T беречь регулярную длительность сна; недосып бьёт по бодрости ощутимее.
+
+rs1800497:
+  gene: ANKK1
+  chrom: '11'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: neuro_sleep
+  impact_domain: system
+  evidence: B
+  source: Neville et al. (Hum Mutat 2004); DRD2/ANKK1 Taq1A meta-analyses
+  impact: Плотность D2-рецепторов дофамина (Taq1A)
+  interpretation: 'Классический маркер Taq1A (G>A, p.Glu713Lys в ANKK1 рядом с DRD2): аллель A (A1) связан
+    со сниженной плотностью стриарных D2-рецепторов (~30%), более высокой тягой к дофаминовым вознаграждениям
+    и обучением через подкрепление.'
+  action_notes: Информативно для привычек и контроля триггеров (еда, стимуляторы, экраны).
+
+rs53576:
+  gene: OXTR
+  chrom: '3'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: A
+  category: neuro_sleep
+  impact_domain: system
+  evidence: C
+  source: Rodrigues et al. (PNAS 2009); OXTR rs53576 meta-analyses
+  impact: Рецептор окситоцина и буферизация стресса (OXTR)
+  interpretation: 'Интронный вариант рецептора окситоцина (A/G): в ряде работ гомозиготы G/G демонстрируют
+    чуть более выраженную социальную буферизацию стресса, чем носители A (эффект небольшой и контекстно-зависимый).'
+  action_notes: Информативно; психологический ресурс формируется образом жизни, не одним SNP.
+
+rs1360780:
+  gene: FKBP5
+  chrom: '6'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: T
+  category: neuro_sleep
+  impact_domain: system
+  evidence: B
+  source: Binder et al. (Nat Genet 2004; JAMA 2008) FKBP5 HPA axis
+  impact: Регуляция кортизола и ось ГГН (FKBP5)
+  interpretation: 'Интронный регуляторный вариант ко-шаперона глюкокортикоидного рецептора (C>T, в GRCh38
+    REF=T): аллель T ослабляет обратную связь кортизола, продлевая восстановление уровня кортизола после
+    острого стресса.'
+  action_notes: При T/T особенно важны сон, аэробная разгрузка и отслеживание HRV/стресса в Garmin.
+
+rs4570625:
+  gene: TPH2
+  chrom: '12'
+  strand: +
+  ref_grch38: G
+  effect_allele: T
+  category: neuro_sleep
+  impact_domain: system
+  evidence: C
+  source: Canli et al. (PNAS 2005); TPH2 -703G>T emotional reactivity
+  impact: Синтез серотонина в мозге (TPH2 -703G>T)
+  interpretation: 'Промоторный вариант триптофангидроксилазы-2 (G>T): носители T в исследованиях нейровизуализации
+    показывают чуть более высокую реактивность миндалины на эмоциональные стимулы.'
+  action_notes: Информативно; поддерживать сон, дневной свет и достаточный пищевой белок/триптофан.
+
+rs6323:
+  gene: MAOA
+  chrom: X
+  strand: +
+  ref_grch38: G
+  effect_allele: G
+  category: neuro_sleep
+  impact_domain: system
+  evidence: C
+  source: Hotamisligil & Breakefield (AJHG 1991); MAOA R297R
+  impact: Активность моноаминоксидазы A (MAOA, chrX)
+  interpretation: 'X-сцепленный вариант (G>T, 941G>T): аллель G соответствует более высокой базовой активности
+    MAO-A (быстрее распад серотонина/норадреналина/дофамина), аллель T — более низкой.'
+  action_notes: Информативно; у мужчин 1 копия (гемизигота), не является клиническим диагнозом.
+
+rs1006737:
+  gene: CACNA1C
+  chrom: '12'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: neuro_sleep
+  impact_domain: system
+  evidence: B
+  source: Psychiatric Genomics Consortium (Nature 2014); EBI GWAS Catalog
+  impact: Кальциевый канал нейронов и архитектура сна (CACNA1C)
+  interpretation: 'Реплицированный в крупных GWAS интронный вариант (G>A): аллель A слегка повышает чувствительность
+    к нарушению циркадных ритмов и лабильности настроения при хроническом недосыпе.'
+  action_notes: Держать стабильный режим сна — лучший нейропротектор.
+
+rs279858:
+  gene: GABRA2
+  chrom: '4'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: neuro_sleep
+  impact_domain: system
+  evidence: B
+  source: Edenberg et al. (AJHG 2004); GABRA2 alcohol response
+  impact: ГАМК-рецептор (GABRA2, отклик на алкоголь и седацию)
+  interpretation: 'Синонимичный маркер (на прямой цепи T>C): аллель C ассоциирован со сниженной субъективной
+    седацией от алкоголя и более высокой склонностью к его избыточному употреблению.'
+  action_notes: Информативно; учитывать при контроле привычек.
+
+rs1800544:
+  gene: ADRA2A
+  chrom: '10'
+  strand: +
+  ref_grch38: G
+  effect_allele: G
+  category: neuro_sleep
+  impact_domain: system
+  evidence: C
+  source: PharmGKB (ADRA2A -1291C>G); methylphenidate/sympathetic studies
+  impact: Альфа-2A адренорецептор (симпатический тонус, ADRA2A)
+  interpretation: 'Промоторный вариант (-1291C>G, в GRCh38 REF=G): участвует в регуляции обратного захвата
+    норадреналина, стресс-ответа и вариабельности отклика на адренергические препараты.'
+  action_notes: Информативно.
+
+# ── Hormones, Endocrine, SHBG & Thyroid (10 SNPs) ─────────────────────────────
+rs1799941:
+  gene: SHBG
+  chrom: '17'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: hormones_endocrine
+  impact_domain: hrt
+  evidence: A
+  source: Ohlsson et al. (PLoS Genet 2011); Ruth et al. (Nat Med 2020) Testosterone GWAS
+  impact: Повышенный базовый ГСПГ и общий тестостерон (SHBG)
+  interpretation: 'Промоторный вариант SHBG (G>A): каждая копия аллеля A стабильно повышает базовый ГСПГ
+    (SHBG) и, как следствие, общий тестостерон в крови — при этом свободный тестостерон меняется меньше.'
+  action_notes: Всегда оценивать тестостерон вместе с ГСПГ и расчётным свободным тестостероном (по Вермюлену),
+    а не только по «общему».
+
+rs12150660:
+  gene: SHBG
+  chrom: '17'
+  strand: +
+  ref_grch38: G
+  effect_allele: T
+  category: hormones_endocrine
+  impact_domain: hrt
+  evidence: A
+  source: Ohlsson et al. (PLoS Genet 2011); EBI GWAS Catalog (SHBG +6 nmol/L)
+  impact: Уровень ГСПГ и общего тестостерона (SHBG)
+  interpretation: 'Сильнейший GWAS-маркер ГСПГ и общего тестостерона у мужчин (G>T): аллель T ассоциирован
+    с заметно более высоким ГСПГ (~+6 нмоль/л) и общим тестостероном, тогда как G/G — с более низким базовым
+    ГСПГ и более низким «общим» тестостероном при нормальном свободном.'
+  action_notes: 'Критично для интерпретации анализов на тестостерон: низкий общий T при низком ГСПГ у
+    G/G не равен гипогонадизму — смотреть свободный T и ЛГ/ФСГ!'
+
+rs6258:
+  gene: SHBG
+  chrom: '17'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: hormones_endocrine
+  impact_domain: hrt
+  evidence: A
+  source: Ohlsson et al. (PLoS Genet 2011); SHBG P156L binding study
+  impact: Сниженное сродство ГСПГ к тестостерону (SHBG P156L)
+  interpretation: 'Редкий функциональный миссенс-вариант Pro156Leu (C>T): снижает аффинность белка ГСПГ
+    к тестостерону, из-за чего общий тестостерон в анализах ниже нормы при более высокой свободной фракции.'
+  action_notes: При носительстве T стандартные формулы расчёта свободного тестостерона могут недооценивать
+    его — ориентироваться на клинику и равновесный диализ/прямые маркеры.
+
+rs10046:
+  gene: CYP19A1
+  chrom: '15'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: hormones_endocrine
+  impact_domain: hrt
+  evidence: B
+  source: Eriksson et al. / Travis et al. CYP19A1 aromatase estradiol studies
+  impact: Активность ароматазы и эстрадиол (CYP19A1 3'-UTR)
+  interpretation: 'Вариант в 3''-UTR гена ароматазы (на прямой цепи G>A, кодирующий C>T): аллель A (кодирующий
+    T) ассоциирован с более высокой экспрессией ароматазы и более высоким соотношением эстрадиол/тестостерон.'
+  action_notes: 'Полезный контекст при контроле эстрадиола (особенно на ГЗТ/TRT или при повышенном проценте
+    жира): ориентироваться на реальный анализ E2.'
+
+rs700518:
+  gene: CYP19A1
+  chrom: '15'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: hormones_endocrine
+  impact_domain: hrt
+  evidence: B
+  source: Napoli et al. / PharmGKB CYP19A1 Val80
+  impact: Активность ароматазы (CYP19A1 Val80)
+  interpretation: 'Синонимичный маркер гаплотипа ароматазы (на прямой цепи T>C, кодирующий A>G): сцеплен
+    с вариабельностью уровня эстрадиола и минеральной плотности кости.'
+  action_notes: Оценивать вместе с rs10046 и фактическим уровнем эстрадиола в крови.
+
+rs523349:
+  gene: SRD5A2
+  chrom: '2'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: C
+  category: hormones_endocrine
+  impact_domain: hrt
+  evidence: B
+  source: Makridakis et al. (Pharmacogenetics 2000); SRD5A2 V89L
+  impact: 5-альфа-редуктаза и конверсия в ДГТ (SRD5A2 V89L)
+  interpretation: 'Миссенс-вариант Val89Leu (на прямой цепи C=89Val высокая активность, G=89Leu на ~30%
+    ниже активность): аллель C (Val) обеспечивает более активное превращение тестостерона в дигидротестостерон
+    (ДГТ).'
+  action_notes: Информативно для контекста ДГТ, кожи/акне и андрогенетической алопеции; при вопросах по
+    волосам/простате — обсуждать с врачом.
+
+rs6152:
+  gene: AR
+  chrom: X
+  strand: +
+  ref_grch38: G
+  effect_allele: G
+  category: hormones_endocrine
+  impact_domain: hrt
+  evidence: A
+  source: Hillmer et al. (AJHG 2005); Heilmann-Heimbach et al. AGA GWAS
+  impact: Рецептор андрогенов и риск облысения (AR, chrX)
+  interpretation: 'X-сцепленный маркер рецептора андрогенов (G>A): частый аллель G ассоциирован с более
+    высокой чувствительностью волосяных фолликулов к ДГТ и повышенным риском андрогенетической алопеции,
+    тогда как минорный A — выраженно защитный.'
+  action_notes: У мужчин передаётся по материнской линии (1 копия); при наличии G и признаках истончения
+    волос раннее обращение к трихологу даёт лучший результат.
+
+rs4704397:
+  gene: PDE8B
+  chrom: '5'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: hormones_endocrine
+  impact_domain: labs
+  evidence: A
+  source: Arnaud-Lopez et al. (AJHG 2008); Taylor et al. TSH GWAS
+  impact: Генетический сет-поинт ТТГ (PDE8B)
+  interpretation: 'Сильнейший общий GWAS-локус для базового уровня ТТГ: каждая копия аллеля A физиологически
+    сдвигает собственный «нормальный» ТТГ вверх примерно на +0.13–0.25 мМЕ/л без истинного гипотиреоза
+    (при нормальном св. Т4).'
+  action_notes: Ценно при пограничном ТТГ (3.5–4.5) с нормальным свободным Т4 и отсутствием антител (АТ-ТПО)
+    — не спешить ставить субклинический гипотиреоз по одной цифре.
+
+rs965513:
+  gene: FOXE1
+  chrom: '9'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: A
+  category: hormones_endocrine
+  impact_domain: labs
+  evidence: A
+  source: Gudmundsson et al. (Nat Genet 2009); Thyroid GWAS (9q22/FOXE1)
+  impact: Регуляция щитовидной железы (локус FOXE1 / 9q22)
+  interpretation: 'Локус 9q22.33 рядом с фактором транскрипции FOXE1 (A>G): ассоциирован с вариабельностью
+    ТТГ/свободного Т4 и риском узловых/тиреоидных нарушений.'
+  action_notes: Контролировать ТТГ и свободный Т4 в рамках ежегодного чекапа.
+
+rs225014:
+  gene: DIO2
+  chrom: '14'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: hormones_endocrine
+  impact_domain: labs
+  evidence: B
+  source: Panicker et al. (JCEM 2009); Castagna et al. DIO2 Thr92Ala
+  impact: Локальная конверсия Т4→Т3 в тканях (DIO2 Thr92Ala)
+  interpretation: 'Миссенс-вариант дейодиназы 2 типа (на прямой цепи T=Thr92, C=Ala92): гомозигота C/C
+    ассоциирована с чуть менее эффективной внутриклеточной конверсией Т4 в активный Т3 и вариабельностью
+    самочувствия на монотерапии левотироксином.'
+  action_notes: При проверке щитовидной железы полезно сдавать не только ТТГ, но и свободные Т4 и Т3;
+    любые решения по терапии — с эндокринологом.
+
+# ── Gut, Lactose, Gluten & Diet (9 SNPs) ──────────────────────────────────────
+rs4988235:
+  gene: MCM6
+  chrom: '2'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: G
+  category: gut_diet
+  impact_domain: supplements
+  evidence: A
+  source: Enattah et al. (Nat Genet 2002); ClinVar Lactase Persistence
+  impact: Переносимость лактозы у взрослых (MCM6/LCT -13910)
+  interpretation: Главный европейский вариант персистенции лактазы (на прямой цепи A=кодирующий T переносимость
+    молока; G=кодирующий C снижение лактазы). Гомозигота G/G (кодирующий C/C) — генетическая гиполактазия
+    взрослого типа; наличие хотя бы одной A (A/G или A/A) обычно сохраняет переносимость лактозы.
+  action_notes: При G/G (C/C) и дискомфорте от молока выбирать безлактозные/ферментированные продукты,
+    изолят сывороточного протеина или фермент лактазу; следить за кальцием.
+  marker: lactase_nonpersistence
+  marker_on: hom
+
+rs182549:
+  gene: MCM6
+  chrom: '2'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: C
+  category: gut_diet
+  impact_domain: supplements
+  evidence: A
+  source: Enattah et al. (Nat Genet 2002); MCM6 -22018G>A
+  impact: Переносимость лактозы (MCM6 -22018, пара с rs4988235)
+  interpretation: Второй сцепленный маркер лактазной персистенции (на прямой цепи T=кодирующий A переносимость,
+    C=кодирующий G гиполактазия); подтверждает результат rs4988235.
+  action_notes: Интерпретировать совместно с rs4988235.
+
+rs2187668:
+  gene: HLA-DQA1
+  chrom: '6'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: gut_diet
+  impact_domain: labs
+  evidence: A
+  source: Monsuur et al. (PLoS ONE 2008); ACG/ESsCD Celiac Guidelines
+  impact: Предрасположенность к целиакии (тег HLA-DQ2.5)
+  interpretation: 'Высокоточный тег-SNP для гаплотипа HLA-DQ2.5 (C>T): носительство T есть у ~90% пациентов
+    с целиакией, но у большинства носителей болезнь не развивается (это «необходимый, но не достаточный»
+    фактор; отсутствие DQ2.5 и DQ8 почти исключает целиакию).'
+  action_notes: Не садиться на безглютеновую диету «профилактически»! При ЖКТ-симптомах или дефиците железа
+    сдать антитела tTG-IgA ДО отмены глютена.
+  marker: celiac_hla_predisposition
+  marker_on: any
+
+rs7454108:
+  gene: HLA-DQB1
+  chrom: '6'
+  strand: +
+  ref_grch38: T
+  effect_allele: C
+  category: gut_diet
+  impact_domain: labs
+  evidence: A
+  source: Monsuur et al. (PLoS ONE 2008); ACG Celiac Guidelines
+  impact: Предрасположенность к целиакии (тег HLA-DQ8)
+  interpretation: 'Тег-SNP для гаплотипа HLA-DQ8 (T>C): второй основной генетический фактор предрасположенности
+    к целиакии (встречается у ~5–10% пациентов с целиакией без DQ2.5).'
+  action_notes: Оценивать вместе с rs2187668 (DQ2.5); диагноз ставится только по серологии/биопсии.
+  marker: celiac_hla_predisposition
+  marker_on: any
+
+rs713598:
+  gene: TAS2R38
+  chrom: '7'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: C
+  category: gut_diet
+  impact_domain: system
+  evidence: A
+  source: Kim et al. (Science 2003); TAS2R38 PAV/AVI haplotype
+  impact: Восприятие горького вкуса (брокколи/крестоцветные, TAS2R38)
+  interpretation: Главный маркер рецептора горечи TAS2R38 (на прямой цепи C=49Pro / PAV «супердегустатор
+    горечи», G=49Ala / AVI не чувствует горечь PTC/PROP). Носители PAV острее чувствуют горечь брокколи,
+    брюссельской капусты и кофе.
+  action_notes: 'Информативно: объясняет вкусовые предпочтения к крестоцветным овощам (при чувствительности
+    лучше запекать или сочетать со специями/маслом).'
+
+rs1726866:
+  gene: TAS2R38
+  chrom: '7'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: G
+  category: gut_diet
+  impact_domain: system
+  evidence: A
+  source: Kim et al. (Science 2003); TAS2R38 V262A
+  impact: Восприятие горького вкуса (TAS2R38 Ala262Val)
+  interpretation: Второй маркер гаплотипа PAV/AVI (на прямой цепи G=Ala262 / PAV чувствительность к горечи,
+    A=Val262 / AVI).
+  action_notes: Оценивать в паре с rs713598.
+
+rs72921001:
+  gene: OR6A2
+  chrom: '11'
+  strand: +
+  ref_grch38: C
+  effect_allele: A
+  category: gut_diet
+  impact_domain: system
+  evidence: A
+  source: Eriksson et al. (Flavour 2012) 23andMe Cilantro GWAS
+  impact: Восприятие кинзы как «мыла» (кластер OR6A2)
+  interpretation: 'Вариант в кластере обонятельных рецепторов альдегидов (C>A, аннотирован у OR10A2/OR6A2):
+    аллель A повышает вероятность ощущать резкий «мыльный» привкус свежей кинзы.'
+  action_notes: Чисто познавательная особенность обоняния.
+
+rs2066844:
+  gene: NOD2
+  chrom: '16'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: gut_diet
+  impact_domain: system
+  evidence: A
+  source: Hugot et al. (Nature 2001); ClinVar IBD/Crohn susceptibility
+  impact: Мукозальный иммунитет кишечника (NOD2 R702W)
+  interpretation: 'Функциональный вариант в рецепторе врождённого иммунитета кишечника (C>T, Arg702Trp):
+    аллель T повышает относительный риск болезни Крона (~2–3x у гетерозигот), но абсолютный риск для большинства
+    носителей остаётся низким.'
+  action_notes: Не диагноз; при хронических болях в животе/воспалении в стуле (кальпротектин) — обсуждать
+    с гастроэнтерологом; избегать курения и бесконтрольных НПВП.
+
+rs2066845:
+  gene: NOD2
+  chrom: '16'
+  strand: +
+  ref_grch38: G
+  effect_allele: C
+  category: gut_diet
+  impact_domain: system
+  evidence: A
+  source: Hugot et al. (Nature 2001); ClinVar IBD/Crohn susceptibility
+  impact: Мукозальный иммунитет кишечника (NOD2 G908R)
+  interpretation: 'Второй классический вариант NOD2 (G>C, Gly908Arg): умеренно повышает предрасположенность
+    к воспалительным заболеваниям кишечника (особенно в комбинации с rs2066844).'
+  action_notes: Информативно для гастроэнтеролога при наличии ЖКТ-симптомов.
+
+# ── Skincare, Pigmentation & Dermatology (14 SNPs) ────────────────────────────
+rs61816761:
+  gene: FLG
+  chrom: '1'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: skincare_derm
+  impact_domain: skincare
+  evidence: A
+  source: Palmer et al. (Nat Genet 2006); ClinVar FLG R501X
+  impact: Нарушение кожного барьера (филаггрин FLG R501X)
+  interpretation: 'Нулевая стоп-мутация Arg501* (на прямой цепи G>A, кодирующий c.1501C>T): снижает естественный
+    увлажняющий фактор рогового слоя, повышает трансэпидермальную потерю воды, риск сухости, раздражения
+    и атопического дерматита.'
+  action_notes: Фокус на восстановление барьера (церамиды, пантенол, мягкое очищение без жёстких ПАВ);
+    агрессивные кислоты, пилинги и бензоилпероксид вводить максимально мягко.
+  marker: flg_null_variant
+  marker_on: any
+
+rs138726443:
+  gene: FLG
+  chrom: '1'
+  strand: '-'
+  ref_grch38: G
+  effect_allele: A
+  category: skincare_derm
+  impact_domain: skincare
+  evidence: A
+  source: Sandilands et al. (Nat Genet 2007); ClinVar FLG R2447X
+  impact: Нарушение кожного барьера (филаггрин FLG R2447X)
+  interpretation: 'Вторая распространённая европейская нулевая стоп-мутация филаггрина Arg2447* (на прямой
+    цепи G>A, кодирующий c.7339C>T): аналогично R501X ослабляет барьер рогового слоя и повышает риск сухости/атопии.'
+  action_notes: Базовый барьерный уход (церамиды, эмоленты), осторожное введение ретиноидов, кислот и
+    BPO.
+  marker: flg_null_variant
+  marker_on: any
+
+rs1805007:
+  gene: MC1R
+  chrom: '16'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: skincare_derm
+  impact_domain: skincare
+  evidence: A
+  source: Raimondi et al. (Int J Cancer 2008); MC1R R-allele UV/melanoma meta-analysis
+  impact: Высокая УФ-чувствительность и фотостарение (MC1R R151C)
+  interpretation: 'Сильный «R»-аллель рецептора меланокортина-1 (C>T, Arg151Cys): сдвигает синтез меланина
+    в сторону феомеланина, повышая склонность к ожогам, фотостарению и риску меланомы даже при тёмных
+    волосах.'
+  action_notes: Ежедневный SPF 30–50+ широкого спектра (особенно на ретиноидах/кислотах!), избегать солнечных
+    ожогов, регулярный осмотр родинок у дерматолога.
+  marker: mc1r_uv_sensitive
+  marker_on: any
+
+rs1805008:
+  gene: MC1R
+  chrom: '16'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: skincare_derm
+  impact_domain: skincare
+  evidence: A
+  source: Raimondi et al. (Int J Cancer 2008); MC1R R160W meta-analysis
+  impact: Высокая УФ-чувствительность и фотостарение (MC1R R160W)
+  interpretation: 'Второй ключевой «R»-аллель MC1R (C>T, Arg160Trp): снижает фотозащитную способность
+    кожи, ускоряет УФ-индуцированное фотостарение и повышает риск рака кожи.'
+  action_notes: Строгая фотозащита (SPF 30–50+ каждый день), особая осторожность при использовании ретиноидов
+    и AHA/BHA.
+  marker: mc1r_uv_sensitive
+  marker_on: any
+
+rs1805009:
+  gene: MC1R
+  chrom: '16'
+  strand: +
+  ref_grch38: G
+  effect_allele: C
+  category: skincare_derm
+  impact_domain: skincare
+  evidence: A
+  source: Raimondi et al. (Int J Cancer 2008); MC1R D294H meta-analysis
+  impact: Высокая УФ-чувствительность (MC1R D294H)
+  interpretation: 'Третий сильный «R»-аллель MC1R (G>C, Asp294His): значительно повышает фоточувствительность
+    и риск солнечных ожогов.'
+  action_notes: Ежедневный SPF и избегание пикового солнца; дерматоскопия родинок раз в год.
+  marker: mc1r_uv_sensitive
+  marker_on: any
+
+rs12203592:
+  gene: IRF4
+  chrom: '6'
+  strand: +
+  ref_grch38: C
+  effect_allele: T
+  category: skincare_derm
+  impact_domain: skincare
+  evidence: A
+  source: Han et al. (PLoS Genet 2008); Praetorius et al. (Cell 2013); EBI GWAS Catalog
+  impact: Солнечная чувствительность, веснушки и риск актинического кератоза (IRF4)
+  interpretation: 'Функциональный энхансерный вариант IRF4 (C>T): аллель T снижает экспрессию тирозиназы,
+    вызывая склонность к веснушкам, быстрым ожогам, актиническому кератозу и немеланомному раку кожи.'
+  action_notes: Дисциплинированная ежедневная фотозащита (SPF 50), антиоксидантные сыворотки (вит. C)
+    утром под SPF.
+  marker: irf4_uv_sensitive
+  marker_on: hom
+
+rs16891982:
+  gene: SLC45A2
+  chrom: '5'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: G
+  category: skincare_derm
+  impact_domain: skincare
+  evidence: A
+  source: Stokowski et al. (AJHG 2007); SLC45A2 L374F pigmentation
+  impact: Пигментация кожи и чувствительность к УФ (SLC45A2 L374F)
+  interpretation: 'Ключевой европейский вариант пигментации (на прямой цепи C=374Leu темнее, G=374Phe
+    светлее): аллель G уменьшает синтез меланина, повышая синтез витамина D на севере, но усиливая фотоповреждение
+    на активном солнце.'
+  action_notes: Использовать SPF при УФ-индексе ≥3 и контролировать 25(OH)D зимой.
+
+rs1126809:
+  gene: TYR
+  chrom: '11'
+  strand: +
+  ref_grch38: G
+  effect_allele: A
+  category: skincare_derm
+  impact_domain: skincare
+  evidence: A
+  source: Sulem et al. (Nat Genet 2008); TYR R402Q
+  impact: Синтез меланина и чувствительность к загару (TYR R402Q)
+  interpretation: 'Температурно-чувствительный вариант тирозиназы (G>A, Arg402Gln): аллель A снижает активность
+    тирозиназы, давая более светлый фототип и более лёгкую склонность к солнечным ожогам.'
+  action_notes: Последовательная защита от УФ (SPF).
+
+rs17553719:
+  gene: AQP3
+  chrom: '9'
+  strand: '-'
+  ref_grch38: T
+  effect_allele: C
+  category: skincare_derm
+  impact_domain: skincare
+  evidence: C
+  source: AQP3 promoter skin hydration studies
+  impact: Водный канал кожи — увлажнённость эпидермиса (AQP3)
+  interpretation: Промоторный вариант аквапорина-3 (на прямой цепи T>C), регулирующего транспорт воды
+    и глицерина в эпидермисе.
+  action_notes: В уходе полезны хумектанты (глицерин, мочевина, гиалуроновая кислота) поверх увлажнённой
+    кожи.
+
+rs20541:
+  gene: IL13
+  chrom: '5'
+  strand: +
+  ref_grch38: A
+  effect_allele: A
+  category: skincare_derm
+  impact_domain: skincare
+  evidence: A
+  source: Paternoster et al. (Nat Genet 2015) Eczema/AD GWAS; IL13 R130Q
+  impact: Склонность к атопии и повышенному IgE (IL13 R130Q)
+  interpretation: 'Функциональный вариант интерлейкина-13 (на прямой цепи G=Arg, A=Gln144 / R130Q): аллель
+    A усиливает Th2-сигналинг, повышая уровень IgE и предрасположенность к атопическому дерматиту и аллергическому
+    риниту.'
+  action_notes: Выбирать гипоаллергенный уход без отдушек и эфирных масел, особенно при наличии FLG-вариантов.
+
+rs3827760:
+  gene: EDAR
+  chrom: '2'
+  strand: +
+  ref_grch38: A
+  effect_allele: G
+  category: skincare_derm
+  impact_domain: skincare
+  evidence: A
+  source: Fujimoto et al. (Hum Mol Genet 2008); Kamberov et al. (Cell 2013)
+  impact: Толщина стержня волоса и потовые железы (EDAR V370A)
+  interpretation: 'Классический функциональный вариант (A>G, p.Val370Ala): аллель G (частый в Восточной
+    Азии) ассоциирован с более толстым, прямым стержнем волоса и более высокой плотностью эккриновых потовых
+    желёз.'
+  action_notes: Информативная морфологическая особенность.
+
+rs12913832:
+  gene: HERC2
+  chrom: '15'
+  strand: '-'
+  ref_grch38: A
+  effect_allele: G
+  category: skincare_derm
+  impact_domain: skincare
+  evidence: A
+  source: Eiberg et al. (Hum Genet 2008); Sturm et al. (AJHG 2008) HERC2/OCA2
+  impact: Пигментация радужки и чувствительность глаз к УФ (HERC2/OCA2)
+  interpretation: 'Главный энхансерный переключатель гена OCA2 (A>G): гомозигота G/G резко снижает меланин
+    в радужке (голубые/светлые глаза) и ассоциирована с чуть более высокой фоточувствительностью глаз
+    и кожи.'
+  action_notes: При G/G носить качественные солнцезащитные очки с UV400 на ярком солнце.
+
+rs1800407:
+  gene: OCA2
+  chrom: '15'
+  strand: '-'
+  ref_grch38: C
+  effect_allele: T
+  category: skincare_derm
+  impact_domain: skincare
+  evidence: B
+  source: Sturm et al. (AJHG 2008); OCA2 R419Q
+  impact: Модификатор пигментации глаз и кожи (OCA2 R419Q)
+  interpretation: 'Миссенс-вариант Arg419Gln (на прямой цепи C>T, кодирующий G>A): модифицирует оттенок
+    радужки (зелёный/ореховый) и умеренно влияет на фототип кожи.'
+  action_notes: Информативно в паре с HERC2 rs12913832.
+
+rs12821256:
+  gene: KITLG
+  chrom: '12'
+  strand: +
+  ref_grch38: T
+  effect_allele: C
+  category: skincare_derm
+  impact_domain: skincare
+  evidence: A
+  source: Guenther et al. (Nat Genet 2014) KITLG enhancer
+  impact: Энхансер пигментации волос (KITLG)
+  interpretation: 'Функциональный энхансерный вариант (T>C): аллель C снижает экспрессию KITLG в волосяных
+    фолликулах на ~20% и ассоциирован со светлым оттенком волос у европейцев.'
+  action_notes: Информативный маркер пигментации.

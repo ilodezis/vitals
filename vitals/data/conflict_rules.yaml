@@ -406,7 +406,7 @@
 - code: pgx_apoe4_high_dose_vitamin_a
   rule_type: soft_warn
   domain_a: genetics
-  condition_a: {marker: apoe_e3e4}
+  condition_a: {$any: [{marker: apoe_e3e4}, {marker: apoe_e4_homozygous}]}
   domain_b: supplements
   condition_b: {key: vitamin_a, active: true, dose_mg: {$gte: 1.5}}
   severity: warn
@@ -1488,4 +1488,221 @@
   message: "Повышенная липаза/амилаза на фоне активной GLP-1 — держать под контролем: при стойкой сильной боли в животе (часто отдаёт в спину) с тошнотой/рвотой препарат отменяют и исключают панкреатит."
   category: lab_safety
   source: "Инструкции к агонистам GLP-1 (семаглутид, лираглутид, тирзепатид): острый панкреатит указан в предупреждениях; бессимптомное повышение липазы/амилазы на терапии встречается часто, но при появлении симптомов требует отмены и обследования."
+  evidence: B
+
+# ── Pharmacogenetics & cross-domain genetics rules (CPIC / ClinVar / EASL) ───
+- code: pgx_slco1b1_statin_myopathy
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: slco1b1_decreased_function}
+  domain_b: supplements
+  condition_b: {key: statin, active: true}
+  severity: warn
+  message: "Вариант SLCO1B1*5 (rs4149056) снижает печёночный захват статинов — повышен риск миопатии (особенно на симвастатине); обсудить с врачом выбор препарата, дозу и контроль КФК при мышечных болях."
+  category: pharmacogenomics
+  source: "CPIC Guideline for Statin-Associated Musculoskeletal Symptoms (2022), PharmGKB Level 1A: носительство аллеля C (Val174Ala) значимо повышает системную экспозицию симвастатина и риск миопатии."
+  evidence: A
+
+- code: pgx_abcg2_statin_exposure
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: abcg2_q141k_variant}
+  domain_b: supplements
+  condition_b: {key: statin, active: true}
+  severity: warn
+  message: "Вариант ABCG2 Q141K (rs2231142) повышает системную экспозицию розувастатина — обсудить с врачом ограничение стартовой дозы по рекомендациям CPIC."
+  category: pharmacogenomics
+  source: "CPIC Statin Guideline (2022), PharmGKB Level 1A: вариант ABCG2 c.421C>A снижает клиренс розувастатина и повышает его концентрацию в крови."
+  evidence: A
+
+- code: pgx_cyp2c19_ssri_exposure
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: cyp2c19_poor_metabolizer}
+  domain_b: supplements
+  condition_b: {key: ssri_antidepressant, active: true}
+  severity: warn
+  message: "Сниженный метаболизм CYP2C19 — повышена экспозиция ряда СИОЗС (циталопрам, эсциталопрам, сертралин) и риск побочных эффектов (вкл. удлинение QT); обсудить подбор дозы с врачом."
+  category: pharmacogenomics
+  source: "CPIC Guideline for CYP2D6, CYP2C19, CYP2B6, SLC6A4, and HTR2A Genotypes and Serotonin Reuptake Inhibitor Antidepressants (2023), PharmGKB Level 1A."
+  evidence: A
+
+- code: pgx_cyp2c19_ultrarapid_ppi
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: cyp2c19_ultrarapid_metabolizer}
+  domain_b: supplements
+  condition_b: {key: ppi_omeprazole, active: true}
+  severity: warn
+  message: "Ускоренный метаболизм CYP2C19*17 — омепразол и аналоги могут выводиться быстрее ожидаемого, снижая контроль кислотности; обсудить с врачом коррекцию дозы или рабепразол."
+  category: pharmacogenomics
+  source: "CPIC Guideline for CYP2C19 and Proton Pump Inhibitor Dosing (2020), PharmGKB Level 1A."
+  evidence: A
+
+- code: pgx_cyp2c9_nsaid_bleeding
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: cyp2c9_poor_metabolizer}
+  domain_b: supplements
+  condition_b: {key: nsaid_ibuprofen, active: true}
+  severity: warn
+  message: "Сниженная активность CYP2C9 (*2/*3) замедляет выведение ибупрофена и многих других НПВП — выше риск раздражения ЖКТ и нефротоксичности; использовать минимальную эффективную дозу и короткий курс."
+  category: pharmacogenomics
+  source: "CPIC Guideline for CYP2C9 and Nonsteroidal Anti-Inflammatory Drugs (2020), PharmGKB Level 1A."
+  evidence: A
+
+- code: pgx_cyp2d6_ssri_exposure
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: cyp2d6_reduced_function}
+  domain_b: supplements
+  condition_b: {key: ssri_antidepressant, active: true}
+  severity: warn
+  message: "Сниженная активность CYP2D6 изменяет метаболизм пароксетина, флуоксетина и флувоксамина — обсудить с врачом выбор препарата и титрование дозы."
+  category: pharmacogenomics
+  source: "CPIC Guideline for CYP2D6 and SSRI Antidepressants (2023), PharmGKB Level 1A."
+  evidence: A
+
+- code: pgx_cyp2d6_tamoxifen_activation
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: cyp2d6_reduced_function}
+  domain_b: hrt
+  condition_b: {compound_key: tamoxifen, active: true}
+  severity: warn
+  message: "Сниженная активность CYP2D6 ухудшает превращение тамоксифена в активный метаболит эндоксифен — эффективность тамоксифена может быть заметно ниже; обсудить с врачом альтернативу."
+  category: pharmacogenomics
+  source: "CPIC Guideline for CYP2D6 and Tamoxifen Therapy (2018), PharmGKB Level 1A."
+  evidence: A
+
+- code: pgx_thrombophilia_oral_contraceptive
+  rule_type: hard_block
+  domain_a: genetics
+  condition_a: {$any: [{marker: factor_v_leiden}, {marker: prothrombin_g20210a}]}
+  domain_b: supplements
+  condition_b: {key: oral_contraceptive, active: true}
+  severity: block
+  message: "Наследственная тромбофилия (Фактор V Лейдена / Протромбин G20210A) + комбинированные эстрогеновые контрацептивы — многократный рост риска венозных тромбозов; противопоказано без одобрения гематолога."
+  category: pharmacogenomics
+  source: "ACOG / WHO Medical Eligibility Criteria (Category 4) & ClinVar: сочетание мутаций F5/F2 с эстроген-содержащими КОК повышает риск ВТЭО в 15–35 раз."
+  evidence: A
+
+- code: pgx_thrombophilia_hrt_vte_risk
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {$any: [{marker: factor_v_leiden}, {marker: prothrombin_g20210a}]}
+  domain_b: hrt
+  condition_b: {compound_class: {$in: [testosterone, nandrolone, trenbolone, boldenone, drostanolone, methenolone, oral_aas, serm]}, active: true}
+  severity: warn
+  message: "Наследственная тромбофилия (F5 Лейдена / F2 G20210A) на фоне активного курса андрогенов или SERM — существенно повышен риск венозных тромбозов; жёстко контролировать гематокрит/эстрадиол и обсудить профилактику с гематологом."
+  category: pharmacogenomics
+  source: "Glueck et al. (Clin Appl Thromb Hemost) и клинические рекомендации по тромбофилии: экзогенные андрогены (через эритроцитоз/ароматизацию) и SERM (тамоксифен/кломифен) повышают риск ВТЭО у носителей F5/F2."
+  evidence: A
+
+- code: pgx_mtnr1b_melatonin_glycemic
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: mtnr1b_melatonin_risk}
+  domain_b: supplements
+  condition_b: {key: melatonin, active: true}
+  severity: warn
+  message: "Носительство MTNR1B (rs10830963 G) + добавка мелатонина — экзогенный мелатонин сильнее подавляет секрецию инсулина; принимать мелатонин строго не ранее чем через 2.5–3 часа после последнего приёма пищи."
+  category: pharmacogenomics
+  source: "Garaulet et al. (Diabetes Care 2022, RCT): приём мелатонина рядом с едой у носителей аллеля G MTNR1B значимо ухудшает толерантность к глюкозе."
+  evidence: A
+
+- code: pgx_slc22a1_metformin_gi
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: slc22a1_reduced_uptake}
+  domain_b: supplements
+  condition_b: {key: metformin, active: true}
+  severity: warn
+  message: "Вариант OCT1/SLC22A1 R61C (rs12208357) ассоциирован с повышенным риском ЖКТ-непереносимости метформина — предпочтительна форма пролонгированного высвобождения (XR) и плавное титрование с врачом."
+  category: pharmacogenomics
+  source: "PharmGKB Level 2B; Dujic et al. (Diabetes 2015): носители аллелей сниженной функции OCT1 чаще сталкиваются с ЖКТ-побочными эффектами метформина."
+  evidence: B
+
+- code: pgx_bco1_vitamin_a_form
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: bco1_poor_converter}
+  domain_b: supplements
+  condition_b: {key: vitamin_a, active: true}
+  severity: warn
+  message: "Сниженная конверсия бета-каротина (BCO1) — проверьте форму витамина A в добавке: бета-каротин усваивается слабо, но с преформированным ретинолом важно не превышать безопасную суточную дозу."
+  category: pharmacogenomics
+  source: "Leung et al. (FASEB J 2009): варианты BCO1 A379V и R267S снижают превращение бета-каротина в ретинол на 32–69%."
+  evidence: B
+
+- code: pgx_adora2a_caffeine_sleep
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: adora2a_caffeine_sensitive}
+  domain_b: supplements
+  condition_b: {key: caffeine, active: true}
+  severity: warn
+  message: "Повышенная чувствительность аденозиновых рецепторов (ADORA2A T/T) — кофеин чаще вызывает тревожность и фрагментацию сна даже в умеренных дозах; избегать приёма после обеда."
+  category: pharmacogenomics
+  source: "Alsene et al. (Neuropsychopharmacology 2003); Rétey et al. (Clin Pharmacol Ther 2007): гомозиготы ADORA2A rs5751876 T/T более уязвимы к нарушениям сна и тревоге от кофеина."
+  evidence: B
+
+- code: pgx_pnpla3_tm6sf2_alt_elevated
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {$any: [{marker: pnpla3_i148m_risk}, {marker: tm6sf2_liver_fat_risk}]}
+  domain_b: labs
+  condition_b: {marker: "АЛТ", value: {$gte: 40}}
+  severity: warn
+  message: "Повышенный АЛТ на фоне генетической предрасположенности к стеатозу печени (PNPLA3/TM6SF2) — особенно внимательно отнестись к алкоголю, фруктозе, лишнему весу и перепроверить печёночную панель/УЗИ печени."
+  category: lab_safety
+  source: "EASL-EASD-EASO MASLD Guidelines (2024): варианты PNPLA3 I148M и TM6SF2 E167K резко ускоряют накопление жира в печени и прогрессирование фиброза при метаболической нагрузке."
+  evidence: A
+
+- code: pgx_lpa_elevated_ldl_target
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: lpa_elevated_risk}
+  domain_b: labs
+  condition_b: {marker: "Холестерин-ЛПНП", value: {$gte: 3.0}}
+  severity: warn
+  message: "Генетический маркер высокого Lp(a) + ЛПНП ≥ 3.0 ммоль/л — стоит однократно сдать прямой анализ на Lp(a) и ApoB и обсудить с кардиологом более жёсткий целевой уровень ЛПНП."
+  category: lab_safety
+  source: "ESC/EAS Consensus Statement on Lipoprotein(a) (2022): повышенный Lp(a) — независимый атерогенный фактор, усиливающий значимость контроля ЛПНП/ApoB."
+  evidence: A
+
+- code: pgx_abcg2_uric_acid_elevated
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: abcg2_q141k_variant}
+  domain_b: labs
+  condition_b: {marker: "Мочевая кислота", value: {$gte: 420}}
+  severity: warn
+  message: "Повышенная мочевая кислота (≥ 420 мкмоль/л) на фоне варианта ABCG2 Q141K (сниженное выведение уратов) — повышен риск подагры; ограничить фруктозу/алкоголь, усилить гидратацию и обсудить с врачом."
+  category: lab_safety
+  source: "Global Urate Genetics Consortium & ACR Gout Guidelines: ABCG2 rs2231142 T-аллель — один из сильнейших генетических предикторов гиперурикемии и подагры."
+  evidence: A
+
+- code: pgx_g6pd_hba1c_underestimate
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {marker: g6pd_deficiency}
+  domain_b: labs
+  condition_b: {marker: "Гликированный гемоглобин (HbA1c)", value: {$gte: 5.5}}
+  severity: warn
+  message: "Дефицит G6PD укорачивает жизнь эритроцитов и способен искусственно занижать HbA1c на 0.3–0.8% — при пограничном HbA1c (≥ 5.5%) реальная средняя гликемия может быть выше; ориентироваться на глюкозу натощак/CGM/фруктозамин."
+  category: lab_safety
+  source: "Wheeler et al. (PLoS Med 2017): варианты дефицита G6PD систематически занижают HbA1c независимо от реального уровня глюкозы крови."
+  evidence: A
+
+- code: pgx_mc1r_irf4_retinoid_uv
+  rule_type: soft_warn
+  domain_a: genetics
+  condition_a: {$any: [{marker: mc1r_uv_sensitive}, {marker: irf4_uv_sensitive}]}
+  domain_b: skincare
+  condition_b: {$any: [{retinoid: true}, {peel: true}]}
+  severity: warn
+  message: "Генетически повышенная УФ-чувствительность (MC1R/IRF4) + ретиноид или пилинг в рутине — обязателен ежедневный SPF 30–50+ широкого спектра и защита от прямого солнца."
+  category: dermatology
+  source: "Дерматологическая практика фотозащиты: варианты MC1R (R-аллели) и IRF4 (rs12203592 T) снижают защиту от УФ-повреждений, а ретиноиды/кислоты дополнительно повышают фоточувствительность."
   evidence: B

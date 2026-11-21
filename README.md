@@ -36,7 +36,7 @@ https://github.com/user-attachments/assets/171de17f-538b-4395-a9b6-656670380811
 ### Design Choices
 
 - Inbound payloads from Garmin, Hevy, lab PDFs/photos, InBody/MedAss BIA sheets, VCF files, and Telegram messages are stored raw in JSONB (`raw_payloads`) alongside normalized rows. A nightly job at 03:30 re-parses flagged history without re-uploading when a parser changes.
-- [conflict_rules.yaml](vitals/data/conflict_rules.yaml) holds 116 sourced rules with evidence tiers covering nutrient absorption, pharmacogenomics, lab safety, GLP-1, HRT, and skincare actives. A hard conflict returns `409 Conflict` and saves only through an explicit, logged override.
+- [conflict_rules.yaml](vitals/data/conflict_rules.yaml) holds 134 sourced rules with evidence tiers covering nutrient absorption, pharmacogenomics, lab safety, GLP-1, HRT, and skincare actives, backed by 217 GRCh38-verified SNPs in [genetics_snps.yaml](vitals/data/genetics_snps.yaml). A hard conflict returns `409 Conflict` and saves only through an explicit, logged override.
 - Built for one owner and bound to `127.0.0.1:8000` by default. Auth uses bcrypt passwords, signed session cookies, optional TOTP 2FA, and passkeys; fonts are served locally under a strict CSP with zero external CDNs.
 - Any module can be switched off in `/settings`, removing it from navigation and MCP. `/share` generates an immutable, password-protected snapshot link or a standalone offline HTML report with no scripts.
 
@@ -143,7 +143,7 @@ Licensed under **Elastic License 2.0** — free to use, modify, and distribute, 
 ### Как устроен
 
 - Исходные ответы Garmin, Hevy, PDF/фото анализов, бланки InBody и МедАсс, VCF и сообщения Telegram сначала сохраняются в JSONB-таблицу `raw_payloads`. Ночной джоб в 03:30 может перепарсить историю без повторной загрузки, если парсер обновился.
-- В [conflict_rules.yaml](vitals/data/conflict_rules.yaml) описано 116 правил с источниками и уровнем доказательности: усвоение добавок, фармакогенетика, безопасность анализов, GLP-1, ГЗТ и совместимость активов для кожи. Жёсткий конфликт отдаёт `409` и пропускает запись только после явного override с записью причины.
+- В [conflict_rules.yaml](vitals/data/conflict_rules.yaml) описано 134 правила с источниками и уровнем доказательности: усвоение добавок, фармакогенетика, безопасность анализов, GLP-1, ГЗТ и совместимость активов для кожи — с опорой на 217 верифицированных по GRCh38 SNP в [genetics_snps.yaml](vitals/data/genetics_snps.yaml). Жёсткий конфликт отдаёт `409` и пропускает запись только после явного override с записью причины.
 - Приложение рассчитано на одного владельца и слушает только `127.0.0.1:8000`. Вход защищён bcrypt-паролем, подписанными куками, опциональным TOTP и passkeys; шрифты лежат локально, CSP запрещает внешние CDN.
 - Любой модуль отключается в `/settings` (пропадает из навигации и MCP). В `/share` можно собрать замороженный снимок отчёта для врача по временной ссылке с паролем или скачать его автономным офлайн-HTML без скриптов.
 
