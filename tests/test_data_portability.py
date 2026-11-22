@@ -346,6 +346,80 @@ async def test_llm_export_since_keeps_open_periods_and_catalogs(db_session):
     # And with no arguments the export is still the whole history (the web download).
     full = await export_llm(db_session)
     assert len(full["glp1_dose_phases"]) == 2
+    assert "period" not in full["profile"]
+
+
+async def test_llm_export_filters_by_since_and_until(db_session):
+    """Both ``since`` and ``until`` bound point-in-time rows, multi-day spans, and
+    open periods (an open phase that starts *after* ``until`` was not active in
+    the window), while undated catalogs stay intact and ``profile.period`` records
+    the bounds for the reader."""
+    from vitals.models.timeline import Annotation
+    from vitals.services import glp1_service, supplements_service, weight_service
+
+    await weight_service.log_weight(db_session, on_date=date(2026, 3, 31), weight_kg=101.0)
+    await weight_service.log_weight(db_session, on_date=date(2026, 4, 1), weight_kg=100.0)
+    await weight_service.log_weight(db_session, on_date=date(2026, 4, 15), weight_kg=99.0)
+    await weight_service.log_weight(db_session, on_date=date(2026, 4, 30), weight_kg=98.0)
+    await weight_service.log_weight(db_session, on_date=date(2026, 5, 1), weight_kg=97.0)
+
+    # Four dose phases relative to April 2026: ended before, overlaps start,
+    # open started before window, open started after window.
+    await glp1_service.add_dose_phase(
+        db_session, start_date=date(2026, 1, 1), end_date=date(2026, 3, 15),
+        drug="semaglutide", dose_mg=0.25,
+    )
+    await glp1_service.add_dose_phase(
+        db_session, start_date=date(2026, 3, 20), end_date=date(2026, 4, 10),
+        drug="semaglutide", dose_mg=0.5,
+    )
+    await glp1_service.add_dose_phase(
+        db_session, start_date=date(2026, 4, 11), drug="semaglutide", dose_mg=1.0,
+    )
+    await glp1_service.add_dose_phase(
+        db_session, start_date=date(2026, 5, 5), drug="semaglutide", dose_mg=1.7,
+    )
+
+    # Multi-day timeline annotations: spanning into window, inside, after window.
+    db_session.add_all([
+        Annotation(
+            date=date(2026, 3, 28), end_date=date(2026, 4, 2),
+            domain="timeline", source="manual", kind="travel", title="Trip overlapping start",
+        ),
+        Annotation(
+            date=date(2026, 4, 29), end_date=date(2026, 5, 3),
+            domain="timeline", source="manual", kind="travel", title="Trip overlapping end",
+        ),
+        Annotation(
+            date=date(2026, 5, 2), end_date=date(2026, 5, 6),
+            domain="timeline", source="manual", kind="travel", title="Trip after",
+        ),
+    ])
+    await supplements_service.add_supplement(db_session, name="Magnesium")
+    await db_session.commit()
+
+    april = await export_llm(db_session, since=date(2026, 4, 1), until=date(2026, 4, 30))
+    assert april["profile"]["period"] == {"since": "2026-04-01", "until": "2026-04-30"}
+    assert [w["date"] for w in april["weight_history"]] == ["2026-04-01", "2026-04-15", "2026-04-30"]
+    assert [p["dose_mg"] for p in april["glp1_dose_phases"]] == [0.5, 1.0]
+    assert [a["title"] for a in april["timeline_annotations"]] == [
+        "Trip overlapping start",
+        "Trip overlapping end",
+    ]
+    assert [s["name"] for s in april["supplements"]] == ["Magnesium"]
+
+    # Upper bound only (everything up through April 15).
+    until_only = await export_llm(db_session, until=date(2026, 4, 15))
+    assert until_only["profile"]["period"] == {"until": "2026-04-15"}
+    assert [w["date"] for w in until_only["weight_history"]] == [
+        "2026-03-31", "2026-04-01", "2026-04-15",
+    ]
+    assert [p["dose_mg"] for p in until_only["glp1_dose_phases"]] == [0.25, 0.5, 1.0]
+
+
+async def test_llm_export_rejects_inverted_period(db_session):
+    with pytest.raises(ValueError, match="until cannot be before since"):
+        await export_llm(db_session, since=date(2026, 5, 10), until=date(2026, 5, 1))
 
 
 # ── Every domain reaches the LLM export ────────────────────────────────────────
@@ -559,7 +633,57 @@ async def test_export_llm_endpoint_downloads_digest(auth_client, db_session):
     assert "vitals_llm_" in r.headers["content-disposition"]
     data = r.json()
     assert "profile" in data
+    assert "period" not in data["profile"]
     assert "raw_payloads" not in data
+
+
+async def test_export_llm_endpoint_filters_by_period(auth_client, db_session):
+    from vitals.services import weight_service
+
+    await weight_service.log_weight(db_session, on_date=date(2026, 3, 10), weight_kg=102.0)
+    await weight_service.log_weight(db_session, on_date=date(2026, 4, 10), weight_kg=99.0)
+    await weight_service.log_weight(db_session, on_date=date(2026, 5, 10), weight_kg=96.0)
+    await db_session.commit()
+
+    r = await auth_client.get(
+        "/api/v1/settings/export-llm", params={"since": "2026-04-01", "until": "2026-04-30"}
+    )
+    assert r.status_code == 200
+    assert 'filename="vitals_llm_2026-04-01_2026-04-30.json"' in r.headers["content-disposition"]
+    body = r.json()
+    assert body["profile"]["period"] == {"since": "2026-04-01", "until": "2026-04-30"}
+    assert [w["weight_kg"] for w in body["weight_history"]] == [99.0]
+
+
+async def test_export_llm_endpoint_filters_open_ended_bounds(auth_client, db_session):
+    from vitals.services import weight_service
+
+    await weight_service.log_weight(db_session, on_date=date(2026, 3, 10), weight_kg=102.0)
+    await weight_service.log_weight(db_session, on_date=date(2026, 4, 10), weight_kg=99.0)
+    await weight_service.log_weight(db_session, on_date=date(2026, 5, 10), weight_kg=96.0)
+    await db_session.commit()
+
+    r_from = await auth_client.get("/api/v1/settings/export-llm", params={"since": "2026-04-01"})
+    assert r_from.status_code == 200
+    assert 'filename="vitals_llm_from_2026-04-01.json"' in r_from.headers["content-disposition"]
+    assert [w["weight_kg"] for w in r_from.json()["weight_history"]] == [99.0, 96.0]
+
+    r_until = await auth_client.get("/api/v1/settings/export-llm", params={"until": "2026-04-30"})
+    assert r_until.status_code == 200
+    assert 'filename="vitals_llm_until_2026-04-30.json"' in r_until.headers["content-disposition"]
+    assert [w["weight_kg"] for w in r_until.json()["weight_history"]] == [102.0, 99.0]
+
+
+async def test_export_llm_endpoint_rejects_invalid_period(auth_client):
+    r_inv = await auth_client.get(
+        "/api/v1/settings/export-llm", params={"since": "2026-05-01", "until": "2026-04-01"}
+    )
+    assert r_inv.status_code == 400
+    assert r_inv.json()["error"] == "invalid"
+    assert r_inv.json()["message"]
+
+    r_bad = await auth_client.get("/api/v1/settings/export-llm", params={"since": "not-a-date"})
+    assert r_bad.status_code == 422
 
 
 async def test_import_endpoint_restores_and_reports(auth_client, db_session):

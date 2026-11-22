@@ -331,6 +331,8 @@ a.row:hover { background: rgba(255, 255, 255, .02); }
 /* DateField: the box is an ordinary input; the native one sits inside it, clipped and unseen. */
 .datef { position: relative; display: flex; align-items: center; overflow: hidden; cursor: pointer; }
 .datef:focus-within { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+.datef.invalid { border-color: var(--bad-line); }
+.datef.invalid:focus-within { border-color: var(--bad-strong); box-shadow: 0 0 0 3px var(--bad-soft); }
 .datef-v { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .datef-i { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; font-size: 16px; cursor: pointer; -webkit-appearance: none; appearance: none; }
 .meta-line { display: flex; gap: 8px; flex-wrap: wrap; }

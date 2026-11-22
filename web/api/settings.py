@@ -10,13 +10,14 @@ responses or mutation returns.
 from __future__ import annotations
 
 import asyncio
+from datetime import date
 import json
 import logging
 import os
 import signal
 from typing import Any, Optional
 
-from fastapi import Depends, File, HTTPException, Request, Response, UploadFile, status
+from fastapi import Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,6 +37,7 @@ from vitals.services.proactive import day_plan, prefs
 from vitals.utils.passwords import hash_password
 from vitals.utils.timeutils import today_local
 from web.api.errors import ApiRouter
+from web.api.schemas.errors import InvalidBody
 from web.api.schemas.settings import (
     AiSettings,
     AiUpdate,
@@ -667,14 +669,31 @@ async def export_backup(
     )
 
 
-@router.get("/export-llm")
+def _llm_export_filename(since: Optional[date], until: Optional[date]) -> str:
+    if since is not None and until is not None:
+        return f"vitals_llm_{since.isoformat()}_{until.isoformat()}.json"
+    if since is not None:
+        return f"vitals_llm_from_{since.isoformat()}.json"
+    if until is not None:
+        return f"vitals_llm_until_{until.isoformat()}.json"
+    return f"vitals_llm_{today_local().strftime('%Y%m%d')}.json"
+
+
+@router.get(
+    "/export-llm",
+    responses={status.HTTP_400_BAD_REQUEST: {"model": InvalidBody}},
+)
 async def export_llm(
+    since: Optional[date] = Query(default=None),
+    until: Optional[date] = Query(default=None),
     db: AsyncSession = Depends(get_session),
     _rl: None = Depends(rate_limit("data_export", limit=2, window=60)),
 ) -> Response:
-    snapshot = await data_portability_service.export_llm(db)
+    if since is not None and until is not None and until < since:
+        raise ValueError(t("settings.export_llm_bad_period"))
+    snapshot = await data_portability_service.export_llm(db, since=since, until=until)
     body = json.dumps(snapshot, ensure_ascii=False, indent=2, default=str)
-    filename = f"vitals_llm_{today_local().strftime('%Y%m%d')}.json"
+    filename = _llm_export_filename(since, until)
     return Response(
         content=body,
         media_type="application/json",

@@ -145,6 +145,29 @@ async def test_export_everything_defaults_to_the_last_90_days(
     assert sorted(r["weight_kg"] for r in full["weight_history"]) == [88.5, 110.0]
 
 
+async def test_export_everything_honours_until_window(
+    db_session, session_factory, monkeypatch
+):
+    monkeypatch.setattr(mcp_router, "get_session_factory", lambda: session_factory)
+    from datetime import date
+
+    await weight_service.log_weight(db_session, on_date=date(2025, 1, 10), weight_kg=105.0)
+    await weight_service.log_weight(db_session, on_date=date(2025, 2, 10), weight_kg=101.0)
+    await weight_service.log_weight(db_session, on_date=date(2025, 3, 10), weight_kg=98.0)
+    await db_session.commit()
+
+    sliced = await mcp_router.export_everything(since="2025-02-01", until="2025-02-28")
+    assert sliced["profile"]["period"] == {"since": "2025-02-01", "until": "2025-02-28"}
+    assert [r["weight_kg"] for r in sliced["weight_history"]] == [101.0]
+
+    # When only `until` is given, the default 90-day window anchors to `until`.
+    anchored = await mcp_router.export_everything(until="2025-02-28")
+    assert [r["weight_kg"] for r in anchored["weight_history"]] == [105.0, 101.0]
+
+    inverted = await mcp_router.export_everything(since="2025-03-01", until="2025-02-01")
+    assert "error" in inverted
+
+
 async def test_export_everything_narrows_to_named_domains(
     db_session, session_factory, monkeypatch
 ):

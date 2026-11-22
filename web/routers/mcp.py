@@ -2870,7 +2870,9 @@ EXPORT_DEFAULT_DAYS = 90
 
 @mcp.tool()
 async def export_everything(
-    domains: Optional[list[str]] = None, since: Optional[str] = None
+    domains: Optional[list[str]] = None,
+    since: Optional[str] = None,
+    until: Optional[str] = None,
 ) -> dict:
     """Returns the health history as one compact, secret-free, LLM-ready export
     grouped by domain (weight, measurements, body scans, GLP-1, HRT, labs, Garmin,
@@ -2887,21 +2889,24 @@ async def export_everything(
 
     Defaults to the **last 90 days**: the whole lake is years of daily Garmin rows
     with per-minute sleep and would fill the conversation before the question is
-    asked. Widen deliberately — ``since="2020-01-01"`` (any early date) for the
-    entire history, and/or ``domains=["biomarkers", "weight_history"]`` to pull a
-    couple of areas in full instead of everything. Unknown domain names are
+    asked. Widen or slice deliberately — ``since="2020-01-01"`` (any early date)
+    for the entire history, ``since`` + ``until`` (both inclusive ``YYYY-MM-DD``)
+    for an exact period, and/or ``domains=["biomarkers", "weight_history"]`` to
+    pull a couple of areas in full instead of everything. Unknown domain names are
     rejected with the list of valid ones."""
     from vitals.services import data_portability_service
     from vitals.utils.timeutils import today_local
 
-    default_since = today_local() - timedelta(days=EXPORT_DEFAULT_DAYS)
+    end = _parse_date(until, None, field="until")
+    anchor = end or today_local()
+    default_since = anchor - timedelta(days=EXPORT_DEFAULT_DAYS)
     cutoff = _parse_date(since, default_since, field="since")
 
     session_factory = get_session_factory()
     async with session_factory() as session:
         try:
             return await data_portability_service.export_llm(
-                session, domains=domains, since=cutoff
+                session, domains=domains, since=cutoff, until=end
             )
         except ValueError as e:
             return {"error": str(e)}

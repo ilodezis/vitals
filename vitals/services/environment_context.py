@@ -477,16 +477,17 @@ async def export_blocks(
     session: AsyncSession,
     *,
     since: Optional[date_type],
+    until: Optional[date_type] = None,
     blocks: Sequence[str] = ("environment_nights", "environment_hours"),
 ) -> dict[str, list]:
     """The export's environment blocks, only the ones asked for — the nights are a
     query each and not worth running for a caller who wanted the hours."""
     out: dict[str, list] = {}
     if "environment_nights" in blocks:
-        found, _ = await nights(session, since, None, limit=None)
+        found, _ = await nights(session, since, until, limit=None)
         out["environment_nights"] = [night_dict(n) for n in found]
     if "environment_hours" in blocks:
-        out["environment_hours"] = await hours_by_day(session, since, None)
+        out["environment_hours"] = await hours_by_day(session, since, until)
     return out
 
 

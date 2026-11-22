@@ -183,6 +183,17 @@ async def test_the_export_honours_since(db_session, summaries):
     assert out["environment_hours"] == []  # the only hourly row is on the 8th
 
 
+async def test_the_export_honours_until(db_session, summaries):
+    await seed_air(db_session, summaries)
+    summaries.asked.clear()
+
+    out = await data_portability_service.export_llm(db_session, until=date(2026, 6, 8))
+
+    assert [n["date"] for n in out["environment_nights"]] == ["2026-06-08"]
+    assert [d["date"] for d in out["environment_hours"]] == ["2026-06-08"]
+    assert summaries.asked == [date(2026, 6, 8)]  # the 9th was never even queried
+
+
 async def test_naming_the_nights_block_skips_the_hours_and_vice_versa(db_session, summaries):
     await seed_air(db_session, summaries)
 

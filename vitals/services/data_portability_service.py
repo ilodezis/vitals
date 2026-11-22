@@ -359,9 +359,13 @@ async def _reset_sequences(session: AsyncSession) -> None:
 # ── LLM export ─────────────────────────────────────────────────────────────────
 
 
-def _llm_profile() -> dict[str, Any]:
+def _llm_profile(
+    *,
+    since: date | None = None,
+    until: date | None = None,
+) -> dict[str, Any]:
     """Owner context (from .env) so the LLM reads the data with the right frame."""
-    return {
+    profile: dict[str, Any] = {
         "height_cm": os.getenv("VITALS_HEIGHT_CM") or "190",
         "sex": os.getenv("VITALS_SEX") or "male",
         "age": os.getenv("VITALS_USER_AGE") or "18",
@@ -375,6 +379,14 @@ def _llm_profile() -> dict[str, Any]:
             "Даты в ISO 8601, вес в кг. Это навигатор для поддержки решений, не врач."
         ),
     }
+    if since is not None or until is not None:
+        profile["period"] = _compact(
+            {
+                "since": since.isoformat() if since else None,
+                "until": until.isoformat() if until else None,
+            }
+        )
+    return profile
 
 
 def _compact(row: dict[str, Any]) -> dict[str, Any]:
@@ -404,23 +416,37 @@ def _row_dump(obj: Any) -> dict[str, Any]:
     )
 
 
-def _row_within(row: dict[str, Any], since_iso: str) -> bool:
-    """Keep a row that is not entirely older than ``since``.
+def _row_within(
+    row: dict[str, Any],
+    since_iso: str | None = None,
+    until_iso: str | None = None,
+) -> bool:
+    """Keep a row that overlaps the ``[since, until]`` window (either end may be open).
 
-    Three shapes go through here. A point in time (``date``) is compared directly.
-    A period (``start_date``) survives on its ``end_date``, and an *open* period —
-    a dose phase or cycle that started years ago and is running today — has no
-    ``end_date`` at all, so it stays whatever its start says. Catalog rows
-    (supplements, genetics, cycle templates) carry no date and always stay: a stack
-    list is current state, not history.
+    Three shapes go through here. A point in time (``date``) is compared directly
+    (a multi-day annotation carrying ``end_date`` overlaps when its span touches
+    the window). A period (``start_date``) survives when it overlaps the window:
+    an *open* period — a dose phase or cycle still running today — has no
+    ``end_date`` so it always passes ``since``, while a period that starts after
+    ``until`` stays out. Catalog rows (supplements, genetics, cycle templates)
+    carry no date and always stay: a stack list is current state, not history.
     """
     end = row.get("end_date")
     if "start_date" in row:
-        return end is None or end >= since_iso
+        start = row["start_date"]
+        if since_iso is not None and end is not None and end < since_iso:
+            return False
+        if until_iso is not None and start > until_iso:
+            return False
+        return True
     day = row.get("date")
     if day is None:
         return True
-    return (end or day) >= since_iso
+    if since_iso is not None and (end or day) < since_iso:
+        return False
+    if until_iso is not None and day > until_iso:
+        return False
+    return True
 
 
 # The bedroom-air blocks are built on demand (see ``export_llm``).
@@ -432,16 +458,19 @@ async def export_llm(
     *,
     domains: Sequence[str] | None = None,
     since: date | None = None,
+    until: date | None = None,
 ) -> dict[str, Any]:
     """Curated, flat, secret-free digest grouped by domain — paste-into-chat ready.
 
-    Both filters default to off, so the web download stays the whole history. The
-    MCP tool narrows instead: a chat asking about this month should not be handed
-    years of daily Garmin rows. ``domains`` names top-level blocks of the result
-    (``weight_history``, ``biomarkers``, …); ``since`` drops rows that ended before
-    that date.
+    All filters default to off, so an unfiltered download stays the whole history.
+    ``domains`` names top-level blocks of the result (``weight_history``,
+    ``biomarkers``, …); ``since`` and ``until`` narrow dated rows to the inclusive
+    ``[since, until]`` period (open-ended on either side when omitted).
     """
-    out: dict[str, Any] = {"profile": _llm_profile()}
+    if since is not None and until is not None and until < since:
+        raise ValueError("until cannot be before since")
+
+    out: dict[str, Any] = {"profile": _llm_profile(since=since, until=until)}
 
     # Weight — active rows only (superseded duplicates are noise for analysis).
     weights = (
@@ -892,7 +921,11 @@ async def export_llm(
     if wanted_air:
         from vitals.services import environment_context
 
-        out.update(await environment_context.export_blocks(session, since=since, blocks=wanted_air))
+        out.update(
+            await environment_context.export_blocks(
+                session, since=since, until=until, blocks=wanted_air
+            )
+        )
 
     # Narrowing happens on the assembled digest rather than in each of the twenty
     # queries above: the rows are already flat dicts with their dates, so one pass
@@ -907,10 +940,11 @@ async def export_llm(
             )
             raise ValueError(f"unknown domains {unknown}; available: {blocks}")
         out = {k: v for k, v in out.items() if k == "profile" or k in domains}
-    if since is not None:
-        since_iso = since.isoformat()
+    if since is not None or until is not None:
+        since_iso = since.isoformat() if since is not None else None
+        until_iso = until.isoformat() if until is not None else None
         out = {
-            k: [r for r in v if _row_within(r, since_iso)] if isinstance(v, list) else v
+            k: [r for r in v if _row_within(r, since_iso, until_iso)] if isinstance(v, list) else v
             for k, v in out.items()
         }
 

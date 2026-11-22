@@ -11485,7 +11485,10 @@ export interface operations {
     };
     export_llm: {
         parameters: {
-            query?: never;
+            query?: {
+                since?: string | null;
+                until?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -11499,6 +11502,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidBody"];
                 };
             };
             /** @description Unauthorized */
@@ -11517,6 +11529,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -14870,4 +14891,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: f085326c391f4e043a2de12dba17fc22fb2833c989bf1c73193e0b23cb76710c
+// openapi.json sha256: fc43a90774acfc3f923ccf3a4fe86ab4f1bb5b2f88cbfe6147c073a38e8c4e0b
