@@ -12,6 +12,8 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
+from vitals import runtime_settings
+
 load_dotenv()
 
 
@@ -48,8 +50,9 @@ def _pos_int(env_name: str, default: int) -> int:
 
 def _env_int(env_name: str, default: int) -> int:
     """Parse an int env var, falling back to ``default`` when unset or malformed
-    (unlike :func:`_pos_int`, negatives/zero are accepted where they're valid)."""
-    raw = (os.getenv(env_name) or "").strip()
+    (unlike :func:`_pos_int`, negatives/zero are accepted where they're valid).
+    Reads through the runtime overlay, so a value saved from Settings wins."""
+    raw = (runtime_settings.env(env_name) or "").strip()
     if not raw:
         return default
     try:
@@ -59,8 +62,9 @@ def _env_int(env_name: str, default: int) -> int:
 
 
 def _env_float(env_name: str, default: float) -> float:
-    """Parse a float env var, falling back to ``default`` when unset or malformed."""
-    raw = (os.getenv(env_name) or "").strip()
+    """Parse a float env var, falling back to ``default`` when unset or malformed.
+    Reads through the runtime overlay, like :func:`_env_int`."""
+    raw = (runtime_settings.env(env_name) or "").strip()
     if not raw:
         return default
     try:
@@ -168,7 +172,7 @@ def load_config() -> Config:
 
     height_cm = _env_float("VITALS_HEIGHT_CM", 190.0)
 
-    sex = (os.getenv("VITALS_SEX") or "male").strip().lower()
+    sex = (runtime_settings.env("VITALS_SEX") or "male").strip().lower()
     if sex not in ("male", "female"):
         sex = "male"
 
@@ -178,9 +182,9 @@ def load_config() -> Config:
 
     user_age = _env_int("VITALS_USER_AGE", 18)
 
-    user_program = (os.getenv("VITALS_USER_PROGRAM") or "рекомпозиция тела (снижение жира, сохраняя мышцы) на протоколе GLP-1, с силовыми тренировками и отслеживанием восстановления").strip()
+    user_program = (runtime_settings.env("VITALS_USER_PROGRAM") or "рекомпозиция тела (снижение жира, сохраняя мышцы) на протоколе GLP-1, с силовыми тренировками и отслеживанием восстановления").strip()
 
-    goals_raw = (os.getenv("VITALS_USER_GOALS") or "").strip()
+    goals_raw = (runtime_settings.env("VITALS_USER_GOALS") or "").strip()
     if goals_raw:
         user_goals = [g.strip() for g in goals_raw.split(",") if g.strip()]
     else:
@@ -193,7 +197,7 @@ def load_config() -> Config:
     return Config(
         database_url=database_url,
         redis_url=redis_url,
-        timezone=os.getenv("VITALS_TIMEZONE", DEFAULT_TIMEZONE) or DEFAULT_TIMEZONE,
+        timezone=runtime_settings.env("VITALS_TIMEZONE", DEFAULT_TIMEZONE) or DEFAULT_TIMEZONE,
         height_cm=height_cm,
         sex=sex,
         body_fat_source=body_fat_source,

@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from vitals.config import Config, load_config
+from vitals.config import load_config
 from vitals.enums import Domain, Severity, Source
 from vitals.i18n import t
 from vitals.models.weight import (
@@ -48,18 +48,15 @@ from vitals.utils.timeutils import today_local
 
 NOISE_ALERT_KEY = "weight.noisy_period_active"
 
-# Cached at first use. NOTE: height/sex changes via Settings only take effect after
-# a container restart (this cache + load_config() read env once) — unlike the login
-# password, which is applied live. That's acceptable: body geometry rarely changes.
-_config: Optional[Config] = None
-
-
 def _body_config() -> tuple[float, str]:
-    """(height_cm, sex) for the Navy formula, from config (cached; see note above)."""
-    global _config
-    if _config is None:
-        _config = load_config()
-    return _config.height_cm, _config.sex
+    """(height_cm, sex) for the Navy formula, read fresh on every call.
+
+    No cache: a height or sex saved from Settings lands in the runtime overlay
+    and ``load_config()`` picks it up at once, so the next measurement uses it
+    without a container restart.
+    """
+    config = load_config()
+    return config.height_cm, config.sex
 
 
 # A direct measurement — a manual entry or a body-composition scan (InBody/МедАсс)

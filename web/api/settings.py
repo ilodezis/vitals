@@ -22,6 +22,7 @@ from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from vitals.config import load_config
 from vitals.i18n import t
 from vitals.integrations.garmin_client import login_breaker_state
 from vitals.services import (
@@ -30,6 +31,7 @@ from vitals.services import (
     language_service,
     modules_service,
     passkey_service,
+    profile_store,
     twofa_service,
 )
 from vitals.services.modules_service import ModuleToggleError
@@ -153,9 +155,9 @@ async def read_settings(
     if not enabled_modules:
         enabled_modules = await modules_service.get_enabled_modules(db, redis)
 
-    profile = ProfileSettings(**profile_settings.read_profile())
+    profile = ProfileSettings(**await profile_settings.read_profile(db))
 
-    nutrition_goals = NutritionGoalsSettings(**profile_settings.read_nutrition_goals())
+    nutrition_goals = NutritionGoalsSettings(**await profile_settings.read_nutrition_goals(db))
 
     lang_code = getattr(request.state, "lang", None) or await language_service.get_language(db, redis)
     language = LanguageSettings(language=lang_code)
@@ -266,8 +268,13 @@ async def read_settings(
 
 
 @router.post("/profile", response_model=SaveResponse)
-async def update_profile(body: ProfileUpdate) -> SaveResponse:
-    profile_settings.apply_profile(
+async def update_profile(
+    request: Request,
+    body: ProfileUpdate,
+    db: AsyncSession = Depends(get_session),
+) -> SaveResponse:
+    written = await profile_settings.apply_profile(
+        db,
         height_cm=body.height_cm,
         sex=body.sex,
         user_age=body.user_age,
@@ -275,16 +282,24 @@ async def update_profile(body: ProfileUpdate) -> SaveResponse:
         user_program=body.user_program,
         user_goals=body.user_goals,
     )
+    await db.commit()
+    if "VITALS_TIMEZONE" in written:
+        profile_settings.apply_timezone_to_scheduler(request.app, written["VITALS_TIMEZONE"])
     return SaveResponse(saved=True)
 
 
 @router.post("/nutrition", response_model=SaveResponse)
-async def update_nutrition_goals(body: NutritionGoalsUpdate) -> SaveResponse:
-    profile_settings.apply_nutrition_goals(
+async def update_nutrition_goals(
+    body: NutritionGoalsUpdate,
+    db: AsyncSession = Depends(get_session),
+) -> SaveResponse:
+    await profile_settings.apply_nutrition_goals(
+        db,
         protein_target_g=body.nutrition_protein_target_g,
         calories_min=body.nutrition_calories_min,
         calories_max=body.nutrition_calories_max,
     )
+    await db.commit()
     return SaveResponse(saved=True)
 
 
@@ -703,6 +718,7 @@ async def export_llm(
 
 @router.post("/import", response_model=ImportResult)
 async def import_backup(
+    request: Request,
     db: AsyncSession = Depends(get_session),
     backup_file: UploadFile = File(...),
     _rl: None = Depends(rate_limit("data_import", limit=2, window=60)),
@@ -723,6 +739,10 @@ async def import_backup(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     await db.commit()
+    # The restore rewrote ``app_settings``, saved profile included: resync the
+    # live overlay so the restored values apply now, not after a restart.
+    await profile_store.load(db)
+    profile_settings.apply_timezone_to_scheduler(request.app, load_config().timezone)
     return ImportResult(summary=stats.summary(), restored=True)
 
 

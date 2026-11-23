@@ -89,7 +89,11 @@ async def test_settings_read_get_structure(auth_client, tmp_path, monkeypatch):
     assert "secret" not in data["security"]
 
 
-async def test_settings_update_profile(auth_client, tmp_path, monkeypatch):
+async def test_settings_update_profile(auth_client, db_session, tmp_path, monkeypatch):
+    """A profile save goes to the database and applies at once; .env is untouched."""
+    from vitals.config import load_config
+    from vitals.services import profile_store
+
     env_file = tmp_path / "test.env"
     env_file.write_text("", encoding="utf-8")
     monkeypatch.setenv("VITALS_ENV_FILE", str(env_file))
@@ -106,15 +110,44 @@ async def test_settings_update_profile(auth_client, tmp_path, monkeypatch):
     assert r.status_code == 200
     assert r.json()["saved"] is True
 
-    assert read_key("VITALS_HEIGHT_CM") == "185"
-    assert read_key("VITALS_SEX") == "female"
-    assert read_key("VITALS_USER_AGE") == "30"
-    assert read_key("VITALS_TIMEZONE") == "Europe/Berlin"
-    assert read_key("VITALS_USER_PROGRAM") == "Fat loss and toning"
-    assert read_key("VITALS_USER_GOALS") == "Sub 20% fat"
+    assert await profile_store.read(db_session) == {
+        "VITALS_HEIGHT_CM": "185",
+        "VITALS_SEX": "female",
+        "VITALS_USER_AGE": "30",
+        "VITALS_TIMEZONE": "Europe/Berlin",
+        "VITALS_USER_PROGRAM": "Fat loss and toning",
+        "VITALS_USER_GOALS": "Sub 20% fat",
+    }
+    assert env_file.read_text(encoding="utf-8") == ""
+
+    cfg = load_config()
+    assert cfg.height_cm == 185.0
+    assert cfg.sex == "female"
+    assert cfg.user_age == 30
+    assert cfg.timezone == "Europe/Berlin"
+
+    r = await auth_client.get(URL)
+    profile = r.json()["profile"]
+    assert profile["height_cm"] == "185"
+    assert profile["timezone"] == "Europe/Berlin"
 
 
-async def test_settings_update_nutrition_goals(auth_client, tmp_path, monkeypatch):
+async def test_settings_update_profile_ignores_unknown_timezone(auth_client, db_session):
+    """A zone this machine can't load would break every local-time reading at
+    once, so it is dropped like any other value that fails the form's rules."""
+    from vitals.services import profile_store
+
+    r = await auth_client.post(
+        f"{URL}/profile", json={"timezone": "Mars/Olympus", "height_cm": "180"}
+    )
+    assert r.status_code == 200
+    assert await profile_store.read(db_session) == {"VITALS_HEIGHT_CM": "180"}
+
+
+async def test_settings_update_nutrition_goals(auth_client, db_session, tmp_path, monkeypatch):
+    from vitals.config import load_config
+    from vitals.services import profile_store
+
     env_file = tmp_path / "test.env"
     env_file.write_text("", encoding="utf-8")
     monkeypatch.setenv("VITALS_ENV_FILE", str(env_file))
@@ -128,9 +161,22 @@ async def test_settings_update_nutrition_goals(auth_client, tmp_path, monkeypatc
     assert r.status_code == 200
     assert r.json()["saved"] is True
 
-    assert read_key("VITALS_NUTRITION_PROTEIN_TARGET_G") == "160"
-    assert read_key("VITALS_NUTRITION_CALORIES_MIN") == "1500"
-    assert read_key("VITALS_NUTRITION_CALORIES_MAX") == "1900"
+    assert await profile_store.read(db_session) == {
+        "VITALS_NUTRITION_PROTEIN_TARGET_G": "160",
+        "VITALS_NUTRITION_CALORIES_MIN": "1500",
+        "VITALS_NUTRITION_CALORIES_MAX": "1900",
+    }
+    assert env_file.read_text(encoding="utf-8") == ""
+    cfg = load_config()
+    assert cfg.nutrition_protein_target_g == 160.0
+    assert (cfg.nutrition_calories_min, cfg.nutrition_calories_max) == (1500, 1900)
+
+    goals = (await auth_client.get(URL)).json()["nutrition_goals"]
+    assert goals == {
+        "nutrition_protein_target_g": "160",
+        "nutrition_calories_min": "1500",
+        "nutrition_calories_max": "1900",
+    }
 
 
 async def test_settings_update_language(auth_client, db_session, redis):

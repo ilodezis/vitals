@@ -5,13 +5,15 @@ the wall clock through these helpers, never ``datetime.now()``/``utcnow()``
 directly, so a container running in UTC can't skew "today" / date windows.
 
 The timezone comes from ``VITALS_TIMEZONE`` (default Europe/Chisinau) and is
-resolved lazily and cached. We return **naive** values (tzinfo stripped) on
-purpose so they stay directly comparable with the naive ``Date``/``DateTime``
-columns used across the schema. The container also pins ``TZ`` as defence in
-depth.
+resolved lazily and cached. A zone saved from Settings lives in the runtime
+overlay (:mod:`vitals.runtime_settings`) and wins over the environment, so a
+change applies on the next call without a restart. We return **naive** values
+(tzinfo stripped) on purpose so they stay directly comparable with the naive
+``Date``/``DateTime`` columns used across the schema. The container also pins
+``TZ`` as defence in depth.
 
 ``set_timezone()`` exists for tests (``freezegun`` covers the clock; this covers
-the zone) — production reads the env once.
+the zone).
 """
 from __future__ import annotations
 
@@ -19,6 +21,8 @@ import os
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
+
+from vitals import runtime_settings
 
 DEFAULT_TIMEZONE = "Europe/Chisinau"
 
@@ -28,7 +32,7 @@ _tz: ZoneInfo | None = None
 
 def _zone() -> ZoneInfo:
     global _tz_name, _tz
-    configured = os.getenv("VITALS_TIMEZONE", DEFAULT_TIMEZONE) or DEFAULT_TIMEZONE
+    configured = runtime_settings.env("VITALS_TIMEZONE", DEFAULT_TIMEZONE) or DEFAULT_TIMEZONE
     if _tz is None or configured != _tz_name:
         _tz_name = configured
         _tz = ZoneInfo(configured)
@@ -36,10 +40,12 @@ def _zone() -> ZoneInfo:
 
 
 def set_timezone(name: str) -> None:
-    """Override the active zone (tests). Clears the cache so the next call to
+    """Override the active zone (tests). Drops any saved overlay value so the
+    environment applies, and clears the cache so the next call to
     :func:`now_local` reflects it."""
     global _tz_name, _tz
     os.environ["VITALS_TIMEZONE"] = name
+    runtime_settings.discard("VITALS_TIMEZONE")
     _tz_name = None
     _tz = None
 

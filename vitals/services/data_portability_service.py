@@ -43,7 +43,6 @@ Design notes:
 """
 from __future__ import annotations
 
-import os
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -57,6 +56,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from vitals import runtime_settings
 from vitals.models.base import Base
 from vitals.models.body_scan import BodyScan
 from vitals.models.garmin import GarminActivity, GarminDaily
@@ -202,7 +202,7 @@ async def export_full(session: AsyncSession) -> dict[str, Any]:
             "version": BACKUP_VERSION,
             "kind": KIND_FULL,
             "exported_at": now_local().isoformat(timespec="seconds"),
-            "timezone": os.getenv("VITALS_TIMEZONE", "Europe/Chisinau"),
+            "timezone": runtime_settings.env("VITALS_TIMEZONE", "Europe/Chisinau"),
         }
     }
 
@@ -364,14 +364,15 @@ def _llm_profile(
     since: date | None = None,
     until: date | None = None,
 ) -> dict[str, Any]:
-    """Owner context (from .env) so the LLM reads the data with the right frame."""
+    """Owner context (saved profile, else .env) so the LLM reads the data with the right frame."""
+    env = runtime_settings.env
     profile: dict[str, Any] = {
-        "height_cm": os.getenv("VITALS_HEIGHT_CM") or "190",
-        "sex": os.getenv("VITALS_SEX") or "male",
-        "age": os.getenv("VITALS_USER_AGE") or "18",
-        "program": os.getenv("VITALS_USER_PROGRAM") or "",
-        "goals": os.getenv("VITALS_USER_GOALS") or "",
-        "timezone": os.getenv("VITALS_TIMEZONE", "Europe/Chisinau"),
+        "height_cm": env("VITALS_HEIGHT_CM") or "190",
+        "sex": env("VITALS_SEX") or "male",
+        "age": env("VITALS_USER_AGE") or "18",
+        "program": env("VITALS_USER_PROGRAM") or "",
+        "goals": env("VITALS_USER_GOALS") or "",
+        "timezone": env("VITALS_TIMEZONE", "Europe/Chisinau"),
         "exported_at": now_local().isoformat(timespec="seconds"),
         "units": {"weight": "kg", "distance": "m", "energy": "kcal"},
         "note": (

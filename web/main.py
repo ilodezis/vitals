@@ -54,9 +54,15 @@ async def lifespan(app: FastAPI):
     from vitals.config import load_config
     from vitals.scheduler.jobs import register_all_jobs
     from vitals.scheduler.scheduler import seed_heartbeats, setup_scheduler
-    from vitals.services import conflict_catalog, hrt_catalog
+    from vitals.services import conflict_catalog, hrt_catalog, profile_store
     from vitals.services.conflict_registrations import register_all_resolvers
     from vitals.services.proactive import prefs
+
+    # The profile saved from Settings (timezone included) lives in the DB and
+    # overrides .env: load it into the runtime overlay before anything reads
+    # the config, so the scheduler starts in the saved zone.
+    async with session_factory() as session:
+        await profile_store.load(session)
 
     config = load_config()
 

@@ -134,6 +134,17 @@ def _reset_engine_registries():
     scheduler_mod.clear_jobs()
 
 
+@pytest.fixture(autouse=True)
+def _reset_runtime_settings():
+    """A profile saved in one test lives in the process-wide overlay; clear it so
+    the next test reads its own environment again."""
+    from vitals import runtime_settings
+
+    runtime_settings.clear()
+    yield
+    runtime_settings.clear()
+
+
 _SQLITE_SCHEMA_READY = False
 
 
