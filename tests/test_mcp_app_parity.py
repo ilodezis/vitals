@@ -67,7 +67,7 @@ async def test_the_old_checklist_tool_is_gone():
     went stale — the retired tool must not come back."""
     listed = {t.name for t in await mcp_router.mcp.list_tools()}
     assert "log_skincare" not in listed
-    assert {"get_skincare_routine", "set_skincare_check", "add_skincare_product"} <= listed
+    assert {"get_skincare", "save_skincare"} <= listed
 
 
 async def test_product_is_added_and_planned_on_its_days():
@@ -230,7 +230,7 @@ async def test_photo_and_today_survive_the_protocol(static_dir):
 
     added = await mcp_router.add_photo("face", _png_b64())
     async with Client(mcp_router.mcp) as client:
-        shown = await client.call_tool("get_photo", {"kind": "face", "photo_id": added["id"]})
+        shown = await client.call_tool("get_photos", {"kind": "face", "photo_id": added["id"]})
         assert [c.type for c in shown.content] == ["text", "image"]
         today = await client.call_tool("get_today", {})
         assert json.loads(today.content[0].text)["date"] == today_local().isoformat()
@@ -274,24 +274,37 @@ def env_file(tmp_path, monkeypatch):
     return path
 
 
-async def test_profile_is_written_where_settings_writes_it(env_file):
+async def test_profile_is_written_where_settings_writes_it(env_file, db_session):
+    from vitals.config import load_config
+    from vitals.services import profile_store
+
+    before_env = env_file.read_text(encoding="utf-8")
     result = await mcp_router.update_user_profile(
         height_cm=188.5, age=31, goals=["снижение жира", "сила"],
         protein_target_g=160, calories_min=1500, calories_max=1900,
     )
-    text = env_file.read_text(encoding="utf-8")
-    assert "VITALS_HEIGHT_CM=188.5" in text and "VITALS_USER_AGE=31" in text
-    assert "VITALS_USER_GOALS=снижение жира, сила" in text
-    assert "VITALS_NUTRITION_CALORIES_MAX=1900" in text
+    # Persisted in app_settings (DB), leaving .env untouched as the fallback.
+    assert env_file.read_text(encoding="utf-8") == before_env
+    overrides = await profile_store.read(db_session)
+    assert overrides["VITALS_HEIGHT_CM"] == "188.5"
+    assert overrides["VITALS_USER_AGE"] == "31"
+    assert overrides["VITALS_USER_GOALS"] == "снижение жира, сила"
+    assert overrides["VITALS_NUTRITION_CALORIES_MAX"] == "1900"
 
     assert result["height_cm"] == 188.5 and result["age"] == 31
     assert result["goals"] == ["снижение жира", "сила"]
     assert result["nutrition_goals"] == {
         "protein_target_g": 160.0, "calories_min": 1500, "calories_max": 1900,
     }
-    # Saved, but the running process reads .env at start — say so instead of
-    # pretending the Navy formula already uses the new height.
-    assert "height_cm" in result["pending_restart"]
+    # Applied live in-process: no restart required, load_config() sees it immediately.
+    assert "pending_restart" not in result
+    cfg = load_config()
+    assert cfg.height_cm == 188.5
+    assert cfg.user_age == 31
+    assert cfg.user_goals == ["снижение жира", "сила"]
+    assert cfg.nutrition_protein_target_g == 160.0
+    assert cfg.nutrition_calories_min == 1500
+    assert cfg.nutrition_calories_max == 1900
 
 
 @pytest.mark.parametrize(

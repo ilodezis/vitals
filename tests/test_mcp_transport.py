@@ -76,14 +76,17 @@ async def test_mcp_rejects_a_request_without_a_token(client):
 
 async def test_mcp_lists_tools_over_http(client):
     async with _connect() as session:
-        names = {tool.name for tool in await session.list_tools()}
+        tools = await session.list_tools()
 
-    assert "get_weight_logs" in names  # a core tool, never module-gated
+    by_name = {tool.name: tool for tool in tools}
+    assert "get_weight_logs" in by_name  # a core tool, never module-gated
+    assert by_name["get_weight_logs"].annotations.read_only_hint is True
+    assert by_name["delete_record"].annotations.destructive_hint is True
 
 
 async def test_mcp_calls_a_tool_over_http(client):
     async with _connect() as session:
-        result = await session.call_tool("get_modules", {})
+        result = await session.call_tool("get_settings", {"section": "modules"})
 
     assert result.data["enabled"]["nutrition"] is True
 

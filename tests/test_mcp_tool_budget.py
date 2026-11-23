@@ -97,10 +97,17 @@ async def test_a_night_without_stages_says_nothing_at_all(db_session):
     assert "sleep_stages" not in row and "breathing_events" not in row
 
 
-def test_every_mapped_tool_name_is_a_real_tool():
+async def test_every_mapped_tool_name_is_a_real_tool(db_session):
     """A rename must not leave a domain's tools listed for a module that is off."""
+    from vitals.services import modules_service
+
+    for key in sorted(modules_service.OPTIONAL_KEYS):
+        await modules_service.set_module_enabled(db_session, key=key, enabled=True)
+    await db_session.commit()
+
+    registered = {t.name for t in await mcp_router.mcp.list_tools()}
     for name in mcp_router.TOOL_MODULES:
-        assert callable(getattr(mcp_router, name, None)), f"{name} is not a tool"
+        assert name in registered, f"{name} is not a registered MCP tool"
 
 
 async def test_disabled_modules_drop_out_of_the_tool_list(db_session, monkeypatch):
@@ -108,7 +115,7 @@ async def test_disabled_modules_drop_out_of_the_tool_list(db_session, monkeypatc
     on brings exactly its own tools back."""
     listed = {t.name for t in await mcp_router.mcp.list_tools()}
     assert "get_weight_logs" in listed  # core, never hidden
-    assert "log_hrt_dose" not in listed and "get_hrt_cycles" not in listed
+    assert "save_hrt" not in listed and "get_hrt" not in listed
 
     from vitals.services import modules_service
 
@@ -116,5 +123,5 @@ async def test_disabled_modules_drop_out_of_the_tool_list(db_session, monkeypatc
     await db_session.commit()
 
     listed = {t.name for t in await mcp_router.mcp.list_tools()}
-    assert "log_hrt_dose" in listed and "get_hrt_cycles" in listed
+    assert "save_hrt" in listed and "get_hrt" in listed
     assert "get_signals" not in listed  # still off
