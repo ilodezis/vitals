@@ -331,6 +331,72 @@ async def test_narrative_uses_the_brief_model_and_is_told_to_be_short(db_session
     assert row.model == "fake/brief"
 
 
+class FlakyBriefLLM(FakeLLM):
+    """The brief model's provider answers 429; the digest model is fine."""
+
+    async def complete_text(self, prompt, *, model=None, **kw):
+        if model == self.brief_model:
+            self.calls.append({"prompt": prompt, "model": model})
+            raise RuntimeError("Error code: 429 - Provider returned error")
+        return await super().complete_text(prompt, model=model, **kw)
+
+
+async def test_narrative_falls_back_to_the_digest_model(db_session):
+    """One 429 from the brief model must not cost the paragraph."""
+    await _seed_day(db_session)
+    llm = FlakyBriefLLM()
+
+    row = await brief.generate_brief(db_session, llm, on_date=DAY)
+    await db_session.commit()
+
+    assert [c["model"] for c in llm.calls] == ["fake/brief", "fake/digest"]
+    assert "Восстановление в норме" in row.content
+    assert row.model == "fake/digest"  # the model that actually wrote it
+
+
+async def test_empty_answer_also_tries_the_fallback(db_session):
+    await _seed_day(db_session)
+
+    class BlankBrief(FakeLLM):
+        async def complete_text(self, prompt, *, model=None, **kw):
+            self.calls.append({"model": model})
+            return "" if model == self.brief_model else "Ровный день."
+
+    llm = BlankBrief()
+    text, model = await brief.narrative(llm, {"date": DAY.isoformat()})
+    assert (text, model) == ("Ровный день.", "fake/digest")
+
+
+def test_prompt_carries_only_the_morning_domains():
+    """The shared snapshot grew a 80 KB genetics catalog; a 3-sentence morning
+    paragraph written off it started quoting the wrong numbers."""
+    ctx = {
+        "date": DAY.isoformat(),
+        "garmin": {"hrv_avg": 34.0, "baseline": {"hrv_avg": 31.1}},
+        "day": {"answers": {}},
+        "genetics": [{"rsid": "rs1801133", "genotype": "CT"}],
+        "labs": {"out_of_range": [{"marker": "ferritin_marker"}]},
+        "body_comp": {"scans": []},
+        "skincare": {"logs": []},
+        "coverage": {"genetics": {"enabled": True}},
+    }
+    prompt = brief.build_prompt(ctx)
+
+    assert '"hrv_avg": 34.0' in prompt
+    for absent in ("rs1801133", "ferritin_marker", "body_comp", "skincare", "coverage"):
+        assert absent not in prompt
+
+
+def test_brief_model_falls_back_to_the_digest_model_when_unset():
+    from vitals.config import load_config
+    from vitals.integrations.llm_client import LLMClient
+
+    from dataclasses import replace
+
+    cfg = replace(load_config(), llm_model_digest="x/digest", llm_model_brief="")
+    assert LLMClient(cfg).brief_model == "x/digest"
+
+
 # ── Storage ───────────────────────────────────────────────────────────────────
 async def test_brief_is_stored_as_its_own_kind(db_session):
     """One table, two kinds — and a brief must never surface where a weekly

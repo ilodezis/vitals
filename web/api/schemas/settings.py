@@ -84,7 +84,7 @@ class AiSettings(BaseModel):
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     llm_model_digest: str = "anthropic/claude-sonnet-4.6"
     llm_model_parser: str = "google/gemini-2.5-flash"
-    llm_model_brief: str = "google/gemini-2.5-flash-lite"
+    llm_model_brief: str = ""
 
 
 class AiUpdate(BaseModel):

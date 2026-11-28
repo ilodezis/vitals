@@ -2696,7 +2696,7 @@ export interface components {
         AiSettings: {
             /**
              * Llm Model Brief
-             * @default google/gemini-2.5-flash-lite
+             * @default
              */
             llm_model_brief: string;
             /**
@@ -14891,4 +14891,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: fc43a90774acfc3f923ccf3a4fe86ab4f1bb5b2f88cbfe6147c073a38e8c4e0b
+// openapi.json sha256: 2d2d6073b9389cecb22fdfc2846e4d5960e4e502f233b4e0b9655db5e5ca79a5

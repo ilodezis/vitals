@@ -226,7 +226,7 @@
       "AiSettings": {
         "properties": {
           "llm_model_brief": {
-            "default": "google/gemini-2.5-flash-lite",
+            "default": "",
             "title": "Llm Model Brief",
             "type": "string"
           },

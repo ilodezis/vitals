@@ -115,6 +115,11 @@ state (состояние, 1-5), symptom (симптом, 1-5), exposure (сде
 нормы совпали» — наблюдение. «Из-за духоты HRV упал» — выдуманная причина: одна
 ночь этого не показывает. Если блока нет — про воздух не пиши.
 
+В `garmin` поля `*_lowest`, `*_low` и `max_*` — крайние точки за сутки, а не
+утреннее состояние: `body_battery_low` — минимум перед сном (утренний заряд —
+`body_battery_high`), `spo2_lowest` — самая глубокая точка за ночь, её можно
+сравнивать только с `baseline.spo2_lowest`. Не выдавай их за «упало до».
+
 Блок `yesterday` — вчерашняя активность по финальным данным часов (шаги,
 активные ккал, минуты интенсивности). `evening_steps` — сколько шагов назвал
 вчерашний вечерний итог: телефон к 23:45 мог не успеть залить часы, поэтому
@@ -352,27 +357,77 @@ async def _yesterday_nutrition(
     }
 
 
+# What the model is handed, out of the whole snapshot ``assemble_context`` builds.
+# An allowlist, not a blocklist: the snapshot is shared with the weekly digest and
+# grows with every domain. Once the genetics catalog alone passed 80 KB, the 2-3
+# sentences about last night were written off a 114 KB prompt — and a small model
+# started quoting numbers from labs, the overnight Body Battery minimum and other
+# days as this morning's state. Everything else stays in the stored context.
+_PROMPT_KEYS = (
+    "date",
+    "user_profile",
+    "day",
+    "day_context",
+    "garmin",
+    "yesterday",
+    "environment",
+    "weight",
+    "hevy",
+    "training",
+    "signals",
+    "nutrition",
+    "alerts",
+)
+
+
+def model_view(ctx: dict) -> dict:
+    """The part of the brief context the model needs for a morning paragraph."""
+    return {key: ctx[key] for key in _PROMPT_KEYS if key in ctx}
+
+
 def build_prompt(ctx: dict) -> str:
     return (
         f"Данные для утреннего брифа на {ctx.get('date')} "
         "(JSON; не переноси значения между датами):\n\n"
-        + json.dumps(ctx, ensure_ascii=False, indent=2)
+        + json.dumps(model_view(ctx), ensure_ascii=False, indent=2)
         + "\n\nНапиши утренний разбор: 2-3 предложения."
     )
 
 
-async def narrative(llm: Any, ctx: dict) -> str:
-    """The model's one block. Returns "" on any failure — never raises."""
-    try:
-        return await llm.complete_text(
-            build_prompt(ctx),
-            model=getattr(llm, "brief_model", None),
-            system=BRIEF_SYSTEM,
-            max_tokens=_BRIEF_MAX_TOKENS,
-        )
-    except Exception:
-        logger.warning("brief narrative unavailable; sending the header alone", exc_info=True)
-        return ""
+def _models(llm: Any) -> list[str]:
+    """The brief model first, then the digest model as the fallback."""
+    out: list[str] = []
+    for name in (getattr(llm, "brief_model", None), getattr(llm, "digest_model", None)):
+        if name and name not in out:
+            out.append(name)
+    return out or [None]  # type: ignore[list-item]
+
+
+async def narrative(llm: Any, ctx: dict) -> tuple[str, Optional[str]]:
+    """The model's one block and the model that wrote it. ``("", None)`` on any
+    failure — never raises.
+
+    The client does not retry (a retried paid call can bill twice), so one 429
+    from the brief model's provider used to cost the whole paragraph — about
+    half the mornings in November. A second try goes to the digest model, which
+    sits behind a different provider.
+    """
+    prompt = build_prompt(ctx)
+    for model in _models(llm):
+        try:
+            text = await llm.complete_text(
+                prompt,
+                model=model,
+                system=BRIEF_SYSTEM,
+                max_tokens=_BRIEF_MAX_TOKENS,
+            )
+        except Exception:
+            logger.warning("brief narrative failed on %s", model, exc_info=True)
+            continue
+        if text:
+            return text, model
+    logger.warning("brief narrative unavailable; sending the header alone")
+    return "", None
 
 
 async def generate_brief(
@@ -402,7 +457,7 @@ async def generate_brief(
     day = day_plan.day_block(ctx.get("day"))
     if day is not None:
         blocks.append(day)
-    tail = await narrative(llm, ctx)
+    tail, tail_model = await narrative(llm, ctx)
     if tail:
         blocks.append(compose.Block(compose.KIND_NARRATIVE, tail, 90))
 
@@ -413,7 +468,7 @@ async def generate_brief(
         kind=DigestKind.DAILY_BRIEF.value,
         content=compose.render(blocks),
         context_json=ctx,
-        model=getattr(llm, "brief_model", None) if tail else None,
+        model=tail_model,
     )
     session.add(row)
     await session.flush()

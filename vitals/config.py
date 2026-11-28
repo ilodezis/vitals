@@ -109,8 +109,8 @@ class Config:
     llm_model_digest: str = "anthropic/claude-sonnet-4.6"
     llm_model_parser: str = "google/gemini-2.5-flash"
     # Morning brief = 2-3 sentences off ready-made numbers, run every day, so a
-    # cheaper/faster model than the digest is usually the right trade (Gemini 2.5 Flash Lite).
-    llm_model_brief: str = "google/gemini-2.5-flash-lite"
+    # cheaper model than the digest can fit. Empty means "use the digest model".
+    llm_model_brief: str = ""
 
     # ── Nutrition goals ──────────────────────────────────────────────────────────
     nutrition_protein_target_g: float = 150.0
@@ -219,9 +219,7 @@ def load_config() -> Config:
         llm_model_parser=os.getenv(
             "VITALS_LLM_MODEL_PARSER", "google/gemini-2.5-flash"
         ),
-        llm_model_brief=(
-            os.getenv("VITALS_LLM_MODEL_BRIEF") or "google/gemini-2.5-flash-lite"
-        ).strip(),
+        llm_model_brief=os.getenv("VITALS_LLM_MODEL_BRIEF", "").strip(),
         hevy_api_key=os.getenv("VITALS_HEVY_API_KEY", ""),
         hevy_base_url=(os.getenv("VITALS_HEVY_BASE_URL") or DEFAULT_HEVY_BASE_URL),
         garmin_email=os.getenv("VITALS_GARMIN_EMAIL", ""),
