@@ -61,9 +61,10 @@ async def get_environment_series(
 
 @gated("environment")
 async def get_environment_night(on_date: Optional[str] = None) -> dict:
-    """Returns one night of the bedroom's air: the window 00:00–12:00 local of
-    ``on_date`` (default today — which is *last night*, the one that ended this
-    morning), with CO2 median / p90 / max, the minutes spent at or above the warn
+    """Returns one night of the bedroom's air for ``on_date`` (default today — which
+    is *last night*, the one that ended this morning), read over the hours he slept
+    when Garmin has them, else over the configured clock window; ``window.basis``
+    (``sleep`` | ``clock``) says which. With CO2 median / p90 / max, the minutes spent at or above the warn
     and bad lines, temperature and humidity ranges, and ``coverage_pct`` — how much
     of the window the station reported; a low value is a gap in the data, not a
     clean night. Includes the owner's sleeping thresholds. A night with no station
@@ -208,9 +209,10 @@ async def get_environment(
         flagged).
       * ``live`` — current reading, CO2 zone (good/ok/warn/bad), ppm/h trend,
         station online/stale/offline status and thresholds.
-      * ``night`` — one night (00:00–12:00 local of ``on_date``, default today =
-        last night): CO2 median/p90/max, minutes above warn/bad, temp/humidity
-        ranges and ``coverage_pct``.
+      * ``night`` — one night (``on_date``, default today = last night), read over
+        the Garmin sleep window when known, else the configured clock window
+        (``window.basis`` says which): CO2 median/p90/max, minutes above warn/bad,
+        temp/humidity ranges and ``coverage_pct``.
       * ``vs_sleep`` — per-night air summary beside Garmin sleep metrics
         (``start_date``/``end_date``, default last 14d, max 31d). Same-night
         co-occurrence, not cause.
