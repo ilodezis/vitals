@@ -179,7 +179,8 @@ export interface paths {
         /**
          * Read Environment Night
          * @description The night that ended on ``on_date`` (the date you woke up): its summary and
-         *     minute curve.
+         *     minute curve. The window is the hours Garmin recorded him asleep, else the
+         *     configured clock window; ``summary.window.basis`` says which.
          */
         get: operations["read_environment_night"];
         put?: never;
@@ -5240,7 +5241,7 @@ export interface components {
              */
             samples: number;
             temperature: components["schemas"]["RangeStats"];
-            window: components["schemas"]["Window"];
+            window: components["schemas"]["PeriodWindow"];
         };
         /**
          * PeriodView
@@ -5252,6 +5253,26 @@ export interface components {
             series?: components["schemas"]["Point"][];
             summary: components["schemas"]["PeriodSummary"];
             thresholds: components["schemas"]["Thresholds"];
+        };
+        /**
+         * PeriodWindow
+         * @description A summary's window. For a night, ``basis`` says where it came from: ``sleep``
+         *     is the hours Garmin recorded him asleep, ``clock`` the configured fixed window
+         *     (used when Garmin has no usable sleep for that date). A calendar day has none.
+         */
+        PeriodWindow: {
+            /** Basis */
+            basis?: ("sleep" | "clock") | null;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
         };
         /** Point */
         Point: {
@@ -14895,4 +14916,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: 193ed8da44768ee2cb8a68cdbb86857efc54cc8eb9e3b0b7aaf5221657233b61
+// openapi.json sha256: 99dcb592e02c01be7183135a0df91623b827b2e604bf7112b2f408275380ed4c

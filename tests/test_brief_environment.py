@@ -332,6 +332,120 @@ async def test_the_baseline_keeps_the_clock_window_for_nights_without_sleep_time
     assert night["baseline"]["minutes_above_warn"] == pytest.approx(90, abs=2)
 
 
+# ── Every other night summary reads the same window ───────────────────────────
+async def _slept_nights(db_session, *, with_garmin: set[date], days: list[date]):
+    """Awake-then-asleep nights; Garmin knows the sleep (02:30-10:00) only on ``with_garmin``."""
+    for day in days:
+        await _awake_then_asleep(db_session, day)
+        db_session.add(_garmin(day, 2.5, 10) if day in with_garmin else _garmin(day, None, None))
+    await db_session.commit()
+
+
+async def test_the_nights_list_reads_each_night_over_its_own_basis(db_session):
+    slept, unknown = DAY - timedelta(days=1), DAY
+    await _slept_nights(db_session, with_garmin={slept}, days=[slept, unknown])
+
+    found, _ = await environment_context.nights(db_session, slept, unknown)
+
+    by_date = {n.date: n for n in found}
+    assert by_date[slept].window.basis == "sleep" and by_date[unknown].window.basis == "clock"
+    assert by_date[slept].co2.max == 700 and by_date[slept].co2.minutes_above_warn == 0
+    assert by_date[unknown].co2.max == 1500 and by_date[unknown].co2.minutes_above_warn > 80
+    shaped = [environment_context.night_dict(n) for n in found]
+    assert [n["window"]["basis"] for n in shaped] == ["sleep", "clock"]
+    assert shaped[0]["window"]["start"] == f"{slept.isoformat()}T02:30"
+
+
+async def test_an_implausible_sleep_span_keeps_the_nights_list_on_the_clock(db_session):
+    db_session.add(_garmin(DAY, 2.5, 3.5))  # an hour: a nap, not a night
+    await _awake_then_asleep(db_session, DAY)
+    await db_session.commit()
+
+    found, _ = await environment_context.nights(db_session, DAY, DAY)
+
+    assert found[0].window.basis == "clock" and found[0].co2.max == 1500
+
+
+async def test_the_exports_nights_say_their_basis(db_session):
+    await _slept_nights(db_session, with_garmin={DAY}, days=[DAY])
+
+    out = await environment_context.export_blocks(
+        db_session, since=DAY, until=DAY, blocks=("environment_nights",)
+    )
+
+    (night,) = out["environment_nights"]
+    assert night["window"]["basis"] == "sleep" and night["co2"]["minutes_above_warn"] == 0
+
+
+@pytest.mark.usefixtures("all_modules_on")
+async def test_the_digest_reads_nights_on_sleep_and_labels_the_real_basis(db_session):
+    from vitals.services import digest_service
+
+    end = digest_service.report_window(on_date=DAY, period_days=7).period_end
+    await _slept_nights(db_session, with_garmin={end}, days=[end - timedelta(days=1), end])
+
+    ctx = await digest_service.assemble_context(db_session, on_date=DAY, period_days=7)
+
+    nights = {n["date"]: n for n in ctx["environment"]["nights"]}
+    assert nights[end.isoformat()]["window"]["basis"] == "sleep"
+    assert nights[(end - timedelta(days=1)).isoformat()]["window"]["basis"] == "clock"
+    label = ctx["coverage"]["environment"]["night_window"]
+    assert label.startswith("Garmin sleep window") and "1 of 2 nights" in label
+    assert "00:00-12:00 local clock window" in label
+
+
+@pytest.mark.usefixtures("all_modules_on")
+async def test_the_digest_label_is_the_clock_window_when_no_night_has_sleep(db_session):
+    from vitals.services import digest_service
+
+    end = digest_service.report_window(on_date=DAY, period_days=7).period_end
+    await _slept_nights(db_session, with_garmin=set(), days=[end])
+
+    ctx = await digest_service.assemble_context(db_session, on_date=DAY, period_days=7)
+
+    assert ctx["coverage"]["environment"]["night_window"] == "00:00-12:00 local clock window"
+
+
+async def test_the_night_tool_reads_the_hours_he_slept(db_session):
+    await _slept_nights(db_session, with_garmin={DAY}, days=[DAY])
+
+    out = await environment_context.night_view(db_session, DAY)
+
+    assert out["window"] == {
+        "start": f"{DAY.isoformat()}T02:30", "end": f"{DAY.isoformat()}T10:00", "basis": "sleep",
+    }
+    assert out["co2"]["max"] == 700 and out["co2"]["minutes_above_warn"] == 0 and out["samples"] == 450
+
+
+async def test_the_night_tool_falls_back_to_the_clock_and_says_so(db_session):
+    await _slept_nights(db_session, with_garmin=set(), days=[DAY])
+
+    out = await environment_context.night_view(db_session, DAY)
+
+    assert out["window"]["basis"] == "clock" and out["co2"]["max"] == 1500
+
+
+async def test_an_empty_night_still_states_its_basis(db_session):
+    db_session.add(_garmin(DAY, 2.5, 10))
+    await db_session.commit()
+
+    out = await environment_context.night_view(db_session, DAY)
+
+    assert out["samples"] == 0 and out["window"]["basis"] == "sleep" and "note" in out
+
+
+async def test_nights_beside_sleep_use_the_sleep_window_and_name_it(db_session):
+    slept, unknown = DAY - timedelta(days=1), DAY
+    await _slept_nights(db_session, with_garmin={slept}, days=[slept, unknown])
+
+    out = await environment_context.nights_with_sleep(db_session, start=slept, end=unknown)
+
+    rows = [dict(zip(out["columns"], r)) for r in out["rows"]]
+    assert [r["window_basis"] for r in rows] == ["sleep", "clock"]
+    assert rows[0]["co2_max"] == 700 and rows[0]["co2_min_above_warn"] == 0
+    assert rows[1]["co2_max"] == 1500 and rows[1]["co2_min_above_warn"] > 80
+
+
 # ── MCP: nights × sleep ───────────────────────────────────────────────────────
 async def test_nights_sit_beside_that_nights_sleep(db_session):
     await _night(db_session, DAY, co2=1200, temp=21.0)

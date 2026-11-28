@@ -58,7 +58,7 @@ def fake_night_summary(monkeypatch):
     summaries: dict[date, NightSummary] = {}
     asked: list[date] = []
 
-    async def fake(session, on_date, *, station_id="bedroom"):
+    async def fake(session, on_date, *, station_id="bedroom", window=None):
         asked.append(on_date)
         return summaries.get(
             on_date,
@@ -257,7 +257,7 @@ async def test_a_station_other_than_the_default_is_the_configured_one(db_session
     monkeypatch.setenv("VITALS_ENV_STATION_ID", "study")
     asked = []
 
-    async def fake(session, on_date, *, station_id=None):
+    async def fake(session, on_date, *, station_id=None, window=None):
         asked.append(station_id)
         return NightSummary(date=on_date, window=Window(start=local(on_date), end=local(on_date, 12)))
 
@@ -331,7 +331,8 @@ async def test_a_night_without_readings_says_so_instead_of_returning_zeros(db_se
 
     assert out["samples"] == 0 and "no station readings" in out["note"].lower()
     assert "co2" not in out
-    assert out["window"] == {"start": "2026-09-30T00:00", "end": "2026-09-30T12:00"}
+    # No Garmin sleep for the date, so the configured clock window stands, and says so.
+    assert out["window"] == {"start": "2026-09-30T00:00", "end": "2026-09-30T12:00", "basis": "clock"}
 
 
 # ── nights across a range ────────────────────────────────────────────────────

@@ -40,7 +40,7 @@ def summaries(monkeypatch):
     known: dict[date, NightSummary] = {}
     asked: list[date] = []
 
-    async def fake(session, on_date, *, station_id="bedroom"):
+    async def fake(session, on_date, *, station_id="bedroom", window=None):
         asked.append(on_date)
         return known.get(on_date, NightSummary(date=on_date, window=Window(start=utc(on_date), end=utc(on_date, 12))))
 
@@ -86,7 +86,10 @@ async def test_the_context_carries_the_nights_of_both_windows_labelled(db_sessio
     ]
     first = env["nights"][1]
     assert first["co2"]["max"] == 1500 and first["coverage_pct"] == 88.0
-    assert first["window"] == {"start": f"{current.isoformat()}T00:00", "end": f"{current.isoformat()}T12:00"}
+    # No Garmin sleep on these dates, so each night is the clock window — and says so.
+    assert first["window"] == {
+        "start": f"{current.isoformat()}T00:00", "end": f"{current.isoformat()}T12:00", "basis": "clock",
+    }
     assert env["thresholds"]["co2_warn"] == 1000 and env["thresholds"]["temp_sleep_max"] == 20
     assert "curve" not in env and "series" not in env
 

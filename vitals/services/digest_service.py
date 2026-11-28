@@ -384,7 +384,7 @@ DIGEST_SYSTEM = """\
 - timeline: ручные события и только не дублирующие доменные блоки derived lifecycle events. certainty=audit_timestamp означает приблизительную дату изменения справочника, certainty=inferred — восстановленную дату начала приёма.
 - signals: что пользователь сам сказал о своём состоянии, в хронологическом порядке. kind=state (есть всегда, value_num 1-5: «энергии ноль»), symptom (случилось, value_num 1-5: «голова раскалывается»), exposure (сделал/принял, at_time — время суток: «кофе в 22»). note — исходная формулировка. Единственный блок, который объясняет ПОЧЕМУ цифры такие: ищи связи «exposure вечером → метрика Garmin наутро» и «симптом держится N дней подряд → что ещё в эти дни». Это его слова, а не измерение — не считай их точными числами и не строй на одной записи вывод.
 - day_context: planned — догадка шаблона, answers — ручные переопределения, resolved — их итог; source_by_field показывает силу каждого поля. Вывод на одном template-поле не строй.
-- environment: воздух в спальне — по одной сводке на ночь (окно 00:00–12:00 по местному времени) за текущий и предыдущий период, поле period: CO₂ median/p90/max в ppm, minutes_above_warn / minutes_above_bad (сколько минут показания были на пороге и выше; сами пороги — в thresholds), диапазоны температуры и влажности. coverage_pct — какую часть окна станция реально присылала данные: низкое значение — дыра в данных, а не чистая ночь. Это контекст к сну и восстановлению, а не вердикт: не вини комнату за плохую оценку сна, пока нет ночей, где менялось и то и другое. Кривых в блоке нет.
+- environment: воздух в спальне — по одной сводке на ночь (окно — часы сна по Garmin, а если их нет — часы 00:00–12:00 по местному времени; window.basis — sleep или clock) за текущий и предыдущий период, поле period: CO₂ median/p90/max в ppm, minutes_above_warn / minutes_above_bad (сколько минут показания были на пороге и выше; сами пороги — в thresholds), диапазоны температуры и влажности. coverage_pct — какую часть окна станция реально присылала данные: низкое значение — дыра в данных, а не чистая ночь. Это контекст к сну и восстановлению, а не вердикт: не вини комнату за плохую оценку сна, пока нет ночей, где менялось и то и другое. Кривых в блоке нет.
 - milestones: активные цели с прогрессом и дедлайнами
 
 ИНВАРИАНТЫ (нарушение = баг):
@@ -456,7 +456,7 @@ The context has schema_version=2. Any domain may be null, but null alone does NO
 - timeline: manual events plus only derived lifecycle events not duplicated by first-class blocks. certainty=audit_timestamp means an approximate catalog-change date, certainty=inferred a reconstructed intake start.
 - signals: what the user said about how he felt, in chronological order. kind=state (always present, value_num 1-5), symptom (happened, value_num 1-5), exposure (did/took it, at_time = time of day). note is his original wording. The only block that explains WHY the numbers look like they do: look for "exposure in the evening → Garmin metric next morning" and "symptom running N days straight → what else those days had". These are his words, not measurements — don't treat them as exact figures and don't build a conclusion on a single row.
 - day_context: planned is the template guess, answers are manual overrides, resolved is the effective result, and source_by_field carries the strength of each field. Do not build a conclusion on one template-only field.
-- environment: the bedroom's air — one summary per night (the 00:00-12:00 window, local time) for the current and the previous period, tagged by period: CO2 median/p90/max in ppm, minutes_above_warn / minutes_above_bad (minutes the reading sat at or over the threshold; the thresholds themselves are in thresholds), temperature and humidity ranges. coverage_pct is how much of the window the station actually reported: a low value is a gap in the data, not a clean night. It is context for sleep and recovery, not a verdict on them: don't blame the room for a bad sleep score unless there are nights where both moved. There are no curves in the block.
+- environment: the bedroom's air — one summary per night (the hours he slept per Garmin, else the 00:00-12:00 clock window, local time; window.basis says which) for the current and the previous period, tagged by period: CO2 median/p90/max in ppm, minutes_above_warn / minutes_above_bad (minutes the reading sat at or over the threshold; the thresholds themselves are in thresholds), temperature and humidity ranges. coverage_pct is how much of the window the station actually reported: a low value is a gap in the data, not a clean night. It is context for sleep and recovery, not a verdict on them: don't blame the room for a bad sleep score unless there are nights where both moved. There are no curves in the block.
 - milestones: active goals with progress and deadlines
 
 INVARIANTS (breaking = bug):
@@ -2082,7 +2082,8 @@ async def assemble_context(
     )
 
     # Environment — the bedroom's air, one summary per night of both windows (never
-    # the curves). It is context for the sleep and recovery blocks, not a verdict on
+    # the curves), each over the hours he slept when Garmin has them and over the
+    # configured clock window otherwise (``window.basis`` says which). It is context for the sleep and recovery blocks, not a verdict on
     # them, and coverage_pct says how much of each night the station was actually
     # reporting: a night it missed is a gap, not a clean night. The daily brief
     # reads only last night, beside his recent nights, through its own path
@@ -2117,11 +2118,8 @@ async def assemble_context(
         truncated=env_truncated,
         extra={
             "night_limit": environment_context.NIGHTS_LIMIT,
-            # These nights are summarized over the configured clock window (the morning
-            # brief reads the actual sleep window instead), so state that window.
-            "night_window": (
-                f"{environment_prefs.night_start}-{environment_prefs.night_end} local (clock window)"
-            ),
+            # Say which window the nights were really read over, not the setting alone.
+            "night_window": environment_context.night_window_label(env_nights, environment_prefs),
         },
     )
 

@@ -554,7 +554,7 @@ async def test_llm_export_covers_every_domain(db_session, monkeypatch):
 
     # The storage layer's own night summary is tested with it; here it only has to
     # find the seeded night so the export's wiring is what is being checked.
-    async def one_night(session, on_date, *, station_id="bedroom"):
+    async def one_night(session, on_date, *, station_id="bedroom", window=None):
         stamp = datetime(on_date.year, on_date.month, on_date.day, tzinfo=timezone.utc)
         return NightSummary(
             date=on_date, window=Window(start=stamp, end=stamp), samples=1, co2=Co2Stats(max=900.0)

@@ -176,3 +176,35 @@ async def test_station_check_without_an_address(auth_client, monkeypatch):
     assert (await auth_client.post(URL + "/station/check")).json() == {
         "ok": False, "status": "never", "error": "not_configured",
     }
+
+
+# ── The night endpoint reads the hours he slept ───────────────────────────────
+async def test_the_night_endpoint_reads_the_garmin_sleep_window(auth_client, db_session):
+    from vitals.models import GarminDaily
+
+    # Awake in the room 00:00-02:30 at 1500 ppm, asleep 02:30-10:00 at 700 ppm (local).
+    await add_samples(db_session, at("2026-10-04T21:00:00"), count=150 * 2, step_s=30, co2=1500)
+    await add_samples(db_session, at("2026-10-04T23:30:00"), count=450 * 2, step_s=30, co2=700, boot="b2")
+    db_session.add(GarminDaily(
+        date=dt.date(2026, 10, 5), domain="garmin", source="garmin_api",
+        sleep_start=dt.datetime(2026, 10, 5, 2, 30), sleep_end=dt.datetime(2026, 10, 5, 10, 0),
+    ))
+    await db_session.commit()
+
+    summary = (await auth_client.get(URL + "/night/2026-10-05")).json()["summary"]
+
+    assert summary["window"]["basis"] == "sleep"
+    assert summary["window"]["start"].startswith("2026-10-04T23:30:00")  # 02:30 local
+    assert summary["window"]["end"].startswith("2026-10-05T07:00:00")
+    assert summary["co2"]["max"] == 700 and summary["co2"]["minutes_above_warn"] == 0
+
+
+async def test_the_night_endpoint_without_garmin_sleep_is_the_clock_window(auth_client, db_session):
+    body = (await auth_client.get(URL + "/night/2026-10-05")).json()
+    assert body["summary"]["window"]["basis"] == "clock"
+    assert body["summary"]["window"]["start"].startswith("2026-10-04T21:00:00")
+
+
+async def test_a_calendar_day_has_no_night_basis(auth_client, db_session):
+    body = (await auth_client.get(URL + "/day/2026-10-05")).json()
+    assert body["summary"]["window"]["basis"] is None

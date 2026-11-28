@@ -54,7 +54,7 @@ async def test_a_simulated_co2_climb_shows_up_as_a_night_summary(db_session):
     assert night["co2"]["minutes_above_warn"] >= night["co2"]["minutes_above_bad"]
     # one hour of a twelve-hour window: the rest is a gap, and the summary says so
     assert 7.5 <= night["coverage_pct"] <= 9.0
-    assert night["window"] == {"start": "2026-09-30T00:00", "end": "2026-09-30T12:00"}
+    assert night["window"] == {"start": "2026-09-30T00:00", "end": "2026-09-30T12:00", "basis": "clock"}
 
 
 async def test_the_rolled_up_hours_follow_the_scenario(db_session):

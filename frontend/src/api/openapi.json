@@ -7616,7 +7616,7 @@
             "$ref": "#/components/schemas/RangeStats"
           },
           "window": {
-            "$ref": "#/components/schemas/Window"
+            "$ref": "#/components/schemas/PeriodWindow"
           }
         },
         "required": [
@@ -7651,6 +7651,42 @@
           "thresholds"
         ],
         "title": "PeriodView",
+        "type": "object"
+      },
+      "PeriodWindow": {
+        "description": "A summary's window. For a night, ``basis`` says where it came from: ``sleep``\nis the hours Garmin recorded him asleep, ``clock`` the configured fixed window\n(used when Garmin has no usable sleep for that date). A calendar day has none.",
+        "properties": {
+          "basis": {
+            "anyOf": [
+              {
+                "enum": [
+                  "sleep",
+                  "clock"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basis"
+          },
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "PeriodWindow",
         "type": "object"
       },
       "Point": {
@@ -13444,7 +13480,7 @@
     },
     "/api/v1/environment/night/{on_date}": {
       "get": {
-        "description": "The night that ended on ``on_date`` (the date you woke up): its summary and\nminute curve.",
+        "description": "The night that ended on ``on_date`` (the date you woke up): its summary and\nminute curve. The window is the hours Garmin recorded him asleep, else the\nconfigured clock window; ``summary.window.basis`` says which.",
         "operationId": "read_environment_night",
         "parameters": [
           {

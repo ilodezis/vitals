@@ -95,6 +95,9 @@ class Point(_Jsonable):
 class Window(_Jsonable):
     start: datetime
     end: datetime
+    # Where a night's window came from: ``sleep`` (the hours Garmin says he slept) or
+    # ``clock`` (the configured fixed window). ``None`` for anything that is not a night.
+    basis: Optional[Literal["sleep", "clock"]] = None
 
 
 @dataclass(frozen=True)

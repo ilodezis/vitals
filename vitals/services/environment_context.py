@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import logging
 import statistics
+from collections import Counter
+from dataclasses import replace
 from datetime import date as date_type
 from datetime import datetime, time as time_type, timedelta
 from typing import Any, Optional, Sequence
@@ -96,9 +98,10 @@ def night_thresholds(settings: env_settings.EnvSettings) -> dict[str, Any]:
 def night_dict(summary: NightSummary, basis: Optional[str] = None) -> dict[str, Any]:
     """One night as the surfaces show it. A night with no readings is just its date,
     window and a zero — not a column of zeros that reads as a measured, clean night.
-    ``basis`` names where the window came from (``sleep`` or ``clock``) when the
-    caller knows; it is left out otherwise."""
+    ``basis`` names where the window came from (``sleep`` or ``clock``): the caller's,
+    else the one the summary carries; it is left out when neither knows."""
     window = {"start": _local_iso(summary.window.start), "end": _local_iso(summary.window.end)}
+    basis = basis or summary.window.basis
     if basis:
         window["basis"] = basis
     if not summary.samples:
@@ -254,7 +257,7 @@ def _columnar(points: Sequence, granularity: str) -> tuple[list[str], list[list[
 
 async def night_view(session: AsyncSession, on_date: date_type) -> dict[str, Any]:
     prefs = await env_settings.get_settings(session)
-    summary = await queries.night_summary(session, on_date)
+    summary = await night_for_date(session, on_date)
     out = {**night_dict(summary), "thresholds": night_thresholds(prefs), "timezone": _timezone()}
     if not summary.samples:
         out["note"] = "No station readings for this night window."
@@ -290,8 +293,10 @@ async def nights(
     station_id: Optional[str] = None,
 ) -> tuple[list[NightSummary], bool]:
     """Summaries of the nights between ``start`` and ``end`` (either may be open)
-    that have station data, oldest first. With more than ``limit``, the newest are
-    kept and the second element says so."""
+    that have station data, oldest first. Each night is read over the hours he slept
+    when Garmin knows them, else over the configured clock window; ``window.basis`` on
+    the summary says which. With more than ``limit``, the newest are kept and the
+    second element says so."""
     station_id = _station(station_id)
     days = await _sample_dates(session, start, end, station_id)
 
@@ -299,8 +304,9 @@ async def nights(
     if truncated:
         days = days[-limit:]
     found: list[NightSummary] = []
+    sleep_windows = await _sleep_windows(session, days[0], days[-1]) if days else {}
     for day in days:
-        summary = await queries.night_summary(session, day, station_id=station_id)
+        summary = await _night_on_own_window(session, day, sleep_windows, station_id=station_id)
         # A date with samples only in the afternoon has no night to report.
         if summary.samples:
             found.append(summary)
@@ -369,14 +375,24 @@ async def _night_on_own_window(
     sleep_windows: dict[date_type, tuple[datetime, datetime]],
     *,
     station_id: Optional[str] = None,
-) -> tuple[NightSummary, str]:
+) -> NightSummary:
     """The night that ended on ``day``, over the hours he slept when Garmin knows
-    them and over the configured clock window otherwise. The second element says
-    which. Coverage is judged against the window used, so a short sleep that the
-    station saw end to end is a fully covered night."""
+    them and over the configured clock window otherwise; ``window.basis`` says which.
+    Coverage is judged against the window used, so a short sleep that the station
+    saw end to end is a fully covered night."""
     window = sleep_windows.get(day)
     summary = await queries.night_summary(session, day, station_id=station_id, window=window)
-    return summary, BASIS_SLEEP if window else BASIS_CLOCK
+    basis = BASIS_SLEEP if window else BASIS_CLOCK
+    return replace(summary, window=replace(summary.window, basis=basis))
+
+
+async def night_for_date(
+    session: AsyncSession, day: date_type, *, station_id: Optional[str] = None
+) -> NightSummary:
+    """One night, read the way every surface reads it (:func:`_night_on_own_window`)."""
+    return await _night_on_own_window(
+        session, day, await _sleep_windows(session, day, day), station_id=station_id
+    )
 
 
 async def brief_night(session: AsyncSession, on_date: date_type) -> Optional[dict[str, Any]]:
@@ -395,12 +411,12 @@ async def brief_night(session: AsyncSession, on_date: date_type) -> Optional[dic
     """
     first = on_date - timedelta(days=BRIEF_BASELINE_NIGHTS)
     sleep_windows = await _sleep_windows(session, first, on_date)
-    summary, basis = await _night_on_own_window(session, on_date, sleep_windows)
+    summary = await _night_on_own_window(session, on_date, sleep_windows)
     if not summary.samples or summary.coverage_pct < COVERAGE_ADEQUATE_PCT:
         return None
     prior: list[NightSummary] = []
     for day in await _sample_dates(session, first, on_date - timedelta(days=1), _station()):
-        night, _ = await _night_on_own_window(session, day, sleep_windows)
+        night = await _night_on_own_window(session, day, sleep_windows)
         # A date with samples only in the afternoon has no night to report.
         if night.samples and night.coverage_pct >= COVERAGE_ADEQUATE_PCT:
             prior.append(night)
@@ -414,10 +430,25 @@ async def brief_night(session: AsyncSession, on_date: date_type) -> Optional[dic
         }
     prefs = await env_settings.get_settings(session)
     return prune({
-        **night_dict(summary, basis),
+        **night_dict(summary),
         "baseline": baseline,
         "thresholds": night_thresholds(prefs),
     })
+
+
+def night_window_label(nights_read: Sequence[NightSummary], prefs: env_settings.EnvSettings) -> str:
+    """The window the nights were read over, in words for a coverage note: it says
+    the real basis, counted over the nights actually carried."""
+    clock = f"{prefs.night_start}-{prefs.night_end} local clock window"
+    counts = Counter(n.window.basis for n in nights_read)
+    sleep_n, clock_n = counts[BASIS_SLEEP], counts[BASIS_CLOCK]
+    if sleep_n and clock_n:
+        return f"Garmin sleep window (bed to wake) on {sleep_n} of {sleep_n + clock_n} nights, otherwise {clock}"
+    if sleep_n:
+        return "Garmin sleep window (bed to wake), per night"
+    if clock_n:
+        return clock
+    return f"Garmin sleep window (bed to wake) where known, else {clock}"
 
 
 # ── nights × sleep ───────────────────────────────────────────────────────────
@@ -427,6 +458,7 @@ SLEEP_NIGHTS_DEFAULT_DAYS = 14
 
 # (column in the answer, how to read it off a night summary or a Garmin day).
 _AIR_COLUMNS = (
+    ("window_basis", lambda n: n.window.basis),
     ("coverage_pct", lambda n: _r1(n.coverage_pct)),
     ("co2_median", lambda n: _int(n.co2.median)),
     ("co2_p90", lambda n: _int(n.co2.p90)),
@@ -462,6 +494,9 @@ async def nights_with_sleep(
     end: Optional[date_type],
 ) -> dict[str, Any]:
     """One row per night: the bedroom's air beside that night's Garmin sleep.
+
+    The air is read over the hours he slept when Garmin has them (``window_basis``
+    ``sleep``), else over the configured clock window (``clock``).
 
     A night is the date you woke up on both sides, so the row joins on it. Nights
     with only one side still get a row — the missing half is a gap worth seeing,

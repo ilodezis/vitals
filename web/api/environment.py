@@ -10,6 +10,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vitals.config import load_config
+from vitals.services import environment_context
 from vitals.services.environment import ingest, live, queries
 from vitals.services.environment import settings as env_settings
 from vitals.services.environment.types import LiveState, PeriodSummary
@@ -106,9 +107,10 @@ async def read_environment_day(on_date: dt.date, db: AsyncSession = Depends(get_
 @router.get("/night/{on_date}", response_model=PeriodView)
 async def read_environment_night(on_date: dt.date, db: AsyncSession = Depends(get_session)) -> PeriodView:
     """The night that ended on ``on_date`` (the date you woke up): its summary and
-    minute curve."""
+    minute curve. The window is the hours Garmin recorded him asleep, else the
+    configured clock window; ``summary.window.basis`` says which."""
     cfg = await env_settings.get_settings(db)
-    return await _period_view(db, await queries.night_summary(db, on_date), cfg)
+    return await _period_view(db, await environment_context.night_for_date(db, on_date), cfg)
 
 
 @router.get("/settings", response_model=EnvSettings)

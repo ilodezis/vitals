@@ -108,6 +108,14 @@ class Window(BaseModel):
     end: dt.datetime
 
 
+class PeriodWindow(Window):
+    """A summary's window. For a night, ``basis`` says where it came from: ``sleep``
+    is the hours Garmin recorded him asleep, ``clock`` the configured fixed window
+    (used when Garmin has no usable sleep for that date). A calendar day has none."""
+
+    basis: Optional[Literal["sleep", "clock"]] = None
+
+
 class SeriesView(BaseModel):
     points: list[Point] = Field(default_factory=list)
     resolution: Resolution
@@ -135,7 +143,7 @@ class PeriodSummary(BaseModel):
     """A night window or a calendar day, summarised."""
 
     date: dt.date
-    window: Window
+    window: PeriodWindow
     samples: int = 0
     coverage_pct: float = 0.0
     co2: Co2Stats

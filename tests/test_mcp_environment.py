@@ -146,7 +146,7 @@ async def test_bad_dates_raise_like_every_other_tool():
 async def test_night_defaults_to_today_which_is_last_night(monkeypatch):
     asked = []
 
-    async def fake(session, on_date, *, station_id="bedroom"):
+    async def fake(session, on_date, *, station_id="bedroom", window=None):
         asked.append(on_date)
         return NightSummary(
             date=on_date, window=Window(start=_local(on_date), end=_local(on_date, 12)),
@@ -165,7 +165,7 @@ async def test_night_defaults_to_today_which_is_last_night(monkeypatch):
 
 
 async def test_night_without_readings_is_a_note_not_zeros(monkeypatch):
-    async def fake(session, on_date, *, station_id="bedroom"):
+    async def fake(session, on_date, *, station_id="bedroom", window=None):
         return NightSummary(date=on_date, window=Window(start=_local(on_date), end=_local(on_date, 12)))
 
     monkeypatch.setattr(queries, "night_summary", fake)
