@@ -15,6 +15,7 @@ from vitals.models import (
     WeightLog, WeeklyDigest,
 )
 from vitals.services import modules_service
+from vitals.services.weight_service import TREND_WINDOW_DAYS
 from vitals.utils.timeutils import format_iso, today_local
 from web.routers.mcp._core import (
     READ, _parse_date, get_redis_client, get_session_factory, dispatch, tool,
@@ -192,7 +193,7 @@ async def get_trend(
     param: Optional[str] = None,
     target: Optional[float] = None,
     rolling_window_days: int = 7,
-    fit_window_days: Optional[int] = 56,
+    fit_window_days: Optional[int] = TREND_WINDOW_DAYS,
     exclude_noise: bool = True,
 ) -> dict:
     """Computes the trend for one metric instead of returning raw rows: linear slope
@@ -200,8 +201,11 @@ async def get_trend(
     given — the projected date the trend reaches it. For weight metrics, noise-marked
     ranges are excluded (``exclude_noise``).
 
-    ``fit_window_days`` (default 56 days / 8 weeks) bounds the linear regression fit
-    to recent history so an ancient weight-loss rate does not distort the current trend.
+    ``fit_window_days`` (default 28 days, the same window the app's weight trend uses,
+    so both print the same slope) bounds the linear regression fit to recent history
+    so an ancient weight-loss rate does not distort the current trend; ``None`` fits
+    the whole history. With under two points in the window ``trend`` is null (weight
+    never falls back to older data; other metrics, often sampled weeks apart, do).
     When ``target`` is given, the date is projected from the latest rolling mean.
 
     ``metric_key`` is a registry key such as ``weight.weight_kg``,
@@ -211,8 +215,7 @@ async def get_trend(
     (``param`` = ``metric_key`` or ``metric_key:segment``). Read-only."""
     from vitals.services import chart_data_service, weight_service
     from vitals.services.analytics import exclude_ranges
-    from vitals.services.analytics.regression import fit_trend
-    from vitals.services.analytics.rolling import rolling_mean_by_date
+    from vitals.services.analytics.regression import trend_summary
     from vitals.services.analytics.chart_registry import get as get_metric
 
     session_factory = get_session_factory()
@@ -250,16 +253,15 @@ async def get_trend(
         if not points:
             return {"metric_key": metric_key, "param": param, "unit": field.unit, "points": 0}
 
-        fit_points = points
-        if fit_window_days and len(points) > 1:
-            end_date = points[-1][0]
-            start_date = end_date - timedelta(days=fit_window_days)
-            windowed = [p for p in points if p[0] >= start_date]
-            if len(windowed) >= 2:
-                fit_points = windowed
-
-        trend = fit_trend(fit_points)
-        rolling = rolling_mean_by_date(points, window_days=rolling_window_days)
+        summary = trend_summary(
+            points,
+            fit_window_days=fit_window_days,
+            rolling_window_days=rolling_window_days,
+            target=target,
+            fallback_to_all=field.domain != "weight",
+        )
+        trend = summary.trend
+        rolling_date, rolling_val = summary.rolling_last
         result: dict = {
             "metric_key": metric_key,
             "param": param,
@@ -269,7 +271,7 @@ async def get_trend(
             "last": {"date": points[-1][0].isoformat(), "value": points[-1][1]},
             "rolling_mean": {
                 "window_days": rolling_window_days,
-                "last": {"date": rolling[-1][0].isoformat(), "value": rolling[-1][1]},
+                "last": {"date": rolling_date.isoformat(), "value": rolling_val},
             },
             "trend": None if trend is None else {
                 "slope_per_day": round(trend.slope_per_day, 5),
@@ -280,22 +282,12 @@ async def get_trend(
             "noise_excluded": noise_applied,
         }
         if target is not None:
-            projection_date = None
-            rolling_val = rolling[-1][1] if rolling else points[-1][1]
-            last_date = points[-1][0]
-            if trend and abs(trend.slope_per_day) >= 1e-9:
-                slope = trend.slope_per_day
-                moving_toward = (target < rolling_val and slope < 0) or (
-                    target > rolling_val and slope > 0
-                )
-                if moving_toward:
-                    days_needed = (target - rolling_val) / slope
-                    if 0 < days_needed <= 3650:
-                        projection_date = (last_date + timedelta(days=round(days_needed))).isoformat()
             result["projection"] = {
                 "target": target,
                 "projected_from": round(rolling_val, 3),
-                "date": projection_date,
+                "date": (
+                    summary.projection_date.isoformat() if summary.projection_date else None
+                ),
             }
         return result
 

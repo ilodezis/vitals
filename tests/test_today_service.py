@@ -7,7 +7,7 @@ without rendering a card for a module that is switched off.
 """
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pytest
 
@@ -321,11 +321,60 @@ async def test_collect_gives_recovery_its_personal_range(db_session):
     hrv = next(f for f in data["figures"] if f["key"] == "hrv_avg")
     assert hrv["baseline"] == 52.0
     assert hrv["corridor"] == {"lo": 48.0, "hi": 56.0}
+    assert hrv["baseline_sd"] == 4.0
     change = next(c for c in data["changes"] if c["key"] == "hrv_avg")
-    assert (change["lo"], change["hi"]) == (48.0, 56.0)
+    # A weekly mean is not judged against the band drawn for single days.
+    assert (change["lo"], change["hi"]) == (None, None)
     assert change["before"] == pytest.approx(51.43, abs=0.01)
     assert change["after"] == pytest.approx(51.14, abs=0.01)
     assert change["domain_key"] == "garmin"
+    # 0.3 of an HRV point between weeks, against a daily SD of 4 (noise floor of the
+    # difference of two weekly means: 4 * sqrt(2/7) = 2.1): no verdict either way.
+    assert change["tone"] == ""
+
+
+async def test_a_weekly_change_past_the_noise_floor_gets_a_verdict(db_session):
+    """Last week ~48, this week ~58: far past daily SD * sqrt(2/7)."""
+    for n in range(1, 15):
+        db_session.add(_garmin(n, hrv_avg=58.0 if n <= 6 else 48.0, sleep_score=83 if n % 2 else 87))
+    db_session.add(_garmin(0, hrv_avg=58.0, sleep_score=85))
+    await db_session.commit()
+
+    data = await today_service.collect(db_session, enabled_modules=ALL_OFF)
+
+    changes = {c["key"]: c for c in data["changes"]}
+    assert changes["hrv_avg"]["tone"] == "good"
+    assert (changes["hrv_avg"]["lo"], changes["hrv_avg"]["hi"]) == (None, None)
+    # Sleep wobbles 83/87 (SD 2); a fraction of a point between weeks is not "bad".
+    assert abs(changes["sleep_score"]["after"] - changes["sleep_score"]["before"]) < 1
+    assert changes["sleep_score"]["tone"] == ""
+
+
+def test_weight_change_tone_has_a_floor():
+    """Under 0.2 kg between 7-day means is no verdict; the direction still matters
+    above it (down is the point of the cut)."""
+    assert today_service._raw_change("weight", "weight", 92.0, 91.9)["tone"] == ""
+    assert today_service._raw_change("weight", "weight", 92.0, 91.5)["tone"] == "good"
+    assert today_service._raw_change("weight", "weight", 92.0, 92.5)["tone"] == "bad"
+
+
+def test_a_recovery_change_without_a_spread_has_no_verdict():
+    assert today_service._raw_change("sleep_score", "garmin", 80.0, 90.0)["tone"] == ""
+    assert today_service._raw_change("sleep_score", "garmin", 80.0, 90.0, 4.0)["tone"] == "good"
+    assert today_service._raw_change("sleep_score", "garmin", 90.0, 80.0, 4.0)["tone"] == "bad"
+
+
+def test_the_norm_sub_follows_the_same_sd_rule_as_the_brief():
+    """HRV 60 ± 4: 63.2 is 0.8 SD (5.3% — the old rule printed it), 64.8 is 1.2 SD."""
+    sub = today_service._baseline_sub
+    assert sub(63.2, 60.0, 4.0) == ""
+    assert sub(64.8, 60.0, 4.0) == "above your norm 60"
+    assert sub(55.2, 60.0, 4.0) == "below your norm 60"
+    # Resting HR: 3.8% off but 1.3 SD of a tight metric.
+    assert sub(50, 52.0, 1.5) == "below your norm 52"
+    # No spread, no corridor, nothing printed — however far off.
+    assert sub(40.0, 60.0, None) == ""
+    assert sub(40.0, 60.0, 0.0) == ""
 
 
 async def test_a_range_needs_enough_history_to_mean_anything(db_session):
@@ -365,6 +414,31 @@ async def test_calories_carry_the_daily_goal_as_their_corridor(db_session):
     calories = next(f for f in data["figures"] if f["key"] == "calories")
     assert calories["value"] == 520
     assert calories["corridor"]["lo"] < calories["corridor"]["hi"]
+
+
+async def test_an_unfinished_day_below_the_floor_is_not_a_warning(db_session):
+    """At 15:00 with nothing eaten, 0 < calories_min is a day still to be lived, not
+    a verdict — the nightly day-end check is where a short day is judged."""
+    data = await today_service.collect(db_session, enabled_modules={"nutrition": True})
+
+    calories = next(f for f in data["figures"] if f["key"] == "calories")
+    assert calories["value"] == 0
+    assert calories["tone"] == ""
+
+
+async def test_calories_already_over_the_ceiling_still_warn(db_session):
+    from vitals.config import load_config
+
+    ceiling = nutrition_service.get_goals(load_config())["calories_max"]
+    await nutrition_service.log_meal(
+        db_session, on_date=today_local(), name="Всё и сразу", calories=ceiling + 500
+    )
+    await db_session.commit()
+
+    data = await today_service.collect(db_session, enabled_modules={"nutrition": True})
+
+    calories = next(f for f in data["figures"] if f["key"] == "calories")
+    assert calories["tone"] == "warn"
 
 
 async def test_meals_arrive_as_calories_not_as_text(db_session):
@@ -417,6 +491,34 @@ async def test_the_goal_forecasts_where_the_trend_lands(db_session):
     # Positive: ahead of the deadline.
     assert forecast["days_ahead"] == (goal["deadline"] - forecast["date"]).days
     assert forecast["days_ahead"] > 0
+
+
+async def test_the_goal_forecast_starts_from_the_last_weigh_in_not_today(db_session):
+    """A week without weighing must not count as a week of progress: the forecast
+    starts where the 7-day mean is, on the date it describes, and agrees with the
+    weight page's own projection."""
+    from vitals.services.analytics.regression import project_from_level
+
+    stale = 9
+    for offset in range(15):
+        kg = 93.0 + (100.0 - 93.0) * offset / 14
+        await weight_service.log_weight(
+            db_session, on_date=today_local() - timedelta(days=offset + stale), weight_kg=round(kg, 2)
+        )
+    await milestones_service.create_milestone(
+        db_session, name="Дойти до 85", domain=Domain.WEIGHT.value,
+        target_value=85.0, target_unit="кг",
+    )
+    await db_session.commit()
+
+    goal = (await today_service.collect(db_session, enabled_modules=ALL_OFF))["goal"]
+    series = await weight_service.chart_series(db_session, goal_kg=85.0)
+
+    ma_date, ma_kg = series["trend_ma"][-1]["date"], series["trend_ma"][-1]["weight_kg"]
+    slope = series["trend"]["slope_per_week"] / 7.0
+    expected = project_from_level(ma_kg, date.fromisoformat(ma_date), slope, 85.0)
+    assert goal["forecast"]["date"] == expected
+    assert series["projection"]["date"] == expected.isoformat()
 
 
 async def test_a_trend_that_moves_away_forecasts_nothing(db_session):

@@ -8,7 +8,8 @@ Owns the GLP-1 domain:
     previous open one the day before (the timeline has no gaps/overlaps).
   * **Side effects** — symptom log graded 1-5.
   * **Plateau detection** — once the current dose has run ``PLATEAU_MIN_DAYS``,
-    if the noise-excluded weight trend over the phase is flatter than
+    if the noise-excluded weight trend over the last ``PLATEAU_WINDOW_DAYS`` of
+    the phase is flatter than
     ``PLATEAU_SLOPE_THRESHOLD`` we raise a passive ``warn`` alert (no
     auto-escalation — the product is a navigator, the dose decision is the user's).
 
@@ -36,9 +37,13 @@ PLATEAU_ALERT_KEY = "glp1.plateau"
 # (early water-weight swings on a new dose aren't a plateau).
 PLATEAU_MIN_DAYS = 14
 # Weekly slope (kg/week) at or above which the trend counts as stalled. The
-# trend is computed over the current phase with noise ranges excluded; a value
+# trend is computed over the recent window with noise ranges excluded; a value
 # of -0.1 means "losing less than 100 g/week" is treated as a plateau.
 PLATEAU_SLOPE_THRESHOLD = -0.1
+# The trend is fit only over the last this-many days of the phase (inclusive of
+# today). A whole-phase fit lets an early fast loss mask a recent stall: a
+# six-month phase that stopped moving for a month still reads as losing.
+PLATEAU_WINDOW_DAYS = 28
 
 _INJECTION_SITES = frozenset(s.value for s in InjectionSite)
 
@@ -308,8 +313,10 @@ async def evaluate_plateau(
     session: AsyncSession, *, on_date: Optional[date_type] = None
 ) -> Optional[dict]:
     """Pure read: is the current dose plateaued? Returns a context dict
-    (drug, dose, days_on_dose, slope_per_week) when a plateau is detected on the
-    current phase, else ``None``. Writes nothing."""
+    (drug, dose, days_on_dose, slope_per_week, window_start, weigh_ins) when a
+    plateau is detected, else ``None``. The slope is fit over the last
+    ``PLATEAU_WINDOW_DAYS`` of the current phase (clamped to the phase start), not
+    the whole phase. Writes nothing."""
     today = on_date or today_local()
     phase = await active_dose_phase(session, on_date=today)
     if phase is None:
@@ -319,11 +326,16 @@ async def evaluate_plateau(
     if days_on_dose < PLATEAU_MIN_DAYS:
         return None
 
+    window_start = max(
+        phase.start_date, today - timedelta(days=PLATEAU_WINDOW_DAYS - 1)
+    )
     weights = await weight_service.list_active_weights(
-        session, start=phase.start_date, end=today
+        session, start=window_start, end=today
     )
     points = [(w.date, w.weight_kg) for w in weights]
     ranges = await weight_service._noise_ranges(session)
+    # fit_trend drops noise-excluded points first and returns None unless two
+    # weigh-ins remain on two distinct dates, so a sparse window never gives a verdict.
     trend = fit_trend(points, exclude=ranges)
     if trend is None:
         return None
@@ -334,6 +346,11 @@ async def evaluate_plateau(
             "dose_mg": phase.dose_mg,
             "days_on_dose": days_on_dose,
             "slope_per_week": round(trend.slope_per_week, 3),
+            "window_start": window_start.isoformat(),
+            # The span the slope was measured over — what "N days without
+            # progress" means, not how long he has been on the dose.
+            "window_days": (today - window_start).days + 1,
+            "weigh_ins": trend.n,
         }
     return None
 
@@ -352,7 +369,7 @@ async def refresh_plateau_alert(
             "alert.glp1_plateau",
             drug=context["drug"],
             dose=context["dose_mg"],
-            days=context["days_on_dose"],
+            days=context["window_days"],
             slope=context["slope_per_week"],
         )
         return await alerts_service.raise_alert(

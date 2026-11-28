@@ -125,25 +125,76 @@ async def test_noisy_weight_never_prints_a_bare_trend(db_session):
 async def test_the_header_carries_his_own_norm_only_when_today_is_off_it(db_session):
     """A single day of absolutes is the same line every morning, and whether 78 is
     good is a comparison. Printed by code from his own fortnight — and printed
-    only when it says something, so the parenthesis stays worth reading."""
-    for i in range(1, 11):  # ten days of a steady sleep score of 85, RHR 52
+    only when today leaves his usual corridor (mean ± 1 SD), so the parenthesis
+    stays worth reading."""
+    for i in range(1, 11):  # sleep 83/87 around a mean of 85 (SD 2), RHR 51/53 around 52
         day = DAY - timedelta(days=i)
         await garmin_service.ingest_daily(db_session, day, {
-            "summary": {"restingHeartRate": 52, "bodyBatteryHighestValue": 84},
-            "sleep": {"dailySleepDTO": {"sleepScores": {"overall": {"value": 85}}}},
+            "summary": {"restingHeartRate": 51 if i % 2 else 53, "bodyBatteryHighestValue": 84},
+            "sleep": {"dailySleepDTO": {"sleepScores": {"overall": {"value": 83 if i % 2 else 87}}}},
             "hrv": {"hrvSummary": {"lastNightAvg": 61}},
         })
-    await _seed_day(db_session)  # today: sleep 80, RHR 52 — same as every other day
+    await _seed_day(db_session)  # today: sleep 80, RHR 52 — on the norm
 
     ctx = await brief.build_context(db_session, on_date=DAY)
     assert ctx["garmin"]["baseline"]["sleep_score"] == 85
     # Today's own row must not be averaged into the yardstick it is judged by.
     assert ctx["garmin"]["baseline"]["resting_hr"] == 52
+    # The spread rides next to the mean; a perfectly flat metric (HRV) has none.
+    assert ctx["garmin"]["baseline_sd"]["sleep_score"] == 2.0
+    assert ctx["garmin"]["baseline_sd"]["resting_hr"] == 1.0
+    assert "hrv_avg" not in ctx["garmin"]["baseline_sd"]
 
     text = compose.render(compose.header_blocks(ctx))
-    assert "Сон 80 (норма 85)" in text          # ~6% off — worth saying
+    assert "Сон 80 (ниже нормы 85)" in text     # 2.5 SD under — worth saying
     assert "Пульс покоя 52 ·" in text or text.rstrip().endswith("Пульс покоя 52")
     assert "Пульс покоя 52 (" not in text       # on the norm — say nothing
+
+
+async def test_no_norm_label_without_a_spread_even_when_far_off(db_session):
+    """No SD, no corridor: the old 5% fallback is gone, so a context carrying a mean
+    but no spread prints nothing however far the number sits from it."""
+    ctx = {"garmin": {"sleep_score": 60, "baseline": {"sleep_score": 85}}}
+    assert "норма" not in compose.render(compose.header_blocks(ctx))
+    ctx["garmin"]["baseline_sd"] = {"sleep_score": 0.0}
+    assert "норма" not in compose.render(compose.header_blocks(ctx))
+
+
+def _norm_header(**garmin) -> str:
+    return compose.render(compose.header_blocks({"garmin": garmin}))
+
+
+def test_norm_label_is_decided_by_standard_deviations_not_percent():
+    """HRV mean 60, SD 4. 63.2 is 5.3% off — the old rule printed it — but only 0.8
+    SD, ordinary for him; 64.8 is 1.2 SD and 8% off."""
+    base = {"baseline": {"hrv_avg": 60.0}, "baseline_sd": {"hrv_avg": 4.0}}
+    assert "норма" not in _norm_header(hrv_avg=63.2, **base)
+    assert "HRV 64.8 (выше нормы 60)" in _norm_header(hrv_avg=64.8, **base)
+    assert "HRV 55.2 (ниже нормы 60)" in _norm_header(hrv_avg=55.2, **base)
+
+
+def test_a_tight_metric_is_labelled_on_a_small_percentage():
+    """Resting HR mean 52, SD 1.5: 50 bpm is only 3.8% off (old rule: silent) but
+    1.3 SD under — a real excursion, and it must say which way. It also shows
+    that the direction is about the value, not whether it is good."""
+    base = {"baseline": {"resting_hr": 52.0}, "baseline_sd": {"resting_hr": 1.5}}
+    assert "Пульс покоя 50 (ниже нормы 52)" in _norm_header(resting_hr=50, **base)
+    assert "Пульс покоя 54 (выше нормы 52)" in _norm_header(resting_hr=54, **base)
+    assert "норма" not in _norm_header(resting_hr=53, **base)
+
+
+def test_baseline_sd_is_the_spread_of_the_same_rows_as_the_mean():
+    from types import SimpleNamespace
+
+    rows = [
+        SimpleNamespace(date=DAY - timedelta(days=i), hrv_avg=v, sleep_score=None)
+        for i, v in enumerate((90, 48, 56, 48, 56, 48), start=0)
+    ]
+    # Today's row (i=0, 90) is excluded: strictly the days before.
+    assert brief.baseline_from_rows(rows, DAY) == {"hrv_avg": 51.2}
+    assert brief.baseline_sd_from_rows(rows, DAY) == {"hrv_avg": 3.92}
+    # Three days is not enough for a spread any more than for a mean.
+    assert brief.baseline_sd_from_rows(rows[:4], DAY) is None
 
 
 async def test_the_header_says_how_long_and_when_he_slept(db_session):

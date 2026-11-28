@@ -317,10 +317,15 @@ async def night_summary(
     *,
     station_id: Optional[str] = None,
     now: Optional[datetime] = None,
+    window: Optional[tuple[datetime, datetime]] = None,
 ) -> NightSummary:
-    """The night that ended on ``on_date`` (the date you woke up)."""
+    """The night that ended on ``on_date`` (the date you woke up).
+
+    ``window`` (a UTC range) replaces the configured clock window — the caller
+    knows when he actually slept. Everything else, coverage included, is judged
+    against whichever window is used."""
     cfg = await env_settings.get_settings(session)
-    return await _summary(session, on_date, night_window(on_date, cfg), station_id, now)
+    return await _summary(session, on_date, window or night_window(on_date, cfg), station_id, now)
 
 
 async def day_summary(

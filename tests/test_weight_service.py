@@ -290,10 +290,12 @@ async def test_chart_series_excludes_noise_from_trend(db_session):
     series = await weight_service.chart_series(db_session, goal_kg=85.0)
 
     # Trend/projection are computed on the noise-excluded series: a clean −1kg/day
-    # line reaches 85kg on 2026-06-16 (i=15 from 06-01), slope ≈ −7kg/week.
+    # line, slope ≈ −7kg/week. The projection starts from the latest 7-day mean
+    # (06-11: (96+94+93+92+91+90)/6 = 92.667, the spike day excluded) and walks
+    # 7.667 kg to 85 at 1 kg/day → 06-19 (it used to read off the fitted line: 06-16).
     assert series["trend"]["slope_per_week"] == pytest.approx(-7.0, abs=0.05)
     assert series["projection"] is not None
-    assert series["projection"]["date"] == "2026-06-16"
+    assert series["projection"]["date"] == "2026-06-19"
 
     # The rolling mean on 06-07 EXCLUDES the 06-06 spike → (100+99+98+97+96+94)/6.
     ma_points = {p["date"]: p["weight_kg"] for p in series["trend_ma"]}

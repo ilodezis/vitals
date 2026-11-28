@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import logging
+import statistics
 from datetime import date as date_type, timedelta
 from typing import Any, Optional, Sequence
 
@@ -73,7 +74,9 @@ Garmin). Базовые понятия объяснять не надо.
 Если данных мало — скажи это одним предложением и не тяни.
 
 `garmin.baseline` — его собственные средние за 14 дней по тем же метрикам.
-Это ЕДИНСТВЕННОЕ, с чем можно сравнивать сегодняшние числа. «Просел», «повышен»,
+Это ЕДИНСТВЕННОЕ, с чем можно сравнивать сегодняшние числа. `garmin.baseline_sd` —
+его обычный разброс по каждой метрике: отличие меньше этого разброса — норма, а не
+«просадка». Шапка уже пишет «выше/ниже нормы» ровно там, где отличие больше. «Просел», «повышен»,
 «упал», «пробило восстановление» — только про метрику, у которой baseline есть и
 от которой сегодня реально отличается. Метрику без baseline не сравнивай ни с
 чем: у неё нет нормы, и «просадка» по ней — выдуманный факт, а не оценка.
@@ -163,9 +166,11 @@ async def headline_context(
     if ctx.get("garmin"):
         today = on_date or today_local()
         if garmin_daily is None:
-            ctx["garmin"]["baseline"] = await _baseline(session, today)
-        else:
-            ctx["garmin"]["baseline"] = baseline_from_rows(garmin_daily, today)
+            garmin_daily = await _baseline_rows(session)
+        ctx["garmin"]["baseline"] = baseline_from_rows(garmin_daily, today)
+        # The same rows' spread: "off norm" is judged in his own standard
+        # deviations, not in percent (see ``compose.norm_side``).
+        ctx["garmin"]["baseline_sd"] = baseline_sd_from_rows(garmin_daily, today)
     return ctx
 
 
@@ -228,30 +233,47 @@ async def build_context(
     return ctx
 
 
-async def _baseline(session: AsyncSession, on_date: date_type) -> Optional[dict]:
-    """His own mean per metric over the days *before* today.
+async def _baseline_rows(session: AsyncSession) -> Sequence[Any]:
+    """The newest ``_BASELINE_DAYS + 1`` daily rows the norm is taken from."""
+    from vitals.services import garmin_service
+
+    return await garmin_service.list_daily(session, limit=_BASELINE_DAYS + 1)
+
+
+def _baseline_values(daily: Sequence[Any], on_date: date_type) -> dict[str, list[float]]:
+    """Per metric, his values over the days *before* today.
 
     Strictly before: today's number is the thing being judged, and folding it into
     the yardstick pulls the yardstick toward it — worst exactly on the outlier
-    mornings the comparison exists for. ``None`` until there is enough history for
-    a mean to mean anything; a "norm" off two nights is noise wearing the word.
+    mornings the comparison exists for. A metric with too few days is absent; a
+    "norm" off two nights is noise wearing the word.
     """
-    from vitals.services import garmin_service
-
-    return baseline_from_rows(
-        await garmin_service.list_daily(session, limit=_BASELINE_DAYS + 1), on_date
-    )
-
-
-def baseline_from_rows(daily: Sequence[Any], on_date: date_type) -> Optional[dict]:
-    """:func:`_baseline` over daily rows already read (newest ``_BASELINE_DAYS + 1``)."""
     rows = [row for row in daily if 0 < (on_date - row.date).days <= _BASELINE_DAYS]
-    baseline = {}
+    out: dict[str, list[float]] = {}
     for key in compose.BASELINE_KEYS:
         values = [v for v in (getattr(row, key, None) for row in rows) if v is not None]
         if len(values) >= _BASELINE_MIN_DAYS:
-            baseline[key] = round(sum(values) / len(values), 1)
-    return baseline or None
+            out[key] = values
+    return out
+
+
+def baseline_from_rows(daily: Sequence[Any], on_date: date_type) -> Optional[dict]:
+    """His own mean per metric over the days before ``on_date`` (newest
+    ``_BASELINE_DAYS + 1`` daily rows in); ``None`` until there is enough history."""
+    values = _baseline_values(daily, on_date)
+    return {key: round(sum(v) / len(v), 1) for key, v in values.items()} or None
+
+
+def baseline_sd_from_rows(daily: Sequence[Any], on_date: date_type) -> Optional[dict]:
+    """The population standard deviation over the same rows as
+    :func:`baseline_from_rows` — the width of his normal day.
+
+    A metric whose history is perfectly flat has no usable spread (any wobble
+    would read as an excursion) and is left out, like one with too few days.
+    """
+    values = _baseline_values(daily, on_date)
+    spreads = {key: round(statistics.pstdev(v), 2) for key, v in values.items()}
+    return {key: sd for key, sd in spreads.items() if sd > 0} or None
 
 
 async def _signals_since_yesterday(session: AsyncSession, on_date: date_type) -> Optional[list]:
@@ -411,8 +433,17 @@ async def narrative(llm: Any, ctx: dict) -> tuple[str, Optional[str]]:
     from the brief model's provider used to cost the whole paragraph — about
     half the mornings in November. A second try goes to the digest model, which
     sits behind a different provider.
+
+    A paragraph that contradicts the numbers it was handed (``HRV ниже нормы``
+    over an HRV above the norm, a Body Battery "drop" quoting the pre-sleep
+    minimum) counts as a failure too: the next model gets a try, and when none
+    writes a truthful one the header goes alone — the header printed the numbers
+    already, and a confident wrong verdict under them is worse than none.
     """
+    from vitals.services.proactive import narrative_guard
+
     prompt = build_prompt(ctx)
+    garmin = ctx.get("garmin") or {}
     for model in _models(llm):
         try:
             text = await llm.complete_text(
@@ -424,8 +455,16 @@ async def narrative(llm: Any, ctx: dict) -> tuple[str, Optional[str]]:
         except Exception:
             logger.warning("brief narrative failed on %s", model, exc_info=True)
             continue
-        if text:
-            return text, model
+        if not text:
+            continue
+        problems = narrative_guard.contradictions(text, garmin)
+        if problems:
+            logger.warning(
+                "brief narrative from %s contradicts its numbers, dropped: %s",
+                model, "; ".join(problems),
+            )
+            continue
+        return text, model
     logger.warning("brief narrative unavailable; sending the header alone")
     return "", None
 

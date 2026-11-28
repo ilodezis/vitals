@@ -47,19 +47,20 @@ class TodayFigure(BaseModel):
 
 
 class WeekChange(BaseModel):
-    """A metric this week against last: the two seven-day values, on the corridor of
-    his own norm where there is one."""
+    """A metric this week against last: the two seven-day means and, when the change
+    is bigger than the noise of such a difference, whether it went the right way."""
 
     key: Literal["weight", "sleep_score", "hrv_avg", "body_battery_high", "calories"]
     # The module the row belongs to; the row opens its screen.
     domain_key: Literal["weight", "garmin", "nutrition"]
     before: float
     after: float
-    # The corridor; null for a metric with none (weight, calories).
+    # Always null: a daily corridor means nothing for a 7-day mean (it almost never
+    # leaves it). Kept so the client's range bar still takes an optional band.
     lo: Optional[float]
     hi: Optional[float]
-    # Was it a change in the right direction: "good", "bad", or blank when it
-    # carries no verdict.
+    # Was it a change in the right direction: "good", "bad", or blank when it is
+    # too small to carry a verdict.
     tone: Literal["", "good", "bad"]
 
 

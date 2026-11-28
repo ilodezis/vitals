@@ -28,6 +28,9 @@ class MilestoneItem(CamelModel):
     pct: Optional[float] = None
     closed_on: Optional[str] = None
     deadline_margin_days: Optional[int] = None
+    # Body-fat goals only: the date and source ("bia" | "navy") of the reading in `current`.
+    as_of: Optional[str] = None
+    source: Optional[str] = None
 
 
 class MilestoneCreate(CamelModel):

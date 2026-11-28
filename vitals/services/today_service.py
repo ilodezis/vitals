@@ -21,7 +21,6 @@ have been written from.
 from __future__ import annotations
 
 import math
-import statistics
 from datetime import date as date_type, datetime, timedelta
 from typing import Any, Optional, Sequence
 
@@ -30,12 +29,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from vitals.config import load_config
 from vitals.enums import DigestKind, Domain, MilestoneStatus, Severity
 from vitals.i18n import decimal, t
+from vitals.services.proactive import compose
 from vitals.utils.timeutils import now_local, today_local
 
-# How far off his own mean a number has to sit before the baseline is worth
-# printing next to it. 5% is ~3 bpm of resting HR and ~4 points of sleep score —
-# the same threshold the morning brief uses (proactive/compose.py).
-_NOTABLE = 0.05
+# "Off his norm" is one definition for the whole product: outside his own mean ±
+# one standard deviation (``compose.norm_side``, the corridor drawn on the cards).
+# The SD itself is the brief context's ``garmin.baseline_sd``, not recomputed here.
+
+# A week-over-week change is the difference of two 7-day means, so its noise is the
+# daily SD times sqrt(2/7), not the daily SD. A change smaller than that gets no
+# verdict. Fixed floor for weight: its 7-day mean is already noise-excluded, so the
+# daily-SD rule does not apply; 0.2 kg is below what a week of real change looks
+# like on a cut and above the scale's own rounding.
+_WEEK_MEAN_SE = math.sqrt(2 / 7)
+_WEIGHT_CHANGE_FLOOR_KG = 0.2
 
 # How many rows the day's feed may hold before it stops being a glance.
 _FEED_LIMIT = 12
@@ -86,9 +93,10 @@ def _mean(rows: Sequence[Any], key: str) -> Optional[float]:
     return sum(values) / len(values) if values else None
 
 
-def _tone(delta: Optional[float], key: str) -> str:
-    """Green/red for a change, blank when it is too small to mean anything."""
-    if not delta:
+def _tone(delta: Optional[float], key: str, floor: Optional[float]) -> str:
+    """Green/red for a change, blank when it is smaller than ``floor`` (the least
+    that means anything) or there is no floor to judge it by."""
+    if not delta or floor is None or abs(delta) < floor:
         return ""
     if key in _HIGHER_IS_BETTER:
         return "good" if delta > 0 else "bad"
@@ -98,15 +106,21 @@ def _tone(delta: Optional[float], key: str) -> str:
     return ""
 
 
-def _baseline_sub(value: Any, mean: Any) -> str:
-    """``норма 85`` — or nothing when there is no norm yet, or today sits on it."""
-    try:
-        value, mean = float(value), float(mean)
-    except (TypeError, ValueError):
+def _baseline_sub(value: Any, mean: Any, spread: Any) -> str:
+    """``above your norm 85`` / ``below …`` — or nothing when there is no norm or
+    spread yet, or today is inside his usual corridor."""
+    side = compose.norm_side(value, mean, spread)
+    if side is None:
         return ""
-    if not mean or abs(value - mean) / abs(mean) < _NOTABLE:
-        return ""
-    return t("today.baseline", value=_num(mean))
+    return t(f"today.baseline_{side}", value=_num(mean))
+
+
+def _change_floor(key: str, spread: Optional[float]) -> Optional[float]:
+    """The smallest week-over-week change worth a verdict, or ``None`` when there
+    is no basis to judge by."""
+    if key == "weight":
+        return _WEIGHT_CHANGE_FLOOR_KG
+    return None if spread is None else spread * _WEEK_MEAN_SE
 
 
 def _as_date(value: Any) -> date_type:
@@ -118,18 +132,6 @@ def _as_date(value: Any) -> date_type:
     return date_type.fromisoformat(str(value)[:10])
 
 
-def _spread(rows: Sequence[Any], key: str, today: date_type, *, window: int, minimum: int) -> Optional[float]:
-    """Standard deviation of his own days *before* today, or ``None`` while there
-    are too few of them for a range to mean anything — the same rows and the same
-    threshold the baseline mean is taken from."""
-    values = [
-        v
-        for v in (getattr(r, key, None) for r in rows if 0 < (today - r.date).days <= window)
-        if v is not None
-    ]
-    return statistics.pstdev(values) if len(values) >= minimum else None
-
-
 def _corridor(mean: Any, spread: Optional[float]) -> Optional[dict]:
     """His norm ± one standard deviation — the band a night is read against."""
     if mean is None or spread is None:
@@ -138,18 +140,29 @@ def _corridor(mean: Any, spread: Optional[float]) -> Optional[dict]:
 
 
 def _forecast(
-    current: float, target: float, trend: Optional[float], today: date_type, deadline: Optional[date_type]
+    series: dict, target: float, trend: Optional[float], deadline: Optional[date_type]
 ) -> Optional[dict]:
-    """The day the present trend meets the goal, and how far that sits from the
-    deadline (positive: ahead of it). Linear, off the same kg/week the page prints;
-    nothing when the trend is flat, moves away from the goal, or lands beyond the
-    horizon."""
-    if trend is None or trend >= 0 or current <= target:
+    """The day the present trend meets a "get below" goal, and how far that sits
+    from the deadline (positive: ahead of it).
+
+    The same projection the weight page and MCP use: from the latest 7-day mean, on
+    the date that mean describes (a week-old weigh-in is not "today"), at the same
+    windowed kg/week the page prints. Nothing when the trend is flat, moves away
+    from the goal, the goal is already met, or the date lands beyond the horizon.
+    """
+    from vitals.services.analytics.regression import project_from_level
+
+    ma = series.get("trend_ma") or []
+    if trend is None or not ma:
         return None
-    days = (current - target) / -trend * 7
-    if days > _FORECAST_HORIZON_DAYS:
+    level, level_date = ma[-1]["weight_kg"], _as_date(ma[-1]["date"])
+    if level <= target:
         return None
-    lands = today + timedelta(days=round(days))
+    lands = project_from_level(
+        level, level_date, trend / 7.0, target, max_days=_FORECAST_HORIZON_DAYS
+    )
+    if lands is None:
+        return None
     return {"date": lands, "days_ahead": (deadline - lands).days if deadline else None}
 
 
@@ -162,6 +175,7 @@ def _raw_figure(key: str, value: Any, **extra: Any) -> dict:
         "tone": "",
         "trend": None,
         "baseline": None,
+        "baseline_sd": None,
         "corridor": None,
         "sleep_seconds": None,
         "gained": None,
@@ -170,16 +184,19 @@ def _raw_figure(key: str, value: Any, **extra: Any) -> dict:
 
 
 def _raw_change(
-    key: str, domain_key: str, before: float, after: float, corridor: Optional[dict] = None
+    key: str, domain_key: str, before: float, after: float, spread: Optional[float] = None
 ) -> dict:
+    """A week-over-week row. ``spread`` is the *daily* SD of the metric; no daily
+    corridor is attached — a 7-day mean almost never leaves a band drawn for single
+    days, so it would only ever say "inside"."""
     return {
         "key": key,
         "domain_key": domain_key,
         "before": round(before, 2) if before is not None else None,
         "after": round(after, 2) if after is not None else None,
-        "lo": corridor["lo"] if corridor else None,
-        "hi": corridor["hi"] if corridor else None,
-        "tone": _tone(round(after - before, 1), key),
+        "lo": None,
+        "hi": None,
+        "tone": _tone(after - before, key, _change_floor(key, spread)),
     }
 
 
@@ -207,7 +224,7 @@ def _phrase_figure(f: dict) -> dict:
         )
     else:
         unit = ""
-        sub = _baseline_sub(value, f["baseline"])
+        sub = _baseline_sub(value, f["baseline"], f["baseline_sd"])
     return {
         "key": key,
         "value": _num(value) if value is not None else "—",
@@ -299,13 +316,8 @@ async def collect(
     weight = ctx.get("weight") or {}
     garmin = ctx.get("garmin") or {}
     baseline = garmin.get("baseline") or {}
+    baseline_sd = garmin.get("baseline_sd") or {}
     series = await weight_service.chart_series(session)
-
-    def corridor_of(key: str) -> Optional[dict]:
-        spread = _spread(
-            daily, key, today, window=brief._BASELINE_DAYS, minimum=brief._BASELINE_MIN_DAYS
-        )
-        return _corridor(baseline.get(key), spread)
 
     # ── Key figures ──────────────────────────────────────────────────────────
     trend = weight.get("trend_kg_per_week")
@@ -321,7 +333,8 @@ async def collect(
                 key,
                 garmin.get(key),
                 baseline=baseline.get(key),
-                corridor=corridor_of(key),
+                baseline_sd=baseline_sd.get(key),
+                corridor=_corridor(baseline.get(key), baseline_sd.get(key)),
                 **extra,
             )
         )
@@ -336,7 +349,10 @@ async def collect(
             _raw_figure(
                 "calories",
                 calories,
-                tone="" if summary["on_track"]["calories"] else "warn",
+                # Today is unfinished: being under the floor at 15:00 is not a verdict
+                # (the nightly day-end check is where a short day is judged). Having
+                # already passed the ceiling is real however early it is.
+                tone="warn" if hi is not None and calories > hi else "",
                 corridor={"lo": lo, "hi": hi} if lo is not None and hi is not None else None,
             )
         )
@@ -356,7 +372,7 @@ async def collect(
     for key in _RECOVERY_KEYS:
         now, before = _mean(this_week, key), _mean(last_week, key)
         if now is not None and before is not None:
-            changes.append(_raw_change(key, "garmin", before, now, corridor_of(key)))
+            changes.append(_raw_change(key, "garmin", before, now, baseline_sd.get(key)))
 
     if em.get("nutrition"):
         this_cal = await nutrition_service.nutrition_summary(
@@ -593,6 +609,6 @@ async def _goal(
             "target_kg": card["target_value"],
             "pct": pct,
             "deadline": deadline,
-            "forecast": _forecast(card["current"], card["target_value"], trend, today, deadline),
+            "forecast": _forecast(series, card["target_value"], trend, deadline),
         }
     return None

@@ -157,6 +157,44 @@ async def test_no_plateau_when_losing(db_session):
     assert result is None
 
 
+async def test_plateau_judged_on_recent_window_not_whole_phase(db_session):
+    """Six-month phase: fast loss for ~18 weeks, then flat for the last ~4 weeks.
+    The whole-phase slope still reads as losing and hides the stall; the verdict
+    must come from the last PLATEAU_WINDOW_DAYS only."""
+    start = date(2026, 5, 24)
+    today = start + timedelta(days=180)
+    early = [(off, 110.0 - off / 7 * 1.0) for off in range(0, 127, 7)]
+    recent = [(off, 92.0) for off in (140, 147, 154, 161, 168, 175, 180)]
+    await _seed_phase_and_weights(db_session, early + recent, start=start)
+    result = await glp1_service.evaluate_plateau(db_session, on_date=today)
+    assert result is not None
+    assert result["slope_per_week"] >= glp1_service.PLATEAU_SLOPE_THRESHOLD
+    assert result["days_on_dose"] == 180
+    assert result["window_start"] == (today - timedelta(days=27)).isoformat()
+    assert result["weigh_ins"] == 5
+    # "N days without progress" is the measured window, not six months on dose.
+    assert result["window_days"] == 28
+
+
+async def test_steady_loss_in_recent_window_is_not_a_plateau(db_session):
+    start = date(2026, 5, 24)
+    today = start + timedelta(days=180)
+    steady = [(off, 110.0 - off * 0.07) for off in range(0, 181, 7)]
+    await _seed_phase_and_weights(db_session, steady, start=start)
+    result = await glp1_service.evaluate_plateau(db_session, on_date=today)
+    assert result is None
+
+
+async def test_plateau_needs_two_weigh_ins_inside_the_window(db_session):
+    start = date(2026, 5, 24)
+    today = start + timedelta(days=180)
+    # Plenty of history, but only one weigh-in inside the last 28 days.
+    history = [(off, 110.0 - off * 0.07) for off in range(0, 150, 7)]
+    await _seed_phase_and_weights(db_session, history + [(170, 92.0)], start=start)
+    result = await glp1_service.evaluate_plateau(db_session, on_date=today)
+    assert result is None
+
+
 async def test_refresh_plateau_raises_and_resolves(db_session):
     start = date(2026, 5, 1)
     await _seed_phase_and_weights(

@@ -6654,6 +6654,17 @@
       },
       "MilestoneItem": {
         "properties": {
+          "asOf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asof"
+          },
           "closedOn": {
             "anyOf": [
               {
@@ -6742,6 +6753,17 @@
               }
             ],
             "title": "Remaining"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
           },
           "status": {
             "title": "Status",
@@ -12169,7 +12191,7 @@
         "type": "object"
       },
       "WeekChange": {
-        "description": "A metric this week against last: the two seven-day values, on the corridor of\nhis own norm where there is one.",
+        "description": "A metric this week against last: the two seven-day means and, when the change\nis bigger than the noise of such a difference, whether it went the right way.",
         "properties": {
           "after": {
             "title": "After",

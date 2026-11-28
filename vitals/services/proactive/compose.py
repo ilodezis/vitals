@@ -74,12 +74,17 @@ _NIGHT_KEYS = _RECOVERY_KEYS + (
 
 LINE_NIGHT_PENDING = "Ночь ещё не размечена — цифр восстановления за сегодня нет."
 
-# Below this the day-to-day wobble of these metrics swamps the difference, and a
-# "(норма 82)" printed next to 81 teaches him to skip the parenthesis — which is
-# the one place the header says anything he can't already read off the watch.
-# Relative rather than per-metric: 5% is ~3 bpm of resting HR and ~4 points of
-# sleep score, which is the same size of "actually different" on both.
-_BASELINE_NOTABLE = 0.05
+# A number is "off his norm" when it sits more than this many of his own standard
+# deviations from his own fortnight's mean. One percentage for every metric was the
+# bug: his day-to-day spread is ~3% for resting HR, ~10% for HRV and ~24% for Body
+# Battery, so 5% printed the label on HRV and Body Battery most mornings (noise) and
+# never on resting HR (where a real excursion is a couple of bpm). One SD is the same
+# corridor the Today screen draws around the norm.
+NORM_CORRIDOR_SD = 1.0
+
+# Relative share of a day's steps the evening recap may trail by before the brief
+# says so; has nothing to do with the norm above.
+_STEPS_GAP_SHARE = 0.05
 
 # The fewest steps the final count must add over the evening recap's before the
 # brief mentions the recap was short. Below it the gap is the last walk to bed.
@@ -92,7 +97,7 @@ _EVENING_GAP_STEPS = 200
 # its plain numbers — a clean bedroom is worth seeing too.
 _CO2_MINUTES_NOTABLE = 30
 _CO2_ABOVE_BASELINE = 0.25
-# Below this the "(обычно …)" next to the median is noise, as with _BASELINE_NOTABLE.
+# Below this the "(обычно …)" next to the median is noise, as with the norm label.
 _CO2_BASELINE_PRINTED = 0.10
 
 
@@ -230,8 +235,12 @@ def header_blocks(ctx: dict) -> list[Block]:
 
     garmin = ctx.get("garmin") or {}
     baseline = garmin.get("baseline") or {}
+    spreads = garmin.get("baseline_sd") or {}
     parts = [
-        label + " " + _num(garmin[key]) + _vs_baseline(garmin[key], baseline.get(key))
+        label
+        + " "
+        + _num(garmin[key])
+        + _vs_baseline(garmin[key], baseline.get(key), spreads.get(key))
         for key, label in (
             ("sleep_score", "Сон"),
             ("hrv_avg", "HRV"),
@@ -374,7 +383,7 @@ def yesterday_block(day: Optional[dict]) -> Optional[Block]:
     line = "Вчера: " + " · ".join(parts)
     steps, evening = day.get("steps"), day.get("evening_steps")
     if steps is not None and evening is not None and steps - evening >= max(
-        _EVENING_GAP_STEPS, steps * _BASELINE_NOTABLE
+        _EVENING_GAP_STEPS, steps * _STEPS_GAP_SHARE
     ):
         line += f" (вечером было {_num(evening)})"
     return Block(KIND_YESTERDAY, line, 17)
@@ -394,15 +403,35 @@ def _decimal(value) -> str:
     return _num(round(float(value), 1)).replace(".", ",")
 
 
-def _vs_baseline(value, mean) -> str:
-    """`` (норма 85)`` — or "" when there is no norm yet, or today sits on it."""
+def norm_side(value, mean, spread) -> Optional[str]:
+    """``"above"`` / ``"below"`` when ``value`` is outside his norm corridor
+    (``mean`` ± :data:`NORM_CORRIDOR_SD` standard deviations), else ``None``.
+
+    The one definition of "off norm" shared by the morning header and the Today
+    screen. Without a usable spread there is no corridor and so nothing to say —
+    never a percentage fallback: a flat history (spread 0) is as unusable as a
+    missing one, since any wobble would read as an excursion.
+    """
     try:
-        value, mean = float(value), float(mean)
+        value, mean, spread = float(value), float(mean), float(spread)
     except (TypeError, ValueError):
+        return None
+    if spread <= 0:
+        return None
+    offset = value - mean
+    if abs(offset) <= NORM_CORRIDOR_SD * spread:
+        return None
+    return "above" if offset > 0 else "below"
+
+
+def _vs_baseline(value, mean, spread=None) -> str:
+    """`` (выше нормы 85)`` / `` (ниже нормы 85)`` — or "" when there is no norm
+    yet, or today sits inside his usual corridor around it."""
+    side = norm_side(value, mean, spread)
+    if side is None:
         return ""
-    if not mean or abs(value - mean) / abs(mean) < _BASELINE_NOTABLE:
-        return ""
-    return f" (норма {_num(mean)})"
+    word = "выше" if side == "above" else "ниже"
+    return f" ({word} нормы {_num(mean)})"
 
 
 def _num(value) -> str:

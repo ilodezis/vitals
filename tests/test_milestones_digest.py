@@ -116,6 +116,9 @@ async def test_create_and_progress_body_fat_goal(db_session, monkeypatch):
     assert card["current"] is not None
     assert card["current"] == pytest.approx(14.52, abs=0.1)
     assert card["remaining"] == pytest.approx(14.52 - 12.0, abs=0.1)
+    # The reading says where it came from and when, so a tape estimate isn't taken for a scan.
+    assert card["source"] == "navy"
+    assert card["as_of"] == DAY.isoformat()
 
     # 2. Enable body_comp module and save a scan with 15.5% fat on DAY + 1 day
     from vitals.services.modules_service import set_module_enabled
@@ -137,12 +140,16 @@ async def test_create_and_progress_body_fat_goal(db_session, monkeypatch):
     card = cards[0]
     assert card["current"] == 15.5
     assert card["remaining"] == pytest.approx(15.5 - 12.0, abs=0.1)
+    assert card["source"] == "bia"
+    assert card["as_of"] == (DAY + timedelta(days=1)).isoformat()
 
     # 3. Test body_fat_source preference - force "navy"
     monkeypatch.setenv("VITALS_BODY_FAT_SOURCE", "navy")
     cards = await milestones_service.dashboard_cards(db_session)
     card = cards[0]
     assert card["current"] == pytest.approx(14.52, abs=0.1)
+    assert card["source"] == "navy"
+    assert card["as_of"] == DAY.isoformat()
 
     # 4. Force "bia"
     monkeypatch.setenv("VITALS_BODY_FAT_SOURCE", "bia")

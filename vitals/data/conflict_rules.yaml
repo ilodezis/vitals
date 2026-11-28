@@ -1132,7 +1132,10 @@
   domain_a: glp1
   condition_a: {active: true}
   domain_b: nutrition
-  condition_b: {protein_g: {$lt: 60}}
+  # 60 g is a "dangerously low" floor, not the protein target (the target is
+  # the nutrition goal in settings). calories > 0 guards a day with nothing
+  # logged: its totals are all zero, which would otherwise read as protein < 60.
+  condition_b: {protein_g: {$lt: 60}, calories: {$gt: 0}}
   severity: warn
   message: "Низкое потребление белка за день на фоне GLP-1 — при быстрой потере веса недостаточный белок повышает риск потери мышечной массы, а не только жира."
   category: glp1

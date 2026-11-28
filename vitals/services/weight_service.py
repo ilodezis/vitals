@@ -41,12 +41,17 @@ from vitals.models.weight import (
 from vitals.services import alerts_service, conflict_engine, photo_derivatives
 from vitals.services.analytics import exclude_ranges
 from vitals.services.analytics.navy import lean_body_mass_kg, navy_body_fat_pct
-from vitals.services.analytics.regression import fit_trend, project_date_for_value
+from vitals.services.analytics.regression import fit_trend_windowed, project_from_level
 from vitals.services.analytics.rolling import rolling_mean_by_date
 from vitals.utils import read_memo
 from vitals.utils.timeutils import today_local
 
 NOISE_ALERT_KEY = "weight.noisy_period_active"
+
+# The trend slope everywhere (chart, Today, brief, digest, nav, MCP, goal ETA) is a
+# least-squares fit over this many days ending at the last clean weigh-in. Whole
+# history would blend an old fast-loss period into "the current rate".
+TREND_WINDOW_DAYS = 28
 
 def _body_config() -> tuple[float, str]:
     """(height_cm, sex) for the Navy formula, read fresh on every call.
@@ -471,12 +476,17 @@ async def chart_series(
       * ``trend_ma``   — [{date, weight_kg}] 7-day MA over noise-excluded points
       * ``lbm``        — [{date, lbm_kg}] from Navy measurements
       * ``noise``      — [{start, end}] ranges (for the chart annotation overlay)
-      * ``projection`` — {target_kg, date} or None
-      * ``trend``      — {slope_per_week} or None — the least-squares slope over
-                         the WHOLE history, i.e. an average weekly rate, not the
-                         last week's movement (see ``weekly_delta`` for that)
+      * ``projection`` — {target_kg, date} or None — from the latest 7-day MA, at
+                         the windowed slope (the one goal projection every surface
+                         shares, see ``regression.project_from_level``)
+      * ``trend``      — {slope_per_week, window_days, n} or None — the least-squares
+                         slope over the last ``TREND_WINDOW_DAYS`` days of clean
+                         weigh-ins (None with under two points in that window), an
+                         average weekly rate, not the last week's movement (see
+                         ``weekly_delta`` for that)
       * ``weekly_delta`` — kg moved over the last 7 days: the 7-day MA now minus
-                         the 7-day MA a week ago, or None with under a week of data
+                         the 7-day MA dated 7-10 days earlier, or None when there
+                         is no such point (under a week of data, or a gap)
       * ``bia``        — {bf:[{date,value}], lbm:[{date,value}]} from BIA scans,
                          only when ``include_bia`` (the body_comp module is on).
                          Coexists with the Navy ``lbm`` series — both are shown.
@@ -513,18 +523,22 @@ async def chart_series(
     # a single water-weight day can't fake a kilo). Deliberately NOT the regression
     # slope: that's the average weekly rate across the entire history, which on a
     # long log reads as a wildly overstated "last week" number.
+    # The comparison point must sit 7-10 days back: across a logging gap the last
+    # earlier MA point can be weeks old, and that is not "the last 7 days".
     weekly_delta = None
     if ma:
         last_date, last_ma = ma[-1]
-        cutoff = last_date - timedelta(days=7)
-        prior = [v for (d, v) in ma if d <= cutoff]
+        newest = last_date - timedelta(days=7)
+        oldest = last_date - timedelta(days=10)
+        prior = [v for (d, v) in ma if oldest <= d <= newest]
         if prior:
             weekly_delta = round(last_ma - prior[-1], 2)
 
-    trend = fit_trend(raw_points, exclude=ranges)
+    trend = fit_trend_windowed(clean_points, TREND_WINDOW_DAYS)
     projection = None
-    if goal_kg is not None:
-        proj_date = project_date_for_value(raw_points, goal_kg, exclude=ranges)
+    if goal_kg is not None and ma and trend is not None:
+        ma_date, ma_value = ma[-1]
+        proj_date = project_from_level(ma_value, ma_date, trend.slope_per_day, goal_kg)
         if proj_date is not None:
             projection = {"target_kg": goal_kg, "date": proj_date.isoformat()}
 
@@ -558,7 +572,13 @@ async def chart_series(
         "phases": phases,
         "projection": projection,
         "trend": (
-            {"slope_per_week": round(trend.slope_per_week, 3)} if trend else None
+            {
+                "slope_per_week": round(trend.slope_per_week, 3),
+                "window_days": TREND_WINDOW_DAYS,
+                "n": trend.n,
+            }
+            if trend
+            else None
         ),
         "weekly_delta": weekly_delta,
         "bia": bia,
@@ -821,7 +841,8 @@ async def weekly_trend_delta(
     logs: Optional[Sequence[WeightLog]] = None,
     end: Optional[date_type] = None,
 ) -> Optional[float]:
-    """Noise-excluded linear regression slope (kg/week) across active weights."""
+    """Noise-excluded regression slope (kg/week) over the last ``TREND_WINDOW_DAYS``
+    days of active weights; ``None`` with under two weigh-ins in that window."""
     weights = logs if logs is not None else await list_active_weights(session, end=end)
     raw_points = [(w.date, w.weight_kg) for w in weights]
     ranges = [
@@ -829,7 +850,7 @@ async def weekly_trend_delta(
         for start, range_end in await _noise_ranges(session)
         if end is None or start <= end
     ]
-    trend = fit_trend(raw_points, exclude=ranges)
+    trend = fit_trend_windowed(raw_points, TREND_WINDOW_DAYS, exclude=ranges)
     return round(trend.slope_per_week, 3) if trend else None
 
 
@@ -840,7 +861,8 @@ async def dose_phase_delta(
     weights: Optional[Sequence[WeightLog]] = None,
     end: Optional[date_type] = None,
 ) -> Optional[float]:
-    """Weight change (last - first, negative = weight loss) across a GLP-1 dose phase.
+    """Weight change (last - first, negative = weight loss) across a GLP-1 dose phase,
+    measured on noise-excluded weigh-ins (a water-weight spike is not progress).
 
     ``None`` while the phase holds fewer than two weigh-ins: there is no change to
     report yet, and a zero would read as "the weight stood still".
@@ -870,22 +892,37 @@ async def dose_phase_delta(
             for w in weights
             if w.date >= start_d and (end_d is None or w.date <= end_d)
         ]
-    if len(weights_on_dose) >= 2:
-        return round(weights_on_dose[-1].weight_kg - weights_on_dose[0].weight_kg, 1)
+    ranges = [
+        (start, range_end)
+        for start, range_end in await _noise_ranges(session)
+        if end_d is None or start <= end_d
+    ]
+    points = exclude_ranges([(w.date, w.weight_kg) for w in weights_on_dose], ranges)
+    points.sort(key=lambda p: p[0])
+    if len(points) >= 2:
+        return round(points[-1][1] - points[0][1], 1)
     return None
 
 
 def weeks_to_goal(
-    current_kg: Optional[float], target_kg: float, per_week_kg: Optional[float]
+    level_kg: Optional[float], target_kg: float, per_week_kg: Optional[float]
 ) -> Optional[int]:
-    """Whole weeks until the present trend meets a "get below" goal.
+    """Whole weeks (at least 1) until the present trend meets a "get below" goal.
 
-    ``None`` when there is nothing to extrapolate: no reading, no trend, a trend
-    that is flat or moves away from the goal, or a goal already reached.
+    ``level_kg`` is the latest 7-day mean, not the latest raw weigh-in, and
+    ``per_week_kg`` the windowed slope: the same inputs and the same
+    ``project_from_level`` arithmetic as the chart projection, so the date and the
+    week count describe one forecast. ``None`` when there is nothing to
+    extrapolate: no level, no trend, a trend that is flat or moves away from the
+    goal, a goal already reached, or one beyond the projection horizon.
     """
-    if current_kg is None or per_week_kg is None or per_week_kg >= 0 or current_kg <= target_kg:
+    if level_kg is None or per_week_kg is None or per_week_kg >= 0 or level_kg <= target_kg:
         return None
-    return max(1, round((current_kg - target_kg) / -per_week_kg))
+    anchor = date_type(2000, 1, 1)  # only the day count matters, not the date
+    reached = project_from_level(level_kg, anchor, per_week_kg / 7.0, target_kg)
+    if reached is None:
+        return None
+    return max(1, round((reached - anchor).days / 7))
 
 
 def _norm_source(src: str) -> str:
@@ -1033,13 +1070,15 @@ async def collect(
         }
 
     # The goal is the active weight milestone — the one Today's goal card shows —
-    # and the distance to it is read off the same weekly trend printed above.
+    # and the distance to it is read off the same weekly trend printed above,
+    # starting from the same smoothed level the chart projection starts at.
     goal_pace = None
     target_kg = await milestones_service.active_weight_target_kg(session)
     if target_kg is not None:
         goal_pace = {
             "target_kg": target_kg,
-            "weeks": weeks_to_goal(latest_kg, target_kg, per_week_kg),
+            # From the latest 7-day mean: the level the chart projection starts at.
+            "weeks": weeks_to_goal(average7, target_kg, per_week_kg),
         }
 
     pace = {"per_week_kg": per_week_kg, "dose": dose_pace, "goal": goal_pace}

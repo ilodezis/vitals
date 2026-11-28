@@ -141,11 +141,13 @@ def weight_goal_pct(
     return max(0, min(100, round(done / total * 100)))
 
 
-async def _current_body_fat(session: AsyncSession) -> Optional[float]:
-    """Latest active body fat percentage, either Navy or InBody (BIA) based on
-    preference. A BIA scan is a direct measurement, so by default it outranks the
-    Navy tape-formula estimate whenever body_comp is enabled and has one — Navy is
-    only the fallback when there's no BIA data (not a "most recent date" contest)."""
+async def _current_body_fat(session: AsyncSession) -> Optional[tuple[float, date_type, str]]:
+    """Latest active body fat reading as ``(percent, measured_on, source)``, where
+    source is ``"bia"`` (InBody/BIA scan) or ``"navy"`` (tape-formula estimate), or
+    ``None`` when neither exists. Source preference follows ``body_fat_source``. A
+    BIA scan is a direct measurement, so by default it outranks the Navy estimate
+    whenever body_comp is enabled and has one — Navy is only the fallback when
+    there's no BIA data (not a "most recent date" contest)."""
     from vitals.config import load_config
     from vitals.services import weight_service
     from vitals.services.modules_service import get_enabled_modules
@@ -157,36 +159,46 @@ async def _current_body_fat(session: AsyncSession) -> Optional[float]:
     body_comp_enabled = enabled.get("body_comp", False)
 
     # 1. Fetch Navy measurements if not pinned to bia
-    navy_val = None
+    navy: Optional[tuple[float, date_type]] = None
     if source_pref in ("latest", "navy"):
         measurements = await weight_service.list_body_measurements(session)
         # Find the latest measurement with body_fat_pct
         for m in reversed(measurements):
             if m.body_fat_pct is not None:
-                navy_val = m.body_fat_pct
+                navy = (m.body_fat_pct, m.date)
                 break
 
     # 2. Fetch BIA scans if body_comp is enabled and not pinned to navy
-    bia_val = None
+    bia: Optional[tuple[float, date_type]] = None
     if body_comp_enabled and source_pref in ("latest", "bia"):
         from vitals.services import body_scan_service
         from vitals.services.analytics import body_metrics
 
-        scans = await body_scan_service.list_scans(session)
+        scans = await body_scan_service.list_scans(session)  # newest first
         for s in scans:
             bf_val = body_metrics.body_fat_pct_from_scan(s.metrics)
             if bf_val is not None:
-                bia_val = bf_val
+                bia = (bf_val, s.date)
                 break
 
     # 3. Resolve based on preference
     if source_pref == "navy":
-        return navy_val
+        return _with_source(navy, "navy")
     if source_pref == "bia":
-        return bia_val
+        return _with_source(bia, "bia")
 
     # "latest" (default): BIA wins whenever it's available; Navy is the fallback.
-    return bia_val if bia_val is not None else navy_val
+    if bia is not None:
+        return _with_source(bia, "bia")
+    return _with_source(navy, "navy")
+
+
+def _with_source(
+    pair: Optional[tuple[float, date_type]], source: str
+) -> Optional[tuple[float, date_type, str]]:
+    if pair is None:
+        return None
+    return (pair[0], pair[1], source)
 
 
 _WEIGHT_UNITS = {"kg", "кг"}
@@ -250,12 +262,19 @@ async def progress(session: AsyncSession, milestone: Milestone) -> dict:
             out["remaining"] = round(current - milestone.target_value, 2)
             out["pct"] = weight_goal_pct(start, current, milestone.target_value)
     elif milestone.domain == Domain.BODY_COMPOSITION.value and milestone.target_value is not None and unit_ok:
-        current = await _current_body_fat(session)
+        reading = await _current_body_fat(session)
         config = load_config()
         out["method"] = config.body_fat_source or "latest"
-        if current is not None:
+        # as_of/source say which reading the number is (BIA or Navy, and its date),
+        # so a stale Navy tape isn't shown as if it were a fresh scan.
+        out["as_of"] = None
+        out["source"] = None
+        if reading is not None:
+            current, as_of, source = reading
             out["current"] = round(current, 2)
             out["remaining"] = round(current - milestone.target_value, 2)
+            out["as_of"] = as_of.isoformat()
+            out["source"] = source
 
     # Weight and body-fat goals are "get below X". Crossing the target closes the
     # goal on the spot, so a reached card doesn't sit as "active" until someone

@@ -4866,6 +4866,8 @@ export interface components {
         };
         /** MilestoneItem */
         MilestoneItem: {
+            /** Asof */
+            asOf?: string | null;
             /** Closedon */
             closedOn?: string | null;
             /** Current */
@@ -4886,6 +4888,8 @@ export interface components {
             pct?: number | null;
             /** Remaining */
             remaining?: number | null;
+            /** Source */
+            source?: string | null;
             /** Status */
             status: string;
             /** Targetunit */
@@ -6991,8 +6995,8 @@ export interface components {
         };
         /**
          * WeekChange
-         * @description A metric this week against last: the two seven-day values, on the corridor of
-         *     his own norm where there is one.
+         * @description A metric this week against last: the two seven-day means and, when the change
+         *     is bigger than the noise of such a difference, whether it went the right way.
          */
         WeekChange: {
             /** After */
@@ -14891,4 +14895,4 @@ export interface operations {
     };
 }
 
-// openapi.json sha256: 2d2d6073b9389cecb22fdfc2846e4d5960e4e502f233b4e0b9655db5e5ca79a5
+// openapi.json sha256: 193ed8da44768ee2cb8a68cdbb86857efc54cc8eb9e3b0b7aaf5221657233b61

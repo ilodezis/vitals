@@ -93,10 +93,14 @@ def night_thresholds(settings: env_settings.EnvSettings) -> dict[str, Any]:
     return {k: full[k] for k in keys}
 
 
-def night_dict(summary: NightSummary) -> dict[str, Any]:
+def night_dict(summary: NightSummary, basis: Optional[str] = None) -> dict[str, Any]:
     """One night as the surfaces show it. A night with no readings is just its date,
-    window and a zero — not a column of zeros that reads as a measured, clean night."""
+    window and a zero — not a column of zeros that reads as a measured, clean night.
+    ``basis`` names where the window came from (``sleep`` or ``clock``) when the
+    caller knows; it is left out otherwise."""
     window = {"start": _local_iso(summary.window.start), "end": _local_iso(summary.window.end)}
+    if basis:
+        window["basis"] = basis
     if not summary.samples:
         return {"date": summary.date.isoformat(), "window": window, "samples": 0}
 
@@ -257,6 +261,26 @@ async def night_view(session: AsyncSession, on_date: date_type) -> dict[str, Any
     return out
 
 
+async def _sample_dates(
+    session: AsyncSession,
+    start: Optional[date_type],
+    end: Optional[date_type],
+    station_id: str,
+) -> list[date_type]:
+    """Local dates the station has any reading on, oldest first."""
+    stmt = (
+        select(EnvironmentSample.date)
+        .where(EnvironmentSample.station_id == station_id)
+        .distinct()
+        .order_by(EnvironmentSample.date)
+    )
+    if start is not None:
+        stmt = stmt.where(EnvironmentSample.date >= start)
+    if end is not None:
+        stmt = stmt.where(EnvironmentSample.date <= end)
+    return list((await session.execute(stmt)).scalars().all())
+
+
 async def nights(
     session: AsyncSession,
     start: Optional[date_type],
@@ -269,17 +293,7 @@ async def nights(
     that have station data, oldest first. With more than ``limit``, the newest are
     kept and the second element says so."""
     station_id = _station(station_id)
-    stmt = (
-        select(EnvironmentSample.date)
-        .where(EnvironmentSample.station_id == station_id)
-        .distinct()
-        .order_by(EnvironmentSample.date)
-    )
-    if start is not None:
-        stmt = stmt.where(EnvironmentSample.date >= start)
-    if end is not None:
-        stmt = stmt.where(EnvironmentSample.date <= end)
-    days = list((await session.execute(stmt)).scalars().all())
+    days = await _sample_dates(session, start, end, station_id)
 
     truncated = limit is not None and len(days) > limit
     if truncated:
@@ -308,22 +322,88 @@ def _median(values: Sequence[Optional[float]]) -> Optional[float]:
     return statistics.median(present) if present else None
 
 
+# A Garmin sleep span outside these bounds is a nap, a watch left on the nightstand
+# or a sync glitch — not a night to read the room against.
+SLEEP_WINDOW_MIN = timedelta(hours=2)
+SLEEP_WINDOW_MAX = timedelta(hours=16)
+
+BASIS_SLEEP = "sleep"
+BASIS_CLOCK = "clock"
+
+
+def sleep_window_utc(
+    sleep_start: Optional[datetime], sleep_end: Optional[datetime]
+) -> Optional[tuple[datetime, datetime]]:
+    """Garmin's bed and wake times (local wall clock, as stored) as the UTC range
+    the samples are compared in; ``None`` when either is missing or the span is not
+    a plausible night."""
+    if sleep_start is None or sleep_end is None:
+        return None
+    span = sleep_end - sleep_start
+    if not SLEEP_WINDOW_MIN <= span <= SLEEP_WINDOW_MAX:
+        return None
+    return timeutils.local_naive_to_utc(sleep_start), timeutils.local_naive_to_utc(sleep_end)
+
+
+async def _sleep_windows(
+    session: AsyncSession, start: date_type, end: date_type
+) -> dict[date_type, tuple[datetime, datetime]]:
+    """The usable Garmin sleep window of each date in ``[start, end]`` that has one."""
+    rows = (
+        await session.execute(
+            select(GarminDaily.date, GarminDaily.sleep_start, GarminDaily.sleep_end).where(
+                GarminDaily.date >= start,
+                GarminDaily.date <= end,
+                GarminDaily.sleep_start.is_not(None),
+                GarminDaily.sleep_end.is_not(None),
+            )
+        )
+    ).all()
+    windows = {day: sleep_window_utc(s, e) for day, s, e in rows}
+    return {day: w for day, w in windows.items() if w is not None}
+
+
+async def _night_on_own_window(
+    session: AsyncSession,
+    day: date_type,
+    sleep_windows: dict[date_type, tuple[datetime, datetime]],
+    *,
+    station_id: Optional[str] = None,
+) -> tuple[NightSummary, str]:
+    """The night that ended on ``day``, over the hours he slept when Garmin knows
+    them and over the configured clock window otherwise. The second element says
+    which. Coverage is judged against the window used, so a short sleep that the
+    station saw end to end is a fully covered night."""
+    window = sleep_windows.get(day)
+    summary = await queries.night_summary(session, day, station_id=station_id, window=window)
+    return summary, BASIS_SLEEP if window else BASIS_CLOCK
+
+
 async def brief_night(session: AsyncSession, on_date: date_type) -> Optional[dict[str, Any]]:
     """Last night's air for the morning brief, beside his own recent nights.
+
+    The night is the hours he slept (Garmin's bed and wake time of that date) and
+    falls back to the configured clock window when those are missing or implausible;
+    ``window.basis`` says which. The fixed clock window counted the awake evening
+    in the room as night for someone who falls asleep at two. The baseline nights
+    are read the same way, each over its own window.
 
     ``None`` when the station saw too little of the night to say anything — no
     data and a half-covered night both mean "no line", never a reassuring one.
     ``baseline`` is the median of the adequately covered nights in the fortnight
     before; it is left out until there are enough of them to be a norm.
     """
-    summary = await queries.night_summary(session, on_date)
+    first = on_date - timedelta(days=BRIEF_BASELINE_NIGHTS)
+    sleep_windows = await _sleep_windows(session, first, on_date)
+    summary, basis = await _night_on_own_window(session, on_date, sleep_windows)
     if not summary.samples or summary.coverage_pct < COVERAGE_ADEQUATE_PCT:
         return None
-    prior, _ = await nights(
-        session, on_date - timedelta(days=BRIEF_BASELINE_NIGHTS), on_date - timedelta(days=1),
-        limit=None,
-    )
-    prior = [n for n in prior if n.coverage_pct >= COVERAGE_ADEQUATE_PCT]
+    prior: list[NightSummary] = []
+    for day in await _sample_dates(session, first, on_date - timedelta(days=1), _station()):
+        night, _ = await _night_on_own_window(session, day, sleep_windows)
+        # A date with samples only in the afternoon has no night to report.
+        if night.samples and night.coverage_pct >= COVERAGE_ADEQUATE_PCT:
+            prior.append(night)
     baseline = None
     if len(prior) >= BRIEF_BASELINE_MIN_NIGHTS:
         baseline = {
@@ -334,7 +414,7 @@ async def brief_night(session: AsyncSession, on_date: date_type) -> Optional[dic
         }
     prefs = await env_settings.get_settings(session)
     return prune({
-        **night_dict(summary),
+        **night_dict(summary, basis),
         "baseline": baseline,
         "thresholds": night_thresholds(prefs),
     })

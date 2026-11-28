@@ -2097,15 +2097,14 @@ async def assemble_context(
         env_nights, env_truncated = await environment_context.nights(
             session, prev_start, period_end, limit=environment_context.NIGHTS_LIMIT
         )
+    environment_prefs = await environment_settings.get_settings(session)
     ctx["environment"] = (
         {
             "nights": [
                 {**environment_context.night_dict(n), "period": _period_name(n.date, window)}
                 for n in env_nights
             ],
-            "thresholds": environment_context.night_thresholds(
-                await environment_settings.get_settings(session)
-            ),
+            "thresholds": environment_context.night_thresholds(environment_prefs),
         }
         if env_nights
         else None
@@ -2116,7 +2115,14 @@ async def assemble_context(
         dates=[n.date for n in env_nights],
         window=window,
         truncated=env_truncated,
-        extra={"night_limit": environment_context.NIGHTS_LIMIT, "night_window": "00:00-12:00 local"},
+        extra={
+            "night_limit": environment_context.NIGHTS_LIMIT,
+            # These nights are summarized over the configured clock window (the morning
+            # brief reads the actual sleep window instead), so state that window.
+            "night_window": (
+                f"{environment_prefs.night_start}-{environment_prefs.night_end} local (clock window)"
+            ),
+        },
     )
 
     # ── The join ──────────────────────────────────────────────────────────────

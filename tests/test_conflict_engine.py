@@ -247,6 +247,28 @@ async def test_glp1_low_intake_rules_skip_mid_day_but_fire_at_day_end(db_session
     assert any("Низкое потребление белка" in m for m in messages)
 
 
+async def test_low_protein_rule_ignores_a_day_with_nothing_logged(db_session):
+    """An empty day totals to zero everywhere, which used to read as protein < 60
+    and raised the warning for a day with no meals at all."""
+    from vitals.services import conflict_catalog, glp1_service, nutrition_service
+    conflict_registrations.register_all_resolvers()
+    await conflict_catalog.sync_catalog(db_session)
+    await glp1_service.add_dose_phase(
+        db_session, start_date=today_local(), drug="semaglutide", dose_mg=1.0
+    )
+    await db_session.commit()
+
+    empty = await conflict_engine.evaluate(db_session, "nutrition", include_day_end=True)
+    assert not any("Низкое потребление белка" in v.message for v in empty)
+
+    await nutrition_service.log_meal(
+        db_session, on_date=today_local(), name="protein-light lunch", calories=500, protein_g=40
+    )
+    await db_session.commit()
+    logged = await conflict_engine.evaluate(db_session, "nutrition", include_day_end=True)
+    assert any("Низкое потребление белка" in v.message for v in logged)
+
+
 # ── enforce_day_end: raises AND auto-clears (unlike plain enforce()) ───────
 
 async def test_enforce_day_end_raises_the_alert_when_violated(db_session):
